@@ -401,15 +401,15 @@
             margin: 0 0 16px;
             color: #e67e22;
         }
-        .modal-textarea {
+        .modal-textarea, .modal-input-text {
             width: 100%;
-            height: 300px;
+            padding: 12px;
             font-family: monospace;
             font-size: 12px;
-            padding: 12px;
             border: 1px solid #e6b422;
             border-radius: 8px;
             resize: vertical;
+            margin-bottom: 12px;
         }
         .modal-buttons {
             display: flex;
@@ -440,6 +440,11 @@
             word-break: break-all;
             max-height: 400px;
             overflow-y: auto;
+        }
+        .label-hint {
+            font-size: 12px;
+            color: #666;
+            margin: 6px 0;
         }
         @media (max-width: 700px) {
             .tool-btn, .inc-btn { padding: 5px 12px; font-size: 12px; }
@@ -489,7 +494,7 @@
         <div id="varsContainer"></div>
         <div id="newVarContainer" style="margin-top: 16px;"></div>
         <div class="info-note">
-            如有bug请联系小E 3155929574@qq.com
+            ✨ 如有bug请联系小E 3155929574@qq.com
         </div>
     </div>
 </div>
@@ -508,233 +513,27 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// ====================== 撤销/重做系统 ======================
-class HistoryManager {
-    constructor(maxHistory = 30) {
-        this.undoStack = [];
-        this.redoStack = [];
-        this.maxHistory = maxHistory;
-        this.isRecording = true;
-    }
-    record(state) {
-        if (!this.isRecording) return;
-        this.undoStack.push(JSON.parse(JSON.stringify(state)));
-        if (this.undoStack.length > this.maxHistory) this.undoStack.shift();
-        this.redoStack = [];
-    }
-    undo(currentState) {
-        if (this.undoStack.length === 0) return null;
-        this.redoStack.push(JSON.parse(JSON.stringify(currentState)));
-        return this.undoStack.pop();
-    }
-    redo(currentState) {
-        if (this.redoStack.length === 0) return null;
-        this.undoStack.push(JSON.parse(JSON.stringify(currentState)));
-        return this.redoStack.pop();
-    }
-    clear() {
-        this.undoStack = [];
-        this.redoStack = [];
-    }
-}
+// ====================== 角度制数学库 ======================
+const angleMath = {
+    sin: (deg) => Math.sin(deg * Math.PI / 180),
+    cos: (deg) => Math.cos(deg * Math.PI / 180),
+    tan: (deg) => Math.tan(deg * Math.PI / 180),
+    asin: (val) => Math.asin(val) * 180 / Math.PI,
+    acos: (val) => Math.acos(val) * 180 / Math.PI,
+    atan: (val) => Math.atan(val) * 180 / Math.PI,
+    atan2: (y, x) => Math.atan2(y, x) * 180 / Math.PI,
+    sqrt: Math.sqrt,
+    abs: Math.abs,
+    floor: Math.floor,
+    ceil: Math.ceil,
+    round: Math.round,
+    PI: Math.PI,
+    E: Math.E
+};
 
-// ====================== 全局变量（带源方块绑定） ======================
-let globalVars = new Map(); // key: string, value: { def: VarDef, sourceBlockId: string }
-
-let showAxes = true;
-let showGrid = true;
-let showTicks = true;
-let axisGroup = null;
-let activeAutoIncMap = new Map(); // key: `${blockId}_${varName}_${delta}` 或 `global_${varName}_${delta}`
-
-function startAutoInc(target, isGlobal, varName, delta, sourceBlockId = null) {
-    const key = isGlobal ? `global_${varName}_${delta}` : `${target.id}_${varName}_${delta}`;
-    if (activeAutoIncMap.has(key)) return;
-    const incFunc = () => {
-        if (isGlobal) {
-            const g = globalVars.get(varName);
-            if (g && isConstantExpr(g.def.expr)) {
-                let newVal = g.def.value + delta;
-                const stepStr = g.def.step.toString();
-                const decimalPlaces = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
-                newVal = parseFloat(newVal.toFixed(decimalPlaces));
-                if (newVal > g.def.rangeMax) newVal = g.def.rangeMin;
-                else if (newVal < g.def.rangeMin) newVal = g.def.rangeMax;
-                g.def.expr = newVal.toString();
-                g.def.value = newVal;
-                blocks.forEach(b => b.refresh());
-                if (selectedBlock) {
-                    // 局部更新UI，不重新渲染整个列表
-                    updateVarUIPartial(`t.${varName}`, g.def);
-                }
-                recordAction();
-            }
-        } else {
-            target.incVar(varName, delta);
-            if (selectedBlock === target) {
-                const def = target.scope.vars.get(varName);
-                updateVarUIPartial(varName, def);
-            }
-            recordAction();
-            updateGlobalVarsDependingOn(target, varName);
-        }
-    };
-    incFunc(); // 立即执行一次
-    const interval = setInterval(() => {
-        if (isGlobal) {
-            const g = globalVars.get(varName);
-            if (g && isConstantExpr(g.def.expr)) {
-                let newVal = g.def.value + delta;
-                const stepStr = g.def.step.toString();
-                const decimalPlaces = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
-                newVal = parseFloat(newVal.toFixed(decimalPlaces));
-                if (newVal > g.def.rangeMax) newVal = g.def.rangeMin;
-                else if (newVal < g.def.rangeMin) newVal = g.def.rangeMax;
-                g.def.expr = newVal.toString();
-                g.def.value = newVal;
-                blocks.forEach(b => b.refresh());
-                if (selectedBlock) updateVarUIPartial(`t.${varName}`, g.def);
-                recordAction();
-            } else {
-                stopAutoInc(isGlobal, varName, delta);
-            }
-        } else {
-            if (target) {
-                target.incVar(varName, delta);
-                if (selectedBlock === target) {
-                    const def = target.scope.vars.get(varName);
-                    updateVarUIPartial(varName, def);
-                }
-                recordAction();
-                updateGlobalVarsDependingOn(target, varName);
-            } else {
-                stopAutoInc(isGlobal, varName, delta);
-            }
-        }
-    }, 50);
-    activeAutoIncMap.set(key, interval);
-}
-
-function stopAutoInc(isGlobal, varName, delta) {
-    for (let [k, interval] of activeAutoIncMap.entries()) {
-        if (isGlobal && k.startsWith(`global_${varName}_`)) {
-            clearInterval(interval);
-            activeAutoIncMap.delete(k);
-        } else if (!isGlobal && k.startsWith(`${varName}_`)) {
-            // 非全局的由调用者具体处理
-        }
-    }
-}
-
-function toggleAutoInc(btn, isGlobal, target, varName, delta, sourceBlockId = null) {
-    const key = isGlobal ? `global_${varName}_${delta}` : `${target.id}_${varName}_${delta}`;
-    if (activeAutoIncMap.has(key)) {
-        const interval = activeAutoIncMap.get(key);
-        clearInterval(interval);
-        activeAutoIncMap.delete(key);
-        btn.classList.remove('active');
-    } else {
-        startAutoInc(isGlobal ? null : target, isGlobal, varName, delta, sourceBlockId);
-        btn.classList.add('active');
-    }
-}
-
-// 局部更新变量UI（不重新渲染整个列表）
-function updateVarUIPartial(varName, def) {
-    const card = document.querySelector(`.var-card[data-var="${varName}"]`);
-    if (!card) return;
-    const valueSpan = card.querySelector('.var-value');
-    const assignmentInput = card.querySelector('.assignment-input');
-    const slider = card.querySelector('.var-slider');
-    if (valueSpan) valueSpan.textContent = def.value.toFixed(4);
-    if (assignmentInput) assignmentInput.value = `${varName} = ${def.expr}`;
-    if (slider) slider.value = def.value;
-}
-
-function updateGlobalVarsDependingOn(block, localVarName) {
-    let anyChanged = false;
-    for (let [name, g] of globalVars.entries()) {
-        if (g.sourceBlockId === block.id) {
-            const sourceBlock = blocks.find(b => b.id === g.sourceBlockId);
-            if (sourceBlock) {
-                const localVarsMap = sourceBlock.scope.vars;
-                let newVal;
-                if (isConstantExpr(g.def.expr)) {
-                    newVal = parseFloat(g.def.expr);
-                } else {
-                    newVal = evaluateExpression(g.def.expr, localVarsMap, globalVars, sourceBlock.id);
-                }
-                if (Math.abs(newVal - g.def.value) > 1e-8) {
-                    g.def.value = newVal;
-                    anyChanged = true;
-                    updateVarUIPartial(`t.${name}`, g.def);
-                }
-            }
-        }
-    }
-    if (anyChanged) {
-        blocks.forEach(b => b.refresh());
-    }
-}
-
-// ====================== 模态框 ======================
-function showModal(title, content, onConfirm = null, isTextarea = true) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    let innerHtml = `<div class="modal-content"><h3>${title}</h3>`;
-    if (isTextarea) {
-        innerHtml += `<textarea class="modal-textarea" id="modalInput">${content || ''}</textarea>`;
-    } else {
-        innerHtml += `<div class="preview-code" id="modalPreview">${content || ''}</div>`;
-    }
-    innerHtml += `<div class="modal-buttons">
-        <button class="modal-btn" id="modalConfirm"><span>确定</span></button>
-        <button class="modal-btn" id="modalCancel"><span>取消</span></button>
-    </div></div>`;
-    modal.innerHTML = innerHtml;
-    document.body.appendChild(modal);
-    const confirmBtn = modal.querySelector('#modalConfirm');
-    const cancelBtn = modal.querySelector('#modalCancel');
-    const input = modal.querySelector('#modalInput');
-    const preview = modal.querySelector('#modalPreview');
-    confirmBtn.onclick = () => {
-        const val = input ? input.value : (preview ? preview.innerText : null);
-        modal.remove();
-        if (onConfirm) onConfirm(val);
-    };
-    cancelBtn.onclick = () => modal.remove();
-    if (input) input.focus();
-}
-
-// ====================== 数学变换核心 ======================
-const degToRad = deg => deg * Math.PI / 180;
-function computeTransformMatrix(M) {
-    const [px,py,pz, rx,ry,rz, s, es, ex, ey, bx,by,bz] = M;
-    const matB = new THREE.Matrix4().makeTranslation(bx,by,bz);
-    const matEsy = new THREE.Matrix4().makeScale(1, es, 1);
-    const matEyr = new THREE.Matrix4().makeRotationY(-degToRad(ey));
-    const matExr = new THREE.Matrix4().makeRotationX(-degToRad(ex));
-    const matEs = new THREE.Matrix4().makeScale(1, 1, es);
-    const matExl = new THREE.Matrix4().makeRotationX(degToRad(ex));
-    const matEyl = new THREE.Matrix4().makeRotationY(degToRad(ey));
-    const matS = new THREE.Matrix4().makeScale(s,s,s);
-    const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
-    const matRy = new THREE.Matrix4().makeRotationY(degToRad(ry));
-    const matRz = new THREE.Matrix4().makeRotationZ(degToRad(rz));
-    const matP = new THREE.Matrix4().makeTranslation(px,py,pz);
-    let matrix = matB.clone();
-    matrix.premultiply(matEsy).premultiply(matEyr).premultiply(matExr)
-          .premultiply(matEs).premultiply(matExl).premultiply(matEyl)
-          .premultiply(matS).premultiply(matRx).premultiply(matRy)
-          .premultiply(matRz).premultiply(matP);
-    return matrix;
-}
-
-const boxGeo = new THREE.BoxGeometry(1,1,1);
-
-// ====================== 变量系统 ======================
+// 表达式求值 (角度制)
 function evaluateExpression(expr, localVarsMap, globalVarsMap, sourceBlockId = null) {
-    const scope = { math: Math };
+    const scope = { math: angleMath };
     const vProxy = {};
     for(let [key, valObj] of localVarsMap.entries()) {
         const varName = key.slice(2);
@@ -845,7 +644,31 @@ class VariableScope {
     deleteVar(name) { this.vars.delete(name); }
 }
 
-// ====================== 方块类 ======================
+// 变换矩阵 (与原版相同)
+const boxGeo = new THREE.BoxGeometry(1,1,1);
+const degToRad = deg => deg * Math.PI / 180;
+function computeTransformMatrix(M) {
+    const [px,py,pz, rx,ry,rz, s, es, ex, ey, bx,by,bz] = M;
+    const matB = new THREE.Matrix4().makeTranslation(bx,by,bz);
+    const matEsy = new THREE.Matrix4().makeScale(1, es, 1);
+    const matEyr = new THREE.Matrix4().makeRotationY(-degToRad(ey));
+    const matExr = new THREE.Matrix4().makeRotationX(-degToRad(ex));
+    const matEs = new THREE.Matrix4().makeScale(1, 1, es);
+    const matExl = new THREE.Matrix4().makeRotationX(degToRad(ex));
+    const matEyl = new THREE.Matrix4().makeRotationY(degToRad(ey));
+    const matS = new THREE.Matrix4().makeScale(s,s,s);
+    const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
+    const matRy = new THREE.Matrix4().makeRotationY(degToRad(ry));
+    const matRz = new THREE.Matrix4().makeRotationZ(degToRad(rz));
+    const matP = new THREE.Matrix4().makeTranslation(px,py,pz);
+    let matrix = matB.clone();
+    matrix.premultiply(matEsy).premultiply(matEyr).premultiply(matExr)
+          .premultiply(matEs).premultiply(matExl).premultiply(matEyl)
+          .premultiply(matS).premultiply(matRx).premultiply(matRy)
+          .premultiply(matRz).premultiply(matP);
+    return matrix;
+}
+
 class Block {
     constructor(id, M, textureUrl=null) {
         this.id = id;
@@ -869,7 +692,6 @@ class Block {
     updateTransform() { const M = this.scope.toM(); const matrix = computeTransformMatrix(M); this.mesh.matrix.copy(matrix); this.mesh.matrixAutoUpdate = false; }
     refresh() { this.scope.recompute(); this.updateTransform(); }
     getVarList() { return Array.from(this.scope.vars.entries()).map(([name, def]) => ({ name, expr: def.expr, value: def.value, rangeMin: def.rangeMin, rangeMax: def.rangeMax, step: def.step })); }
-    setVarRange(name, min, max, step) { const def = this.scope.vars.get(name); if(def) { def.rangeMin = min; def.rangeMax = max; def.step = step; this.refresh(); } }
     incVar(name, delta) {
         const def = this.scope.vars.get(name);
         if(def && isConstantExpr(def.expr)) {
@@ -888,7 +710,158 @@ class Block {
     }
 }
 
-// ====================== 3D场景 ======================
+// ====================== 全局变量和自增管理 ======================
+let globalVars = new Map(); // key: string, value: { def: VarDef, sourceBlockId: string }
+let activeAutoIncMap = new Map();
+
+function startAutoInc(target, isGlobal, varName, delta, sourceBlockId = null) {
+    const key = isGlobal ? `global_${varName}_${delta}` : `${target.id}_${varName}_${delta}`;
+    if (activeAutoIncMap.has(key)) return;
+    const incFunc = () => {
+        if (isGlobal) {
+            const g = globalVars.get(varName);
+            if (g && isConstantExpr(g.def.expr)) {
+                let newVal = g.def.value + delta;
+                const stepStr = g.def.step.toString();
+                const decimalPlaces = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+                newVal = parseFloat(newVal.toFixed(decimalPlaces));
+                if (newVal > g.def.rangeMax) newVal = g.def.rangeMin;
+                else if (newVal < g.def.rangeMin) newVal = g.def.rangeMax;
+                g.def.expr = newVal.toString();
+                g.def.value = newVal;
+                blocks.forEach(b => b.refresh());
+                if (selectedBlock) updateVarUIPartial(`t.${varName}`, g.def);
+                recordAction();
+            }
+        } else {
+            target.incVar(varName, delta);
+            if (selectedBlock === target) {
+                const def = target.scope.vars.get(varName);
+                updateVarUIPartial(varName, def);
+            }
+            recordAction();
+            updateGlobalVarsDependingOn(target, varName);
+        }
+    };
+    incFunc();
+    const interval = setInterval(() => {
+        if (isGlobal) {
+            const g = globalVars.get(varName);
+            if (g && isConstantExpr(g.def.expr)) {
+                let newVal = g.def.value + delta;
+                const stepStr = g.def.step.toString();
+                const decimalPlaces = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+                newVal = parseFloat(newVal.toFixed(decimalPlaces));
+                if (newVal > g.def.rangeMax) newVal = g.def.rangeMin;
+                else if (newVal < g.def.rangeMin) newVal = g.def.rangeMax;
+                g.def.expr = newVal.toString();
+                g.def.value = newVal;
+                blocks.forEach(b => b.refresh());
+                if (selectedBlock) updateVarUIPartial(`t.${varName}`, g.def);
+                recordAction();
+            } else {
+                stopAutoInc(isGlobal, varName, delta);
+            }
+        } else {
+            if (target) {
+                target.incVar(varName, delta);
+                if (selectedBlock === target) {
+                    const def = target.scope.vars.get(varName);
+                    updateVarUIPartial(varName, def);
+                }
+                recordAction();
+                updateGlobalVarsDependingOn(target, varName);
+            } else {
+                stopAutoInc(isGlobal, varName, delta);
+            }
+        }
+    }, 50);
+    activeAutoIncMap.set(key, interval);
+}
+
+function stopAutoInc(isGlobal, varName, delta) {
+    for (let [k, interval] of activeAutoIncMap.entries()) {
+        if (isGlobal && k.startsWith(`global_${varName}_`)) {
+            clearInterval(interval);
+            activeAutoIncMap.delete(k);
+        } else if (!isGlobal && k.includes(`_${varName}_`)) {
+            // 非全局的由调用者具体处理，但这里简单清一下
+            if (k.includes(varName)) { clearInterval(interval); activeAutoIncMap.delete(k); }
+        }
+    }
+}
+
+function toggleAutoInc(btn, isGlobal, target, varName, delta, sourceBlockId = null) {
+    const key = isGlobal ? `global_${varName}_${delta}` : `${target.id}_${varName}_${delta}`;
+    if (activeAutoIncMap.has(key)) {
+        const interval = activeAutoIncMap.get(key);
+        clearInterval(interval);
+        activeAutoIncMap.delete(key);
+        btn.classList.remove('active');
+    } else {
+        startAutoInc(isGlobal ? null : target, isGlobal, varName, delta, sourceBlockId);
+        btn.classList.add('active');
+    }
+}
+
+function updateVarUIPartial(varName, def) {
+    const card = document.querySelector(`.var-card[data-var="${varName}"]`);
+    if (!card) return;
+    const valueSpan = card.querySelector('.var-value');
+    const assignmentInput = card.querySelector('.assignment-input');
+    const slider = card.querySelector('.var-slider');
+    if (valueSpan) valueSpan.textContent = def.value.toFixed(4);
+    if (assignmentInput) assignmentInput.value = `${varName} = ${def.expr}`;
+    if (slider) slider.value = def.value;
+}
+
+function updateGlobalVarsDependingOn(block, localVarName) {
+    let anyChanged = false;
+    for (let [name, g] of globalVars.entries()) {
+        if (g.sourceBlockId === block.id) {
+            const sourceBlock = blocks.find(b => b.id === g.sourceBlockId);
+            if (sourceBlock) {
+                const localVarsMap = sourceBlock.scope.vars;
+                let newVal = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, localVarsMap, globalVars, sourceBlock.id);
+                if (Math.abs(newVal - g.def.value) > 1e-8) {
+                    g.def.value = newVal;
+                    anyChanged = true;
+                    updateVarUIPartial(`t.${name}`, g.def);
+                }
+            }
+        }
+    }
+    if (anyChanged) blocks.forEach(b => b.refresh());
+}
+
+// ====================== 撤销/重做系统 ======================
+class HistoryManager {
+    constructor(maxHistory = 30) {
+        this.undoStack = [];
+        this.redoStack = [];
+        this.maxHistory = maxHistory;
+        this.isRecording = true;
+    }
+    record(state) {
+        if (!this.isRecording) return;
+        this.undoStack.push(JSON.parse(JSON.stringify(state)));
+        if (this.undoStack.length > this.maxHistory) this.undoStack.shift();
+        this.redoStack = [];
+    }
+    undo(currentState) {
+        if (this.undoStack.length === 0) return null;
+        this.redoStack.push(JSON.parse(JSON.stringify(currentState)));
+        return this.undoStack.pop();
+    }
+    redo(currentState) {
+        if (this.redoStack.length === 0) return null;
+        this.undoStack.push(JSON.parse(JSON.stringify(currentState)));
+        return this.redoStack.pop();
+    }
+    clear() { this.undoStack = []; this.redoStack = []; }
+}
+
+// ====================== 3D场景初始化 ======================
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a2a);
@@ -932,6 +905,9 @@ rimLight.position.set(0,1.5,-4);
 scene.add(rimLight);
 
 // ====================== 动态坐标轴 ======================
+let axisGroup = null;
+let showAxes = true, showGrid = true, showTicks = true;
+let lastDistance = 0;
 function createDynamicAxesAndGrid(camDist) {
     if (axisGroup) {
         axisGroup.traverse(child => { if (child.isCSS2DObject && child.element) child.element.remove(); });
@@ -951,7 +927,6 @@ function createDynamicAxesAndGrid(camDist) {
         { start: new THREE.Vector3(0, -actualMax, 0), end: new THREE.Vector3(0, actualMax, 0), label: 'Y', color: 0x33ff33 },
         { start: new THREE.Vector3(0, 0, -actualMax), end: new THREE.Vector3(0, 0, actualMax), label: 'Z', color: 0x3399ff }
     ];
-    
     const isMobile = window.innerWidth <= 700;
     const fontSize = isMobile ? '10px' : '14px';
     
@@ -1008,10 +983,8 @@ function createDynamicAxesAndGrid(camDist) {
         originLabel.position.set(0, 0, 0);
         axisGroup.add(originLabel);
     }
-    
     scene.add(axisGroup);
 }
-let lastDistance = 0;
 function updateAxesByDistance(force = false) {
     const dist = camera.position.length();
     if (force || Math.abs(dist - lastDistance) > 0.5) {
@@ -1030,7 +1003,6 @@ function getState() {
     return { blocks: blocks.map(b => ({ id: b.id, vars: Array.from(b.scope.vars.entries()).map(([name, def]) => ({ name, expr: def.expr, value: def.value, rangeMin: def.rangeMin, rangeMax: def.rangeMax, step: def.step })), textureUrl: b.textureUrl })), globalVars: Array.from(globalVars.entries()).map(([name, g]) => ({ name, expr: g.def.expr, value: g.def.value, rangeMin: g.def.rangeMin, rangeMax: g.def.rangeMax, step: g.def.step, sourceBlockId: g.sourceBlockId })) }; 
 }
 function restoreState(state) {
-    // 停止所有自增
     for (let [key, interval] of activeAutoIncMap.entries()) clearInterval(interval);
     activeAutoIncMap.clear();
     blocks.forEach(b => { scene.remove(b.mesh); if(b.label) scene.remove(b.label); });
@@ -1099,12 +1071,43 @@ function selectBlock(block) {
 
 function parseAssignment(str) { const match = str.match(/^([vt]\.[a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/); if(match) return { name: match[1], expr: match[2].trim() }; return null; }
 
+function escapeHtml(str) { return str.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
+
+function showModal(title, content, onConfirm = null, isTextarea = true) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    let innerHtml = `<div class="modal-content"><h3>${title}</h3>`;
+    if (isTextarea) {
+        innerHtml += `<textarea class="modal-textarea" id="modalInput">${content || ''}</textarea>`;
+    } else {
+        innerHtml += `<div class="preview-code" id="modalPreview">${content || ''}</div>`;
+    }
+    innerHtml += `<div class="modal-buttons">
+        <button class="modal-btn" id="modalConfirm"><span>确定</span></button>
+        <button class="modal-btn" id="modalCancel"><span>取消</span></button>
+    </div></div>`;
+    modal.innerHTML = innerHtml;
+    document.body.appendChild(modal);
+    const confirmBtn = modal.querySelector('#modalConfirm');
+    const cancelBtn = modal.querySelector('#modalCancel');
+    const input = modal.querySelector('#modalInput');
+    const preview = modal.querySelector('#modalPreview');
+    confirmBtn.onclick = () => {
+        const val = input ? input.value : (preview ? preview.innerText : null);
+        modal.remove();
+        if (onConfirm) onConfirm(val);
+    };
+    cancelBtn.onclick = () => modal.remove();
+    if (input) input.focus();
+}
+
+// ====================== 渲染变量面板 (完整版) ======================
 function renderVariablesForBlock(block) {
     const container = document.getElementById('varsContainer');
     const newContainer = document.getElementById('newVarContainer');
     if(!block) { container.innerHTML = '<div class="empty-state">未选中任何方块<br>点击上方方块或3D场景中的方块进行编辑</div>'; newContainer.innerHTML = ''; return; }
     
-    // 渲染全局变量
+    // 全局变量
     let globalHtml = '';
     if (globalVars.size > 0) {
         globalHtml += '<div class="section-title">🌍 全局变量 (t.)</div>';
@@ -1142,7 +1145,7 @@ function renderVariablesForBlock(block) {
         }
     }
     
-    // 渲染局部变量
+    // 局部变量
     const vars = block.getVarList();
     let localHtml = '<div class="section-title">📦 局部变量 (v.)</div>';
     vars.forEach(v => {
@@ -1176,9 +1179,9 @@ function renderVariablesForBlock(block) {
             </div>
         `;
     });
-    
     container.innerHTML = globalHtml + localHtml;
     
+    // 新建变量输入框
     newContainer.innerHTML = `<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.xxx = 0  或 t.xxx = 0 (回车创建)"></div>`;
     const newInput = document.getElementById('newVarInput');
     if(newInput) {
@@ -1196,7 +1199,6 @@ function renderVariablesForBlock(block) {
                     const defaultRange = getDefaultRange(name);
                     const newGlobal = { def: new VarDef(expr, 0, defaultRange.min, defaultRange.max, 1), sourceBlockId: block.id };
                     globalVars.set(varKey, newGlobal);
-                    // 立即计算一次该全局变量
                     const sourceBlock = blocks.find(b => b.id === block.id);
                     if (sourceBlock) {
                         const localVarsMap = sourceBlock.scope.vars;
@@ -1208,7 +1210,6 @@ function renderVariablesForBlock(block) {
                         }
                         newGlobal.def.value = newVal;
                     }
-                    // 重新计算所有方块（因为全局变量可能被引用）
                     blocks.forEach(b => b.refresh());
                     renderVariablesForBlock(block);
                     recordAction();
@@ -1227,10 +1228,9 @@ function renderVariablesForBlock(block) {
         newInput._handler = handler;
     }
     
-    // 折叠/展开 - 阻止滑动条和按钮冒泡
+    // 折叠/展开
     document.querySelectorAll('.var-header').forEach(header => {
         header.addEventListener('click', (e) => {
-            // 如果点击的是输入框、自增按钮区域、滑动条区域，则忽略折叠
             if(e.target.classList.contains('assignment-input') || 
                e.target.closest('.auto-inc-btns') || 
                e.target.closest('.slider-container') ||
@@ -1241,7 +1241,7 @@ function renderVariablesForBlock(block) {
         });
     });
     
-    // 表达式输入 - 局部变量
+    // 表达式输入
     document.querySelectorAll('.assignment-input').forEach(inp => {
         const varName = inp.dataset.var;
         const isGlobal = varName.startsWith('t.');
@@ -1255,7 +1255,6 @@ function renderVariablesForBlock(block) {
                     const g = globalVars.get(key);
                     if (g) {
                         g.def.expr = parsed.expr;
-                        // 重新计算该全局变量（基于其源方块）
                         const sourceBlock = blocks.find(b => b.id === g.sourceBlockId);
                         if (sourceBlock) {
                             const localVarsMap = sourceBlock.scope.vars;
@@ -1276,7 +1275,6 @@ function renderVariablesForBlock(block) {
                     block.refresh();
                     renderVariablesForBlock(block);
                     recordAction();
-                    // 更新依赖此局部变量的全局变量
                     updateGlobalVarsDependingOn(block, varName);
                 }
             } else {
@@ -1338,8 +1336,6 @@ function renderVariablesForBlock(block) {
                     blocks.forEach(b => b.refresh());
                     const exprInput = document.querySelector(`.assignment-input[data-var="${varName}"]`);
                     if(exprInput) exprInput.value = `${varName} = ${val}`;
-                    const valueSpan = slider.closest('.var-card').querySelector('.var-value');
-                    if(valueSpan) valueSpan.textContent = val.toFixed(4);
                     recordAction();
                 }
             } else {
@@ -1350,14 +1346,11 @@ function renderVariablesForBlock(block) {
                     block.refresh();
                     const exprInput = document.querySelector(`.assignment-input[data-var="${varName}"]`);
                     if(exprInput) exprInput.value = `${varName} = ${val}`;
-                    const valueSpan = slider.closest('.var-card').querySelector('.var-value');
-                    if(valueSpan) valueSpan.textContent = val.toFixed(4);
                     recordAction();
                     updateGlobalVarsDependingOn(block, varName);
                 }
             }
         });
-        // 确保滑动条不会触发header的点击折叠
         slider.addEventListener('mousedown', (e) => e.stopPropagation());
         slider.addEventListener('touchstart', (e) => e.stopPropagation());
     });
@@ -1413,7 +1406,6 @@ function renderVariablesForBlock(block) {
             if (isGlobal) {
                 const key = varName.slice(2);
                 showModal("确认删除", `确定要删除全局变量 "${varName}" 吗？`, () => {
-                    // 停止该变量的自增任务
                     for (let [k, interval] of activeAutoIncMap.entries()) {
                         if (k.startsWith(`global_${key}_`)) {
                             clearInterval(interval);
@@ -1431,7 +1423,6 @@ function renderVariablesForBlock(block) {
                     return;
                 }
                 showModal("确认删除", `确定要删除局部变量 "${varName}" 吗？`, () => {
-                    // 停止该变量的自增任务
                     for (let [k, interval] of activeAutoIncMap.entries()) {
                         if (k.startsWith(`${block.id}_${varName}_`)) {
                             clearInterval(interval);
@@ -1442,7 +1433,6 @@ function renderVariablesForBlock(block) {
                     block.refresh();
                     renderVariablesForBlock(block);
                     recordAction();
-                    // 可能有全局变量依赖此变量
                     updateGlobalVarsDependingOn(block, varName);
                 }, false);
             }
@@ -1460,9 +1450,7 @@ function renderBlockList() {
     });
 }
 
-function escapeHtml(str) { return str.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
-
-// 导入导出（保持原有功能，支持全局变量绑定）
+// 导入导出
 function importFromCommands(text) {
     const lines = text.split(/\r?\n/);
     let currentCommand = '', inQuote = false, commands = [];
@@ -1520,7 +1508,6 @@ function importFromCommands(text) {
         newBlock.refresh();
         addBlock(newBlock);
     }
-    // 重新计算所有全局变量
     for (let [name, g] of globalVars.entries()) {
         const sourceBlock = blocks.find(b => b.id === g.sourceBlockId);
         if (sourceBlock) {
@@ -1539,18 +1526,81 @@ function importFromCommands(text) {
     showModal("导入完成", `成功创建 ${blocks.length} 个方块`, null, false);
 }
 
+// 导出功能：带前后缀自定义
+let exportPrefix = `execute positioned ~-1.5~1~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0"`;
+let exportSuffix = ` '方块编号：{id}';"`;
+function loadPrefixSuffix() {
+    const savedPref = localStorage.getItem('ex_export_prefix');
+    const savedSuff = localStorage.getItem('ex_export_suffix');
+    if(savedPref) exportPrefix = savedPref;
+    if(savedSuff) exportSuffix = savedSuff;
+}
+function savePrefixSuffix() {
+    localStorage.setItem('ex_export_prefix', exportPrefix);
+    localStorage.setItem('ex_export_suffix', exportSuffix);
+}
+loadPrefixSuffix();
+
 function exportCommands() {
-    let output = '';
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.innerHTML = `
+        <div class="modal-content">
+            <h3>✏️ 自定义命令前后缀</h3>
+            <div class="label-hint">前缀 (手动双引号结尾，末尾不加空格)</div>
+            <input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}">
+            <div class="label-hint">后缀 (可使用 {id} 作为方块编号占位符)</div>
+            <input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}">
+            <div class="modal-buttons">
+                <button class="modal-btn" id="resetDefaultBtn"><span>只含PlMa</span></button>
+                <button class="modal-btn" id="confirmExportBtn"><span>生成命令并复制</span></button>
+                <button class="modal-btn" id="cancelModalBtn"><span>取消</span></button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+    const prefixInput = modalDiv.querySelector('#prefixInput');
+    const suffixInput = modalDiv.querySelector('#suffixInput');
+    const confirmBtn = modalDiv.querySelector('#confirmExportBtn');
+    const cancelBtn = modalDiv.querySelector('#cancelModalBtn');
+    const resetBtn = modalDiv.querySelector('#resetDefaultBtn');
+    const closeModal = () => modalDiv.remove();
+    resetBtn.onclick = () => {
+        prefixInput.value = `playanimation @e[type=fox] animation.player.attack.positions _ 0 "`;
+        suffixInput.value = ` '方块编号：{id}'; "`;
+    };
+    confirmBtn.onclick = () => {
+        const newPrefix = prefixInput.value.trim();
+        const newSuffix = suffixInput.value.trim();
+        if(newPrefix) exportPrefix = newPrefix;
+        if(newSuffix) exportSuffix = newSuffix;
+        savePrefixSuffix();
+        closeModal();
+        generateAndCopyCommands();
+    };
+    cancelBtn.onclick = closeModal;
+}
+
+function generateAndCopyCommands() {
+    let fullOutput = '';
     for(let block of blocks) {
-        const vars = block.getVarList();
-        const vVars = vars.filter(v => v.name.startsWith('v.'));
-        let paramStr = '';
-        for(let v of vVars) paramStr += `${v.name}=${v.expr}; `;
-        paramStr += `'方块编号：${block.id}'; `;
-        output += `execute positioned ~-1.5~1~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "${paramStr}"\n`;
+        const localVars = block.getVarList().filter(v => v.name.startsWith('v.'));
+        let varsStr = '';
+        for(let v of localVars) {
+            varsStr += `${v.name}=${v.expr}; `;
+        }
+        const ownedGlobals = Array.from(globalVars.entries()).filter(([name, g]) => g.sourceBlockId === block.id);
+        for(let [gName, g] of ownedGlobals) {
+            varsStr += `t.${gName}=${g.def.expr}; `;
+        }
+        let suffixProcessed = exportSuffix.replace(/{id}/g, block.id);
+        const command = exportPrefix + varsStr + suffixProcessed;
+        fullOutput += command + '\n';
     }
-    showModal("导出预览", output, null, false);
-    navigator.clipboard.writeText(output).then(() => showModal("已复制", "命令已复制到剪贴板", null, false));
+    if(fullOutput === '') fullOutput = '# 没有方块可导出';
+    navigator.clipboard.writeText(fullOutput).then(() => {
+        showModal("✅ 已复制", `已复制 ${blocks.length} 条命令到剪贴板`, null, false);
+    }).catch(() => alert("复制失败，可手动选取"));
 }
 
 function addDefaultBlock() {
@@ -1634,11 +1684,10 @@ document.getElementById('showAxesCheckbox').addEventListener('change', (e) => { 
 document.getElementById('showGridCheckbox').addEventListener('change', (e) => { showGrid = e.target.checked; updateAxesByDistance(true); });
 document.getElementById('showTicksCheckbox').addEventListener('change', (e) => { showTicks = e.target.checked; updateAxesByDistance(true); });
 
-// 撤销/重做
+// 按钮绑定
 document.getElementById('undoBtn').addEventListener('click', () => undo());
 document.getElementById('redoBtn').addEventListener('click', () => redo());
 window.addEventListener('keydown', (e) => { if(e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if(e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); } });
-
 document.getElementById('importBtn').onclick = () => { showModal("导入数据", "粘贴 molang 命令文本：", (txt) => { if(txt) importFromCommands(txt); }, true); };
 document.getElementById('exportBtn').onclick = exportCommands;
 document.getElementById('addBlockBtn').onclick = addDefaultBlock;
