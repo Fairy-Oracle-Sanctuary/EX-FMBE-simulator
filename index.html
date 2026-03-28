@@ -2,1741 +2,1651 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BB转FMBE命令之转换器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EX版fmbe模拟器</title>
     <style>
-        /* 版本：v.8.2 优化动态骨骼：预计算骨骼世界矩阵，所有输出带前后缀 */
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
-            font-family: "PingFang SC", "Microsoft YaHei", "HarmonyOS Sans", sans-serif;
-        }
-        :root {
-            --skew-angle: -8deg;
-            --skew-reverse: 8deg;
-            --primary: #389cff;
-            --primary-dark: #2563eb;
-            --primary-light: #93c5fd;
-            --bg-gradient-start: #e0f2fe;
-            --bg-gradient-end: #dbeafe;
-            --card-bg: #ffffff;
-            --text-main: #1e293b;
-            --text-secondary: #64748b;
-            --text-hint: #94a3b8;
-            --warning: #f59e0b;
-            --output-bg: #1e293b;
-            --card-dark-bg: #2a3a54;
-            --card-dark-hover: #334766;
-            --border-radius-sm: 8px;
-            --border-radius-md: 12px;
-            --border-radius-lg: 20px;
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-            --shadow-lg: 0 8px 24px rgba(56, 156, 255, 0.15);
-            --transition-normal: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            --purple-start: #8b5cf6;
-            --purple-end: #c4b5fd;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         body {
-            min-height: 100vh;
-            background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            background-attachment: fixed;
-            position: relative;
-            padding: 16px 12px 40px;
-            overflow-x: hidden;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            background: #0a0a2a;
         }
-        body::before {
-            content: "";
+        #canvas-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-            opacity: 0.4;
-            z-index: 0;
-            pointer-events: none;
-        }
-        .container {
-            max-width: 750px;
-            margin: 0 auto;
-            position: relative;
             z-index: 1;
+            touch-action: none;
         }
-        .header {
-            background: linear-gradient(90deg, #1e40af 0%, #3b82f6 100%);
-            border-radius: var(--border-radius-md);
-            padding: 20px 16px;
-            box-shadow: var(--shadow-md);
-            animation: fadeInDown 0.6s ease forwards;
-            transform: skewX(var(--skew-angle));
-            margin: 0 8px;
+        .top-bar {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 20;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            gap: 12px;
+            pointer-events: auto;
         }
-        .header h1 {
+        .skew-btn {
+            background: linear-gradient(135deg, #0a2f5a, #2c6e9e);
+            border: none;
             color: white;
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            transform: skewX(var(--skew-reverse));
+            font-weight: bold;
+            padding: 8px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transform: skewX(-15deg);
+            transition: 0.2s;
+            font-family: inherit;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            touch-action: manipulation;
+            border-radius: 12px;
+        }
+        .skew-btn span {
             display: inline-block;
+            transform: skewX(15deg);
+        }
+        .skew-btn:active {
+            transform: skewX(-15deg) scale(0.96);
+        }
+        .data-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            overflow: hidden;
+            min-height: 180px;
+            max-height: 80vh;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+        }
+        .resize-bar {
+            height: 16px;
+            background: linear-gradient(135deg, #ffaa33, #ffdd88);
+            cursor: ns-resize;
+            touch-action: none;
+        }
+        .resize-bar::after {
+            content: "⋮⋮";
+            position: absolute;
+            left: 50%;
+            top: -2px;
+            transform: translateX(-50%);
+            color: #8b5a2b;
+            font-size: 14px;
+            letter-spacing: 4px;
+        }
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: #ffffff;
+        }
+        .toolbar-integrated {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0c674;
+        }
+        .tool-btn {
+            background: linear-gradient(135deg, #0a2f5a, #2c6e9e);
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 8px 18px;
+            font-size: 13px;
+            cursor: pointer;
+            transform: skewX(-12deg);
+            transition: 0.2s;
+            font-family: inherit;
+            touch-action: manipulation;
+            border-radius: 10px;
+        }
+        .tool-btn span {
+            display: inline-block;
+            transform: skewX(12deg);
+        }
+        .axis-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 10px 12px;
+            background: #f5f5f8;
+            border-radius: 12px;
+            transform: skewX(-4deg);
+        }
+        .control-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #e6b42220, #ffe68f20);
+            padding: 4px 12px;
+            border-radius: 20px;
+            transform: skewX(4deg);
+            font-size: 13px;
+        }
+        .control-item label {
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .control-item input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
             margin: 0;
         }
-        #restartTutorialBtn {
-            background: linear-gradient(90deg, var(--purple-start), var(--purple-end));
-            color: white;
-            border: none;
-            transform: skewX(var(--skew-reverse));
-            transition: var(--transition-normal);
-        }
-        #restartTutorialBtn:hover {
-            filter: brightness(1.1);
-            transform: translateY(-2px) skewX(var(--skew-reverse));
-            box-shadow: var(--shadow-md);
-        }
-        .card {
-            background: var(--card-bg);
-            border-radius: var(--border-radius-md);
-            padding: 20px 16px;
-            margin-top: 16px;
-            box-shadow: var(--shadow-sm);
-            animation: fadeInUp 0.6s ease forwards;
-            opacity: 0;
-        }
-        .card:nth-child(1) { animation-delay: 0.1s; }
-        .card:nth-child(2) { animation-delay: 0.2s; }
-        .card:nth-child(3) { animation-delay: 0.3s; }
-        .card:nth-child(4) { animation-delay: 0.4s; }
-        .card:nth-child(5) { animation-delay: 0.5s; }
-        .card:nth-child(6) { animation-delay: 0.6s; }
-        .card-header {
+        .block-strip {
             display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0c674;
+        }
+        .block-tag {
+            background: linear-gradient(135deg, #0a2f5a, #2c6e9e);
+            transform: skewX(-12deg);
+            padding: 6px 18px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            display: inline-flex;
             align-items: center;
+            gap: 8px;
+            border-radius: 10px;
+        }
+        .block-tag span {
+            display: inline-block;
+            transform: skewX(12deg);
+        }
+        .block-tag.active {
+            background: linear-gradient(135deg, #e6b422, #ffcc66);
+            color: #2c3e50;
+        }
+        .delete-block {
+            background: none;
+            border: none;
+            color: inherit;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 16px 0 12px;
+            padding-left: 8px;
+            border-left: 4px solid #e6b422;
+            color: #e67e22;
+        }
+        .var-card {
+            background: #fafafc;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            border-left-width: 6px;
+            border-left-style: solid;
+        }
+        .var-card.constant {
+            border-left-color: #3399ff;
+        }
+        .var-card.non-constant {
+            border-left-color: #9b59b6;
+        }
+        .var-card.global {
+            background: #fef9e6;
+        }
+        .var-header {
+            padding: 12px 16px;
+            background: #f5f5f8;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .assignment-input {
+            flex: 1;
+            font-weight: bold;
+            padding: 8px 16px;
+            font-size: 13px;
+            transform: skewX(-12deg);
+            font-family: monospace;
+            outline: none;
+            touch-action: manipulation;
+            margin-right: 12px;
+            border-radius: 10px;
+            border: none;
+        }
+        .assignment-input.constant-input {
+            background: linear-gradient(135deg, #3399ff, #88ccff);
+            color: white;
+        }
+        .assignment-input.non-constant-input {
+            background: linear-gradient(135deg, #9b59b6, #c97bdd);
+            color: white;
+        }
+        .var-expand {
+            font-size: 12px;
+            color: #e67e22;
+            font-weight: bold;
+        }
+        .var-details {
+            padding: 16px;
+            border-top: 1px solid #eee;
+            display: none;
+            background: white;
+        }
+        .var-details.show {
+            display: block;
+        }
+        .auto-inc-btns {
+            display: flex;
             gap: 8px;
             margin-bottom: 12px;
         }
-        .card-header .icon {
-            font-size: 20px;
-        }
-        .card-header .title {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-        .card-hint {
-            font-size: 14px;
-            color: var(--text-hint);
-            margin-top: 8px;
-            line-height: 1.4;
-        }
-        .input-wrapper {
-            width: 100%;
-            transform: skewX(var(--skew-angle));
-            border-radius: var(--border-radius-sm);
-            overflow: hidden;
-            border: 1.5px solid #e2e8f0;
-            transition: var(--transition-normal);
-        }
-        .input-wrapper:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(56, 156, 255, 0.1);
-        }
-        .input-box {
-            width: 100%;
-            padding: 12px 16px;
-            border: none;
-            font-size: 18px;
-            color: var(--text-main);
-            background: white;
-            transform: skewX(var(--skew-reverse));
-            outline: none;
-        }
-        .version-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .version-btn {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: var(--border-radius-sm);
-            background: white;
-            font-size: 18px;
-            font-weight: 500;
-            color: var(--text-main);
+        .inc-btn {
+            background: linear-gradient(135deg, #0a2f5a, #2c6e9e);
+            transform: skewX(-12deg);
+            padding: 6px 16px;
+            font-weight: bold;
             cursor: pointer;
-            transition: var(--transition-normal);
-            text-align: center;
-            transform: skewX(var(--skew-angle));
-            position: relative;
+            color: white;
+            border: none;
+            touch-action: manipulation;
+            transition: 0.1s;
+            border-radius: 8px;
         }
-        .version-btn span {
+        .inc-btn.active {
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+            box-shadow: 0 0 5px rgba(230,126,34,0.5);
+        }
+        .inc-btn span {
             display: inline-block;
-            transform: skewX(var(--skew-reverse));
+            transform: skewX(12deg);
         }
-        .version-btn:hover {
-            border-color: var(--primary-light);
-            transform: translateY(-2px) skewX(var(--skew-angle));
-            box-shadow: var(--shadow-sm);
+        .slider-container {
+            margin: 16px 0;
         }
-        .version-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-            box-shadow: var(--shadow-lg);
-            transform: translateY(0) skewX(var(--skew-angle));
-        }
-        .version-btn:active {
-            transform: scale(0.98) skewX(var(--skew-angle));
-        }
-        .version-tooltip {
-            position: absolute;
-            left: 100%;
-            top: 50%;
-            transform: translateY(-50%) skewX(var(--skew-reverse)) translateX(-5px);
-            margin-left: 12px;
-            background: var(--card-bg);
-            border: 1.5px solid var(--primary);
-            border-radius: var(--border-radius-sm);
-            padding: 8px 16px;
-            white-space: nowrap;
-            box-shadow: var(--shadow-md);
-            color: var(--text-main);
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 99;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition-normal);
-            pointer-events: none;
-        }
-        .version-btn:hover .version-tooltip {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(-50%) skewX(var(--skew-reverse)) translateX(0);
-        }
-        .textarea-wrapper {
+        input[type="range"] {
             width: 100%;
-            transform: skewX(var(--skew-angle));
-            border-radius: var(--border-radius-sm);
-            overflow: hidden;
-            border: 1.5px solid #e2e8f0;
-            transition: var(--transition-normal);
+            height: 6px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 0;
+            touch-action: manipulation;
         }
-        .textarea-wrapper:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(56, 156, 255, 0.1);
-        }
-        .textarea-box {
-            width: 100%;
-            min-height: 200px;
-            padding: 14px 16px;
-            border: none;
-            font-size: 14px;
-            font-family: "Consolas", "Monaco", monospace;
-            color: var(--text-main);
-            line-height: 1.6;
-            resize: vertical;
-            background: white;
-            transform: skewX(var(--skew-reverse));
-            outline: none;
-        }
-        .main-btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 16px;
-        }
-        .primary-btn {
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: var(--border-radius-md);
-            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            font-size: 20px;
-            font-weight: 600;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #e6b422;
             cursor: pointer;
-            transition: var(--transition-normal);
-            box-shadow: var(--shadow-md);
-            transform: skewX(var(--skew-angle));
+            transform: rotate(45deg);
+            border-radius: 4px;
+            touch-action: manipulation;
         }
-        .primary-btn span {
-            display: inline-block;
-            transform: skewX(var(--skew-reverse));
-        }
-        .primary-btn:hover {
-            filter: brightness(1.1);
-            transform: translateY(-2px) skewX(var(--skew-angle));
-            box-shadow: var(--shadow-lg);
-        }
-        .primary-btn:active {
-            transform: scale(0.98) skewX(var(--skew-angle));
-        }
-        .primary-btn:disabled {
-            filter: grayscale(0.8);
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: skewX(var(--skew-angle));
-        }
-        .hint-bar {
+        .range-row {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 16px;
-            background: #fffbeb;
-            border-left: 4px solid var(--warning);
-            border-radius: var(--border-radius-sm);
-            margin-top: 12px;
-            animation: fadeIn 0.3s ease forwards;
-            transform: skewX(var(--skew-angle));
-        }
-        .hint-bar .icon, .hint-bar .text {
-            transform: skewX(var(--skew-reverse));
-        }
-        .hint-bar .icon {
-            color: var(--warning);
-            font-size: 18px;
-        }
-        .hint-bar .text {
-            color: #92400e;
-            font-size: 16px;
-            font-weight: 500;
-        }
-        .error-box {
-            padding: 14px 16px;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: var(--border-radius-sm);
-            color: #dc2626;
-            font-size: 14px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            margin-top: 12px;
-            animation: fadeIn 0.3s ease forwards;
-            transform: skewX(var(--skew-angle));
-        }
-        .error-box * {
-            transform: skewX(var(--skew-reverse));
-        }
-        .output-card {
-            margin-top: 16px;
-            animation: fadeInUp 0.6s ease forwards;
-            animation-delay: 0.7s;
-        }
-        .output-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-        .output-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-main);
-        }
-        .output-title .icon {
-            font-size: 22px;
-        }
-        .output-wrapper {
-            width: 100%;
-            border-radius: var(--border-radius-lg);
-            overflow: hidden;
-            background: var(--output-bg);
-            padding: 20px;
-        }
-        .output-box {
-            width: 100%;
-            min-height: 300px;
-            max-height: 800px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
             gap: 16px;
-        }
-        .output-title-header {
-            font-size: 22px;
-            font-weight: 700;
-            color: #93c5fd;
-            text-align: center;
-            padding-bottom: 16px;
-            border-bottom: 2px solid rgba(147, 197, 253, 0.2);
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-        }
-        .cube-item {
-            background: var(--card-dark-bg);
-            border-radius: var(--border-radius-lg);
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            transition: var(--transition-normal);
-        }
-        .cube-item:hover {
-            background: var(--card-dark-hover);
-        }
-        .cube-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             flex-wrap: wrap;
-            gap: 10px;
+            margin-top: 12px;
+            align-items: center;
         }
-        .cube-title {
-            font-weight: 700;
-            font-size: 18px;
-            color: #93c5fd;
-            line-height: 1.4;
-        }
-        .cube-copy-btn {
-            padding: 6px 14px;
-            border: 1.5px solid var(--primary);
-            border-radius: var(--border-radius-md);
-            background: rgba(56, 156, 255, 0.1);
-            color: var(--primary);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition-fast);
-            font-family: inherit;
-            flex-shrink: 0;
-        }
-        .cube-copy-btn:hover {
-            background: var(--primary);
-            color: white;
-        }
-        .cube-copy-btn:active {
-            transform: scale(0.95);
-        }
-        .cube-copy-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-        .cube-data {
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: var(--border-radius-sm);
-            border-left: 3px solid var(--primary);
-            white-space: pre-wrap;
-            word-break: break-all;
-            color: #f1f5f9;
-            font-family: "Consolas", "Monaco", monospace;
-            font-size: 13px;
-            line-height: 1.8;
-            min-height: 20px;
-        }
-        .output-box::-webkit-scrollbar {
-            width: 8px;
-        }
-        .output-box::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-        }
-        .output-box::-webkit-scrollbar-thumb {
-            background: rgba(147, 197, 253, 0.3);
-            border-radius: 4px;
-        }
-        .output-box::-webkit-scrollbar-thumb:hover {
-            background: rgba(147, 197, 253, 0.5);
-        }
-        textarea::-webkit-scrollbar {
-            width: 6px;
-        }
-        textarea::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 3px;
-        }
-        textarea::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-        .footer-note {
-            margin-top: 20px;
-            padding: 0 16px;
-            font-size: 14px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            text-align: left;
-            animation: fadeIn 0.6s ease forwards;
-            animation-delay: 0.8s;
-            opacity: 0;
-        }
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px) skewX(var(--skew-angle));
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) skewX(var(--skew-angle));
-            }
-        }
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-        @media (max-width: 576px) {
-            :root {
-                --skew-angle: -5deg;
-                --skew-reverse: 5deg;
-            }
-            .header h1 {
-                font-size: 20px;
-            }
-            .card {
-                padding: 16px 12px;
-            }
-            .card-header .title {
-                font-size: 16px;
-            }
-            .version-btn {
-                font-size: 16px;
-                padding: 12px;
-            }
-            .primary-btn {
-                font-size: 18px;
-                padding: 14px;
-            }
-            .version-tooltip {
-                left: 50%;
-                top: -10px;
-                transform: translateX(-50%) skewX(var(--skew-reverse)) translateY(-10px);
-                margin-left: 0;
-            }
-            .version-btn:hover .version-tooltip {
-                transform: translateX(-50%) skewX(var(--skew-reverse)) translateY(0);
-            }
-            .cube-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-            .cube-copy-btn {
-                align-self: flex-end;
-            }
-            .cube-title {
-                font-size: 16px;
-            }
-            .cube-data {
-                font-size: 12px;
-                padding: 10px;
-            }
-            .output-title-header {
-                font-size: 18px;
-            }
-            .output-wrapper {
-                padding: 16px 12px;
-            }
-        }
-        .file-row {
-            display: flex;
+        .range-item {
+            background: #f0f0f0;
+            padding: 4px 12px;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
+            font-size: 12px;
+            transform: skewX(-8deg);
+            border-radius: 8px;
+        }
+        .range-item input {
+            width: 70px;
+            background: white;
+            border: 1px solid #e6b422;
+            padding: 4px 6px;
+            text-align: center;
+            border-radius: 8px;
+        }
+        .delete-var {
+            background: linear-gradient(135deg, #8b2c2c, #c05a5a);
+            transform: skewX(-12deg);
+            padding: 4px 14px;
+            cursor: pointer;
+            color: white;
+            border: none;
             margin-top: 8px;
-            margin-bottom: 4px;
-            flex-wrap: wrap;
+            border-radius: 8px;
         }
-        .file-btn {
-            width: auto;
-            padding: 8px 16px;
-            flex: 0 0 auto;
+        .new-var-row {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 2px solid #f0c674;
+            display: flex;
+            gap: 12px;
         }
-        .file-name {
-            color: var(--text-secondary);
-            font-size: 14px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 200px;
+        .new-var-input {
+            flex: 2;
+            background: linear-gradient(135deg, #3399ff, #88ccff);
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 10px 16px;
+            font-size: 13px;
+            transform: skewX(-12deg);
+            font-family: monospace;
+            outline: none;
+            border-radius: 12px;
         }
-        #tutorialOverlay {
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            opacity: 0;
-            visibility: hidden;
+        .new-var-input::placeholder {
+            color: rgba(255,255,255,0.7);
         }
-        #tutorialOverlay.show {
-            opacity: 1;
-            visibility: visible;
+        .info-note {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            margin: 16px 0 8px;
+            background: #f8f8f8;
+            padding: 8px;
+            transform: skewX(-6deg);
+            border-radius: 8px;
         }
-        #tutorialOverlay .tutorial-content {
-            transform: translateY(30px) skewX(var(--skew-angle));
-            opacity: 0;
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-style: italic;
         }
-        #tutorialOverlay.show .tutorial-content {
-            transform: translateY(0) skewX(var(--skew-angle));
-            opacity: 1;
-        }
-        #tutorialOverlay.hide .tutorial-content {
-            transform: translateY(30px) skewX(var(--skew-angle));
-            opacity: 0;
-        }
-        /* 动态骨骼弹窗样式 */
-        .dialog-overlay {
+        .modal {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 10000;
-            opacity: 0;
-            visibility: hidden;
-            transition: 0.2s;
+            pointer-events: auto;
         }
-        .dialog-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        .dialog-box {
-            background: var(--card-bg);
-            border-radius: var(--border-radius-lg);
-            padding: 24px;
-            max-width: 400px;
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
             width: 90%;
-            transform: skewX(var(--skew-angle));
-            box-shadow: var(--shadow-lg);
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: skewX(-2deg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
-        .dialog-box > div {
-            transform: skewX(var(--skew-reverse));
+        .modal-content h3 {
+            margin: 0 0 16px;
+            color: #e67e22;
         }
-        .dialog-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 12px;
+        .modal-textarea {
+            width: 100%;
+            height: 300px;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 12px;
+            border: 1px solid #e6b422;
+            border-radius: 8px;
+            resize: vertical;
         }
-        .dialog-desc {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-        .dialog-desc small {
-            display: block;
-            color: var(--text-hint);
-            font-size: 13px;
-            margin-top: 8px;
-        }
-        .dialog-buttons {
+        .modal-buttons {
             display: flex;
             gap: 12px;
             justify-content: flex-end;
+            margin-top: 16px;
         }
-        .dialog-btn {
-            padding: 10px 20px;
+        .modal-btn {
+            background: linear-gradient(135deg, #0a2f5a, #2c6e9e);
             border: none;
-            border-radius: var(--border-radius-sm);
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition-fast);
-        }
-        .dialog-btn.confirm {
-            background: var(--primary);
             color: white;
+            padding: 8px 20px;
+            cursor: pointer;
+            transform: skewX(-10deg);
+            border-radius: 8px;
         }
-        .dialog-btn.confirm:hover {
-            background: var(--primary-dark);
+        .modal-btn span {
+            display: inline-block;
+            transform: skewX(10deg);
         }
-        .dialog-btn.cancel {
-            background: #e2e8f0;
-            color: var(--text-main);
+        .preview-code {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
         }
-        .dialog-btn.cancel:hover {
-            background: #cbd5e1;
+        @media (max-width: 700px) {
+            .tool-btn, .inc-btn { padding: 5px 12px; font-size: 12px; }
+            .assignment-input, .new-var-input { font-size: 11px; padding: 6px 12px; }
+            .control-item label { font-size: 11px; }
+            .control-item { padding: 2px 8px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>BB转 FMBE 命令之转换器</h1>
-            <button class="cube-copy-btn" id="restartTutorialBtn">✦重阅教程✧</button>
-        </div>
-        <div class="card">
-            <div class="card-header">
-                <span class="icon">🔢</span>
-                <span class="title">换算系数 k</span>
-            </div>
-            <div class="input-wrapper">
-                <input type="number" class="input-box" id="kValue" step="0.001" value="1" min="0.001">
-            </div>
-            <div class="card-hint">初始状态下<br>fmbe一立方米是bb多少个像素</div>
-        </div>
-        <div class="card">
-            <div class="card-header">
-                <span class="icon">🧩</span>
-                <span class="title">版本选择</span>
-            </div>
-            <div class="version-group" id="versionGroup">
-                <div class="version-btn" data-version="0">
-                    <span>ex公版</span>
-                    <div class="version-tooltip">未经过修改的<br>ex（高级版fmbe）</div>
-                </div>
-                <div class="version-btn" data-version="1">
-                    <span>ex米版</span>
-                    <div class="version-tooltip">（高级版底层未改）<br>使用v.high简洁的表示高的数值，单位为米</div>
-                </div>
-                <div class="version-btn" data-version="2">
-                    <span>开发中…</span>
-                    <div class="version-tooltip">ui预留<br>（为特殊版本的fmbe预留的ui）<br>不支持成转换为该版本</div>
-                </div>
-                <div class="version-btn active" data-version="3">
-                    <span>普通版</span>
-                    <div class="version-tooltip">普通版<br>使用xzscale、yscale描述底和高</div>
-                </div>
-            </div>
-        </div>
+<div id="canvas-container"></div>
 
-        <!-- 模型 JSON 卡片 + 文件上传 -->
-        <div class="card">
-            <div class="card-header">
-                <span class="icon">📋</span>
-                <span class="title">粘贴基岩版模型 JSON</span>
-            </div>
-            <div class="textarea-wrapper">
-                <textarea class="textarea-box" id="jsonInput" placeholder="在这里粘贴Blockbench导出的基岩版模型JSON..."></textarea>
-            </div>
-            <div class="file-row">
-                <button class="version-btn file-btn" id="uploadModelBtn"><span>📁 选择模型文件</span></button>
-                <input type="file" id="modelFileInput" accept=".json,application/json" style="display: none;">
-                <span class="file-name" id="modelFileName">未选择文件</span>
-            </div>
-            <!-- 自定义前缀后缀输入框 (默认隐藏，有内容后显示) -->
-            <div class="input-wrapper" id="prefixGroup" style="display: none; margin-top: 12px;">
-                <input type="text" class="input-box" id="prefixInput" value=' execute  positioned ~-1.5~1~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 " ' placeholder="自定义输出前缀">
-            </div>
-            <div class="input-wrapper" id="suffixGroup" style="display: none; margin-top: 12px;">
-                <input type="text" class="input-box" id="suffixInput" value=" '方块编号：&&lt;&gt;'; &quot" placeholder="自定义输出后缀（&lt;&gt;将被替换为编号）">
-            </div>
-            <div class="card-hint">(Blockbench 导出) 前缀/后缀中使用& &lt;&gt; 可调用方块编号</div>
-        </div>
+<div class="top-bar">
+    <button class="skew-btn" id="undoBtn"><span>↩️ 撤销</span></button>
+    <button class="skew-btn" id="redoBtn"><span>↪️ 重做</span></button>
+    <button class="skew-btn" id="addBlockBtn"><span>➕ 新建方块</span></button>
+    <button class="skew-btn" id="fullscreenBtn"><span>🖥️ 全屏</span></button>
+</div>
 
-        <div class="main-btn-group">
-            <button class="primary-btn" id="convertBtn"><span>转换</span></button>
+<div class="data-panel" id="dataPanel">
+    <div class="resize-bar" id="resizeBar"></div>
+    <div class="panel-content">
+        <div class="toolbar-integrated">
+            <button class="tool-btn" id="importBtn"><span>📂 导入数据</span></button>
+            <button class="tool-btn" id="exportBtn"><span>📤 输出命令</span></button>
+            <label class="tool-btn" style="cursor:pointer;">
+                <span>🖼️ 上传贴图</span>
+                <input type="file" id="textureUpload" accept="image/*" style="display:none;">
+            </label>
+            <button class="tool-btn" id="hideNameBtn"><span>🏷️ 隐藏名称</span></button>
         </div>
-        <div class="hint-bar">
-            <span class="icon">⚠️</span>
-            <span class="text">方块x和z尺寸必须相等（底面为正方形）</span>
-        </div>
-        <div id="errorMsg" class="error-box" style="display: none;"></div>
-
-        <!-- 模型输出卡片 -->
-        <div class="card output-card" id="outputGroup" style="display: none;">
-            <div class="output-header">
-                <div class="output-title">
-                    <span class="icon">📦</span>
-                    <span>转换输出</span>
-                </div>
-                <button class="cube-copy-btn" id="copyAllBtn">▼ 全部复制</button>
+        <div class="axis-controls">
+            <div class="control-item">
+                <input type="checkbox" id="showAxesCheckbox" checked>
+                <label for="showAxesCheckbox">📐 坐标轴</label>
             </div>
-            <div class="output-wrapper">
-                <div class="output-box" id="outputText"></div>
+            <div class="control-item">
+                <input type="checkbox" id="showGridCheckbox" checked>
+                <label for="showGridCheckbox">🔲 坐标平面</label>
+            </div>
+            <div class="control-item">
+                <input type="checkbox" id="showTicksCheckbox" checked>
+                <label for="showTicksCheckbox">📏 坐标刻度</label>
             </div>
         </div>
-
-        <div class="footer-note">
-            注：数值经过转换，结果可直接用于对应版本的FMBE
-            <br>——————————
-            <br>更新日志:<br>
-            2026/2/20 b0适配普通版<br>
-            2026/2/21 v.1 新添加了选择版本时，对版本的简概描述<br>移出〈前置旋转矩阵〉版本fmbe<br>修复错别字<br>
-            2026/2/22 v.2 新增单方块独立复制按钮，修复版本选择与转换功能bug<br>
-            2026/2/23 v.2.1修复数据不显示问题<br>
-            2026/2/24 v.3 新增触手型关键帧动画转换实验性功能，支持多父骨骼。<br>        v.3-b2修复换算系数k≠1时，basepos的计算错误问题<br>
-            2026/2/25 v.3-b3 修复h=0兼容、（yscale、extend_scale）high=NaN问题<br>x轴镜像问题<br>
-            2026/2/25 v.3-b4 修复了关键帧动画所有basepos和rot<br>正负符号错误的问题，添加了bug<br>
-            2026/2/25 v.3-b5 修复公版输出的basepos数据错误bug<br>
-            2026/2/25 v.3-b6 实验内容：支持cube存在一级以上父骨骼<br>
-            2026/2/27 v.4-b1 新增补全molang前后指令功能<br>
-            2026/2/28 v.4-b2 修复rot取反问题，增加了bug <br> 
-            2026/2/28 v.4-b3 增加文件功选择功能<br>
-            2026/2/29 v.4-b4 修复了普通版scale输出格式漏掉v.的问题<br>
-            2026/3/1 v.4-b5 修复了动画转换器无法使用问题<br>
-            2026/3/1 v.4-b6 修复了|xrot|>90时输出滚木的问题<br>
-            2026/3/3 v.5-b1及b2 尝试修复rot三轴同时有值的换算错误<br>
-            2026/3/5 v.5-b3 已解决rot换算错误问题<br>
-            2026/3/5 v.6 优化复制格式；
-            2026/3/6 v.6-b1 增加&<>调用方块编号功能<br>
-            2026/3/7 v.6-b2 彻底移除动画转换UI及骨骼延伸长度<br>
-            2026/3/7 v.6-b3 添加简单教程<br>
-            2026/3/7 v.7 新增模型多父骨骼转换功能（静态模型）<br>
-            2026/3/8 v.7.1 修复无父骨骼xbasepos取反问题<br>
-            2026/3/8 v.7.2 修复无pivot块，错误赋值为骨骼旋转中心的问题<br>
-            2026/3/10 v.7.3 修复“祈祷不出bug”无效的问题
-            2026/3/14 v.8.0 新增模型多父骨骼绑定功能（旋转矩阵）
-            2026/3/15 v.8.2 优化动态骨骼：预计算骨骼世界矩阵，所有输出带前后缀
-            <br>——————————
-            <br>
-            😭出现bug请联系<br>小E（QQ号3155929574）。
+        <div class="block-strip" id="blockSelector"></div>
+        <div id="varsContainer"></div>
+        <div id="newVarContainer" style="margin-top: 16px;"></div>
+        <div class="info-note">
+            如有bug请联系小E 3155929574@qq.com
         </div>
     </div>
+</div>
 
-    <!-- 新手教程浮层（带动画） -->
-    <div id="tutorialOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-        <div class="tutorial-content" style="background: var(--card-bg); border-radius: var(--border-radius-lg); padding: 24px; max-width: 500px; width: 90%; box-shadow: var(--shadow-lg);">
-            <div style="transform: skewX(var(--skew-reverse));">
-                <h2 style="color: var(--text-main); margin-bottom: 16px;">🎉 人，你好，这是简介</h2>
-                <p>👈🏻 <strong>简介：</strong>这是一个网站形式的工具，它的功能是把blockbench中的模型自由转换成fmbe的指令</p>
-                <h2 style="color: var(--text-main); margin-bottom: 16px;">🦊 人，你好，这是教程</h2>
-                <div style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px;">
-                    <p>👽 <strong>第一步</strong>：在Blockbench中导出基岩版模型JSON（确保底面为正方形）。</p>
-                    <p>📷 <strong>第二步</strong>：粘贴JSON或点击“选择模型文件”上传。</p>
-                    <p>✍🏻 <strong>第三步</strong>：设置换算系数 k（默认1，即1立方米=1像素）。</p>
-                    <p>👈🏻 <strong>第四步</strong>：选择目标FMBE版本（普通版等）。</p>
-                    <p>👈🏻 <strong>第五步</strong>：点击“转换”，然后复制结果。</p>
-                    <p>💡 <em>提示：可在前缀/后缀中使用& <code>&lt;&gt;</code> 自动插入方块编号。<br></em></p>
-                    <!-- 可选图片：<img src="tutorial.gif" alt="演示" style="width:100%; border-radius:8px; margin-top:10px;"> -->
-                </div>
-                <div style="text-align: right;">
-                    <button id="closeTutorial" class="cube-copy-btn" style="font-size: 16px; padding: 8px 24px;" disabled>我知道了</button>
-                </div>
-            </div>
-        </div>
-    </div>
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+    }
+}
+</script>
 
-    <!-- 动态骨骼询问弹窗 (新增) -->
-    <div id="dynamicDialog" class="dialog-overlay">
-        <div class="dialog-box"><div>
-            <div class="dialog-title">☠️ 检测存在骨骼层级</div>
-            <div class="dialog-desc">
-                是否启用动态骨骼计算？启用后将为每个骨骼生成变量 (t.骨骼名x/y/zrot) ，默认赋值bb里的参数。cube将使用表达式实时赋值，允许在游戏中动态调整角度。
-                <small>若选择“否”，则转换为静态不可变伪骨骼模型。</small>
-            </div>
-            <div class="dialog-buttons">
-                <button class="dialog-btn confirm" id="dialogConfirm">是，启用动态</button>
-                <button class="dialog-btn cancel" id="dialogCancel">否，静态转换</button>
-            </div>
-        </div></div>
-    </div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 常量定义 (完全保留原样)
-            const M_PI = Math.PI;
-            const OFFSET_EPS = 0.001;
-            const EPS = 1e-6;
-            const MIN_E_SCALE = 0.001;
-            // DOM元素
-            const versionBtns = document.querySelectorAll(".version-btn");
-            const convertBtn = document.getElementById("convertBtn");
-            const outputTextEl = document.getElementById("outputText");
-            const errorMsgEl = document.getElementById("errorMsg");
-            const outputGroupEl = document.getElementById("outputGroup");
-            const kValueEl = document.getElementById("kValue");
-            const jsonInputEl = document.getElementById("jsonInput");
-            // 前缀后缀相关
-            const prefixInputEl = document.getElementById("prefixInput");
-            const suffixInputEl = document.getElementById("suffixInput");
-            const prefixGroupEl = document.getElementById("prefixGroup");
-            const suffixGroupEl = document.getElementById("suffixGroup");
-            // 文件上传相关
-            const uploadModelBtn = document.getElementById("uploadModelBtn");
-            const modelFileInput = document.getElementById("modelFileInput");
-            const modelFileNameSpan = document.getElementById("modelFileName");
-            // 全部复制按钮
-            const copyAllBtn = document.getElementById("copyAllBtn");
-            // 教程浮层
-            const tutorialOverlay = document.getElementById("tutorialOverlay");
-            const closeTutorialBtn = document.getElementById("closeTutorial");
-            const restartTutorialBtn = document.getElementById("restartTutorialBtn");
-            // 动态骨骼弹窗
-            const dynamicDialog = document.getElementById("dynamicDialog");
-            const dialogConfirm = document.getElementById("dialogConfirm");
-            const dialogCancel = document.getElementById("dialogCancel");
+// ====================== 撤销/重做系统 ======================
+class HistoryManager {
+    constructor(maxHistory = 30) {
+        this.undoStack = [];
+        this.redoStack = [];
+        this.maxHistory = maxHistory;
+        this.isRecording = true;
+    }
+    record(state) {
+        if (!this.isRecording) return;
+        this.undoStack.push(JSON.parse(JSON.stringify(state)));
+        if (this.undoStack.length > this.maxHistory) this.undoStack.shift();
+        this.redoStack = [];
+    }
+    undo(currentState) {
+        if (this.undoStack.length === 0) return null;
+        this.redoStack.push(JSON.parse(JSON.stringify(currentState)));
+        return this.undoStack.pop();
+    }
+    redo(currentState) {
+        if (this.redoStack.length === 0) return null;
+        this.undoStack.push(JSON.parse(JSON.stringify(currentState)));
+        return this.redoStack.pop();
+    }
+    clear() {
+        this.undoStack = [];
+        this.redoStack = [];
+    }
+}
 
-            // 全局状态
-            let currentVersion = 3;
-            let tutorialTimer = null;
+// ====================== 全局变量（带源方块绑定） ======================
+let globalVars = new Map(); // key: string, value: { def: VarDef, sourceBlockId: string }
 
-            // 显示浮层并控制按钮可用性的函数 (原样)
-            function showTutorial(immediateEnable = false) {
-                tutorialOverlay.classList.remove('hide');
-                tutorialOverlay.classList.add('show');
-                if (immediateEnable) {
-                    closeTutorialBtn.disabled = false;
-                } else {
-                    closeTutorialBtn.disabled = true;
-                    if (tutorialTimer) clearTimeout(tutorialTimer);
-                    tutorialTimer = setTimeout(() => {
-                        closeTutorialBtn.disabled = false;
-                        tutorialTimer = null;
-                    }, 5000);
+let showAxes = true;
+let showGrid = true;
+let showTicks = true;
+let axisGroup = null;
+let activeAutoIncMap = new Map(); // key: `${blockId}_${varName}_${delta}` 或 `global_${varName}_${delta}`
+
+function startAutoInc(target, isGlobal, varName, delta, sourceBlockId = null) {
+    const key = isGlobal ? `global_${varName}_${delta}` : `${target.id}_${varName}_${delta}`;
+    if (activeAutoIncMap.has(key)) return;
+    const incFunc = () => {
+        if (isGlobal) {
+            const g = globalVars.get(varName);
+            if (g && isConstantExpr(g.def.expr)) {
+                let newVal = g.def.value + delta;
+                const stepStr = g.def.step.toString();
+                const decimalPlaces = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+                newVal = parseFloat(newVal.toFixed(decimalPlaces));
+                if (newVal > g.def.rangeMax) newVal = g.def.rangeMin;
+                else if (newVal < g.def.rangeMin) newVal = g.def.rangeMax;
+                g.def.expr = newVal.toString();
+                g.def.value = newVal;
+                blocks.forEach(b => b.refresh());
+                if (selectedBlock) {
+                    // 局部更新UI，不重新渲染整个列表
+                    updateVarUIPartial(`t.${varName}`, g.def);
                 }
+                recordAction();
             }
-
-            function hideTutorial() {
-                tutorialOverlay.classList.add('hide');
-                tutorialOverlay.classList.remove('show');
-                setTimeout(() => {}, 400);
+        } else {
+            target.incVar(varName, delta);
+            if (selectedBlock === target) {
+                const def = target.scope.vars.get(varName);
+                updateVarUIPartial(varName, def);
             }
-
-            const tutorialSeen = localStorage.getItem('tutorialSeen');
-            if (!tutorialSeen) {
-                showTutorial(false);
+            recordAction();
+            updateGlobalVarsDependingOn(target, varName);
+        }
+    };
+    incFunc(); // 立即执行一次
+    const interval = setInterval(() => {
+        if (isGlobal) {
+            const g = globalVars.get(varName);
+            if (g && isConstantExpr(g.def.expr)) {
+                let newVal = g.def.value + delta;
+                const stepStr = g.def.step.toString();
+                const decimalPlaces = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+                newVal = parseFloat(newVal.toFixed(decimalPlaces));
+                if (newVal > g.def.rangeMax) newVal = g.def.rangeMin;
+                else if (newVal < g.def.rangeMin) newVal = g.def.rangeMax;
+                g.def.expr = newVal.toString();
+                g.def.value = newVal;
+                blocks.forEach(b => b.refresh());
+                if (selectedBlock) updateVarUIPartial(`t.${varName}`, g.def);
+                recordAction();
             } else {
-                tutorialOverlay.classList.remove('show');
+                stopAutoInc(isGlobal, varName, delta);
             }
-
-            closeTutorialBtn.addEventListener('click', function() {
-                hideTutorial();
-                localStorage.setItem('tutorialSeen', 'true');
-                if (tutorialTimer) {
-                    clearTimeout(tutorialTimer);
-                    tutorialTimer = null;
+        } else {
+            if (target) {
+                target.incVar(varName, delta);
+                if (selectedBlock === target) {
+                    const def = target.scope.vars.get(varName);
+                    updateVarUIPartial(varName, def);
                 }
-            });
-
-            restartTutorialBtn.addEventListener('click', function() {
-                if (tutorialTimer) {
-                    clearTimeout(tutorialTimer);
-                    tutorialTimer = null;
-                }
-                showTutorial(true);
-            });
-
-            // ---------- 工具函数 (原样) ----------
-            function deg2rad(deg) { return deg * M_PI / 180.0; }
-            function rad2deg(rad) { return rad * 180.0 / M_PI; }
-            function normalizeTinyOffset(angle) {
-                const rounded = Math.round(angle);
-                return Math.abs(angle - rounded) <= OFFSET_EPS ? rounded : angle;
+                recordAction();
+                updateGlobalVarsDependingOn(target, varName);
+            } else {
+                stopAutoInc(isGlobal, varName, delta);
             }
+        }
+    }, 50);
+    activeAutoIncMap.set(key, interval);
+}
 
-            // 构建 Blockbench 旋转矩阵（内旋 XYZ，右手系，逆时针为正）
-            function buildBlockbenchRotMatrix(rx, ry, rz) {
-                const a = deg2rad(rx);
-                const b = deg2rad(ry);
-                const c = deg2rad(rz);
-                const cos_a = Math.cos(a), sin_a = Math.sin(a);
-                const cos_b = Math.cos(b), sin_b = Math.sin(b);
-                const cos_c = Math.cos(c), sin_c = Math.sin(c);
-                // R = Rx * Ry * Rz
-                return [
-                    [cos_b * cos_c, -cos_b * sin_c, sin_b],
-                    [cos_a * sin_c + sin_a * sin_b * cos_c, cos_a * cos_c - sin_a * sin_b * sin_c, -sin_a * cos_b],
-                    [sin_a * sin_c - cos_a * sin_b * cos_c, sin_a * cos_c + cos_a * sin_b * sin_c, cos_a * cos_b]
-                ];
-            }
+function stopAutoInc(isGlobal, varName, delta) {
+    for (let [k, interval] of activeAutoIncMap.entries()) {
+        if (isGlobal && k.startsWith(`global_${varName}_`)) {
+            clearInterval(interval);
+            activeAutoIncMap.delete(k);
+        } else if (!isGlobal && k.startsWith(`${varName}_`)) {
+            // 非全局的由调用者具体处理
+        }
+    }
+}
 
-            // 矩阵转置
-            function transposeMatrix(mat) {
-                return [
-                    [mat[0][0], mat[1][0], mat[2][0]],
-                    [mat[0][1], mat[1][1], mat[2][1]],
-                    [mat[0][2], mat[1][2], mat[2][2]]
-                ];
-            }
+function toggleAutoInc(btn, isGlobal, target, varName, delta, sourceBlockId = null) {
+    const key = isGlobal ? `global_${varName}_${delta}` : `${target.id}_${varName}_${delta}`;
+    if (activeAutoIncMap.has(key)) {
+        const interval = activeAutoIncMap.get(key);
+        clearInterval(interval);
+        activeAutoIncMap.delete(key);
+        btn.classList.remove('active');
+    } else {
+        startAutoInc(isGlobal ? null : target, isGlobal, varName, delta, sourceBlockId);
+        btn.classList.add('active');
+    }
+}
 
-            // 应用单个骨骼变换到点 P (3元素数组)，返回新点
-            function applyBoneTransform(point, bone) {
-                const [px, py, pz] = bone.bone_pivot;
-                const R = bone.rotMatrix; // 预先计算的旋转矩阵（已取反）
-                // 平移到旋转中心
-                const dx = point[0] - px;
-                const dy = point[1] - py;
-                const dz = point[2] - pz;
-                // 旋转
-                const x = R[0][0] * dx + R[0][1] * dy + R[0][2] * dz;
-                const y = R[1][0] * dx + R[1][1] * dy + R[1][2] * dz;
-                const z = R[2][0] * dx + R[2][1] * dy + R[2][2] * dz;
-                // 平移回去
-                return [x + px, y + py, z + pz];
-            }
+// 局部更新变量UI（不重新渲染整个列表）
+function updateVarUIPartial(varName, def) {
+    const card = document.querySelector(`.var-card[data-var="${varName}"]`);
+    if (!card) return;
+    const valueSpan = card.querySelector('.var-value');
+    const assignmentInput = card.querySelector('.assignment-input');
+    const slider = card.querySelector('.var-slider');
+    if (valueSpan) valueSpan.textContent = def.value.toFixed(4);
+    if (assignmentInput) assignmentInput.value = `${varName} = ${def.expr}`;
+    if (slider) slider.value = def.value;
+}
 
-            // 应用一系列骨骼变换（从近到远）
-            function applyChain(point, boneList) {
-                let p = [point[0], point[1], point[2]];
-                for (let i = 0; i < boneList.length; i++) {
-                    p = applyBoneTransform(p, boneList[i]);
-                }
-                return p;
-            }
-
-            // ---------- 角度转换（内旋XYZ → 内旋ZXY）----------
-            const GIMBAL_THRESH = 1.0 - 1e-6;
-
-            function matrix2FMBEAngles(mat) {
-                const m02 = mat[0][2];
-                const m10 = mat[1][0];
-                const m11 = mat[1][1];
-                const m12 = mat[1][2];
-                const m22 = mat[2][2];
-                const m00 = mat[0][0];
-                const m01 = mat[0][1];
-
-                let sin_ry = Math.max(Math.min(m02, 1.0), -1.0);
-                let ry = rad2deg(Math.asin(sin_ry));
-                let rx, rz;
-
-                if (Math.abs(sin_ry) >= GIMBAL_THRESH) {
-                    rz = 0.0;
-                    if (sin_ry > 0) {
-                        rx = rad2deg(Math.atan2(m10, m11));
-                    } else {
-                        rx = rad2deg(Math.atan2(-m10, m11));
-                    }
-                } else if (Math.abs(m02) <= EPS) {
-                    ry = 0.0;
-                    rx = rad2deg(Math.atan2(-m12, m22));
-                    rz = rad2deg(Math.atan2(-m01, m00));
-                    if (m00 < 0) {
-                        rz += (rz > 0) ? -180.0 : 180.0;
-                    }
-                    if (Math.abs(m01) <= EPS) rz = 0.0;
-                    if (Math.abs(m12) <= EPS) rx = 0.0;
+function updateGlobalVarsDependingOn(block, localVarName) {
+    let anyChanged = false;
+    for (let [name, g] of globalVars.entries()) {
+        if (g.sourceBlockId === block.id) {
+            const sourceBlock = blocks.find(b => b.id === g.sourceBlockId);
+            if (sourceBlock) {
+                const localVarsMap = sourceBlock.scope.vars;
+                let newVal;
+                if (isConstantExpr(g.def.expr)) {
+                    newVal = parseFloat(g.def.expr);
                 } else {
-                    rx = rad2deg(Math.atan2(-m12, m22));
-                    rz = rad2deg(Math.atan2(-m01, m00));
+                    newVal = evaluateExpression(g.def.expr, localVarsMap, globalVars, sourceBlock.id);
                 }
-
-                rx = normalizeTinyOffset(rx);
-                ry = -normalizeTinyOffset(ry);
-                rz = normalizeTinyOffset(rz);
-                return { rx, ry, rz };
-            }
-
-            // ---------- JSON 解析 ----------
-            function parseVec3(arr) {
-                if (!Array.isArray(arr) || arr.length !== 3) return { valid: false, x: 0, y: 0, z: 0 };
-                const x = Number(arr[0]), y = Number(arr[1]), z = Number(arr[2]);
-                return isNaN(x) || isNaN(y) || isNaN(z) 
-                    ? { valid: false, x: 0, y: 0, z: 0 } 
-                    : { valid: true, x, y, z };
-            }
-
-            function parseModelJson(json_str) {
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(json_str);
-                } catch (e) {
-                    return { bones: [], error: "JSON解析失败：" + e.message };
-                }
-                const geometry = jsonData["minecraft:geometry"];
-                if (!geometry || !Array.isArray(geometry) || geometry.length === 0) {
-                    return { bones: [], error: "JSON错误：缺少minecraft:geometry字段，不是合法的基岩版模型" };
-                }
-                const bones = [];
-                let error = "";
-                for (const geom of geometry) {
-                    const geomBones = geom.bones;
-                    if (!geomBones || !Array.isArray(geomBones)) continue;
-                    for (const boneData of geomBones) {
-                        const bone = {
-                            name: boneData.name || "",
-                            parent: boneData.parent || null,
-                            bone_pivot: [0, 0, 0],
-                            rotation: [0, 0, 0],
-                            has_rotation: false,
-                            cubes: []
-                        };
-                        if (boneData.pivot) {
-                            const pivotRes = parseVec3(boneData.pivot);
-                            if (pivotRes.valid) bone.bone_pivot = [pivotRes.x, pivotRes.y, pivotRes.z];
-                        }
-                        if (boneData.rotation) {
-                            const rotRes = parseVec3(boneData.rotation);
-                            if (rotRes.valid) {
-                                bone.rotation = [rotRes.x, rotRes.y, rotRes.z];
-                                bone.has_rotation = true;
-                            }
-                        }
-                        if (boneData.cubes && Array.isArray(boneData.cubes)) {
-                            for (const cubeData of boneData.cubes) {
-                                const cube = {
-                                    origin: [0, 0, 0],
-                                    size: [0, 0, 0],
-                                    cube_pivot: [0, 0, 0],
-                                    has_cube_pivot: false,
-                                    rotation: [0, 0, 0],
-                                    has_rotation: false
-                                };
-                                let valid = true, missing_field = "";
-                                if (!cubeData.origin) { valid = false; missing_field = "origin"; }
-                                else {
-                                    const originRes = parseVec3(cubeData.origin);
-                                    if (!originRes.valid) { valid = false; missing_field = "origin"; }
-                                    else cube.origin = [originRes.x, originRes.y, originRes.z];
-                                }
-                                if (!cubeData.size) { valid = false; missing_field = "size"; }
-                                else {
-                                    const sizeRes = parseVec3(cubeData.size);
-                                    if (!sizeRes.valid) { valid = false; missing_field = "size"; }
-                                    else cube.size = [sizeRes.x, sizeRes.y, sizeRes.z];
-                                }
-                                if (cubeData.pivot) {
-                                    const pivotRes = parseVec3(cubeData.pivot);
-                                    if (pivotRes.valid) {
-                                        cube.cube_pivot = [pivotRes.x, pivotRes.y, pivotRes.z];
-                                        cube.has_cube_pivot = true;
-                                    }
-                                }
-                                if (cubeData.rotation) {
-                                    const rotRes = parseVec3(cubeData.rotation);
-                                    if (rotRes.valid) {
-                                        cube.rotation = [rotRes.x, rotRes.y, rotRes.z];
-                                        cube.has_rotation = true;
-                                    }
-                                }
-                                if (!valid) {
-                                    error = "警告：跳过一个无效方块，缺少字段：" + missing_field;
-                                    continue;
-                                }
-                                bone.cubes.push(cube);
-                            }
-                        }
-                        bones.push(bone);
-                    }
-                }
-                if (bones.length === 0 && error === "") error = "错误：未找到任何有效骨骼和方块";
-                return { bones, error };
-            }
-
-            function num2Chinese(num) {
-                if (num < 1) return "";
-                const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
-                const tens = ["", "十", "二十", "三十", "四十", "五十", "六十", "七十", "八十", "九十"];
-                if (num < 10) return digits[num];
-                const ten = Math.floor(num / 10);
-                const digit = num % 10;
-                return ten === 1 
-                    ? tens[1] + (digit === 0 ? "" : digits[digit]) 
-                    : tens[ten] + (digit === 0 ? "" : digits[digit]);
-            }
-
-            function formatNum(n) {
-                return Number(n.toPrecision(6)).toString();
-            }
-
-            function escapeHTML(str) {
-                return str.replace(/&/g, '&amp;')
-                          .replace(/</g, '&lt;')
-                          .replace(/>/g, '&gt;')
-                          .replace(/"/g, '&quot;')
-                          .replace(/'/g, '&#039;');
-            }
-
-            // ---------- 辅助：安全的骨骼变量名 ----------
-            function safeBoneName(name) {
-                return name.replace(/[^a-zA-Z0-9_]/g, '_');
-            }
-
-            // ---------- 生成所有骨骼的世界矩阵定义 (动态模式专用) ----------
-            function generateBoneWorldMatrices(bones, boneMap) {
-                let lines = [];
-                // 先找出根骨骼（没有父骨骼的）
-                let roots = bones.filter(b => !b.parent);
-                // 按拓扑顺序处理（简单的递归）
-                function processBone(bone) {
-                    let safe = safeBoneName(bone.name);
-                    // 生成该骨骼的 sin/cos 变量
-                    let xv = `t.${safe}xrot`;
-                    let yv = `t.${safe}yrot`;
-                    let zv = `t.${safe}zrot`;
-                    lines.push(`v.sx_${safe}=math.sin(-(${xv})); v.cx_${safe}=math.cos(-(${xv}));`);
-                    lines.push(`v.sy_${safe}=math.sin(-(${yv})); v.cy_${safe}=math.cos(-(${yv}));`);
-                    lines.push(`v.sz_${safe}=math.sin(-(${zv})); v.cz_${safe}=math.cos(-(${zv}));`);
-
-                    // 局部矩阵 L (该骨骼自身的旋转矩阵)
-                    let l00 = `(v.cy_${safe})*(v.cz_${safe})`;
-                    let l01 = `-(v.cy_${safe})*(v.sz_${safe})`;
-                    let l02 = `(v.sy_${safe})`;
-                    let l10 = `(v.cx_${safe})*(v.sz_${safe}) + (v.sx_${safe})*(v.sy_${safe})*(v.cz_${safe})`;
-                    let l11 = `(v.cx_${safe})*(v.cz_${safe}) - (v.sx_${safe})*(v.sy_${safe})*(v.sz_${safe})`;
-                    let l12 = `-(v.sx_${safe})*(v.cy_${safe})`;
-                    let l20 = `(v.sx_${safe})*(v.sz_${safe}) - (v.cx_${safe})*(v.sy_${safe})*(v.cz_${safe})`;
-                    let l21 = `(v.sx_${safe})*(v.cz_${safe}) + (v.cx_${safe})*(v.sy_${safe})*(v.sz_${safe})`;
-                    let l22 = `(v.cx_${safe})*(v.cy_${safe})`;
-
-                    // 世界矩阵 W
-                    if (!bone.parent) {
-                        // 根骨骼：W = L
-                        lines.push(`v.w_${safe}_0 = ${l00};`);
-                        lines.push(`v.w_${safe}_1 = ${l01};`);
-                        lines.push(`v.w_${safe}_2 = ${l02};`);
-                        lines.push(`v.w_${safe}_3 = ${l10};`);
-                        lines.push(`v.w_${safe}_4 = ${l11};`);
-                        lines.push(`v.w_${safe}_5 = ${l12};`);
-                        lines.push(`v.w_${safe}_6 = ${l20};`);
-                        lines.push(`v.w_${safe}_7 = ${l21};`);
-                        lines.push(`v.w_${safe}_8 = ${l22};`);
-                    } else {
-                        // 有父骨骼：W = 父世界矩阵 * L
-                        let parent = boneMap[bone.parent];
-                        let pSafe = safeBoneName(parent.name);
-                        // 父世界矩阵已经定义，直接引用 v.w_parent_*
-                        let w00 = `v.w_${pSafe}_0`, w01 = `v.w_${pSafe}_1`, w02 = `v.w_${pSafe}_2`;
-                        let w10 = `v.w_${pSafe}_3`, w11 = `v.w_${pSafe}_4`, w12 = `v.w_${pSafe}_5`;
-                        let w20 = `v.w_${pSafe}_6`, w21 = `v.w_${pSafe}_7`, w22 = `v.w_${pSafe}_8`;
-
-                        // 乘法：W = parent * L
-                        let m00 = `(${w00})*(${l00}) + (${w01})*(${l10}) + (${w02})*(${l20})`;
-                        let m01 = `(${w00})*(${l01}) + (${w01})*(${l11}) + (${w02})*(${l21})`;
-                        let m02 = `(${w00})*(${l02}) + (${w01})*(${l12}) + (${w02})*(${l22})`;
-                        let m10 = `(${w10})*(${l00}) + (${w11})*(${l10}) + (${w12})*(${l20})`;
-                        let m11 = `(${w10})*(${l01}) + (${w11})*(${l11}) + (${w12})*(${l21})`;
-                        let m12 = `(${w10})*(${l02}) + (${w11})*(${l12}) + (${w12})*(${l22})`;
-                        let m20 = `(${w20})*(${l00}) + (${w21})*(${l10}) + (${w22})*(${l20})`;
-                        let m21 = `(${w20})*(${l01}) + (${w21})*(${l11}) + (${w22})*(${l21})`;
-                        let m22 = `(${w20})*(${l02}) + (${w21})*(${l12}) + (${w22})*(${l22})`;
-
-                        lines.push(`v.w_${safe}_0 = ${m00};`);
-                        lines.push(`v.w_${safe}_1 = ${m01};`);
-                        lines.push(`v.w_${safe}_2 = ${m02};`);
-                        lines.push(`v.w_${safe}_3 = ${m10};`);
-                        lines.push(`v.w_${safe}_4 = ${m11};`);
-                        lines.push(`v.w_${safe}_5 = ${m12};`);
-                        lines.push(`v.w_${safe}_6 = ${m20};`);
-                        lines.push(`v.w_${safe}_7 = ${m21};`);
-                        lines.push(`v.w_${safe}_8 = ${m22};`);
-                    }
-
-                    // 递归处理子骨骼
-                    let children = bones.filter(b => b.parent === bone.name);
-                    for (let child of children) {
-                        processBone(child);
-                    }
-                }
-
-                for (let root of roots) {
-                    processBone(root);
-                }
-                return lines;
-            }
-
-            // ---------- 新转换函数：接收 dynamicMode 参数，执行实际转换 ----------
-            function doConversion(bones, k, dynamicMode) {
-                try {
-                    errorMsgEl.style.display = "none";
-                    errorMsgEl.textContent = "";
-                    outputGroupEl.style.display = "none";
-                    outputTextEl.innerHTML = "";
-                    outputTextEl.dataset.allCode = "";
-
-                    const customPrefix = prefixInputEl.value || "";
-                    const customSuffix = suffixInputEl.value || "";
-                    let warnings = "";
-
-                    // 构建骨骼映射和父子关系 (原样)
-                    const boneMap = {};
-                    bones.forEach(bone => {
-                        boneMap[bone.name] = bone;
-                    });
-                    bones.forEach(bone => {
-                        bone.rotMatrix = buildBlockbenchRotMatrix(-bone.rotation[0], -bone.rotation[1], -bone.rotation[2]);
-                    });
-
-                    function getAncestors(bone, includeSelf = true) {
-                        const list = [];
-                        let current = bone;
-                        if (includeSelf) list.push(current);
-                        while (current.parent && boneMap[current.parent]) {
-                            current = boneMap[current.parent];
-                            list.push(current);
-                        }
-                        return list;
-                    }
-
-                    function getParentAncestors(bone) {
-                        const list = [];
-                        if (!bone.parent) return list;
-                        let current = boneMap[bone.parent];
-                        while (current) {
-                            list.push(current);
-                            current = current.parent ? boneMap[current.parent] : null;
-                        }
-                        return list;
-                    }
-
-                    const boneFinalPivot = {};
-                    bones.forEach(bone => {
-                        const parentAncestors = getParentAncestors(bone);
-                        const finalPivot = applyChain(bone.bone_pivot, parentAncestors);
-                        boneFinalPivot[bone.name] = finalPivot;
-                    });
-
-                    // 输出标题
-                    let outputHTML = "";
-                    let allCode = "";
-                    let cube_index = 0;
-                    const versionNames = ["公版", "米制版", "error！请查看该版本是否存在！", "普通版"];
-                    const titleText = `===== ${versionNames[currentVersion]}转换结果 ${dynamicMode ? '[动态骨骼]' : ''} =====`;
-                    outputHTML += `<div class="output-title-header">${titleText}</div>`;
-                    allCode += titleText + "\n\n";
-
-                    // 动态模式下：先输出骨骼变量定义和世界矩阵代码（作为一个整体，应用前后缀）
-                    if (dynamicMode) {
-                        // 骨骼变量定义 (t.xxx)
-                        let varDefs = "'骨骼变量定义 (可在游戏中调整)';\n";
-                        bones.forEach(b => {
-                            let safe = safeBoneName(b.name);
-                            varDefs += `t.${safe}xrot = ${b.rotation[0]}; t.${safe}yrot = ${b.rotation[1]}; t.${safe}zrot = ${b.rotation[2]};\n`;
-                        });
-
-                        // 生成所有骨骼的世界矩阵代码
-                        let worldLines = generateBoneWorldMatrices(bones, boneMap);
-                        let worldCode = worldLines.join('\n');
-
-                        // 合并全局代码
-                        let globalCode = varDefs + '\n' + worldCode;
-
-                        // 应用前后缀（替换 &<> 为空，因为没有方块编号）
-                        let globalWrapped = customPrefix.replace(/&<>/g, '') + globalCode + customSuffix.replace(/&<>/g, '');
-                        outputHTML += `<div class="cube-item"><div class="cube-header"><span class="cube-title">⚙️ 骨骼定义与矩阵</span><button class="cube-copy-btn" data-code="${encodeURIComponent(globalWrapped)}">📋 复制全局代码</button></div><div class="cube-data">${escapeHTML(globalWrapped)}</div></div>`;
-                        allCode += globalWrapped + "\n\n";
-                    }
-
-                    // 遍历所有立方体
-                    for (const bone of bones) {
-                        const boneAncestors = getAncestors(bone, true);
-                        for (const cube of bone.cubes) {
-                            cube_index++;
-                            const cube_id = num2Chinese(cube_index);
-                            const [ox, oy, oz] = cube.origin;
-                            const [sx, sy, sz] = cube.size;
-
-                            if (sx <= EPS || sy < 0 || sz <= EPS) {
-                                warnings += `方块${cube_id}：尺寸必须为非负数，已跳过\n`;
-                                continue;
-                            }
-                            if (Math.abs(sx - sz) > EPS) {
-                                warnings += `方块${cube_id}：不符合规范的模型（x和z尺寸必须相等），已跳过\n`;
-                                continue;
-                            }
-
-                            // 原始中心点
-                            let center = [ox + sx/2, oy + sy/2, oz + sz/2];
-
-                            // 处理立方体自身的旋转
-                            let cubeRotMatrix = null;
-                            if (cube.has_rotation) {
-                                cubeRotMatrix = buildBlockbenchRotMatrix(-cube.rotation[0], -cube.rotation[1], -cube.rotation[2]);
-                                const pivot = cube.has_cube_pivot ? cube.cube_pivot : center;
-                                const dx = center[0] - pivot[0];
-                                const dy = center[1] - pivot[1];
-                                const dz = center[2] - pivot[2];
-                                const rx = cubeRotMatrix[0][0] * dx + cubeRotMatrix[0][1] * dy + cubeRotMatrix[0][2] * dz;
-                                const ry = cubeRotMatrix[1][0] * dx + cubeRotMatrix[1][1] * dy + cubeRotMatrix[1][2] * dz;
-                                const rz = cubeRotMatrix[2][0] * dx + cubeRotMatrix[2][1] * dy + cubeRotMatrix[2][2] * dz;
-                                center = [rx + pivot[0], ry + pivot[1], rz + pivot[2]];
-                            }
-
-                            // 最终中心点
-                            const finalCenter = applyChain(center, boneAncestors);
-
-                            // 最终 cube_pivot 点
-                            let finalCubePivot = null;
-                            if (cube.has_cube_pivot) {
-                                finalCubePivot = applyChain(cube.cube_pivot, boneAncestors);
-                            }
-
-                            // 计算 scale 和 e_scale
-                            let scale = sx / k;
-                            let e_scale = sy / k;
-                            if (Math.abs(e_scale) < EPS) {
-                                e_scale = MIN_E_SCALE;
-                                warnings += `方块${cube_id}：该方块高度=0，无法确定ybasepos的值，已自动将方块高度设为0.001\n`;
-                            }
-
-                            // 计算最终旋转矩阵 (静态备用)
-                            let finalRotMatrix;
-                            if (boneAncestors.length > 0) {
-                                let R = boneAncestors[0].rotMatrix;
-                                for (let i = 1; i < boneAncestors.length; i++) {
-                                    const parentR = boneAncestors[i].rotMatrix;
-                                    const newR = [[0,0,0], [0,0,0], [0,0,0]];
-                                    for (let r = 0; r < 3; r++) {
-                                        for (let c = 0; c < 3; c++) {
-                                            newR[r][c] = parentR[r][0] * R[0][c] + parentR[r][1] * R[1][c] + parentR[r][2] * R[2][c];
-                                        }
-                                    }
-                                    R = newR;
-                                }
-                                if (cubeRotMatrix) {
-                                    const newR = [[0,0,0], [0,0,0], [0,0,0]];
-                                    for (let r = 0; r < 3; r++) {
-                                        for (let c = 0; c < 3; c++) {
-                                            newR[r][c] = R[r][0] * cubeRotMatrix[0][c] + R[r][1] * cubeRotMatrix[1][c] + R[r][2] * cubeRotMatrix[2][c];
-                                        }
-                                    }
-                                    R = newR;
-                                }
-                                finalRotMatrix = R;
-                            } else {
-                                finalRotMatrix = cubeRotMatrix || [[1,0,0],[0,1,0],[0,0,1]];
-                            }
-
-                            // 提取静态角度 (以备静态模式使用)
-                            const { rx: fmbe_rx, ry: fmbe_ry, rz: fmbe_rz } = matrix2FMBEAngles(finalRotMatrix);
-
-                            // 计算位置
-                            let worldPivot;
-                            if (cube.has_cube_pivot) {
-                                worldPivot = finalCubePivot;
-                            } else {
-                                worldPivot = finalCenter;
-                            }
-
-                            const factorPos = (currentVersion === 3) ? 16 : 1;
-                            let vx = -worldPivot[0] / k * factorPos;
-                            let vy = worldPivot[1] / k * factorPos;
-                            let vz = worldPivot[2] / k * factorPos;
-
-                            const offset_world = [
-                                finalCenter[0] - worldPivot[0],
-                                finalCenter[1] - worldPivot[1],
-                                finalCenter[2] - worldPivot[2]
-                            ];
-
-                            // 静态 basepos 计算
-                            const Rinv = transposeMatrix(finalRotMatrix);
-                            const offset_local = [
-                                Rinv[0][0] * offset_world[0] + Rinv[0][1] * offset_world[1] + Rinv[0][2] * offset_world[2],
-                                Rinv[1][0] * offset_world[0] + Rinv[1][1] * offset_world[1] + Rinv[1][2] * offset_world[2],
-                                Rinv[2][0] * offset_world[0] + Rinv[2][1] * offset_world[1] + Rinv[2][2] * offset_world[2]
-                            ];
-                            const factorBase = (currentVersion === 3) ? 16 : 1;
-                            let xbasepos = -offset_local[0] / scale * factorBase / k;
-                            let ybasepos = offset_local[1] / e_scale * factorBase / k;
-                            let zbasepos = offset_local[2] / scale * factorBase / k;
-
-                            // 根据 dynamicMode 生成代码
-                            let cubeDataCode = "";
-                            if (dynamicMode) {
-                                // 动态模式：使用预计算的骨骼世界矩阵
-                                let safeBone = safeBoneName(bone.name);
-                                // 最终矩阵 F = 如果 cube 有自身旋转，则 F = cubeRotMatrix * boneWorldMatrix；否则 F = boneWorldMatrix
-                                let finalMatrixLines = [];
-                                if (cubeRotMatrix) {
-                                    // cubeRotMatrix 是数值矩阵，将其作为常量左乘
-                                    let m00 = cubeRotMatrix[0][0], m01 = cubeRotMatrix[0][1], m02 = cubeRotMatrix[0][2];
-                                    let m10 = cubeRotMatrix[1][0], m11 = cubeRotMatrix[1][1], m12 = cubeRotMatrix[1][2];
-                                    let m20 = cubeRotMatrix[2][0], m21 = cubeRotMatrix[2][1], m22 = cubeRotMatrix[2][2];
-                                    // 左乘：F = cube * boneWorld
-                                    let f00 = `${m00}*v.w_${safeBone}_0 + ${m01}*v.w_${safeBone}_3 + ${m02}*v.w_${safeBone}_6`;
-                                    let f01 = `${m00}*v.w_${safeBone}_1 + ${m01}*v.w_${safeBone}_4 + ${m02}*v.w_${safeBone}_7`;
-                                    let f02 = `${m00}*v.w_${safeBone}_2 + ${m01}*v.w_${safeBone}_5 + ${m02}*v.w_${safeBone}_8`;
-                                    let f10 = `${m10}*v.w_${safeBone}_0 + ${m11}*v.w_${safeBone}_3 + ${m12}*v.w_${safeBone}_6`;
-                                    let f11 = `${m10}*v.w_${safeBone}_1 + ${m11}*v.w_${safeBone}_4 + ${m12}*v.w_${safeBone}_7`;
-                                    let f12 = `${m10}*v.w_${safeBone}_2 + ${m11}*v.w_${safeBone}_5 + ${m12}*v.w_${safeBone}_8`;
-                                    let f20 = `${m20}*v.w_${safeBone}_0 + ${m21}*v.w_${safeBone}_3 + ${m22}*v.w_${safeBone}_6`;
-                                    let f21 = `${m20}*v.w_${safeBone}_1 + ${m21}*v.w_${safeBone}_4 + ${m22}*v.w_${safeBone}_7`;
-                                    let f22 = `${m20}*v.w_${safeBone}_2 + ${m21}*v.w_${safeBone}_5 + ${m22}*v.w_${safeBone}_8`;
-                                    finalMatrixLines.push(`v.F0 = ${f00};`);
-                                    finalMatrixLines.push(`v.F1 = ${f01};`);
-                                    finalMatrixLines.push(`v.F2 = ${f02};`);
-                                    finalMatrixLines.push(`v.F3 = ${f10};`);
-                                    finalMatrixLines.push(`v.F4 = ${f11};`);
-                                    finalMatrixLines.push(`v.F5 = ${f12};`);
-                                    finalMatrixLines.push(`v.F6 = ${f20};`);
-                                    finalMatrixLines.push(`v.F7 = ${f21};`);
-                                    finalMatrixLines.push(`v.F8 = ${f22};`);
-                                } else {
-                                    // 直接使用骨骼世界矩阵
-                                    finalMatrixLines.push(`v.F0 = v.w_${safeBone}_0;`);
-                                    finalMatrixLines.push(`v.F1 = v.w_${safeBone}_1;`);
-                                    finalMatrixLines.push(`v.F2 = v.w_${safeBone}_2;`);
-                                    finalMatrixLines.push(`v.F3 = v.w_${safeBone}_3;`);
-                                    finalMatrixLines.push(`v.F4 = v.w_${safeBone}_4;`);
-                                    finalMatrixLines.push(`v.F5 = v.w_${safeBone}_5;`);
-                                    finalMatrixLines.push(`v.F6 = v.w_${safeBone}_6;`);
-                                    finalMatrixLines.push(`v.F7 = v.w_${safeBone}_7;`);
-                                    finalMatrixLines.push(`v.F8 = v.w_${safeBone}_8;`);
-                                }
-
-                                // 提取角度
-                                let sin_ry = 'v.F2';
-                                let gimbalThr = 0.999999;
-                                let condGimbal = `math.abs(${sin_ry}) >= ${gimbalThr}`;
-                                let gimbalRy = sin_ry;
-                                let gimbalRx = `(${sin_ry} > 0 ? math.atan2(v.F3, v.F4) : math.atan2(-(v.F3), v.F4))`;
-                                let gimbalRz = '0';
-                                let normalRy = `math.asin(${sin_ry})`;
-                                let normalRx = `math.atan2(-(v.F5), v.F8)`;
-                                let normalRz = `math.atan2(-(v.F1), v.F0)`;
-                                let rad2deg = 180 / Math.PI;
-                                let rxExpr = `( (${condGimbal}) ? (${gimbalRx}) : (${normalRx}) ) * ${rad2deg}`;
-                                let ryExpr = `- ( (${condGimbal}) ? (${gimbalRy}) : (${normalRy}) ) * ${rad2deg}`;
-                                let rzExpr = `( (${condGimbal}) ? (${gimbalRz}) : (${normalRz}) ) * ${rad2deg}`;
-
-                                // 计算 basepos
-                                let d_local_x = `(v.F0)*${offset_world[0]} + (v.F3)*${offset_world[1]} + (v.F6)*${offset_world[2]}`;
-                                let d_local_y = `(v.F1)*${offset_world[0]} + (v.F4)*${offset_world[1]} + (v.F7)*${offset_world[2]}`;
-                                let d_local_z = `(v.F2)*${offset_world[0]} + (v.F5)*${offset_world[1]} + (v.F8)*${offset_world[2]}`;
-                                let xbaseposExpr = `- (${d_local_x}) / ${scale} * ${factorBase/k}`;
-                                let ybaseposExpr = `(${d_local_y}) / ${e_scale} * ${factorBase/k}`;
-                                let zbaseposExpr = `(${d_local_z}) / ${scale} * ${factorBase/k}`;
-
-                                // 组装版本输出
-                                switch (currentVersion) {
-                                    case 0:
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};\nv.xrot=${rxExpr}; v.yrot=${ryExpr}; v.zrot=${rzExpr};\nv.scale=${formatNum(scale)}; v.extend_scale=${formatNum(e_scale / Math.sqrt(scale * e_scale))};\nv.xbasepos=${xbaseposExpr}; v.ybasepos=${ybaseposExpr}; v.zbasepos=${zbaseposExpr};`;
-                                        break;
-                                    case 1:
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};\nv.xrot=${rxExpr}; v.yrot=${ryExpr}; v.zrot=${rzExpr};\nv.scale=${formatNum(scale)}; v.high=${formatNum(e_scale)};\nv.xbasepos=${xbaseposExpr}; v.ybasepos=${ybaseposExpr}; v.zbasepos=${zbaseposExpr};\nv.extend_scale=v.high/math.sqrt(v.scale*v.high);`;
-                                        break;
-                                    case 2:
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};\nv.xrot=${rxExpr}; v.yrot=${ryExpr}; v.zrot=${rzExpr};\nv.scale=${formatNum(scale)}; v.high=${formatNum(e_scale)};\nv.xbasepos=${xbaseposExpr}; v.ybasepos=${ybaseposExpr}; v.zbasepos=${zbaseposExpr};\nv.rotatex=0; v.rotatey=0; v.rotatez=0;\nv.extend_scale=v.high/math.sqrt(v.scale*v.high);`;
-                                        break;
-                                    case 3:
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};\nv.xrot=${rxExpr}; v.yrot=${ryExpr}; v.zrot=${rzExpr};\nv.xzscale=${formatNum(scale)}; v.yscale=${formatNum(e_scale)};\nv.xbasepos=${xbaseposExpr}; v.ybasepos=${ybaseposExpr}; v.zbasepos=${zbaseposExpr};   v.scale=1;`;
-                                        break;
-                                }
-                                // 将最终矩阵赋值放在代码前面
-                                cubeDataCode = finalMatrixLines.join('\n') + '\n' + cubeDataCode;
-                            } else {
-                                // 静态代码
-                                switch (currentVersion) {
-                                    case 0:
-                                        const extend_scale = e_scale / Math.sqrt(scale * e_scale);
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};
-v.xrot=${formatNum(fmbe_rx)}; v.yrot=${formatNum(fmbe_ry)}; v.zrot=${formatNum(fmbe_rz)};
-v.scale=${formatNum(scale)}; v.extend_scale=${formatNum(extend_scale)};
-v.xbasepos=${formatNum(xbasepos)}; v.ybasepos=${formatNum(ybasepos)}; v.zbasepos=${formatNum(zbasepos)};`;
-                                        break;
-                                    case 1:
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};
-v.xrot=${formatNum(fmbe_rx)}; v.yrot=${formatNum(fmbe_ry)}; v.zrot=${formatNum(fmbe_rz)};
-v.scale=${formatNum(scale)}; v.high=${formatNum(e_scale)};
-v.xbasepos=${formatNum(xbasepos)}; v.ybasepos=${formatNum(ybasepos)}; v.zbasepos=${formatNum(zbasepos)};
-v.extend_scale=v.high/math.sqrt(v.scale*v.high);`;
-                                        break;
-                                    case 2:
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};
-v.xrot=${formatNum(fmbe_rx)}; v.yrot=${formatNum(fmbe_ry)}; v.zrot=${formatNum(fmbe_rz)};
-v.scale=${formatNum(scale)}; v.high=${formatNum(e_scale)};
-v.xbasepos=${formatNum(xbasepos)}; v.ybasepos=${formatNum(ybasepos)}; v.zbasepos=${formatNum(zbasepos)};
-v.rotatex=0; v.rotatey=0; v.rotatez=0;
-v.extend_scale=v.high/math.sqrt(v.scale*v.high);`;
-                                        break;
-                                    case 3:
-                                        cubeDataCode = `v.xpos=${formatNum(vx)}; v.ypos=${formatNum(vy)}; v.zpos=${formatNum(vz)};
-v.xrot=${formatNum(fmbe_rx)}; v.yrot=${formatNum(fmbe_ry)}; v.zrot=${formatNum(fmbe_rz)};
-v.xzscale=${formatNum(scale)}; v.yscale=${formatNum(e_scale)};
-v.xbasepos=${formatNum(xbasepos)}; v.ybasepos=${formatNum(ybasepos)}; v.zbasepos=${formatNum(zbasepos)};   v.scale=1;`;
-                                        break;
-                                }
-                            }
-
-                            const finalCommand = customPrefix.replace(/&<>/g, cube_id) + cubeDataCode + customSuffix.replace(/&<>/g, cube_id);
-                            allCode += finalCommand + "\n\n";
-                            outputHTML += `
-                            <div class="cube-item">
-                                <div class="cube-header">
-                                    <span class="cube-title">方块编号：${cube_id}</span>
-                                    <button class="cube-copy-btn" data-code="${encodeURIComponent(finalCommand)}">📋 复制此方块</button>
-                                </div>
-                                <div class="cube-data">${escapeHTML(finalCommand)}</div>
-                            </div>
-                            `;
-                        }
-                    }
-
-                    if (warnings !== "") {
-                        errorMsgEl.textContent = warnings;
-                        errorMsgEl.style.display = "block";
-                    }
-
-                    outputTextEl.innerHTML = outputHTML;
-                    outputTextEl.dataset.allCode = allCode;
-                    outputGroupEl.style.display = "block";
-                } catch (err) {
-                    errorMsgEl.textContent = "程序执行错误：" + err.message + "\n" + err.stack;
-                    errorMsgEl.style.display = "block";
-                    console.error(err);
+                if (Math.abs(newVal - g.def.value) > 1e-8) {
+                    g.def.value = newVal;
+                    anyChanged = true;
+                    updateVarUIPartial(`t.${name}`, g.def);
                 }
             }
+        }
+    }
+    if (anyChanged) {
+        blocks.forEach(b => b.refresh());
+    }
+}
 
-            // ========== 原 convert 函数修改为：解析 + 骨骼检测弹窗 ==========
-            function convert() {
-                try {
-                    errorMsgEl.style.display = "none";
-                    errorMsgEl.textContent = "";
-                    outputGroupEl.style.display = "none";
-                    outputTextEl.innerHTML = "";
-                    outputTextEl.dataset.allCode = "";
+// ====================== 模态框 ======================
+function showModal(title, content, onConfirm = null, isTextarea = true) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    let innerHtml = `<div class="modal-content"><h3>${title}</h3>`;
+    if (isTextarea) {
+        innerHtml += `<textarea class="modal-textarea" id="modalInput">${content || ''}</textarea>`;
+    } else {
+        innerHtml += `<div class="preview-code" id="modalPreview">${content || ''}</div>`;
+    }
+    innerHtml += `<div class="modal-buttons">
+        <button class="modal-btn" id="modalConfirm"><span>确定</span></button>
+        <button class="modal-btn" id="modalCancel"><span>取消</span></button>
+    </div></div>`;
+    modal.innerHTML = innerHtml;
+    document.body.appendChild(modal);
+    const confirmBtn = modal.querySelector('#modalConfirm');
+    const cancelBtn = modal.querySelector('#modalCancel');
+    const input = modal.querySelector('#modalInput');
+    const preview = modal.querySelector('#modalPreview');
+    confirmBtn.onclick = () => {
+        const val = input ? input.value : (preview ? preview.innerText : null);
+        modal.remove();
+        if (onConfirm) onConfirm(val);
+    };
+    cancelBtn.onclick = () => modal.remove();
+    if (input) input.focus();
+}
 
-                    const k = Number(kValueEl.value);
-                    const jsonInput = jsonInputEl.value.trim();
+// ====================== 数学变换核心 ======================
+const degToRad = deg => deg * Math.PI / 180;
+function computeTransformMatrix(M) {
+    const [px,py,pz, rx,ry,rz, s, es, ex, ey, bx,by,bz] = M;
+    const matB = new THREE.Matrix4().makeTranslation(bx,by,bz);
+    const matEsy = new THREE.Matrix4().makeScale(1, es, 1);
+    const matEyr = new THREE.Matrix4().makeRotationY(-degToRad(ey));
+    const matExr = new THREE.Matrix4().makeRotationX(-degToRad(ex));
+    const matEs = new THREE.Matrix4().makeScale(1, 1, es);
+    const matExl = new THREE.Matrix4().makeRotationX(degToRad(ex));
+    const matEyl = new THREE.Matrix4().makeRotationY(degToRad(ey));
+    const matS = new THREE.Matrix4().makeScale(s,s,s);
+    const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
+    const matRy = new THREE.Matrix4().makeRotationY(degToRad(ry));
+    const matRz = new THREE.Matrix4().makeRotationZ(degToRad(rz));
+    const matP = new THREE.Matrix4().makeTranslation(px,py,pz);
+    let matrix = matB.clone();
+    matrix.premultiply(matEsy).premultiply(matEyr).premultiply(matExr)
+          .premultiply(matEs).premultiply(matExl).premultiply(matEyl)
+          .premultiply(matS).premultiply(matRx).premultiply(matRy)
+          .premultiply(matRz).premultiply(matP);
+    return matrix;
+}
 
-                    if (isNaN(k) || k <= EPS) {
-                        errorMsgEl.textContent = "错误：换算系数必须为正数";
-                        errorMsgEl.style.display = "block";
-                        return;
-                    }
-                    if (jsonInput === "") {
-                        errorMsgEl.textContent = "错误：未输入任何JSON数据";
-                        errorMsgEl.style.display = "block";
-                        return;
-                    }
+const boxGeo = new THREE.BoxGeometry(1,1,1);
 
-                    const { bones, error } = parseModelJson(jsonInput);
-                    if (error !== "") console.warn(error);
+// ====================== 变量系统 ======================
+function evaluateExpression(expr, localVarsMap, globalVarsMap, sourceBlockId = null) {
+    const scope = { math: Math };
+    const vProxy = {};
+    for(let [key, valObj] of localVarsMap.entries()) {
+        const varName = key.slice(2);
+        vProxy[varName] = valObj.value;
+    }
+    scope.v = vProxy;
+    const tProxy = {};
+    for(let [name, g] of globalVarsMap.entries()) {
+        tProxy[name] = g.def.value;
+    }
+    scope.t = tProxy;
+    try {
+        const fn = new Function('math', 'v', 't', `return (${expr})`);
+        const result = fn(scope.math, scope.v, scope.t);
+        return isNaN(result) ? 0 : result;
+    } catch(e) {
+        console.warn("表达式错误:", expr, e);
+        return 0;
+    }
+}
 
-                    let total_cube = 0;
-                    for (const bone of bones) total_cube += bone.cubes.length;
-                    if (total_cube === 0) {
-                        errorMsgEl.textContent = "错误：未找到任何有效方块，转换失败";
-                        errorMsgEl.style.display = "block";
-                        return;
-                    }
+function isConstantExpr(expr) {
+    return /^\s*-?\d+(\.\d+)?\s*$/.test(expr);
+}
 
-                    // 检测是否有骨骼层级
-                    const hasBonesHierarchy = bones.some(b => b.parent);
-                    if (hasBonesHierarchy) {
-                        // 保存数据，显示弹窗
-                        window.__pendingBones = bones;
-                        window.__pendingK = k;
-                        dynamicDialog.classList.add('show');
-                    } else {
-                        // 无骨骼，直接静态转换
-                        doConversion(bones, k, false);
-                    }
-                } catch (err) {
-                    errorMsgEl.textContent = "程序执行错误：" + err.message + "\n" + err.stack;
-                    errorMsgEl.style.display = "block";
-                    console.error(err);
+function getDefaultRange(varName) {
+    const name = varName.split('.')[1];
+    if (['xpos','ypos','zpos','xbasepos','ybasepos','zbasepos'].includes(name)) return { min: -5, max: 5 };
+    else if (['xrot','yrot','zrot'].includes(name)) return { min: -180, max: 180 };
+    else if (name === 'extend_xrot') return { min: -90, max: 90 };
+    else if (name === 'extend_yrot') return { min: -180, max: 180 };
+    else if (['scale','extend_scale'].includes(name)) return { min: -5, max: 5 };
+    return { min: -100, max: 100 };
+}
+
+class VarDef {
+    constructor(expr, value, rangeMin=-100, rangeMax=100, step=1) {
+        this.expr = expr;
+        this.value = value;
+        this.rangeMin = rangeMin;
+        this.rangeMax = rangeMax;
+        this.step = step;
+    }
+}
+
+class VariableScope {
+    constructor(blockId) {
+        this.blockId = blockId;
+        this.vars = new Map();
+    }
+    initFromM(M) {
+        const names = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+        for(let i=0;i<names.length;i++) {
+            const name = `v.${names[i]}`;
+            const val = M[i];
+            const defRange = getDefaultRange(name);
+            if(!this.vars.has(name)) this.vars.set(name, new VarDef(val.toString(), val, defRange.min, defRange.max, 1));
+            else {
+                const def = this.vars.get(name);
+                def.expr = val.toString();
+                def.value = val;
+                if (def.rangeMin !== defRange.min || def.rangeMax !== defRange.max) {
+                    def.rangeMin = defRange.min;
+                    def.rangeMax = defRange.max;
                 }
             }
-
-            // 弹窗按钮事件
-            dialogConfirm.addEventListener('click', function() {
-                dynamicDialog.classList.remove('show');
-                if (window.__pendingBones) {
-                    doConversion(window.__pendingBones, window.__pendingK, true);
-                    window.__pendingBones = null;
-                    window.__pendingK = null;
+        }
+    }
+    toM() {
+        return [
+            this.vars.get('v.xpos')?.value ?? 0,
+            this.vars.get('v.ypos')?.value ?? 0,
+            this.vars.get('v.zpos')?.value ?? 0,
+            this.vars.get('v.xrot')?.value ?? 0,
+            this.vars.get('v.yrot')?.value ?? 0,
+            this.vars.get('v.zrot')?.value ?? 0,
+            this.vars.get('v.scale')?.value ?? 1,
+            this.vars.get('v.extend_scale')?.value ?? 1,
+            this.vars.get('v.extend_xrot')?.value ?? 0,
+            this.vars.get('v.extend_yrot')?.value ?? 0,
+            this.vars.get('v.xbasepos')?.value ?? 0,
+            this.vars.get('v.ybasepos')?.value ?? 0,
+            this.vars.get('v.zbasepos')?.value ?? 0
+        ];
+    }
+    recompute() {
+        let changed = true;
+        let iter = 0;
+        while(changed && iter++ < 20) {
+            changed = false;
+            for(let [name, def] of this.vars.entries()) {
+                const oldVal = def.value;
+                let newVal = isConstantExpr(def.expr) ? parseFloat(def.expr) : evaluateExpression(def.expr, this.vars, globalVars, this.blockId);
+                if(def.rangeMin !== undefined && def.rangeMax !== undefined) {
+                    if(newVal > def.rangeMax) def.rangeMax = newVal;
+                    if(newVal < def.rangeMin) def.rangeMin = newVal;
+                    newVal = Math.min(def.rangeMax, Math.max(def.rangeMin, newVal));
                 }
+                if(Math.abs(oldVal - newVal) > 1e-8) {
+                    def.value = newVal;
+                    changed = true;
+                }
+            }
+        }
+    }
+    setVarExpr(name, expr) { const def = this.vars.get(name); if(def) { def.expr = expr; this.recompute(); } }
+    addVar(name, expr, rangeMin=-100, rangeMax=100, step=1) { if(!this.vars.has(name)) this.vars.set(name, new VarDef(expr, 0, rangeMin, rangeMax, step)); this.recompute(); }
+    deleteVar(name) { this.vars.delete(name); }
+}
+
+// ====================== 方块类 ======================
+class Block {
+    constructor(id, M, textureUrl=null) {
+        this.id = id;
+        this.scope = new VariableScope(id);
+        this.scope.initFromM(M);
+        this.scope.recompute();
+        this.mesh = null;
+        this.label = null;
+        this.textureUrl = textureUrl;
+        this.createMesh();
+    }
+    createMesh() {
+        const material = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, roughness: 0.4, metalness: 0.2 });
+        this.mesh = new THREE.Mesh(boxGeo, material);
+        this.mesh.castShadow = true;
+        this.mesh.userData = { blockId: this.id };
+        if(this.textureUrl) this.loadTexture(this.textureUrl);
+        this.updateTransform();
+    }
+    loadTexture(url) { new THREE.TextureLoader().load(url, tex => { this.mesh.material.map = tex; this.mesh.material.needsUpdate = true; }); }
+    updateTransform() { const M = this.scope.toM(); const matrix = computeTransformMatrix(M); this.mesh.matrix.copy(matrix); this.mesh.matrixAutoUpdate = false; }
+    refresh() { this.scope.recompute(); this.updateTransform(); }
+    getVarList() { return Array.from(this.scope.vars.entries()).map(([name, def]) => ({ name, expr: def.expr, value: def.value, rangeMin: def.rangeMin, rangeMax: def.rangeMax, step: def.step })); }
+    setVarRange(name, min, max, step) { const def = this.scope.vars.get(name); if(def) { def.rangeMin = min; def.rangeMax = max; def.step = step; this.refresh(); } }
+    incVar(name, delta) {
+        const def = this.scope.vars.get(name);
+        if(def && isConstantExpr(def.expr)) {
+            let newVal = def.value + delta;
+            const stepStr = def.step.toString();
+            const decimalPlaces = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+            newVal = parseFloat(newVal.toFixed(decimalPlaces));
+            if (newVal > def.rangeMax) newVal = def.rangeMin;
+            else if (newVal < def.rangeMin) newVal = def.rangeMax;
+            def.expr = newVal.toString();
+            def.value = newVal;
+            this.refresh();
+            return true;
+        }
+        return false;
+    }
+}
+
+// ====================== 3D场景 ======================
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a2a);
+scene.fog = new THREE.FogExp2(0x0a0a2a, 0.008);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(8, 6, 10);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0px';
+labelRenderer.domElement.style.left = '0px';
+labelRenderer.domElement.style.pointerEvents = 'none';
+container.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0,0,0);
+controls.enablePan = false;
+controls.enableZoom = true;
+controls.zoomSpeed = 0.8;
+controls.rotateSpeed = 0.8;
+controls.enableDamping = true;
+controls.touchRotate = true;
+controls.touchZoom = true;
+
+// 光照
+const ambient = new THREE.AmbientLight(0x404060);
+scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
+dirLight.position.set(3,5,2);
+dirLight.castShadow = true;
+scene.add(dirLight);
+const fillLight = new THREE.PointLight(0x6688cc, 0.5);
+fillLight.position.set(-2,2,-3);
+scene.add(fillLight);
+const rimLight = new THREE.PointLight(0xffaa77, 0.4);
+rimLight.position.set(0,1.5,-4);
+scene.add(rimLight);
+
+// ====================== 动态坐标轴 ======================
+function createDynamicAxesAndGrid(camDist) {
+    if (axisGroup) {
+        axisGroup.traverse(child => { if (child.isCSS2DObject && child.element) child.element.remove(); });
+        scene.remove(axisGroup);
+    }
+    axisGroup = new THREE.Group();
+    let maxLen = Math.min(200, Math.max(5, camDist * 1.5));
+    let step = 1;
+    const targetSteps = [0.5, 1, 2, 5, 10, 20, 50];
+    for (let s of targetSteps) if (maxLen / s <= 16 && maxLen / s >= 6) { step = s; break; }
+    const actualMax = Math.floor(maxLen / step) * step;
+    const ticks = [];
+    for (let val = -actualMax; val <= actualMax + 0.001; val += step) if (Math.abs(val) > 0.01) ticks.push(val);
+    
+    const axes = [
+        { start: new THREE.Vector3(-actualMax, 0, 0), end: new THREE.Vector3(actualMax, 0, 0), label: 'X', color: 0xff3333 },
+        { start: new THREE.Vector3(0, -actualMax, 0), end: new THREE.Vector3(0, actualMax, 0), label: 'Y', color: 0x33ff33 },
+        { start: new THREE.Vector3(0, 0, -actualMax), end: new THREE.Vector3(0, 0, actualMax), label: 'Z', color: 0x3399ff }
+    ];
+    
+    const isMobile = window.innerWidth <= 700;
+    const fontSize = isMobile ? '10px' : '14px';
+    
+    axes.forEach(axis => {
+        if (showAxes) {
+            const points = [axis.start, axis.end];
+            const geo = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: axis.color }));
+            axisGroup.add(line);
+            const dir = new THREE.Vector3().subVectors(axis.end, axis.start).normalize();
+            const arrow = new THREE.ArrowHelper(dir, axis.end, 0.4, axis.color, 0.2, 0.1);
+            axisGroup.add(arrow);
+        }
+        if (showTicks) {
+            ticks.forEach(val => {
+                let pos = axis.label === 'X' ? new THREE.Vector3(val, 0, 0) : axis.label === 'Y' ? new THREE.Vector3(0, val, 0) : new THREE.Vector3(0, 0, val);
+                let tickDir = axis.label === 'X' ? new THREE.Vector3(0, 0.1, 0.1) : axis.label === 'Y' ? new THREE.Vector3(0.1, 0, 0.1) : new THREE.Vector3(0.1, 0.1, 0);
+                const tickGeo = new THREE.BufferGeometry().setFromPoints([pos, pos.clone().add(tickDir)]);
+                const tickLine = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0xaaaaaa }));
+                axisGroup.add(tickLine);
+                const div = document.createElement('div');
+                div.textContent = val.toFixed(1);
+                div.style.cssText = `color:#fff;font-size:${fontSize};font-weight:bold;text-shadow:0 0 2px black;padding:1px 2px;white-space:nowrap;`;
+                const labelObj = new CSS2DObject(div);
+                labelObj.position.copy(pos);
+                axisGroup.add(labelObj);
             });
-            dialogCancel.addEventListener('click', function() {
-                dynamicDialog.classList.remove('show');
-                if (window.__pendingBones) {
-                    doConversion(window.__pendingBones, window.__pendingK, false);
-                    window.__pendingBones = null;
-                    window.__pendingK = null;
-                }
-            });
+        }
+    });
+    
+    if (showGrid) {
+        const gridSize = actualMax * 2;
+        const divisions = ticks.length * 2;
+        const gridStep = gridSize / divisions;
+        for (let i = -divisions/2; i <= divisions/2; i++) {
+            const pos = i * gridStep;
+            if (Math.abs(pos) > actualMax) continue;
+            const pointsX = [new THREE.Vector3(-actualMax, 0, pos), new THREE.Vector3(actualMax, 0, pos)];
+            const geoX = new THREE.BufferGeometry().setFromPoints(pointsX);
+            const lineX = new THREE.Line(geoX, new THREE.LineBasicMaterial({ color: 0x88aaff, transparent: true, opacity: 0.4 }));
+            axisGroup.add(lineX);
+            const pointsZ = [new THREE.Vector3(pos, 0, -actualMax), new THREE.Vector3(pos, 0, actualMax)];
+            const geoZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
+            const lineZ = new THREE.Line(geoZ, new THREE.LineBasicMaterial({ color: 0x88aaff, transparent: true, opacity: 0.4 }));
+            axisGroup.add(lineZ);
+        }
+    }
+    
+    if (showAxes || showTicks) {
+        const originDiv = document.createElement('div');
+        originDiv.textContent = '0';
+        originDiv.style.cssText = `color:#fff;font-size:16px;font-weight:bold;text-shadow:0 0 2px black;padding:1px 4px;white-space:nowrap;`;
+        const originLabel = new CSS2DObject(originDiv);
+        originLabel.position.set(0, 0, 0);
+        axisGroup.add(originLabel);
+    }
+    
+    scene.add(axisGroup);
+}
+let lastDistance = 0;
+function updateAxesByDistance(force = false) {
+    const dist = camera.position.length();
+    if (force || Math.abs(dist - lastDistance) > 0.5) {
+        lastDistance = dist;
+        createDynamicAxesAndGrid(dist);
+    }
+}
 
-            // 版本选择事件 (原样)
-            if (versionBtns.length > 0) {
-                versionBtns.forEach(btn => {
-                    btn.addEventListener("click", function() {
-                        versionBtns.forEach(b => b.classList.remove("active"));
-                        this.classList.add("active");
-                        currentVersion = Number(this.dataset.version);
-                        console.log("已切换版本：", currentVersion);
-                    });
-                });
+// ====================== 方块管理 ======================
+let blocks = [];
+let selectedBlock = null;
+let hideNames = false;
+const history = new HistoryManager(30);
+
+function getState() { 
+    return { blocks: blocks.map(b => ({ id: b.id, vars: Array.from(b.scope.vars.entries()).map(([name, def]) => ({ name, expr: def.expr, value: def.value, rangeMin: def.rangeMin, rangeMax: def.rangeMax, step: def.step })), textureUrl: b.textureUrl })), globalVars: Array.from(globalVars.entries()).map(([name, g]) => ({ name, expr: g.def.expr, value: g.def.value, rangeMin: g.def.rangeMin, rangeMax: g.def.rangeMax, step: g.def.step, sourceBlockId: g.sourceBlockId })) }; 
+}
+function restoreState(state) {
+    // 停止所有自增
+    for (let [key, interval] of activeAutoIncMap.entries()) clearInterval(interval);
+    activeAutoIncMap.clear();
+    blocks.forEach(b => { scene.remove(b.mesh); if(b.label) scene.remove(b.label); });
+    blocks = [];
+    state.blocks.forEach(s => {
+        const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
+        const block = new Block(s.id, M, s.textureUrl);
+        block.scope.vars.clear();
+        s.vars.forEach(v => block.scope.vars.set(v.name, new VarDef(v.expr, v.value, v.rangeMin, v.rangeMax, v.step)));
+        block.refresh();
+        addBlock(block, false);
+    });
+    globalVars.clear();
+    state.globalVars.forEach(g => globalVars.set(g.name, { def: new VarDef(g.expr, g.value, g.rangeMin, g.rangeMax, g.step), sourceBlockId: g.sourceBlockId }));
+    if(selectedBlock) { const newSelected = blocks.find(b => b.id === selectedBlock.id); if(newSelected) selectBlock(newSelected); else selectBlock(null); }
+    else renderVariablesForBlock(null);
+    renderBlockList();
+}
+function recordAction() { history.record(getState()); }
+function undo() { const current = getState(); const previous = history.undo(current); if(previous) restoreState(previous); }
+function redo() { const current = getState(); const next = history.redo(current); if(next) restoreState(next); }
+
+function updateBlockLabel(block) {
+    if(!block.label) {
+        const div = document.createElement('div');
+        div.textContent = block.id;
+        div.style.cssText = 'background:rgba(0,0,0,0.7);padding:4px 12px;font-size:12px;border-left:3px solid #e67e22;color:#ffcc88;font-weight:bold;transform:skewX(-8deg);border-radius:20px;';
+        block.label = new CSS2DObject(div);
+        scene.add(block.label);
+    }
+    block.label.visible = !hideNames;
+    const pos = new THREE.Vector3();
+    block.mesh.matrixWorld.decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
+    block.label.position.copy(pos);
+    block.label.position.y += 0.7;
+}
+
+function addBlock(block, record = true) { blocks.push(block); scene.add(block.mesh); updateBlockLabel(block); renderBlockList(); if(selectedBlock === null) selectBlock(block); if(record) recordAction(); }
+function removeBlock(block) {
+    showModal("确认删除", `确定要删除方块“${block.id}”吗？`, (confirm) => {
+        if(confirm) {
+            const idx = blocks.indexOf(block);
+            if(idx !== -1) blocks.splice(idx,1);
+            scene.remove(block.mesh);
+            if(block.label) scene.remove(block.label);
+            if(selectedBlock === block) {
+                selectedBlock = blocks[0] || null;
+                if(selectedBlock) selectBlock(selectedBlock);
+                else renderVariablesForBlock(null);
             }
+            renderBlockList();
+            recordAction();
+        }
+    }, false);
+}
+function selectBlock(block) {
+    selectedBlock = block;
+    renderBlockList();
+    if(block) {
+        blocks.forEach(b => { if(b.mesh.material) b.mesh.material.emissiveIntensity = (b===block)?0.3:0; });
+        renderVariablesForBlock(block);
+    } else {
+        renderVariablesForBlock(null);
+    }
+}
 
-            jsonInputEl.addEventListener("input", function() {
-                const hasContent = this.value.trim().length > 0;
-                prefixGroupEl.style.display = hasContent ? "block" : "none";
-                suffixGroupEl.style.display = hasContent ? "block" : "none";
-            });
+function parseAssignment(str) { const match = str.match(/^([vt]\.[a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/); if(match) return { name: match[1], expr: match[2].trim() }; return null; }
 
-            if (convertBtn) convertBtn.addEventListener("click", convert);
-
-            if (outputTextEl) {
-                outputTextEl.addEventListener("click", (e) => {
-                    if (e.target.classList.contains("cube-copy-btn")) {
-                        const code = decodeURIComponent(e.target.dataset.code);
-                        navigator.clipboard.writeText(code).then(() => {
-                            const originalText = e.target.textContent;
-                            e.target.textContent = "✅ 复制成功";
-                            setTimeout(() => e.target.textContent = originalText, 1500);
-                        }).catch(() => {
-                            const textarea = document.createElement("textarea");
-                            textarea.value = code;
-                            document.body.appendChild(textarea);
-                            textarea.select();
-                            document.execCommand("copy");
-                            document.body.removeChild(textarea);
-                            const originalText = e.target.textContent;
-                            e.target.textContent = "✅ 复制成功";
-                            setTimeout(() => e.target.textContent = originalText, 1500);
-                        });
+function renderVariablesForBlock(block) {
+    const container = document.getElementById('varsContainer');
+    const newContainer = document.getElementById('newVarContainer');
+    if(!block) { container.innerHTML = '<div class="empty-state">未选中任何方块<br>点击上方方块或3D场景中的方块进行编辑</div>'; newContainer.innerHTML = ''; return; }
+    
+    // 渲染全局变量
+    let globalHtml = '';
+    if (globalVars.size > 0) {
+        globalHtml += '<div class="section-title">🌍 全局变量 (t.)</div>';
+        for (let [name, g] of globalVars.entries()) {
+            const isConst = isConstantExpr(g.def.expr);
+            const cardClass = isConst ? 'constant' : 'non-constant';
+            const inputClass = isConst ? 'constant-input' : 'non-constant-input';
+            const displayStr = `t.${name} = ${g.def.expr}`;
+            globalHtml += `
+                <div class="var-card global ${cardClass}" data-var="t.${name}" data-global="true">
+                    <div class="var-header" data-toggle="t.${name}">
+                        <input type="text" class="assignment-input ${inputClass}" data-var="t.${name}" value="${escapeHtml(displayStr)}" placeholder="变量 = 表达式">
+                        <span class="var-expand">▼</span>
+                    </div>
+                    <div class="var-details" data-details="t.${name}">
+                        ${isConst ? `
+                        <div class="auto-inc-btns">
+                            <button class="inc-btn inc-up" data-var="t.${name}" data-dir="up"><span>▲ 自增</span></button>
+                            <button class="inc-btn inc-down" data-var="t.${name}" data-dir="down"><span>▼ 自减</span></button>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" class="var-slider" data-var="t.${name}" min="${g.def.rangeMin}" max="${g.def.rangeMax}" step="${g.def.step}" value="${g.def.value}">
+                        </div>
+                        <div class="range-row">
+                            <div class="range-item">Min <input type="number" class="range-min" data-var="t.${name}" value="${g.def.rangeMin}" step="any"></div>
+                            <div class="range-item">Max <input type="number" class="range-max" data-var="t.${name}" value="${g.def.rangeMax}" step="any"></div>
+                            <div class="range-item">步长 <input type="number" class="range-step" data-var="t.${name}" value="${g.def.step}" step="any"></div>
+                        </div>
+                        ` : ''}
+                        <button class="delete-var" data-var="t.${name}"><span>删除变量</span></button>
+                        <div style="font-size:10px; color:#888; margin-top:8px;">📌 绑定方块: ${g.sourceBlockId || '无'}</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    // 渲染局部变量
+    const vars = block.getVarList();
+    let localHtml = '<div class="section-title">📦 局部变量 (v.)</div>';
+    vars.forEach(v => {
+        const isConst = isConstantExpr(v.expr);
+        const cardClass = isConst ? 'constant' : 'non-constant';
+        const inputClass = isConst ? 'constant-input' : 'non-constant-input';
+        const displayStr = `${v.name} = ${v.expr}`;
+        localHtml += `
+            <div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}">
+                <div class="var-header" data-toggle="${v.name}">
+                    <input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}" placeholder="变量 = 表达式">
+                    <span class="var-expand">▼</span>
+                </div>
+                <div class="var-details" data-details="${v.name}">
+                    ${isConst ? `
+                    <div class="auto-inc-btns">
+                        <button class="inc-btn inc-up" data-var="${v.name}" data-dir="up"><span>▲ 自增</span></button>
+                        <button class="inc-btn inc-down" data-var="${v.name}" data-dir="down"><span>▼ 自减</span></button>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}">
+                    </div>
+                    <div class="range-row">
+                        <div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div>
+                        <div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div>
+                        <div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div>
+                    </div>
+                    ` : ''}
+                    <button class="delete-var" data-var="${v.name}"><span>删除变量</span></button>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = globalHtml + localHtml;
+    
+    newContainer.innerHTML = `<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.xxx = 0  或 t.xxx = 0 (回车创建)"></div>`;
+    const newInput = document.getElementById('newVarInput');
+    if(newInput) {
+        if (newInput._handler) newInput.removeEventListener('keydown', newInput._handler);
+        const handler = (e) => {
+            if(e.key === 'Enter') {
+                e.preventDefault(); e.stopPropagation();
+                const val = newInput.value.trim();
+                const parsed = parseAssignment(val);
+                if(!parsed) { showModal("格式错误", "请使用: v.变量名 = 表达式 或 t.变量名 = 表达式", null, false); return; }
+                const { name, expr } = parsed;
+                if(name.startsWith('t.')) {
+                    const varKey = name.slice(2);
+                    if(globalVars.has(varKey)) { showModal("变量已存在", "全局变量已存在", null, false); return; }
+                    const defaultRange = getDefaultRange(name);
+                    const newGlobal = { def: new VarDef(expr, 0, defaultRange.min, defaultRange.max, 1), sourceBlockId: block.id };
+                    globalVars.set(varKey, newGlobal);
+                    // 立即计算一次该全局变量
+                    const sourceBlock = blocks.find(b => b.id === block.id);
+                    if (sourceBlock) {
+                        const localVarsMap = sourceBlock.scope.vars;
+                        let newVal = isConstantExpr(expr) ? parseFloat(expr) : evaluateExpression(expr, localVarsMap, globalVars, block.id);
+                        if (newGlobal.def.rangeMin !== undefined && newGlobal.def.rangeMax !== undefined) {
+                            if (newVal > newGlobal.def.rangeMax) newGlobal.def.rangeMax = newVal;
+                            if (newVal < newGlobal.def.rangeMin) newGlobal.def.rangeMin = newVal;
+                            newVal = Math.min(newGlobal.def.rangeMax, Math.max(newGlobal.def.rangeMin, newVal));
+                        }
+                        newGlobal.def.value = newVal;
                     }
-                });
+                    // 重新计算所有方块（因为全局变量可能被引用）
+                    blocks.forEach(b => b.refresh());
+                    renderVariablesForBlock(block);
+                    recordAction();
+                    newInput.value = '';
+                } else {
+                    if(block.scope.vars.has(name)) { showModal("变量已存在", "局部变量已存在", null, false); return; }
+                    const defaultRange = getDefaultRange(name);
+                    block.scope.addVar(name, expr, defaultRange.min, defaultRange.max, 1);
+                    renderVariablesForBlock(block);
+                    recordAction();
+                    newInput.value = '';
+                }
             }
-
-            if (copyAllBtn) {
-                copyAllBtn.addEventListener("click", () => {
-                    const buttons = document.querySelectorAll('#outputText .cube-copy-btn');
-                    const commands = [];
-                    buttons.forEach(btn => {
-                        commands.push(decodeURIComponent(btn.dataset.code));
-                    });
-                    const allText = commands.join('\n');
-                    navigator.clipboard.writeText(allText).then(() => {
-                        const originalText = copyAllBtn.textContent;
-                        copyAllBtn.textContent = "✅ 全部复制成功";
-                        setTimeout(() => copyAllBtn.textContent = originalText, 1500);
-                    }).catch(() => {
-                        const textarea = document.createElement("textarea");
-                        textarea.value = allText;
-                        document.body.appendChild(textarea);
-                        textarea.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(textarea);
-                        const originalText = copyAllBtn.textContent;
-                        copyAllBtn.textContent = "✅ 全部复制成功";
-                        setTimeout(() => copyAllBtn.textContent = originalText, 1500);
-                    });
-                });
-            }
-
-            uploadModelBtn.addEventListener("click", () => {
-                modelFileInput.click();
-            });
-            modelFileInput.addEventListener("change", function(e) {
-                const file = this.files[0];
-                if (!file) return;
-                modelFileNameSpan.textContent = file.name;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    jsonInputEl.value = ev.target.result;
-                    jsonInputEl.dispatchEvent(new Event('input', { bubbles: true }));
-                };
-                reader.onerror = () => {
-                    errorMsgEl.textContent = "读取文件失败";
-                    errorMsgEl.style.display = "block";
-                };
-                reader.readAsText(file);
-            });
-
-            if (jsonInputEl) {
-                jsonInputEl.addEventListener("keydown", (e) => {
-                    if (e.ctrlKey && e.key === "Enter") convert();
-                });
+        };
+        newInput.addEventListener('keydown', handler);
+        newInput._handler = handler;
+    }
+    
+    // 折叠/展开 - 阻止滑动条和按钮冒泡
+    document.querySelectorAll('.var-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+            // 如果点击的是输入框、自增按钮区域、滑动条区域，则忽略折叠
+            if(e.target.classList.contains('assignment-input') || 
+               e.target.closest('.auto-inc-btns') || 
+               e.target.closest('.slider-container') ||
+               e.target.closest('.range-row')) return;
+            const varName = header.dataset.toggle;
+            const details = document.querySelector(`.var-details[data-details="${varName}"]`);
+            if(details) details.classList.toggle('show');
+        });
+    });
+    
+    // 表达式输入 - 局部变量
+    document.querySelectorAll('.assignment-input').forEach(inp => {
+        const varName = inp.dataset.var;
+        const isGlobal = varName.startsWith('t.');
+        inp.addEventListener('change', (e) => {
+            e.stopPropagation();
+            const newValue = inp.value;
+            const parsed = parseAssignment(newValue);
+            if(parsed && parsed.name === varName) {
+                if (isGlobal) {
+                    const key = varName.slice(2);
+                    const g = globalVars.get(key);
+                    if (g) {
+                        g.def.expr = parsed.expr;
+                        // 重新计算该全局变量（基于其源方块）
+                        const sourceBlock = blocks.find(b => b.id === g.sourceBlockId);
+                        if (sourceBlock) {
+                            const localVarsMap = sourceBlock.scope.vars;
+                            let newVal = isConstantExpr(parsed.expr) ? parseFloat(parsed.expr) : evaluateExpression(parsed.expr, localVarsMap, globalVars, g.sourceBlockId);
+                            if (g.def.rangeMin !== undefined && g.def.rangeMax !== undefined) {
+                                if (newVal > g.def.rangeMax) g.def.rangeMax = newVal;
+                                if (newVal < g.def.rangeMin) g.def.rangeMin = newVal;
+                                newVal = Math.min(g.def.rangeMax, Math.max(g.def.rangeMin, newVal));
+                            }
+                            g.def.value = newVal;
+                        }
+                        blocks.forEach(b => b.refresh());
+                        renderVariablesForBlock(block);
+                        recordAction();
+                    }
+                } else {
+                    block.scope.setVarExpr(varName, parsed.expr);
+                    block.refresh();
+                    renderVariablesForBlock(block);
+                    recordAction();
+                    // 更新依赖此局部变量的全局变量
+                    updateGlobalVarsDependingOn(block, varName);
+                }
+            } else {
+                const v = isGlobal ? globalVars.get(varName.slice(2))?.def : block.scope.vars.get(varName);
+                if(v) inp.value = `${varName} = ${v.expr}`;
             }
         });
-    </script>
+        inp.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); inp.dispatchEvent(new Event('change')); } });
+        inp.addEventListener('click', (e) => e.stopPropagation());
+    });
     
+    // 自增按钮
+    document.querySelectorAll('.inc-up').forEach(btn => {
+        const varName = btn.dataset.var;
+        const isGlobal = varName.startsWith('t.');
+        if (isGlobal) {
+            const key = varName.slice(2);
+            const g = globalVars.get(key);
+            if(g && isConstantExpr(g.def.expr)) {
+                btn.onclick = (e) => { e.stopPropagation(); toggleAutoInc(btn, true, null, key, g.def.step, g.sourceBlockId); };
+            }
+        } else {
+            const def = block.scope.vars.get(varName);
+            if(def && isConstantExpr(def.expr)) {
+                btn.onclick = (e) => { e.stopPropagation(); toggleAutoInc(btn, false, block, varName, def.step); };
+            }
+        }
+    });
+    document.querySelectorAll('.inc-down').forEach(btn => {
+        const varName = btn.dataset.var;
+        const isGlobal = varName.startsWith('t.');
+        if (isGlobal) {
+            const key = varName.slice(2);
+            const g = globalVars.get(key);
+            if(g && isConstantExpr(g.def.expr)) {
+                btn.onclick = (e) => { e.stopPropagation(); toggleAutoInc(btn, true, null, key, -g.def.step, g.sourceBlockId); };
+            }
+        } else {
+            const def = block.scope.vars.get(varName);
+            if(def && isConstantExpr(def.expr)) {
+                btn.onclick = (e) => { e.stopPropagation(); toggleAutoInc(btn, false, block, varName, -def.step); };
+            }
+        }
+    });
+    
+    // 滑动条
+    document.querySelectorAll('.var-slider').forEach(slider => {
+        const varName = slider.dataset.var;
+        const isGlobal = varName.startsWith('t.');
+        slider.addEventListener('input', (e) => {
+            e.stopPropagation();
+            const val = parseFloat(e.target.value);
+            if (isGlobal) {
+                const key = varName.slice(2);
+                const g = globalVars.get(key);
+                if(g) {
+                    g.def.expr = val.toString();
+                    g.def.value = val;
+                    blocks.forEach(b => b.refresh());
+                    const exprInput = document.querySelector(`.assignment-input[data-var="${varName}"]`);
+                    if(exprInput) exprInput.value = `${varName} = ${val}`;
+                    const valueSpan = slider.closest('.var-card').querySelector('.var-value');
+                    if(valueSpan) valueSpan.textContent = val.toFixed(4);
+                    recordAction();
+                }
+            } else {
+                const def = block.scope.vars.get(varName);
+                if(def) {
+                    def.expr = val.toString();
+                    def.value = val;
+                    block.refresh();
+                    const exprInput = document.querySelector(`.assignment-input[data-var="${varName}"]`);
+                    if(exprInput) exprInput.value = `${varName} = ${val}`;
+                    const valueSpan = slider.closest('.var-card').querySelector('.var-value');
+                    if(valueSpan) valueSpan.textContent = val.toFixed(4);
+                    recordAction();
+                    updateGlobalVarsDependingOn(block, varName);
+                }
+            }
+        });
+        // 确保滑动条不会触发header的点击折叠
+        slider.addEventListener('mousedown', (e) => e.stopPropagation());
+        slider.addEventListener('touchstart', (e) => e.stopPropagation());
+    });
+    
+    // 范围控制
+    document.querySelectorAll('.range-min, .range-max, .range-step').forEach(inp => {
+        const varName = inp.dataset.var;
+        const isGlobal = varName.startsWith('t.');
+        inp.addEventListener('change', (e) => {
+            e.stopPropagation();
+            let newMin, newMax, newStep;
+            if(inp.classList.contains('range-min')) newMin = parseFloat(inp.value);
+            if(inp.classList.contains('range-max')) newMax = parseFloat(inp.value);
+            if(inp.classList.contains('range-step')) newStep = parseFloat(inp.value);
+            if (isGlobal) {
+                const key = varName.slice(2);
+                const g = globalVars.get(key);
+                if(g) {
+                    if (newMin !== undefined) g.def.rangeMin = newMin;
+                    if (newMax !== undefined) g.def.rangeMax = newMax;
+                    if (newStep !== undefined) g.def.step = newStep;
+                    let curVal = g.def.value;
+                    if(curVal < g.def.rangeMin) { g.def.expr = g.def.rangeMin.toString(); g.def.value = g.def.rangeMin; }
+                    else if(curVal > g.def.rangeMax) { g.def.expr = g.def.rangeMax.toString(); g.def.value = g.def.rangeMax; }
+                    blocks.forEach(b => b.refresh());
+                    renderVariablesForBlock(block);
+                    recordAction();
+                }
+            } else {
+                const def = block.scope.vars.get(varName);
+                if(def) {
+                    if (newMin !== undefined) def.rangeMin = newMin;
+                    if (newMax !== undefined) def.rangeMax = newMax;
+                    if (newStep !== undefined) def.step = newStep;
+                    let curVal = def.value;
+                    if(curVal < def.rangeMin) { def.expr = def.rangeMin.toString(); def.value = def.rangeMin; }
+                    else if(curVal > def.rangeMax) { def.expr = def.rangeMax.toString(); def.value = def.rangeMax; }
+                    block.refresh();
+                    renderVariablesForBlock(block);
+                    recordAction();
+                    updateGlobalVarsDependingOn(block, varName);
+                }
+            }
+        });
+    });
+    
+    // 删除变量
+    document.querySelectorAll('.delete-var').forEach(btn => {
+        const varName = btn.dataset.var;
+        const isGlobal = varName.startsWith('t.');
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isGlobal) {
+                const key = varName.slice(2);
+                showModal("确认删除", `确定要删除全局变量 "${varName}" 吗？`, () => {
+                    // 停止该变量的自增任务
+                    for (let [k, interval] of activeAutoIncMap.entries()) {
+                        if (k.startsWith(`global_${key}_`)) {
+                            clearInterval(interval);
+                            activeAutoIncMap.delete(k);
+                        }
+                    }
+                    globalVars.delete(key);
+                    blocks.forEach(b => b.refresh());
+                    renderVariablesForBlock(block);
+                    recordAction();
+                }, false);
+            } else {
+                if(varName.startsWith('v.') && ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'].includes(varName.slice(2))) {
+                    showModal("禁止删除", "不能删除核心变换变量", null, false);
+                    return;
+                }
+                showModal("确认删除", `确定要删除局部变量 "${varName}" 吗？`, () => {
+                    // 停止该变量的自增任务
+                    for (let [k, interval] of activeAutoIncMap.entries()) {
+                        if (k.startsWith(`${block.id}_${varName}_`)) {
+                            clearInterval(interval);
+                            activeAutoIncMap.delete(k);
+                        }
+                    }
+                    block.scope.deleteVar(varName);
+                    block.refresh();
+                    renderVariablesForBlock(block);
+                    recordAction();
+                    // 可能有全局变量依赖此变量
+                    updateGlobalVarsDependingOn(block, varName);
+                }, false);
+            }
+        });
+    });
+}
+
+function renderBlockList() {
+    const container = document.getElementById('blockSelector');
+    container.innerHTML = blocks.map(b => `<div class="block-tag ${selectedBlock===b?'active':''}" data-id="${b.id}"><span>${b.id}</span><button class="delete-block" data-id="${b.id}">✖</button></div>`).join('');
+    document.querySelectorAll('.block-tag').forEach(tag => {
+        tag.addEventListener('click', (e) => { if(e.target.classList.contains('delete-block')) return; const id = tag.dataset.id; const block = blocks.find(b => b.id === id); if(block) selectBlock(block); });
+        const delBtn = tag.querySelector('.delete-block');
+        if(delBtn) delBtn.addEventListener('click', (e) => { e.stopPropagation(); const id = delBtn.dataset.id; const block = blocks.find(b => b.id === id); if(block) removeBlock(block); });
+    });
+}
+
+function escapeHtml(str) { return str.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
+
+// 导入导出（保持原有功能，支持全局变量绑定）
+function importFromCommands(text) {
+    const lines = text.split(/\r?\n/);
+    let currentCommand = '', inQuote = false, commands = [];
+    for(let line of lines) {
+        if(!inQuote && line.includes('playanimation')) {
+            if(currentCommand) commands.push(currentCommand);
+            currentCommand = line;
+            const quoteCount = (line.match(/"/g) || []).length;
+            inQuote = quoteCount % 2 === 1;
+        } else if(inQuote) {
+            currentCommand += '\n' + line;
+            const quoteCount = (line.match(/"/g) || []).length;
+            if(quoteCount % 2 === 1) inQuote = false;
+        } else if(currentCommand && !inQuote) {
+            commands.push(currentCommand);
+            currentCommand = '';
+        }
+    }
+    if(currentCommand) commands.push(currentCommand);
+    
+    for(let cmd of commands) {
+        if(!cmd.includes('playanimation')) continue;
+        const quoteMatch = cmd.match(/"([^"]*)"/);
+        if(!quoteMatch) continue;
+        const content = quoteMatch[1];
+        const assignments = [];
+        const assignmentRegex = /([vt])\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g;
+        let match;
+        while((match = assignmentRegex.exec(content)) !== null) assignments.push({ type: match[1], name: match[2], expr: match[3].trim() });
+        const idMatch = content.match(/['"]方块编号：([^'"]+)['"]/);
+        let rawId = idMatch ? idMatch[1] : "新方块";
+        const existingIds = blocks.map(b=>b.id);
+        let finalId = rawId, cnt = 0;
+        while(existingIds.includes(finalId)) finalId = rawId + String.fromCharCode(97 + (cnt++ % 26));
+        const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
+        const varMap = new Map();
+        assignments.forEach(a => { if(a.type === 'v') varMap.set(`v.${a.name}`, a.expr); });
+        const basicVars = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+        basicVars.forEach((name, idx) => { const val = varMap.get(`v.${name}`); if(val !== undefined && isConstantExpr(val)) M[idx] = parseFloat(val); });
+        const newBlock = new Block(finalId, M, null);
+        assignments.forEach(a => {
+            const fullName = `${a.type}.${a.name}`;
+            if(a.type === 'v') {
+                if(newBlock.scope.vars.has(fullName)) newBlock.scope.setVarExpr(fullName, a.expr);
+                else newBlock.scope.addVar(fullName, a.expr, -1000, 1000, 1);
+            } else if(a.type === 't') {
+                if(!globalVars.has(a.name)) {
+                    const defaultRange = getDefaultRange(`t.${a.name}`);
+                    globalVars.set(a.name, { def: new VarDef(a.expr, 0, defaultRange.min, defaultRange.max, 1), sourceBlockId: newBlock.id });
+                } else {
+                    globalVars.get(a.name).def.expr = a.expr;
+                }
+            }
+        });
+        newBlock.refresh();
+        addBlock(newBlock);
+    }
+    // 重新计算所有全局变量
+    for (let [name, g] of globalVars.entries()) {
+        const sourceBlock = blocks.find(b => b.id === g.sourceBlockId);
+        if (sourceBlock) {
+            const localVarsMap = sourceBlock.scope.vars;
+            let newVal = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, localVarsMap, globalVars, g.sourceBlockId);
+            if (g.def.rangeMin !== undefined && g.def.rangeMax !== undefined) {
+                if (newVal > g.def.rangeMax) g.def.rangeMax = newVal;
+                if (newVal < g.def.rangeMin) g.def.rangeMin = newVal;
+                newVal = Math.min(g.def.rangeMax, Math.max(g.def.rangeMin, newVal));
+            }
+            g.def.value = newVal;
+        }
+    }
+    blocks.forEach(b => b.refresh());
+    if(selectedBlock) renderVariablesForBlock(selectedBlock);
+    showModal("导入完成", `成功创建 ${blocks.length} 个方块`, null, false);
+}
+
+function exportCommands() {
+    let output = '';
+    for(let block of blocks) {
+        const vars = block.getVarList();
+        const vVars = vars.filter(v => v.name.startsWith('v.'));
+        let paramStr = '';
+        for(let v of vVars) paramStr += `${v.name}=${v.expr}; `;
+        paramStr += `'方块编号：${block.id}'; `;
+        output += `execute positioned ~-1.5~1~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "${paramStr}"\n`;
+    }
+    showModal("导出预览", output, null, false);
+    navigator.clipboard.writeText(output).then(() => showModal("已复制", "命令已复制到剪贴板", null, false));
+}
+
+function addDefaultBlock() {
+    const defaultM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
+    let base = "方块", id = base, idx=1;
+    while(blocks.some(b=>b.id===id)) id = base + (idx++).toString();
+    addBlock(new Block(id, defaultM, null));
+    selectBlock(blocks[blocks.length-1]);
+}
+
+function toggleFullscreen() {
+    const panel = document.getElementById('dataPanel');
+    if(!document.fullscreenElement) { document.documentElement.requestFullscreen(); panel.style.display = 'none'; }
+    else { document.exitFullscreen(); panel.style.display = 'flex'; }
+}
+document.addEventListener('fullscreenchange', () => { const panel = document.getElementById('dataPanel'); panel.style.display = document.fullscreenElement ? 'none' : 'flex'; });
+
+// 面板拖拽
+const dataPanel = document.getElementById('dataPanel');
+const resizeBar = document.getElementById('resizeBar');
+let startY, startHeight;
+function startResize(e) { e.preventDefault(); startY = e.clientY; startHeight = dataPanel.offsetHeight; document.addEventListener('mousemove', onResize); document.addEventListener('mouseup', stopResize); document.addEventListener('touchmove', onTouchResize, { passive: false }); document.addEventListener('touchend', stopResize); }
+function onResize(e) { let h = startHeight - (e.clientY - startY); h = Math.min(window.innerHeight*0.85, Math.max(180, h)); dataPanel.style.height = h + 'px'; }
+function onTouchResize(e) { e.preventDefault(); let h = startHeight - (e.touches[0].clientY - startY); h = Math.min(window.innerHeight*0.85, Math.max(180, h)); dataPanel.style.height = h + 'px'; }
+function stopResize() { document.removeEventListener('mousemove', onResize); document.removeEventListener('mouseup', stopResize); document.removeEventListener('touchmove', onTouchResize); document.removeEventListener('touchend', stopResize); }
+resizeBar.addEventListener('mousedown', startResize);
+resizeBar.addEventListener('touchstart', startResize, { passive: false });
+dataPanel.style.height = '320px';
+
+document.getElementById('hideNameBtn').addEventListener('click', () => {
+    hideNames = !hideNames;
+    blocks.forEach(b => { if(b.label) b.label.visible = !hideNames; });
+    document.getElementById('hideNameBtn').querySelector('span').textContent = hideNames ? '🏷️ 显示名称' : '🏷️ 隐藏名称';
+});
+
+// 点击选中
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+function onCanvasClick(event) {
+    if(event.target.closest('.data-panel') || event.target.closest('.top-bar')) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects(blocks.map(b=>b.mesh));
+    if(intersects.length) { const hit = intersects[0].object; const block = blocks.find(b=>b.mesh===hit); if(block) selectBlock(block); }
+    else selectBlock(null);
+}
+renderer.domElement.addEventListener('click', onCanvasClick);
+renderer.domElement.addEventListener('touchstart', (e) => {
+    let start = { x: e.touches[0].clientX, y: e.touches[0].clientY }, moved = false;
+    const onMove = (me) => { if(Math.abs(me.touches[0].clientX - start.x) > 5 || Math.abs(me.touches[0].clientY - start.y) > 5) moved = true; };
+    const onEnd = (ee) => {
+        document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onEnd);
+        if(!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar')) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(blocks.map(b=>b.mesh));
+            if(intersects.length) { const hit = intersects[0].object; const block = blocks.find(b=>b.mesh===hit); if(block) selectBlock(block); }
+            else selectBlock(null);
+        }
+    };
+    document.addEventListener('touchmove', onMove); document.addEventListener('touchend', onEnd);
+    e.preventDefault();
+}, { passive: false });
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    updateAxesByDistance();
+    blocks.forEach(b => updateBlockLabel(b));
+    renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
+}
+animate();
+
+// 坐标轴开关
+document.getElementById('showAxesCheckbox').addEventListener('change', (e) => { showAxes = e.target.checked; updateAxesByDistance(true); });
+document.getElementById('showGridCheckbox').addEventListener('change', (e) => { showGrid = e.target.checked; updateAxesByDistance(true); });
+document.getElementById('showTicksCheckbox').addEventListener('change', (e) => { showTicks = e.target.checked; updateAxesByDistance(true); });
+
+// 撤销/重做
+document.getElementById('undoBtn').addEventListener('click', () => undo());
+document.getElementById('redoBtn').addEventListener('click', () => redo());
+window.addEventListener('keydown', (e) => { if(e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if(e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); } });
+
+document.getElementById('importBtn').onclick = () => { showModal("导入数据", "粘贴 molang 命令文本：", (txt) => { if(txt) importFromCommands(txt); }, true); };
+document.getElementById('exportBtn').onclick = exportCommands;
+document.getElementById('addBlockBtn').onclick = addDefaultBlock;
+document.getElementById('fullscreenBtn').onclick = toggleFullscreen;
+document.getElementById('textureUpload').onchange = (e) => { if(!selectedBlock) { showModal("提示", "请先选中方块", null, false); return; } const file = e.target.files[0]; if(file) selectedBlock.loadTexture(URL.createObjectURL(file)); };
+
+createDynamicAxesAndGrid(camera.position.length());
+addDefaultBlock();
+</script>
 </body>
 </html>
