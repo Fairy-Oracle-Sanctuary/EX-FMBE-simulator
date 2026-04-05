@@ -3,124 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX版fmbe模拟器</title>
+    <title>EX fmbe模拟器</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif; transition: background 0.2s; }
-        body.light-mode { background: #e9ecef; }
-        body.light-mode .data-panel { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif; transition: background 0.2s, color 0.2s; }
+        
+        /* 深色模式 (默认) */
+        body { background: #030617; }
+        body .data-panel { background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(8px); border-top: 1px solid #1e293b; }
+        body .panel-content { background: transparent; }
+        body .var-card { background: #1e293b; border: 1px solid #334155; }
+        body .var-header { background: #0f172a; }
+        body .info-note { background: #0f172a; color: #cbd5e1; }
+        body .tool-btn, body .skew-btn, body .inc-btn, body .block-menu-btn, body .modal-btn {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border: 1px solid #334155;
+            color: #e2e8f0;
+        }
+        body .block-dropdown-item:hover { background: #0ea5e9; color: #0f172a; }
+        body .assignment-input.constant-input { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+        body .assignment-input.non-constant-input { background: linear-gradient(135deg, #5b21b6, #8b5cf6); }
+        body .axis-controls { background: #0f172a; border: 1px solid #1e293b; }
+        
+        /* 浅色模式 */
+        body.light-mode { background: #eef2ff; }
+        body.light-mode .data-panel { background: #ffffff; box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.08); border-top: 1px solid #e2e8f0; }
         body.light-mode .panel-content { background: #ffffff; }
-        body.light-mode .var-card { background: #f8f9fa; }
-        body.light-mode .var-header { background: #f1f3f5; }
-        body.light-mode .info-note { background: #f1f3f5; color: #2c3e50; }
-        body.light-mode .tool-btn, body.light-mode .skew-btn, body.light-mode .inc-btn { background: linear-gradient(135deg, #1e4663, #2c6e9e); }
-        body.light-mode .block-menu-btn { background: linear-gradient(135deg, #1e4663, #2c6e9e); }
-        body.light-mode .block-dropdown-item:hover { background: #e6b422; color: #1e2a3a; }
-        body.light-mode .assignment-input.constant-input { background: linear-gradient(135deg, #2b6cb0, #63b3ed); }
-        body.light-mode .assignment-input.non-constant-input { background: linear-gradient(135deg, #805ad5, #b794f4); }
+        body.light-mode .var-card { background: #f8fafc; border: 1px solid #e2e8f0; }
+        body.light-mode .var-header { background: #f1f5f9; }
+        body.light-mode .info-note { background: #f1f5f9; color: #1e293b; }
+        body.light-mode .tool-btn, body.light-mode .skew-btn, body.light-mode .inc-btn, body.light-mode .block-menu-btn, body.light-mode .modal-btn {
+            background: linear-gradient(135deg, #d9eaff, #b0d4ff) !important;
+            border: 1px solid #475569 !important;
+            color: #0f172a !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        body.light-mode .tool-btn:hover, body.light-mode .skew-btn:hover, body.light-mode .inc-btn:hover, body.light-mode .block-menu-btn:hover {
+            background: linear-gradient(135deg, #c0e0ff, #9ac8ff) !important;
+            transform: skewX(-12deg) translateY(-1px);
+        }
+        body.light-mode .axis-controls { background: #e2e8f0 !important; border: 1px solid #cbd5e1 !important; }
+        body.light-mode .control-item { background: #cbd5e1; color: #0f172a; }
+        body.light-mode .control-item label { color: #0f172a; }
+        body.light-mode .block-dropdown-item:hover { background: #0ea5e9; color: white; }
+        body.light-mode .assignment-input.constant-input { background: linear-gradient(135deg, #1e4a76, #3b82f6); color: white; }
+        body.light-mode .assignment-input.non-constant-input { background: linear-gradient(135deg, #6d28d9, #a78bfa); color: white; }
+        body.light-mode .var-details { background: #f1f5f9; border-top-color: #e2e8f0; }
+        body.light-mode .range-item { background: #e2e8f0; color: #1e293b; }
+        body.light-mode .range-item input { background: #ffffff; border-color: #94a3b8; color: #0f172a; }
+        
+        /* 材质菜单 */
+        .material-menu { position: fixed; background: #0f172a; border-radius: 24px; padding: 14px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); z-index: 200; width: 270px; transform: skewX(-3deg); right: 16px; top: 70px; border: 1px solid #3b82f6; backdrop-filter: blur(8px); color: #e2e8f0; }
+        .material-menu .menu-title { font-weight: bold; margin-bottom: 12px; font-size: 14px; }
+        .material-menu .menu-divider { height: 1px; background: #334155; margin: 12px 0; }
+        .material-menu .menu-option { padding: 8px 12px; cursor: pointer; border-radius: 20px; transition: 0.1s; font-size: 13px; color: #e2e8f0; }
+        .material-menu .menu-option:hover { background: #1e293b; }
+        body.light-mode .material-menu { background: #ffffff; border: 1px solid #cbd5e1; color: #0f172a; }
+        body.light-mode .material-menu .menu-option { color: #0f172a; }
+        body.light-mode .material-menu .menu-option:hover { background: #e2e8f0; }
+        
+        /* 命令预览 */
+        body .cmd-preview { background: #030617; color: #4ade80; padding: 12px; border-radius: 16px; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border: 1px solid #1e293b; }
+        body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px solid #cbd5e1; }
+        
         #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
         .top-bar { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; }
-        .skew-btn { background: linear-gradient(135deg, #0a2f5a, #2c6e9e); border: none; color: white; font-weight: bold; padding: 8px 20px; font-size: 14px; cursor: pointer; transform: skewX(-15deg); border-radius: 12px; transition: 0.2s; }
+        .skew-btn { padding: 8px 20px; font-size: 14px; cursor: pointer; transform: skewX(-15deg); border-radius: 12px; transition: all 0.2s ease; font-weight: bold; }
         .skew-btn span { display: inline-block; transform: skewX(15deg); }
-        .data-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 16px 16px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.2); }
-        .resize-handle { height: 20px; background: linear-gradient(135deg, #ffaa33, #ffdd88); cursor: ns-resize; touch-action: none; position: relative; border-radius: 12px 12px 0 0; z-index: 16; }
-        .resize-handle::before {
-            content: '';
-            position: absolute;
-            top: -12px;
-            left: 0;
-            right: 0;
-            height: 40px;
-            background: transparent;
-            pointer-events: auto;
-            cursor: ns-resize;
-        }
-        .resize-handle::after { content: "⋮⋮"; position: absolute; left: 50%; top: 2px; transform: translateX(-50%); color: #8b5a2b; font-size: 16px; letter-spacing: 6px; font-weight: bold; pointer-events: none; }
-        .panel-content { flex: 1; overflow-y: auto; padding: 12px; background: #ffffff; }
-        .toolbar-integrated { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f0c674; align-items: center; }
-        .tool-btn { background: linear-gradient(135deg, #0a2f5a, #2c6e9e); border: none; color: white; font-weight: bold; padding: 6px 14px; font-size: 12px; cursor: pointer; transform: skewX(-12deg); border-radius: 10px; }
+        .data-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3); transition: height 0.05s linear; }
+        .resize-handle { height: 10px; background: linear-gradient(135deg, #1e4a76, #06b6d4); cursor: ns-resize; touch-action: none; position: relative; border-radius: 0; z-index: 16; flex-shrink: 0; }
+        .resize-handle::after { content: "┎┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┒"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%); color: white; font-size: 16px; letter-spacing: 6px; font-weight: bold; text-shadow: 0 0 2px #000; pointer-events: none; }
+        .panel-content { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; }
+        .toolbar-integrated { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid rgba(6, 182, 212, 0.5); align-items: center; }
+        .tool-btn { padding: 6px 14px; font-size: 12px; cursor: pointer; transform: skewX(-12deg); border-radius: 10px; font-weight: bold; transition: all 0.2s; }
         .tool-btn span { display: inline-block; transform: skewX(12deg); }
-        .axis-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 8px 12px; background: #f5f5f8; border-radius: 12px; transform: skewX(-4deg); }
-        .control-item { display: inline-flex; align-items: center; gap: 6px; background: #e6b42220; padding: 3px 10px; border-radius: 20px; transform: skewX(4deg); font-size: 12px; }
-        .block-menu-btn { background: linear-gradient(135deg, #0a2f5a, #2c6e9e); transform: skewX(-12deg); padding: 6px 16px; cursor: pointer; font-weight: bold; color: white; display: inline-flex; align-items: center; gap: 8px; border-radius: 10px; font-size: 13px; border: none; margin-bottom: 12px; }
-        .block-dropdown { position: fixed; background: #1e2a3a; border-radius: 12px; padding: 6px 0; min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 300; transform: skewX(-5deg); max-height: 300px; overflow-y: auto; }
-        .block-dropdown-item { padding: 6px 12px; color: white; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .dropdown-actions { display: flex; gap: 6px; }
-        .dropdown-actions button { background: rgba(0,0,0,0.4); border: none; color: white; font-size: 12px; padding: 2px 8px; border-radius: 16px; cursor: pointer; }
-        .section-title { font-size: 13px; font-weight: bold; margin: 12px 0 8px; padding-left: 8px; border-left: 4px solid #e6b422; color: #e67e22; }
-        .var-card { background: #fafafc; margin-bottom: 10px; border-left-width: 4px; border-left-style: solid; border-radius: 8px; overflow: hidden; }
-        .var-card.constant { border-left-color: #3399ff; }
-        .var-card.non-constant { border-left-color: #9b59b6; }
-        .var-card.global { background: #fef9e6; }
-        .var-header { padding: 8px 12px; background: #f5f5f8; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .assignment-input { flex: 1; font-weight: bold; padding: 6px 12px; font-size: 12px; transform: skewX(-12deg); font-family: monospace; outline: none; margin-right: 8px; border-radius: 8px; border: none; }
-        .assignment-input.constant-input { background: linear-gradient(135deg, #2b6cb0, #63b3ed); color: white; }
-        .assignment-input.non-constant-input { background: linear-gradient(135deg, #805ad5, #b794f4); color: white; }
-        .var-expand { font-size: 12px; color: #e67e22; font-weight: bold; }
-        .var-details { padding: 10px; border-top: 1px solid #eee; display: none; background: white; }
-        .auto-inc-btns { display: flex; gap: 8px; margin-bottom: 10px; }
-        .inc-btn { background: linear-gradient(135deg, #0a2f5a, #2c6e9e); transform: skewX(-12deg); padding: 4px 12px; font-weight: bold; cursor: pointer; color: white; border: none; border-radius: 8px; font-size: 11px; }
-        .inc-btn.active { background: linear-gradient(135deg, #e67e22, #f39c12); }
-        .new-var-row { margin-top: 16px; padding-top: 12px; border-top: 2px solid #f0c674; display: flex; gap: 10px; }
-        .new-var-input { flex: 2; background: linear-gradient(135deg, #3399ff, #88ccff); border: none; color: white; font-weight: bold; padding: 8px 14px; font-size: 12px; transform: skewX(-12deg); font-family: monospace; border-radius: 10px; outline: none; }
-        .info-note { font-size: 10px; color: #666; text-align: center; margin: 12px 0 6px; background: #f8f8f8; padding: 6px; transform: skewX(-6deg); border-radius: 8px; }
+        .axis-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 8px 14px; border-radius: 16px; transform: skewX(-4deg); }
+        .control-item { display: inline-flex; align-items: center; gap: 6px; background: rgba(6, 182, 212, 0.15); padding: 3px 12px; border-radius: 24px; transform: skewX(4deg); font-size: 12px; }
+        .control-item input { accent-color: #06b6d4; }
+        .block-menu-btn { transform: skewX(-12deg); padding: 6px 18px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-size: 13px; margin-bottom: 12px; transition: 0.2s; }
+        .block-dropdown { position: fixed; background: #1e293b; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); z-index: 300; transform: skewX(-5deg); max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
+        .block-dropdown-item { padding: 8px 16px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: 0.1s; color: #f1f5f9; }
+        .dropdown-actions { display: flex; gap: 8px; }
+        .dropdown-actions button { background: rgba(0, 0, 0, 0.5); border: none; color: white; font-size: 12px; padding: 2px 8px; border-radius: 20px; cursor: pointer; transition: 0.1s; }
+        .dropdown-actions button:hover { background: #f43f5e; }
+        
+        /* 双列布局样式 */
+        .variables-container {
+            display: flex;
+            gap: 24px;
+            position: relative;
+        }
+        .variables-left {
+            flex: 1;
+            min-width: 0;
+            border-right: 1px solid rgba(100, 116, 139, 0.3);
+            padding-right: 20px;
+        }
+        .variables-right {
+            flex: 1;
+            min-width: 0;
+        }
+        body.light-mode .variables-left {
+            border-right-color: rgba(100, 116, 139, 0.4);
+        }
+        @media (max-width: 768px) {
+            .variables-container { flex-direction: column; gap: 16px; }
+            .variables-left { border-right: none; padding-right: 0; }
+        }
+        
+        .section-title { font-size: 14px; font-weight: bold; margin: 18px 0 10px; padding-left: 10px; border-left: 4px solid #06b6d4; color: #38bdf8; letter-spacing: 0.5px; }
+        .var-card { margin-bottom: 12px; border-left-width: 4px; border-left-style: solid; border-radius: 12px; overflow: hidden; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); }
+        .var-card.constant { border-left-color: #3b82f6; }
+        .var-card.non-constant { border-left-color: #a78bfa; }
+        .var-card.global { background: #0f172a; border-left-color: #06b6d4; }
+        .var-header { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .assignment-input { flex: 1; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; outline: none; margin-right: 8px; border-radius: 10px; border: none; color: white; }
+        .var-expand { font-size: 14px; color: #06b6d4; font-weight: bold; }
+        .var-details { padding: 12px; border-top: 1px solid #334155; display: none; background: #0f172a; }
+        .auto-inc-btns { display: flex; gap: 10px; margin-bottom: 12px; }
+        .inc-btn { transform: skewX(-12deg); padding: 6px 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 10px; font-size: 13px; transition: 0.1s; }
+        .inc-btn.active { background: linear-gradient(135deg, #06b6d4, #3b82f6); box-shadow: 0 0 8px #06b6d4; color: #0f172a; }
+        .new-var-row { margin-top: 16px; padding-top: 12px; border-top: 2px solid #06b6d4; display: flex; gap: 10px; }
+        .new-var-input { flex: 2; background: linear-gradient(135deg, #1e4a76, #3b82f6); border: none; color: white; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; border-radius: 12px; outline: none; }
+        .new-var-input::placeholder { color: rgba(255, 255, 240, 0.7); }
+        .info-note { font-size: 11px; text-align: center; margin: 16px 0 8px; padding: 6px; transform: skewX(-6deg); border-radius: 12px; }
         .slider-container { margin: 8px 0; }
-        input[type="range"] { width: 100%; height: 5px; -webkit-appearance: none; background: #ddd; border-radius: 4px; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: #e6b422; cursor: pointer; transform: rotate(45deg); border-radius: 3px; }
+        input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; background: #334155; border-radius: 4px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #06b6d4; cursor: pointer; transform: rotate(45deg); border-radius: 4px; box-shadow: 0 0 4px #06b6d4; }
         .range-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
-        .range-item { background: #f0f0f0; padding: 3px 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; transform: skewX(-8deg); border-radius: 8px; }
-        .range-item input { width: 65px; background: white; border: 1px solid #e6b422; padding: 3px 6px; text-align: center; border-radius: 6px; }
-        .delete-var { background: linear-gradient(135deg, #8b2c2c, #c05a5a); transform: skewX(-12deg); padding: 3px 12px; cursor: pointer; color: white; border: none; margin-top: 8px; border-radius: 8px; font-size: 11px; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: white; border-radius: 16px; padding: 20px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; transform: skewX(-2deg); }
-        .command-card { background: #f8f9fa; border-radius: 12px; margin-bottom: 16px; padding: 12px; border-left: 4px solid #e6b422; }
+        .range-item { padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; transform: skewX(-8deg); border-radius: 20px; background: #1e293b; color: #cbd5e1; }
+        .range-item input { background: #0f172a; border: 1px solid #3b82f6; color: white; padding: 4px 6px; text-align: center; border-radius: 8px; width: 80px; font-size: 12px; }
+        .delete-var { background: linear-gradient(135deg, #9f1239, #e11d48); transform: skewX(-12deg); padding: 6px 16px; cursor: pointer; color: white; border: none; margin-top: 10px; border-radius: 20px; font-size: 12px; transition: 0.1s; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #0f172a; border-radius: 28px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; transform: skewX(-2deg); border: 1px solid #3b82f6; box-shadow: 0 20px 35px rgba(0, 0, 0, 0.5); color: #e2e8f0; }
+        .command-card { background: #1e293b; border-radius: 20px; margin-bottom: 16px; padding: 12px; border-left: 4px solid #06b6d4; }
         .command-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-        .block-id-badge { font-weight: bold; background: #2c3e50; color: #ffcc88; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
-        .copy-cmd-btn { background: linear-gradient(135deg, #0a2f5a, #2c6e9e); border: none; color: white; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; }
-        .cmd-preview { background: #1e1e2a; color: #f8f8f2; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; }
-        body.light-mode .cmd-preview { background: #e2e8f0; color: #1e293b; }
-        .material-menu { position: fixed; background: white; border-radius: 20px; padding: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.3); z-index: 200; width: 260px; transform: skewX(-3deg); right: 16px; top: 70px; }
-        @media (max-width: 700px) { .material-menu { width: 240px; right: 10px; top: 70px; } }
+        .block-id-badge { font-weight: bold; background: #0f172a; color: #38bdf8; padding: 4px 14px; border-radius: 40px; font-size: 12px; border: 1px solid #3b82f6; }
+        .copy-cmd-btn { background: linear-gradient(135deg, #0f2b3d, #1e4a76); border: none; color: white; padding: 5px 14px; border-radius: 30px; cursor: pointer; font-size: 12px; }
         .color-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 10px 0; }
-        .color-swatch { width: 30px; height: 30px; border-radius: 8px; cursor: pointer; border: 2px solid #ddd; transition: 0.1s; }
-        .menu-title { font-weight: bold; text-align: center; margin-bottom: 6px; color: #e67e22; font-size: 14px; }
-        .menu-divider { height: 1px; background: #eee; margin: 6px 0; }
-        .menu-option { text-align: center; padding: 5px; background: #f0f0f0; border-radius: 20px; cursor: pointer; font-size: 12px; }
-        .empty-state { text-align: center; color: #999; padding: 20px; font-size: 13px; }
-        .modal-input-text { width: 100%; padding: 8px; border-radius: 10px; border: 1px solid #e6b422; margin-bottom: 12px; transform: skewX(-4deg); }
-        .modal-btn { background: linear-gradient(135deg, #0a2f5a, #2c6e9e); border: none; color: white; padding: 6px 16px; transform: skewX(-10deg); border-radius: 8px; cursor: pointer; }
+        .color-swatch { width: 32px; height: 32px; border-radius: 12px; cursor: pointer; border: 2px solid #334155; transition: 0.1s; }
+        .empty-state { text-align: center; color: #64748b; padding: 24px; font-size: 13px; }
+        .modal-input-text { width: 100%; padding: 10px; border-radius: 16px; border: 1px solid #3b82f6; background: #1e293b; color: white; margin-bottom: 12px; transform: skewX(-4deg); font-size: 14px; }
+        .modal-btn { padding: 8px 20px; transform: skewX(-10deg); border-radius: 40px; cursor: pointer; margin: 0 6px; font-size: 13px; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        
+        .var-group { margin-bottom: 20px; border-radius: 12px; overflow: hidden; }
+        .group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; cursor: pointer; transition: 0.1s; margin-bottom: 6px; font-weight: bold; }
+        .group-header .group-title { font-size: 14px; letter-spacing: 0.5px; color: #38bdf8; }
+        .group-header .group-toggle { font-size: 12px; color: #06b6d4; }
+        .group-content { display: block; }
+        .group-content.collapsed { display: none; }
+        body.light-mode .group-header { background: #e2e8f0; border-color: #cbd5e1; color: #0f172a; }
+        body.light-mode .group-header .group-title { color: #0f172a; }
+        
+        @media (min-width: 1024px) {
+            .assignment-input { padding: 10px 16px; font-size: 15px; }
+            .inc-btn { padding: 8px 18px; font-size: 14px; }
+            .section-title { font-size: 16px; }
+            .group-header .group-title { font-size: 15px; }
+            .var-expand { font-size: 15px; }
+            .new-var-input { padding: 10px 16px; font-size: 15px; }
+            .range-item { font-size: 13px; }
+            .range-item input { width: 90px; font-size: 13px; }
+            .delete-var { padding: 8px 18px; font-size: 13px; }
+            .tool-btn { padding: 8px 16px; font-size: 13px; }
+            .skew-btn { padding: 10px 24px; font-size: 15px; }
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
 <div id="canvas-container"></div>
-
 <div class="top-bar">
-    <button class="skew-btn" id="undoBtn"><span>↩️</span></button>
-    <button class="skew-btn" id="redoBtn"><span>↪️</span></button>
-    <button class="skew-btn" id="fullscreenBtn"><span>🖥️</span></button>
+    <button class="skew-btn" id="undoBtn"><span>↩ 撤销</span></button>
+    <button class="skew-btn" id="redoBtn"><span>↪ 重做</span></button>
+    <button class="skew-btn" id="fullscreenBtn"><span>⛶ 全屏</span></button>
 </div>
-
 <div class="data-panel" id="dataPanel">
     <div class="resize-handle" id="resizeHandle"></div>
     <div class="panel-content" id="panelContent">
         <div class="toolbar-integrated">
-            <button class="tool-btn" id="importBtn"><span>📂 导入</span></button>
-            <button class="tool-btn" id="exportBtn"><span>📤 输出</span></button>
-            <button class="tool-btn" id="materialPresetBtn"><span>🎨 材质</span></button>
-            <button class="tool-btn" id="modeSwitchBtn"><span>🌙 深色</span></button>
-            <button class="tool-btn" id="addBlockBtn"><span>➕ 新建</span></button>
-            <button class="tool-btn" id="hideNameBtn"><span>🏷️ 隐名</span></button>
+            <button class="tool-btn" id="importBtn"><span> 导入</span></button>
+            <button class="tool-btn" id="exportBtn"><span> 输出命令</span></button>
+            <button class="tool-btn" id="materialPresetBtn"><span> 材质</span></button>
+            <button class="tool-btn" id="modeSwitchBtn"><span> 深色</span></button>
+            <button class="tool-btn" id="addBlockBtn"><span> 新建方块</span></button>
+            <button class="tool-btn" id="hideNameBtn"><span> 隐名</span></button>
         </div>
         <div class="axis-controls">
-            <div class="control-item"><input type="checkbox" id="showAxesCheckbox" checked><label>📐 轴</label></div>
-            <div class="control-item"><input type="checkbox" id="showGridCheckbox" checked><label>🔲 平面</label></div>
-            <div class="control-item"><input type="checkbox" id="showTicksCheckbox" checked><label>📏 刻度</label></div>
+            <div class="control-item"><input type="checkbox" id="showAxesCheckbox" checked><label>显示轴线</label></div>
+            <div class="control-item"><input type="checkbox" id="showGridCheckbox" checked><label>显示平面</label></div>
+            <div class="control-item"><input type="checkbox" id="showTicksCheckbox" checked><label>显示刻度</label></div>
         </div>
-        <button class="block-menu-btn" id="blockMenuBtn"><span>📦 选择方块 ▼</span></button>
-        <div id="varsContainer"></div>
+        <button class="block-menu-btn" id="blockMenuBtn"><span>📦 方块列表 ▼</span></button>
+        <div id="varsContainer" class="variables-container"></div>
         <div id="newVarContainer" style="margin-top: 12px;"></div>
-        <div class="info-note">✨ 如有bug请联系小E 3155929574@qq.com</div>
+        <div class="info-note">反馈: 3155929574@qq.com</div>
     </div>
 </div>
 
@@ -138,348 +218,1116 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// ========== 数学库 ==========
+// ==================== 数学库 ====================
 const angleMath = {
-    sin: d=>Math.sin(d*Math.PI/180), cos: d=>Math.cos(d*Math.PI/180), tan: d=>Math.tan(d*Math.PI/180),
-    asin: v=>Math.asin(v)*180/Math.PI, acos: v=>Math.acos(v)*180/Math.PI, atan: v=>Math.atan(v)*180/Math.PI,
-    atan2: (y,x)=>Math.atan2(y,x)*180/Math.PI, sqrt:Math.sqrt, abs:Math.abs, floor:Math.floor, ceil:Math.ceil,
-    round:Math.round, PI:Math.PI, E:Math.E
+    sin: d => Math.sin(d * Math.PI / 180), cos: d => Math.cos(d * Math.PI / 180), tan: d => Math.tan(d * Math.PI / 180),
+    asin: v => Math.asin(v) * 180 / Math.PI, acos: v => Math.acos(v) * 180 / Math.PI, atan: v => Math.atan(v) * 180 / Math.PI,
+    atan2: (y, x) => Math.atan2(y, x) * 180 / Math.PI, sqrt: Math.sqrt, abs: Math.abs, floor: Math.floor, ceil: Math.ceil,
+    round: Math.round, pow: Math.pow, exp: Math.exp, log: Math.log, min: Math.min, max: Math.max, PI: Math.PI, E: Math.E
 };
+
 function evaluateExpression(expr, localVarsMap, globalVarsMap) {
     const scope = { math: angleMath };
-    const vProxy = {}; for(let [k,obj] of localVarsMap) vProxy[k.slice(2)] = obj.value;
+    const vProxy = {};
+    for (let [k, obj] of localVarsMap) if (k.startsWith('v.')) vProxy[k.slice(2)] = obj.value;
     scope.v = vProxy;
-    const tProxy = {}; for(let [n,g] of globalVarsMap) tProxy[n] = g.def.value;
+    const tProxy = {};
+    for (let [n, g] of globalVarsMap) tProxy[n] = g.def.value;
     scope.t = tProxy;
-    try { return new Function('math','v','t',`return (${expr})`)(scope.math,scope.v,scope.t); } catch(e){ return 0; }
+    try { return new Function('math', 'v', 't', `return (${expr})`)(scope.math, scope.v, scope.t); } catch(e) { return 0; }
 }
-function isConstantExpr(e){ return /^\s*-?\d+(\.\d+)?\s*$/.test(e); }
-function getDefaultRange(name){ const n=name.split('.')[1];
-    if(['xpos','ypos','zpos','xbasepos','ybasepos','zbasepos'].includes(n)) return {min:-5,max:5};
-    if(['xrot','yrot','zrot'].includes(n)) return {min:-180,max:180};
-    if(n==='extend_xrot') return {min:-90,max:90};
-    if(n==='extend_yrot') return {min:-180,max:180};
-    if(['scale','extend_scale'].includes(n)) return {min:-5,max:5};
-    return {min:-100,max:100};
-}
-class VarDef { constructor(expr,val,min=-100,max=100,step=1){ this.expr=expr; this.value=val; this.rangeMin=min; this.rangeMax=max; this.step=step; } }
-class VariableScope { constructor(bid){ this.blockId=bid; this.vars=new Map(); }
-    initFromM(M){ const names=['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
-        for(let i=0;i<names.length;i++){ const name=`v.${names[i]}`; const val=M[i]; const rg=getDefaultRange(name);
-            if(!this.vars.has(name)) this.vars.set(name,new VarDef(val.toString(),val,rg.min,rg.max,1));
-            else{ const d=this.vars.get(name); d.expr=val.toString(); d.value=val; if(d.rangeMin!==rg.min||d.rangeMax!==rg.max){ d.rangeMin=rg.min; d.rangeMax=rg.max; } } } }
-    toM(){ return [ this.vars.get('v.xpos')?.value??0, this.vars.get('v.ypos')?.value??0, this.vars.get('v.zpos')?.value??0, this.vars.get('v.xrot')?.value??0, this.vars.get('v.yrot')?.value??0, this.vars.get('v.zrot')?.value??0, this.vars.get('v.scale')?.value??1, this.vars.get('v.extend_scale')?.value??1, this.vars.get('v.extend_xrot')?.value??0, this.vars.get('v.extend_yrot')?.value??0, this.vars.get('v.xbasepos')?.value??0, this.vars.get('v.ybasepos')?.value??0, this.vars.get('v.zbasepos')?.value??0 ]; }
-    recompute(){ let changed=true, iter=0; while(changed && iter++<20){ changed=false; for(let [n,d] of this.vars){ let old=d.value; let nv=isConstantExpr(d.expr)?parseFloat(d.expr):evaluateExpression(d.expr,this.vars,globalVars);
-            if(d.rangeMin!==undefined){ if(nv>d.rangeMax) d.rangeMax=nv; if(nv<d.rangeMin) d.rangeMin=nv; nv=Math.min(d.rangeMax,Math.max(d.rangeMin,nv)); }
-            if(Math.abs(old-nv)>1e-8){ d.value=nv; changed=true; } } } }
-    setVarExpr(n,expr){ const d=this.vars.get(n); if(d){ d.expr=expr; this.recompute(); } }
-    addVar(n,expr,min=-100,max=100,step=1){ if(!this.vars.has(n)) this.vars.set(n,new VarDef(expr,0,min,max,step)); this.recompute(); }
-    deleteVar(n){ this.vars.delete(n); } }
 
-const boxGeo = new THREE.BoxGeometry(1,1,1);
-const degToRad = d=>d*Math.PI/180;
-// 基岩版 ZXY 顺序旋转矩阵
-function computeTransformMatrix(M){ const [px,py,pz, rx,ry,rz, s, es, ex, ey, bx,by,bz]=M;
-    const matB=new THREE.Matrix4().makeTranslation(bx,by,bz); const matEsy=new THREE.Matrix4().makeScale(1,es,1);
-    const matEyr=new THREE.Matrix4().makeRotationY(-degToRad(ey)); const matExr=new THREE.Matrix4().makeRotationX(-degToRad(ex));
-    const matEs=new THREE.Matrix4().makeScale(1,1,es); const matExl=new THREE.Matrix4().makeRotationX(degToRad(ex));
-    const matEyl=new THREE.Matrix4().makeRotationY(degToRad(ey)); const matS=new THREE.Matrix4().makeScale(s,s,s);
-    const matRx=new THREE.Matrix4().makeRotationX(degToRad(rx)); const matRy=new THREE.Matrix4().makeRotationY(degToRad(-ry));
-    const matRz=new THREE.Matrix4().makeRotationZ(degToRad(-rz)); const matP=new THREE.Matrix4().makeTranslation(px,py,pz);
-    let m=matB.clone(); m.premultiply(matEsy).premultiply(matEyr).premultiply(matExr).premultiply(matEs).premultiply(matExl).premultiply(matEyl).premultiply(matS).premultiply(matRz).premultiply(matRx).premultiply(matRy).premultiply(matP);
+function isConstantExpr(e) { return /^\s*-?\d+(\.\d+)?\s*$/.test(e); }
+function getDefaultRange(name) {
+    const n = name.split('.')[1];
+    if (['xpos','ypos','zpos','xbasepos','ybasepos','zbasepos'].includes(n)) return { min: -5, max: 5 };
+    if (['xrot','yrot','zrot'].includes(n)) return { min: -180, max: 180 };
+    if (n === 'extend_xrot') return { min: -90, max: 90 };
+    if (n === 'extend_yrot') return { min: -180, max: 180 };
+    if (['scale','extend_scale'].includes(n)) return { min: -5, max: 5 };
+    if (['rotatex','rotatey','rotatez'].includes(n)) return { min: -180, max: 180, step: 1 };
+    return { min: -100, max: 100 };
+}
+
+class VarDef {
+    constructor(expr, val, min = -100, max = 100, step = 1) {
+        this.expr = expr; this.value = val; this.rangeMin = min; this.rangeMax = max; this.step = step;
+    }
+}
+
+class VariableScope {
+    constructor(bid) { this.blockId = bid; this.vars = new Map(); }
+    initFromM(M) {
+        const names = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+        for (let i = 0; i < names.length; i++) {
+            const name = `v.${names[i]}`; const val = M[i]; const rg = getDefaultRange(name);
+            if (!this.vars.has(name)) this.vars.set(name, new VarDef(val.toString(), val, rg.min, rg.max, 1));
+            else { const d = this.vars.get(name); d.expr = val.toString(); d.value = val; d.rangeMin = rg.min; d.rangeMax = rg.max; }
+        }
+    }
+    toM() {
+        return [ this.vars.get('v.xpos')?.value ?? 0, this.vars.get('v.ypos')?.value ?? 0, this.vars.get('v.zpos')?.value ?? 0,
+                 this.vars.get('v.xrot')?.value ?? 0, this.vars.get('v.yrot')?.value ?? 0, this.vars.get('v.zrot')?.value ?? 0,
+                 this.vars.get('v.scale')?.value ?? 1, this.vars.get('v.extend_scale')?.value ?? 1,
+                 this.vars.get('v.extend_xrot')?.value ?? 0, this.vars.get('v.extend_yrot')?.value ?? 0,
+                 this.vars.get('v.xbasepos')?.value ?? 0, this.vars.get('v.ybasepos')?.value ?? 0, this.vars.get('v.zbasepos')?.value ?? 0 ];
+    }
+    recompute() {
+        let changed = true, iter = 0;
+        while (changed && iter++ < 20) {
+            changed = false;
+            for (let [n, d] of this.vars) {
+                let old = d.value;
+                let nv = isConstantExpr(d.expr) ? parseFloat(d.expr) : evaluateExpression(d.expr, this.vars, globalVars);
+                if (d.rangeMin !== undefined) {
+                    if (nv > d.rangeMax) d.rangeMax = nv;
+                    if (nv < d.rangeMin) d.rangeMin = nv;
+                    nv = Math.min(d.rangeMax, Math.max(d.rangeMin, nv));
+                }
+                if (Math.abs(old - nv) > 1e-8) { d.value = nv; changed = true; }
+            }
+        }
+    }
+    setVarExpr(n, expr) { const d = this.vars.get(n); if (d) { d.expr = expr; this.recompute(); } }
+    addVar(n, expr, min = -100, max = 100, step = 1) { if (!this.vars.has(n)) { this.vars.set(n, new VarDef(expr, 0, min, max, step)); this.recompute(); } }
+    deleteVar(n) { this.vars.delete(n); }
+}
+
+const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+const degToRad = d => d * Math.PI / 180;
+
+function computeTransformMatrix(M, rotatex = 0, rotatey = 0, rotatez = 0) {
+    const [px, py, pz, rx, ry, rz, s, es, ex, ey, bx, by, bz] = M;
+    const matB = new THREE.Matrix4().makeTranslation(bx, by, bz);
+    const matEsy = new THREE.Matrix4().makeScale(1, es, 1);
+    const matEyr = new THREE.Matrix4().makeRotationY(-degToRad(ey));
+    const matExr = new THREE.Matrix4().makeRotationX(-degToRad(ex));
+    const matEs = new THREE.Matrix4().makeScale(1, 1, es);
+    const matExl = new THREE.Matrix4().makeRotationX(degToRad(ex));
+    const matEyl = new THREE.Matrix4().makeRotationY(degToRad(ey));
+    const matS = new THREE.Matrix4().makeScale(s, s, s);
+    const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
+    const matRy = new THREE.Matrix4().makeRotationY(degToRad(-ry));
+    const matRz = new THREE.Matrix4().makeRotationZ(degToRad(-rz));
+    const matP = new THREE.Matrix4().makeTranslation(px, py, pz);
+    let m = matB.clone();
+    m.premultiply(matEsy).premultiply(matEyr).premultiply(matExr).premultiply(matEs).premultiply(matExl).premultiply(matEyl).premultiply(matS).premultiply(matRz).premultiply(matRx).premultiply(matRy).premultiply(matP);
+    const globalRz = new THREE.Matrix4().makeRotationZ(degToRad(-rotatez));
+    const globalRx = new THREE.Matrix4().makeRotationX(degToRad(rotatex));
+    const globalRy = new THREE.Matrix4().makeRotationY(degToRad(-rotatey));
+    const globalRot = globalRz.clone().multiply(globalRx).multiply(globalRy);
+    m.premultiply(globalRot);
     return m;
 }
+
 class Block {
-    constructor(id, M, textureUrl=null, materialColor='#c0c0c0') {
-        this.id=id; this.scope=new VariableScope(id); this.scope.initFromM(M); this.scope.recompute();
-        this.textureUrl=textureUrl; this.materialColor=materialColor; this.materialType=textureUrl?'texture':'color';
-        this.mesh=null; this.label=null; this.axisHelper=null;
+    constructor(id, M, textureUrl = null, materialColor = '#aaccff') {
+        this.id = id;
+        this.scope = new VariableScope(id);
+        this.scope.initFromM(M);
+        this.scope.recompute();
+        this.textureUrl = textureUrl;
+        this.materialColor = materialColor;
+        this.materialType = textureUrl ? 'texture' : 'color';
+        this.mesh = null;
+        this.label = null;
+        this.axisHelper = null;
         this.createMesh();
     }
-    createMesh(){
-        let mat; if(this.materialType==='texture'&&this.textureUrl) mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.4,metalness:0.2});
-        else mat=new THREE.MeshStandardMaterial({color:this.materialColor,roughness:0.4,metalness:0.2});
-        if(this.mesh){ const old=this.mesh.material; if(old) old.dispose(); }
-        this.mesh=new THREE.Mesh(boxGeo,mat); this.mesh.castShadow=true; this.mesh.userData={blockId:this.id};
-        if(this.materialType==='texture'&&this.textureUrl) this.loadTexture(this.textureUrl,true);
-        const axisGroup=new THREE.Group();
-        const arrowX=new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1.2, 0xff3333, 0.3, 0.2);
-        const arrowY=new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 1.2, 0x33ff33, 0.3, 0.2);
-        const arrowZ=new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 1.2, 0x3399ff, 0.3, 0.2);
-        axisGroup.add(arrowX, arrowY, arrowZ);
-        this.axisHelper=axisGroup;
+    createMesh() {
+        let mat;
+        if (this.materialType === 'texture' && this.textureUrl) mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.2 });
+        else mat = new THREE.MeshStandardMaterial({ color: this.materialColor, roughness: 0.4, metalness: 0.2 });
+        if (this.mesh && this.mesh.material) this.mesh.material.dispose();
+        this.mesh = new THREE.Mesh(boxGeo, mat);
+        this.mesh.castShadow = true;
+        this.mesh.userData = { blockId: this.id };
+        if (this.materialType === 'texture' && this.textureUrl) this.loadTexture(this.textureUrl, true);
+        const axisGroup = new THREE.Group();
+        axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0xff6666, 0.3, 0.2));
+        axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, 0x66ff66, 0.3, 0.2));
+        axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0x66aaff, 0.3, 0.2));
+        this.axisHelper = axisGroup;
         this.mesh.add(this.axisHelper);
-        this.axisHelper.visible=false;
+        this.axisHelper.visible = false;
         this.updateTransform();
     }
-    loadTexture(url,skipCreate=false){
-        if(!skipCreate&&this.mesh) this.mesh.material=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.4,metalness:0.2});
-        new THREE.TextureLoader().load(url,tex=>{ if(this.mesh&&this.mesh.material){ this.mesh.material.map=tex; this.mesh.material.needsUpdate=true; } });
-        this.textureUrl=url; this.materialType='texture'; this.materialColor=null;
+    loadTexture(url, skipCreate = false) {
+        if (!skipCreate && this.mesh) this.mesh.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.2 });
+        new THREE.TextureLoader().load(url, tex => { if (this.mesh && this.mesh.material) { this.mesh.material.map = tex; this.mesh.material.needsUpdate = true; } });
+        this.textureUrl = url; this.materialType = 'texture'; this.materialColor = null;
     }
-    setSolidColor(hex){
-        if(!this.mesh) return;
-        const newMat=new THREE.MeshStandardMaterial({color:hex,roughness:0.4,metalness:0.2});
-        if(this.mesh.material) this.mesh.material.dispose();
-        this.mesh.material=newMat; this.materialType='color'; this.materialColor=hex; this.textureUrl=null;
+    setSolidColor(hex) {
+        if (!this.mesh) return;
+        const newMat = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4, metalness: 0.2 });
+        if (this.mesh.material) this.mesh.material.dispose();
+        this.mesh.material = newMat; this.materialType = 'color'; this.materialColor = hex; this.textureUrl = null;
     }
-    updateTransform(){ const M=this.scope.toM(); const matrix=computeTransformMatrix(M); this.mesh.matrix.copy(matrix); this.mesh.matrixAutoUpdate=false; this.mesh.matrixWorldNeedsUpdate = true; } // 关键：强制世界矩阵更新
-    refresh(){ this.scope.recompute(); this.updateTransform(); }
-    getVarList(){ return Array.from(this.scope.vars.entries()).map(([n,d])=>({name:n,expr:d.expr,value:d.value,rangeMin:d.rangeMin,rangeMax:d.rangeMax,step:d.step})); }
-    incVar(name,delta){ const d=this.scope.vars.get(name); if(d&&isConstantExpr(d.expr)){ let nv=d.value+delta; const dec=(d.step.toString().includes('.')?d.step.toString().split('.')[1].length:0); nv=parseFloat(nv.toFixed(dec)); if(nv>d.rangeMax) nv=d.rangeMin; else if(nv<d.rangeMin) nv=d.rangeMax; d.expr=nv.toString(); d.value=nv; this.refresh(); return true; } return false; }
+    updateTransform() {
+        const M = this.scope.toM();
+        const rotX = this.scope.vars.get('v.rotatex')?.value ?? 0;
+        const rotY = this.scope.vars.get('v.rotatey')?.value ?? 0;
+        const rotZ = this.scope.vars.get('v.rotatez')?.value ?? 0;
+        const matrix = computeTransformMatrix(M, rotX, rotY, rotZ);
+        this.mesh.matrix.copy(matrix); this.mesh.matrixAutoUpdate = false; this.mesh.matrixWorldNeedsUpdate = true;
+    }
+    refresh() {
+        this.scope.recompute();
+        this.updateTransform();
+        updateGlobalVarsDependingOn(this, null);
+    }
+    getVarList() { return Array.from(this.scope.vars.entries()).map(([n, d]) => ({ name: n, expr: d.expr, value: d.value, rangeMin: d.rangeMin, rangeMax: d.rangeMax, step: d.step })); }
+    incVar(name, delta) {
+        const d = this.scope.vars.get(name);
+        if (d && isConstantExpr(d.expr)) {
+            let nv = d.value + delta;
+            const dec = (d.step.toString().includes('.') ? d.step.toString().split('.')[1].length : 0);
+            nv = parseFloat(nv.toFixed(dec));
+            if (nv > d.rangeMax) nv = d.rangeMin;
+            else if (nv < d.rangeMin) nv = d.rangeMax;
+            d.expr = nv.toString(); d.value = nv;
+            this.refresh();
+            return true;
+        }
+        return false;
+    }
 }
-let globalVars=new Map(); let activeAutoIncMap=new Map();
-let blocks=[]; let selectedBlock=null; let hideNames=false;
-const history=(()=>{ let u=[],r=[]; return { record(s){ u.push(JSON.parse(JSON.stringify(s))); if(u.length>30) u.shift(); r=[]; }, undo(cur){ if(!u.length) return null; r.push(JSON.parse(JSON.stringify(cur))); return u.pop(); }, redo(cur){ if(!r.length) return null; u.push(JSON.parse(JSON.stringify(cur))); return r.pop(); } }; })();
-function getState(){ return { blocks:blocks.map(b=>({ id:b.id, vars:Array.from(b.scope.vars.entries()).map(([n,d])=>({name:n,expr:d.expr,value:d.value,rangeMin:d.rangeMin,rangeMax:d.rangeMax,step:d.step})), textureUrl:b.textureUrl, materialColor:b.materialColor, materialType:b.materialType })), globalVars:Array.from(globalVars.entries()).map(([n,g])=>({ name:n, expr:g.def.expr, value:g.def.value, rangeMin:g.def.rangeMin, rangeMax:g.def.rangeMax, step:g.def.step, sourceBlockId:g.sourceBlockId })) }; }
-function restoreState(state){ for(let [k,i] of activeAutoIncMap) clearInterval(i); activeAutoIncMap.clear(); blocks.forEach(b=>{ scene.remove(b.mesh); if(b.label) scene.remove(b.label); }); blocks=[]; state.blocks.forEach(s=>{ const M=[0,0,0,0,0,0,1,1,0,0,0,0,0]; const blk=new Block(s.id,M,s.textureUrl,s.materialColor||'#c0c0c0'); blk.materialType=s.materialType||'color'; blk.scope.vars.clear(); s.vars.forEach(v=>blk.scope.vars.set(v.name,new VarDef(v.expr,v.value,v.rangeMin,v.rangeMax,v.step))); blk.refresh(); if(blk.materialType==='color'&&blk.materialColor) blk.setSolidColor(blk.materialColor); else if(blk.materialType==='texture'&&blk.textureUrl) blk.loadTexture(blk.textureUrl); addBlock(blk,false); }); globalVars.clear(); state.globalVars.forEach(g=>globalVars.set(g.name,{ def:new VarDef(g.expr,g.value,g.rangeMin,g.rangeMax,g.step), sourceBlockId:g.sourceBlockId })); if(selectedBlock){ const nb=blocks.find(b=>b.id===selectedBlock.id); if(nb) selectBlock(nb); else selectBlock(null); } else renderVariablesForBlock(null); }
-function recordAction(){ history.record(getState()); }
-function undo(){ const cur=getState(); const prev=history.undo(cur); if(prev) restoreState(prev); }
-function redo(){ const cur=getState(); const nxt=history.redo(cur); if(nxt) restoreState(nxt); }
-function addBlock(block,record=true){ blocks.push(block); scene.add(block.mesh); updateBlockLabel(block); if(selectedBlock===null) selectBlock(block); if(record) recordAction(); }
-function removeBlock(block){ const idx=blocks.indexOf(block); if(idx!==-1) blocks.splice(idx,1); scene.remove(block.mesh); if(block.label) scene.remove(block.label); if(selectedBlock===block){ selectedBlock=blocks[0]||null; if(selectedBlock) selectBlock(selectedBlock); else renderVariablesForBlock(null); } recordAction(); }
-function selectBlock(block){ if(selectedBlock && selectedBlock.axisHelper) selectedBlock.axisHelper.visible=false;
-    selectedBlock=block;
-    if(block){ block.axisHelper.visible=true; blocks.forEach(b=>{ if(b.mesh.material) b.mesh.material.emissiveIntensity=(b===block)?0.3:0; }); renderVariablesForBlock(block); }
+
+let globalVars = new Map();
+let activeAutoIncMap = new Map();
+let blocks = [];
+let selectedBlock = null;
+let hideNames = false;
+
+// 历史记录
+const history = (() => {
+    let u = [], r = [];
+    return {
+        record(s) { u.push(JSON.parse(JSON.stringify(s))); if (u.length > 30) u.shift(); r = []; },
+        undo(cur) { if (!u.length) return null; r.push(JSON.parse(JSON.stringify(cur))); return u.pop(); },
+        redo(cur) { if (!r.length) return null; u.push(JSON.parse(JSON.stringify(cur))); return r.pop(); }
+    };
+})();
+
+function getState() {
+    return {
+        blocks: blocks.map(b => ({ id: b.id, vars: Array.from(b.scope.vars.entries()).map(([n, d]) => ({ name: n, expr: d.expr, value: d.value, rangeMin: d.rangeMin, rangeMax: d.rangeMax, step: d.step })), textureUrl: b.textureUrl, materialColor: b.materialColor, materialType: b.materialType })),
+        globalVars: Array.from(globalVars.entries()).map(([n, g]) => ({ name: n, expr: g.def.expr, value: g.def.value, rangeMin: g.def.rangeMin, rangeMax: g.def.rangeMax, step: g.def.step, sourceBlockId: g.sourceBlockId }))
+    };
+}
+
+function restoreState(state) {
+    for (let [k, i] of activeAutoIncMap) clearInterval(i);
+    activeAutoIncMap.clear();
+    blocks.forEach(b => { scene.remove(b.mesh); if (b.label) scene.remove(b.label); });
+    blocks = [];
+    state.blocks.forEach(s => {
+        const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
+        const blk = new Block(s.id, M, s.textureUrl, s.materialColor || '#aaccff');
+        blk.materialType = s.materialType || 'color';
+        blk.scope.vars.clear();
+        s.vars.forEach(v => blk.scope.vars.set(v.name, new VarDef(v.expr, v.value, v.rangeMin, v.rangeMax, v.step)));
+        blk.refresh();
+        if (blk.materialType === 'color' && blk.materialColor) blk.setSolidColor(blk.materialColor);
+        else if (blk.materialType === 'texture' && blk.textureUrl) blk.loadTexture(blk.textureUrl);
+        addBlock(blk, false);
+    });
+    globalVars.clear();
+    state.globalVars.forEach(g => globalVars.set(g.name, { def: new VarDef(g.expr, g.value, g.rangeMin, g.rangeMax, g.step), sourceBlockId: g.sourceBlockId }));
+    if (selectedBlock) { const nb = blocks.find(b => b.id === selectedBlock.id); if (nb) selectBlock(nb); else selectBlock(null); }
     else renderVariablesForBlock(null);
 }
-function updateBlockLabel(block){ if(!block.label){ const div=document.createElement('div'); div.textContent=block.id; div.style.cssText='background:rgba(0,0,0,0.7);padding:2px 8px;font-size:11px;border-left:3px solid #e67e22;color:#ffcc88;font-weight:bold;transform:skewX(-8deg);border-radius:20px;'; block.label=new CSS2DObject(div); scene.add(block.label); } block.label.visible=!hideNames; const pos=new THREE.Vector3(); block.mesh.matrixWorld.decompose(pos,new THREE.Quaternion(),new THREE.Vector3()); block.label.position.copy(pos); block.label.position.y+=0.7; }
-function duplicateBlock(original){
-    let baseName=original.id, newId=baseName, cnt=1;
-    while(blocks.some(b=>b.id===newId)) newId=baseName+(cnt++);
-    const M=original.scope.toM();
-    const newBlock=new Block(newId,M,original.textureUrl,original.materialColor);
-    newBlock.materialType=original.materialType;
+
+function recordAction() { history.record(getState()); }
+function undo() { const cur = getState(); const prev = history.undo(cur); if (prev) restoreState(prev); }
+function redo() { const cur = getState(); const nxt = history.redo(cur); if (nxt) restoreState(nxt); }
+
+function addBlock(block, record = true) {
+    blocks.push(block);
+    scene.add(block.mesh);
+    updateBlockLabel(block);
+    if (selectedBlock === null) selectBlock(block);
+    if (record) recordAction();
+}
+
+function removeBlock(block) {
+    const idx = blocks.indexOf(block);
+    if (idx !== -1) blocks.splice(idx, 1);
+    scene.remove(block.mesh);
+    if (block.label) scene.remove(block.label);
+    if (selectedBlock === block) {
+        selectedBlock = blocks[0] || null;
+        if (selectedBlock) selectBlock(selectedBlock);
+        else renderVariablesForBlock(null);
+    }
+    recordAction();
+}
+
+function selectBlock(block) {
+    if (selectedBlock && selectedBlock.axisHelper) selectedBlock.axisHelper.visible = false;
+    selectedBlock = block;
+    if (block) {
+        block.axisHelper.visible = true;
+        blocks.forEach(b => { if (b.mesh.material) b.mesh.material.emissiveIntensity = (b === block) ? 0.2 : 0; });
+        renderVariablesForBlock(block);
+    } else renderVariablesForBlock(null);
+}
+
+function updateBlockLabel(block) {
+    if (!block.label) {
+        const div = document.createElement('div');
+        div.textContent = block.id;
+        div.style.cssText = 'background:rgba(15,23,42,0.85);padding:2px 12px;font-size:11px;border-left:3px solid #06b6d4;color:#a5f3fc;font-weight:bold;transform:skewX(-8deg);border-radius:40px;backdrop-filter:blur(4px);';
+        block.label = new CSS2DObject(div);
+        scene.add(block.label);
+    }
+    block.label.visible = !hideNames;
+    const pos = new THREE.Vector3();
+    block.mesh.matrixWorld.decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
+    block.label.position.copy(pos);
+    block.label.position.y += 0.7;
+}
+
+function duplicateBlock(original) {
+    let baseName = original.id, newId = baseName, cnt = 1;
+    while (blocks.some(b => b.id === newId)) newId = baseName + (cnt++);
+    const M = original.scope.toM();
+    const newBlock = new Block(newId, M, original.textureUrl, original.materialColor);
+    newBlock.materialType = original.materialType;
     newBlock.scope.vars.clear();
-    for(let [name,def] of original.scope.vars.entries()) newBlock.scope.vars.set(name,new VarDef(def.expr,def.value,def.rangeMin,def.rangeMax,def.step));
+    for (let [name, def] of original.scope.vars.entries()) newBlock.scope.vars.set(name, new VarDef(def.expr, def.value, def.rangeMin, def.rangeMax, def.step));
     newBlock.refresh();
-    addBlock(newBlock,true);
+    addBlock(newBlock, true);
     selectBlock(newBlock);
 }
+
 // 材质菜单
-const materialMenuDiv=document.createElement('div'); materialMenuDiv.className='material-menu'; materialMenuDiv.style.display='none'; document.body.appendChild(materialMenuDiv);
-const colorPresets=['#c0c0c0','#88aaff','#e6b422','#aa66cc','#ff8844','#88dd88','#ffaaaa','#000000','#ffffff','#cc3333','#3366cc','#ffcc33','#ff99cc','#33cccc','#9966ff','#ff6666','#99cc66','#ff9966','#66cc99','#cc99ff'];
-function buildMaterialMenu(){ materialMenuDiv.innerHTML=`<div class="menu-title">纯色预设</div><div class="color-palette">${colorPresets.map(c=>`<div class="color-swatch" style="background:${c};" data-color="${c}"></div>`).join('')}</div><div class="menu-divider"></div><div class="menu-option" id="customTextureOption">自定贴图</div>`; document.querySelectorAll('.color-swatch').forEach(sw=>{ sw.addEventListener('click',e=>{ e.stopPropagation(); if(!selectedBlock){ showModal("提示","请先选中一个方块",null,false); materialMenuDiv.style.display='none'; return; } selectedBlock.setSolidColor(sw.dataset.color); recordAction(); materialMenuDiv.style.display='none'; }); }); const texOpt=materialMenuDiv.querySelector('#customTextureOption'); if(texOpt) texOpt.onclick=()=>{ materialMenuDiv.style.display='none'; const fileInput=document.createElement('input'); fileInput.type='file'; fileInput.accept='image/*'; fileInput.onchange=(e)=>{ if(!selectedBlock){ showModal("提示","请先选中方块",null,false); return; } const file=e.target.files[0]; if(file) selectedBlock.loadTexture(URL.createObjectURL(file)); recordAction(); }; fileInput.click(); }; }
-document.getElementById('materialPresetBtn').addEventListener('click',(e)=>{ e.stopPropagation(); buildMaterialMenu(); const rect=e.target.getBoundingClientRect(); materialMenuDiv.style.display='block'; materialMenuDiv.style.top=(rect.bottom+5)+'px'; materialMenuDiv.style.right=(window.innerWidth-rect.right-5)+'px'; if(window.innerWidth<700) materialMenuDiv.style.right='10px'; setTimeout(()=>{ const close=(ev)=>{ if(!materialMenuDiv.contains(ev.target)&&ev.target!==e.target){ materialMenuDiv.style.display='none'; document.removeEventListener('click',close); } }; document.addEventListener('click',close); },10); });
-// 导出命令 - 修正默认前后缀
-let exportPrefix = `execute positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`;
+const materialMenuDiv = document.createElement('div');
+materialMenuDiv.className = 'material-menu';
+materialMenuDiv.style.display = 'none';
+document.body.appendChild(materialMenuDiv);
+const colorPresets = ['#aaccff','#88aaff','#06b6d4','#8b5cf6','#f43f5e','#10b981','#facc15','#ffffff','#1e293b','#ef4444','#3b82f6','#eab308','#ec4899','#14b8a6','#a855f7','#ff7f50','#2dd4bf','#f97316','#6366f1','#94a3b8'];
+function buildMaterialMenu() {
+    materialMenuDiv.innerHTML = `<div class="menu-title">🎨 纯色预设</div><div class="color-palette">${colorPresets.map(c => `<div class="color-swatch" style="background:${c};" data-color="${c}"></div>`).join('')}</div><div class="menu-divider"></div><div class="menu-option" id="customTextureOption">🖼️ 自定贴图</div>`;
+    document.querySelectorAll('.color-swatch').forEach(sw => {
+        sw.addEventListener('click', e => {
+            e.stopPropagation();
+            if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); materialMenuDiv.style.display = 'none'; return; }
+            selectedBlock.setSolidColor(sw.dataset.color);
+            recordAction();
+            materialMenuDiv.style.display = 'none';
+        });
+    });
+    const texOpt = materialMenuDiv.querySelector('#customTextureOption');
+    if (texOpt) texOpt.onclick = () => {
+        materialMenuDiv.style.display = 'none';
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = (e) => {
+            if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; }
+            const file = e.target.files[0];
+            if (file) selectedBlock.loadTexture(URL.createObjectURL(file));
+            recordAction();
+        };
+        fileInput.click();
+    };
+}
+document.getElementById('materialPresetBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    buildMaterialMenu();
+    const rect = e.target.getBoundingClientRect();
+    materialMenuDiv.style.display = 'block';
+    materialMenuDiv.style.top = (rect.bottom + 5) + 'px';
+    materialMenuDiv.style.right = (window.innerWidth - rect.right - 5) + 'px';
+    if (window.innerWidth < 700) materialMenuDiv.style.right = '10px';
+    setTimeout(() => {
+        const close = (ev) => {
+            if (!materialMenuDiv.contains(ev.target) && ev.target !== e.target) {
+                materialMenuDiv.style.display = 'none';
+                document.removeEventListener('click', close);
+            }
+        };
+        document.addEventListener('click', close);
+    }, 10);
+});
+
+// 导出命令
+let exportPrefix = `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`;
 let exportSuffix = ` '方块编号：{id}'; "`;
-function loadPrefixSuffix(){ const p=localStorage.getItem('ex_export_prefix'); const s=localStorage.getItem('ex_export_suffix'); if(p) exportPrefix=p; if(s) exportSuffix=s; }
-function savePrefixSuffix(){ localStorage.setItem('ex_export_prefix',exportPrefix); localStorage.setItem('ex_export_suffix',exportSuffix); }
+function loadPrefixSuffix() { const p = localStorage.getItem('ex_export_prefix'); const s = localStorage.getItem('ex_export_suffix'); if (p) exportPrefix = p; if (s) exportSuffix = s; }
+function savePrefixSuffix() { localStorage.setItem('ex_export_prefix', exportPrefix); localStorage.setItem('ex_export_suffix', exportSuffix); }
 loadPrefixSuffix();
-function showCommandListModal(){ const modalDiv=document.createElement('div'); modalDiv.className='modal'; let html=`<div class="modal-content"><h3>✏️ 自定义命令前后缀</h3><div class="label-hint">前缀 (手动双引号结尾)</div><input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}"><div class="label-hint">后缀 (可使用 {id} 占位符)</div><input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}"><div class="modal-buttons"><button class="modal-btn" id="resetDefaultBtn"><span>只含PlMa</span></button><button class="modal-btn" id="confirmExportBtn"><span>生成命令列表</span></button><button class="modal-btn" id="cancelModalBtn"><span>取消</span></button></div></div>`; modalDiv.innerHTML=html; document.body.appendChild(modalDiv); const prefixInp=modalDiv.querySelector('#prefixInput'); const suffixInp=modalDiv.querySelector('#suffixInput'); const confirmBtn=modalDiv.querySelector('#confirmExportBtn'); const cancelBtn=modalDiv.querySelector('#cancelModalBtn'); const resetBtn=modalDiv.querySelector('#resetDefaultBtn'); const closeModal=()=>modalDiv.remove(); resetBtn.onclick=()=>{ prefixInp.value=`playanimation @e[type=fox] animation.player.attack.positions _ 0 "`; suffixInp.value=` '方块编号：{id}'; "`; }; confirmBtn.onclick=()=>{ exportPrefix=prefixInp.value.trim(); exportSuffix=suffixInp.value.trim(); savePrefixSuffix(); closeModal(); const listModal=document.createElement('div'); listModal.className='modal'; let listHtml=`<div class="modal-content"><h3>📋 命令列表 (每个方块单独复制)</h3><div style="max-height:60vh; overflow-y:auto;">`; if(blocks.length===0) listHtml+='<div class="empty-state">暂无方块</div>'; else{ for(let b of blocks){ let varsStr=''; for(let [name,def] of b.scope.vars.entries()) if(name.startsWith('v.')) varsStr+=`${name}=${def.expr}; `; const owned=Array.from(globalVars.entries()).filter(([n,g])=>g.sourceBlockId===b.id); for(let [gn,g] of owned) varsStr+=`t.${gn}=${g.def.expr}; `; const suffix=exportSuffix.replace(/{id}/g,b.id); const cmdText=exportPrefix+varsStr+suffix; listHtml+=`<div class="command-card"><div class="command-header"><span class="block-id-badge">📦 ${escapeHtml(b.id)}</span><button class="copy-cmd-btn" data-cmd="${escapeHtml(cmdText)}">📋 复制此方块命令</button></div><pre class="cmd-preview">${escapeHtml(cmdText)}</pre></div>`; } } listHtml+=`</div><div class="modal-buttons"><button class="modal-btn" id="closeListBtn">关闭</button></div></div>`; listModal.innerHTML=listHtml; document.body.appendChild(listModal); listModal.querySelectorAll('.copy-cmd-btn').forEach(btn=>{ btn.addEventListener('click',e=>{ e.stopPropagation(); const cmd=btn.dataset.cmd; navigator.clipboard.writeText(cmd).then(()=>{ const orig=btn.innerText; btn.innerText='✅ 已复制'; setTimeout(()=>btn.innerText=orig,1500); }); }); }); listModal.querySelector('#closeListBtn').onclick=()=>listModal.remove(); }; cancelBtn.onclick=closeModal; }
-// 浅色模式
-let isLightMode=false;
-function applyTheme(){ const body=document.body; if(isLightMode){ body.classList.add('light-mode'); scene.background=new THREE.Color(0xf0f2f5); if(scene.fog) scene.fog=null; ambient.intensity=0.9; dirLight.intensity=1.4; fillLight.intensity=0.8; rimLight.intensity=0.6; document.getElementById('modeSwitchBtn').innerHTML='<span>🌙 深色</span>'; } else { body.classList.remove('light-mode'); scene.background=new THREE.Color(0x0a0a2a); scene.fog=new THREE.FogExp2(0x0a0a2a,0.008); ambient.intensity=0.6; dirLight.intensity=1.2; fillLight.intensity=0.5; rimLight.intensity=0.4; document.getElementById('modeSwitchBtn').innerHTML='<span>☀️ 浅色</span>'; } updateAxesByDistance(true); }
-document.getElementById('modeSwitchBtn').addEventListener('click',()=>{ isLightMode=!isLightMode; applyTheme(); });
-// 3D场景
-const container=document.getElementById('canvas-container');
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0a0a2a); scene.fog=new THREE.FogExp2(0x0a0a2a,0.008);
-const camera=new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1000); camera.position.set(8,6,10);
-const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(window.innerWidth,window.innerHeight); renderer.shadowMap.enabled=true; container.appendChild(renderer.domElement);
-const labelRenderer=new CSS2DRenderer(); labelRenderer.setSize(window.innerWidth,window.innerHeight); labelRenderer.domElement.style.position='absolute'; labelRenderer.domElement.style.top='0px'; labelRenderer.domElement.style.left='0px'; labelRenderer.domElement.style.pointerEvents='none'; container.appendChild(labelRenderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enablePan=false; controls.enableZoom=true; controls.zoomSpeed=0.8; controls.rotateSpeed=0.8; controls.enableDamping=true; controls.touchRotate=true; controls.touchZoom=true;
-const ambient=new THREE.AmbientLight(0x404060); scene.add(ambient);
-const dirLight=new THREE.DirectionalLight(0xfff5e0,1.2); dirLight.position.set(3,5,2); dirLight.castShadow=true; scene.add(dirLight);
-const fillLight=new THREE.PointLight(0x6688cc,0.5); fillLight.position.set(-2,2,-3); scene.add(fillLight);
-const rimLight=new THREE.PointLight(0xffaa77,0.4); rimLight.position.set(0,1.5,-4); scene.add(rimLight);
-let axisGroup=null; let showAxes=true,showGrid=true,showTicks=true; let lastDistance=0;
-function createDynamicAxesAndGrid(camDist){ if(axisGroup){ axisGroup.traverse(c=>{ if(c.isCSS2DObject&&c.element) c.element.remove(); }); scene.remove(axisGroup); } axisGroup=new THREE.Group(); let maxLen=Math.min(200,Math.max(5,camDist*1.5)); let step=1; const targetSteps=[0.5,1,2,5,10,20,50]; for(let s of targetSteps) if(maxLen/s<=16&&maxLen/s>=6){ step=s; break; } const actualMax=Math.floor(maxLen/step)*step; const ticks=[]; for(let v=-actualMax;v<=actualMax+0.001;v+=step) if(Math.abs(v)>0.01) ticks.push(v); const axes=[{start:new THREE.Vector3(-actualMax,0,0),end:new THREE.Vector3(actualMax,0,0),label:'X',color:0xff3333},{start:new THREE.Vector3(0,-actualMax,0),end:new THREE.Vector3(0,actualMax,0),label:'Y',color:0x33ff33},{start:new THREE.Vector3(0,0,-actualMax),end:new THREE.Vector3(0,0,actualMax),label:'Z',color:0x3399ff}]; const isMobile=window.innerWidth<=700; const fontSize=isMobile?'9px':'12px'; const textColor=isLightMode?'#000000':'#ffffff'; axes.forEach(axis=>{ if(showAxes){ const points=[axis.start,axis.end]; const geo=new THREE.BufferGeometry().setFromPoints(points); const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:axis.color})); axisGroup.add(line); const dir=new THREE.Vector3().subVectors(axis.end,axis.start).normalize(); const arrow=new THREE.ArrowHelper(dir,axis.end,0.4,axis.color,0.2,0.1); axisGroup.add(arrow); } if(showTicks){ ticks.forEach(val=>{ let pos=axis.label==='X'?new THREE.Vector3(val,0,0):axis.label==='Y'?new THREE.Vector3(0,val,0):new THREE.Vector3(0,0,val); let tickDir=axis.label==='X'?new THREE.Vector3(0,0.1,0.1):axis.label==='Y'?new THREE.Vector3(0.1,0,0.1):new THREE.Vector3(0.1,0.1,0); const tickGeo=new THREE.BufferGeometry().setFromPoints([pos,pos.clone().add(tickDir)]); const tickLine=new THREE.Line(tickGeo,new THREE.LineBasicMaterial({color:0xaaaaaa})); axisGroup.add(tickLine); const div=document.createElement('div'); div.textContent=val.toFixed(1); div.style.cssText=`color:${textColor};font-size:${fontSize};font-weight:bold;text-shadow:0 0 2px rgba(0,0,0,0.3);padding:0 2px;white-space:nowrap;`; const labelObj=new CSS2DObject(div); labelObj.position.copy(pos); axisGroup.add(labelObj); }); } }); if(showGrid){ const gridSize=actualMax*2; const divisions=ticks.length*2; const gridStep=gridSize/divisions; for(let i=-divisions/2;i<=divisions/2;i++){ const pos=i*gridStep; if(Math.abs(pos)>actualMax) continue; const pointsX=[new THREE.Vector3(-actualMax,0,pos),new THREE.Vector3(actualMax,0,pos)]; const geoX=new THREE.BufferGeometry().setFromPoints(pointsX); const lineX=new THREE.Line(geoX,new THREE.LineBasicMaterial({color:0x88aaff,transparent:true,opacity:0.4})); axisGroup.add(lineX); const pointsZ=[new THREE.Vector3(pos,0,-actualMax),new THREE.Vector3(pos,0,actualMax)]; const geoZ=new THREE.BufferGeometry().setFromPoints(pointsZ); const lineZ=new THREE.Line(geoZ,new THREE.LineBasicMaterial({color:0x88aaff,transparent:true,opacity:0.4})); axisGroup.add(lineZ); } } if(showAxes||showTicks){ const originDiv=document.createElement('div'); originDiv.textContent='0'; originDiv.style.cssText=`color:${textColor};font-size:14px;font-weight:bold;text-shadow:0 0 2px black;padding:1px 4px;`; const originLabel=new CSS2DObject(originDiv); originLabel.position.set(0,0,0); axisGroup.add(originLabel); } scene.add(axisGroup); }
-function updateAxesByDistance(force=false){ const dist=camera.position.length(); if(force||Math.abs(dist-lastDistance)>0.5){ lastDistance=dist; createDynamicAxesAndGrid(dist); } }
-// 面板拖拽修复
-const dataPanel = document.getElementById('dataPanel');
-const resizeHandle = document.getElementById('resizeHandle');
-let dragStartY, dragStartHeight;
-function onDragStart(e) {
-    e.preventDefault();
-    dragStartY = e.clientY;
-    dragStartHeight = dataPanel.offsetHeight;
-    document.addEventListener('mousemove', onDragMove);
-    document.addEventListener('mouseup', onDragEnd);
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onDragEnd);
+
+function showCommandListModal() {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    let html = `<div class="modal-content"><h3>✏️ 自定义命令前后缀</h3><div class="label-hint">前缀</div><input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}"><div class="label-hint">后缀 ({id} 占位符)</div><input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}"><div class="modal-buttons"><button class="modal-btn" id="resetDefaultBtn"><span>重置默认</span></button><button class="modal-btn" id="confirmExportBtn"><span>生成命令列表</span></button><button class="modal-btn" id="cancelModalBtn"><span>取消</span></button></div></div>`;
+    modalDiv.innerHTML = html;
+    document.body.appendChild(modalDiv);
+    const prefixInp = modalDiv.querySelector('#prefixInput');
+    const suffixInp = modalDiv.querySelector('#suffixInput');
+    const confirmBtn = modalDiv.querySelector('#confirmExportBtn');
+    const cancelBtn = modalDiv.querySelector('#cancelModalBtn');
+    const resetBtn = modalDiv.querySelector('#resetDefaultBtn');
+    const closeModal = () => modalDiv.remove();
+    resetBtn.onclick = () => {
+        prefixInp.value = `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`;
+        suffixInp.value = ` '方块编号：{id}'; "`;
+    };
+    confirmBtn.onclick = () => {
+        exportPrefix = prefixInp.value.trim();
+        exportSuffix = suffixInp.value.trim();
+        savePrefixSuffix();
+        closeModal();
+        const listModal = document.createElement('div');
+        listModal.className = 'modal';
+        let listHtml = `<div class="modal-content"><h3>📋 命令列表</h3><div style="max-height:60vh; overflow-y:auto;">`;
+        if (blocks.length === 0) listHtml += '<div class="empty-state">暂无方块</div>';
+        else {
+            for (let b of blocks) {
+                let varsStr = '';
+                for (let [name, def] of b.scope.vars.entries()) if (name.startsWith('v.')) varsStr += `${name}=${def.expr}; `;
+                const owned = Array.from(globalVars.entries()).filter(([n, g]) => g.sourceBlockId === b.id);
+                for (let [gn, g] of owned) varsStr += `t.${gn}=${g.def.expr}; `;
+                const suffix = exportSuffix.replace(/{id}/g, b.id);
+                const cmdText = exportPrefix + varsStr + suffix;
+                listHtml += `<div class="command-card"><div class="command-header"><span class="block-id-badge">📦 ${escapeHtml(b.id)}</span><button class="copy-cmd-btn" data-cmd-raw="${escapeHtml(cmdText)}">📋 复制</button></div><pre class="cmd-preview">${escapeHtml(cmdText)}</pre></div>`;
+            }
+        }
+        listHtml += `</div><div class="modal-buttons"><button class="modal-btn" id="copyAllBtn">📋 全部复制</button><button class="modal-btn" id="closeListBtn">关闭</button></div></div>`;
+        listModal.innerHTML = listHtml;
+        document.body.appendChild(listModal);
+        listModal.querySelectorAll('.copy-cmd-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const preview = btn.parentElement.nextElementSibling;
+                const cmdText = preview.textContent;
+                navigator.clipboard.writeText(cmdText).then(() => {
+                    const orig = btn.innerText;
+                    btn.innerText = '✅ 已复制';
+                    setTimeout(() => btn.innerText = orig, 1500);
+                });
+            });
+        });
+        const copyAllBtn = listModal.querySelector('#copyAllBtn');
+        if (copyAllBtn) {
+            copyAllBtn.addEventListener('click', () => {
+                const allPreviews = listModal.querySelectorAll('.cmd-preview');
+                const allCommands = Array.from(allPreviews).map(pre => pre.textContent).join('\n');
+                navigator.clipboard.writeText(allCommands).then(() => {
+                    const orig = copyAllBtn.innerText;
+                    copyAllBtn.innerText = '✅ 已复制全部';
+                    setTimeout(() => copyAllBtn.innerText = orig, 1500);
+                });
+            });
+        }
+        listModal.querySelector('#closeListBtn').onclick = () => listModal.remove();
+    };
+    cancelBtn.onclick = closeModal;
 }
-function onDragMove(e) {
-    const dy = e.clientY - dragStartY;
-    let newHeight = dragStartHeight - dy;
-    newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight));
-    dataPanel.style.height = newHeight + 'px';
+
+function escapeHtml(str) { return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+function showModal(title, content, onConfirm = null, isTextarea = true) {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    let innerHtml = `<div class="modal-content"><h3 style="color:#38bdf8;">${title}</h3>`;
+    if (isTextarea) innerHtml += `<textarea class="modal-input-text" id="modalInput" rows="5">${content || ''}</textarea>`;
+    else innerHtml += `<div class="preview-code" id="modalPreview">${content || ''}</div>`;
+    innerHtml += `<div class="modal-buttons"><button class="modal-btn" id="modalConfirm">确认</button><button class="modal-btn" id="modalCancel">取消</button></div></div>`;
+    modalDiv.innerHTML = innerHtml;
+    document.body.appendChild(modalDiv);
+    const confirmBtn = modalDiv.querySelector('#modalConfirm');
+    const cancelBtn = modalDiv.querySelector('#modalCancel');
+    const input = modalDiv.querySelector('#modalInput');
+    confirmBtn.onclick = () => { const val = input ? input.value : null; modalDiv.remove(); if (onConfirm) onConfirm(val); };
+    cancelBtn.onclick = () => modalDiv.remove(); if (input) input.focus();
 }
-function onTouchMove(e) {
-    e.preventDefault();
-    const dy = e.touches[0].clientY - dragStartY;
-    let newHeight = dragStartHeight - dy;
-    newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight));
-    dataPanel.style.height = newHeight + 'px';
+
+function parseAssignment(str) { const m = str.match(/^([vt]\.[a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/); if (m) return { name: m[1], expr: m[2].trim() }; return null; }
+
+// ========== 自增自减控制（修复串扰）==========
+function startAutoInc(blockId, isGlobal, varName, delta, btn) {
+    const key = isGlobal ? `global_${varName}_${delta}` : `${blockId}_${varName}_${delta}`;
+    if (activeAutoIncMap.has(key)) return;
+    const inc = () => {
+        if (isGlobal) {
+            const g = globalVars.get(varName);
+            if (g && isConstantExpr(g.def.expr)) {
+                let nv = g.def.value + delta;
+                const dec = (g.def.step.toString().includes('.') ? g.def.step.toString().split('.')[1].length : 0);
+                nv = parseFloat(nv.toFixed(dec));
+                if (nv > g.def.rangeMax) nv = g.def.rangeMin;
+                else if (nv < g.def.rangeMin) nv = g.def.rangeMax;
+                g.def.expr = nv.toString(); g.def.value = nv;
+                blocks.forEach(b => b.refresh());
+                const card = document.querySelector(`.var-card[data-var="t.${varName}"]`);
+                if (card) { const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `t.${varName} = ${nv}`; }
+                recordAction();
+            } else stopAutoInc(isGlobal, varName, delta);
+        } else {
+            const target = blocks.find(b => b.id === blockId);
+            if (target) {
+                target.incVar(varName, delta);
+                const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${blockId}"]`);
+                if (card) {
+                    const def = target.scope.vars.get(varName);
+                    if (def) {
+                        const slider = card.querySelector('.var-slider');
+                        if (slider) slider.value = def.value;
+                        const inp = card.querySelector('.assignment-input');
+                        if (inp) inp.value = `${varName} = ${def.expr}`;
+                    }
+                }
+                recordAction();
+                updateGlobalVarsDependingOn(target, varName);
+            } else stopAutoInc(isGlobal, varName, delta, blockId);
+        }
+    };
+    inc();
+    const iv = setInterval(() => {
+        if (isGlobal) {
+            const g = globalVars.get(varName);
+            if (g && isConstantExpr(g.def.expr)) {
+                let nv = g.def.value + delta;
+                const dec = (g.def.step.toString().includes('.') ? g.def.step.toString().split('.')[1].length : 0);
+                nv = parseFloat(nv.toFixed(dec));
+                if (nv > g.def.rangeMax) nv = g.def.rangeMin;
+                else if (nv < g.def.rangeMin) nv = g.def.rangeMax;
+                g.def.expr = nv.toString(); g.def.value = nv;
+                blocks.forEach(b => b.refresh());
+                const card = document.querySelector(`.var-card[data-var="t.${varName}"]`);
+                if (card) { const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `t.${varName} = ${nv}`; }
+                recordAction();
+            } else stopAutoInc(isGlobal, varName, delta);
+        } else {
+            const target = blocks.find(b => b.id === blockId);
+            if (target) {
+                target.incVar(varName, delta);
+                const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${blockId}"]`);
+                if (card) {
+                    const def = target.scope.vars.get(varName);
+                    if (def) {
+                        const slider = card.querySelector('.var-slider');
+                        if (slider) slider.value = def.value;
+                        const inp = card.querySelector('.assignment-input');
+                        if (inp) inp.value = `${varName} = ${def.expr}`;
+                    }
+                }
+                recordAction();
+                updateGlobalVarsDependingOn(target, varName);
+            } else stopAutoInc(isGlobal, varName, delta, blockId);
+        }
+    }, 50);
+    activeAutoIncMap.set(key, iv);
+    if (btn) btn.classList.add('active');
 }
-function onDragEnd() {
-    document.removeEventListener('mousemove', onDragMove);
-    document.removeEventListener('mouseup', onDragEnd);
-    document.removeEventListener('touchmove', onTouchMove);
-    document.removeEventListener('touchend', onDragEnd);
+function stopAutoInc(isGlobal, varName, delta, blockId = null) {
+    for (let [k, i] of activeAutoIncMap.entries()) {
+        if (isGlobal && k.startsWith(`global_${varName}_`)) {
+            clearInterval(i);
+            activeAutoIncMap.delete(k);
+        } else if (!isGlobal && blockId && k === `${blockId}_${varName}_${delta}`) {
+            clearInterval(i);
+            activeAutoIncMap.delete(k);
+        } else if (!isGlobal && !blockId && k.includes(`_${varName}_`)) {
+            clearInterval(i);
+            activeAutoIncMap.delete(k);
+        }
+    }
 }
-resizeHandle.addEventListener('mousedown', onDragStart);
-resizeHandle.addEventListener('touchstart', onDragStart, { passive: false });
-dataPanel.style.height = '280px';
-// 辅助函数
-function escapeHtml(str){ return str.replace(/[&<>]/g,m=>m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
-function showModal(title,content,onConfirm=null,isTextarea=true){ const modalDiv=document.createElement('div'); modalDiv.className='modal'; let innerHtml=`<div class="modal-content"><h3>${title}</h3>`; if(isTextarea) innerHtml+=`<textarea class="modal-textarea" id="modalInput">${content||''}</textarea>`; else innerHtml+=`<div class="preview-code" id="modalPreview">${content||''}</div>`; innerHtml+=`<div class="modal-buttons"><button class="modal-btn" id="modalConfirm"><span>确定</span></button><button class="modal-btn" id="modalCancel"><span>取消</span></button></div></div>`; modalDiv.innerHTML=innerHtml; document.body.appendChild(modalDiv); const confirmBtn=modalDiv.querySelector('#modalConfirm'); const cancelBtn=modalDiv.querySelector('#modalCancel'); const input=modalDiv.querySelector('#modalInput'); const preview=modalDiv.querySelector('#modalPreview'); confirmBtn.onclick=()=>{ const val=input?input.value:(preview?preview.innerText:null); modalDiv.remove(); if(onConfirm) onConfirm(val); }; cancelBtn.onclick=()=>modalDiv.remove(); if(input) input.focus(); }
-function parseAssignment(str){ const m=str.match(/^([vt]\.[a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/); if(m) return {name:m[1],expr:m[2].trim()}; return null; }
-// 自增自减控制
-function startAutoInc(target,isGlobal,varName,delta,btn){ const key=isGlobal?`global_${varName}_${delta}`:`${target.id}_${varName}_${delta}`; if(activeAutoIncMap.has(key)) return;
-    const inc=()=>{ if(isGlobal){ const g=globalVars.get(varName); if(g&&isConstantExpr(g.def.expr)){ let nv=g.def.value+delta; const dec=(g.def.step.toString().includes('.')?g.def.step.toString().split('.')[1].length:0); nv=parseFloat(nv.toFixed(dec)); if(nv>g.def.rangeMax) nv=g.def.rangeMin; else if(nv<g.def.rangeMin) nv=g.def.rangeMax; g.def.expr=nv.toString(); g.def.value=nv; blocks.forEach(b=>b.refresh()); const card=document.querySelector(`.var-card[data-var="t.${varName}"]`); if(card){ const slider=card.querySelector('.var-slider'); if(slider) slider.value=nv; const inp=card.querySelector('.assignment-input'); if(inp) inp.value=`t.${varName} = ${nv}`; } recordAction(); } else stopAutoInc(isGlobal,varName,delta); } else { if(target){ target.incVar(varName,delta); const card=document.querySelector(`.var-card[data-var="${varName}"]`); if(card){ const def=target.scope.vars.get(varName); if(def){ const slider=card.querySelector('.var-slider'); if(slider) slider.value=def.value; const inp=card.querySelector('.assignment-input'); if(inp) inp.value=`${varName} = ${def.expr}`; } } recordAction(); updateGlobalVarsDependingOn(target,varName); } else stopAutoInc(isGlobal,varName,delta); } };
-    inc(); const iv=setInterval(()=>{ if(isGlobal){ const g=globalVars.get(varName); if(g&&isConstantExpr(g.def.expr)){ let nv=g.def.value+delta; const dec=(g.def.step.toString().includes('.')?g.def.step.toString().split('.')[1].length:0); nv=parseFloat(nv.toFixed(dec)); if(nv>g.def.rangeMax) nv=g.def.rangeMin; else if(nv<g.def.rangeMin) nv=g.def.rangeMax; g.def.expr=nv.toString(); g.def.value=nv; blocks.forEach(b=>b.refresh()); const card=document.querySelector(`.var-card[data-var="t.${varName}"]`); if(card){ const slider=card.querySelector('.var-slider'); if(slider) slider.value=nv; const inp=card.querySelector('.assignment-input'); if(inp) inp.value=`t.${varName} = ${nv}`; } recordAction(); } else stopAutoInc(isGlobal,varName,delta); } else { if(target){ target.incVar(varName,delta); const card=document.querySelector(`.var-card[data-var="${varName}"]`); if(card){ const def=target.scope.vars.get(varName); if(def){ const slider=card.querySelector('.var-slider'); if(slider) slider.value=def.value; const inp=card.querySelector('.assignment-input'); if(inp) inp.value=`${varName} = ${def.expr}`; } } recordAction(); updateGlobalVarsDependingOn(target,varName); } else stopAutoInc(isGlobal,varName,delta); } },50);
-    activeAutoIncMap.set(key,iv); if(btn) btn.classList.add('active');
+function toggleAutoInc(btn, isGlobal, targetBlock, varName, delta) {
+    const blockId = targetBlock ? targetBlock.id : null;
+    const key = isGlobal ? `global_${varName}_${delta}` : `${blockId}_${varName}_${delta}`;
+    if (activeAutoIncMap.has(key)) {
+        stopAutoInc(isGlobal, varName, delta, blockId);
+        btn.classList.remove('active');
+    } else {
+        startAutoInc(blockId, isGlobal, varName, delta, btn);
+    }
 }
-function stopAutoInc(isGlobal,varName,delta){ for(let [k,i] of activeAutoIncMap.entries()){ if(isGlobal && k.startsWith(`global_${varName}_`)){ clearInterval(i); activeAutoIncMap.delete(k); } else if(!isGlobal && k.includes(`_${varName}_`)){ clearInterval(i); activeAutoIncMap.delete(k); } } }
-function toggleAutoInc(btn,isGlobal,target,varName,delta){ const key=isGlobal?`global_${varName}_${delta}`:`${target.id}_${varName}_${delta}`; if(activeAutoIncMap.has(key)){ stopAutoInc(isGlobal,varName,delta); btn.classList.remove('active'); } else { startAutoInc(isGlobal?null:target,isGlobal,varName,delta,btn); } }
-function updateGlobalVarsDependingOn(block,localVarName){ let changed=false; for(let [n,g] of globalVars.entries()){ if(g.sourceBlockId===block.id){ const sb=blocks.find(b=>b.id===g.sourceBlockId); if(sb){ let nv=isConstantExpr(g.def.expr)?parseFloat(g.def.expr):evaluateExpression(g.def.expr,sb.scope.vars,globalVars); if(Math.abs(nv-g.def.value)>1e-8){ g.def.value=nv; changed=true; const card=document.querySelector(`.var-card[data-var="t.${n}"]`); if(card){ const inp=card.querySelector('.assignment-input'); if(inp) inp.value=`t.${n} = ${g.def.expr}`; const slider=card.querySelector('.var-slider'); if(slider) slider.value=nv; } } } } if(changed) blocks.forEach(b=>b.refresh()); }
+
+function updateGlobalVarsDependingOn(block, localVarName) {
+    let changed = false;
+    for (let [n, g] of globalVars.entries()) {
+        if (g.sourceBlockId === block.id) {
+            const sb = blocks.find(b => b.id === g.sourceBlockId);
+            if (sb) {
+                let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars);
+                if (Math.abs(nv - g.def.value) > 1e-8) {
+                    g.def.value = nv;
+                    changed = true;
+                    const card = document.querySelector(`.var-card[data-var="t.${n}"]`);
+                    if (card) {
+                        const inp = card.querySelector('.assignment-input');
+                        if (inp) inp.value = `t.${n} = ${g.def.expr}`;
+                        const slider = card.querySelector('.var-slider');
+                        if (slider) slider.value = nv;
+                    }
+                }
+            }
+        }
+    }
+    if (changed) blocks.forEach(b => b.refresh());
 }
-// 变量面板渲染及完整事件绑定
-let expandedVars=new Set();
-function renderVariablesForBlock(block){
-    const container=document.getElementById('varsContainer'); const newContainer=document.getElementById('newVarContainer');
-    if(!block){ container.innerHTML='<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; newContainer.innerHTML=''; return; }
-    let globalHtml=''; if(globalVars.size>0){ globalHtml+='<div class="section-title">🌍 全局变量 (t.)</div>'; for(let [name,g] of globalVars.entries()){ const isConst=isConstantExpr(g.def.expr); const cardClass=isConst?'constant':'non-constant'; const inputClass=isConst?'constant-input':'non-constant-input'; const displayStr=`t.${name} = ${g.def.expr}`; const expanded=expandedVars.has(`t.${name}`); globalHtml+=`<div class="var-card global ${cardClass}" data-var="t.${name}" data-global="true"><div class="var-header" data-toggle="t.${name}"><input type="text" class="assignment-input ${inputClass}" data-var="t.${name}" value="${escapeHtml(displayStr)}" placeholder="变量 = 表达式"><span class="var-expand">${expanded?'▲':'▼'}</span></div><div class="var-details" data-details="t.${name}" style="${expanded?'display:block':'display:none'}">${isConst?`<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="t.${name}" data-dir="up"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="t.${name}" data-dir="down"><span>▼ 自减</span></button></div><div class="slider-container"><input type="range" class="var-slider" data-var="t.${name}" min="${g.def.rangeMin}" max="${g.def.rangeMax}" step="${g.def.step}" value="${g.def.value}"></div><div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="t.${name}" value="${g.def.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="t.${name}" value="${g.def.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="t.${name}" value="${g.def.step}" step="any"></div></div>`:''}<button class="delete-var" data-var="t.${name}"><span>删除变量</span></button><div style="font-size:10px; color:#888; margin-top:6px;">📌 绑定方块: ${g.sourceBlockId||'无'}</div></div></div>`; } }
-    const vars=block.getVarList(); let localHtml='<div class="section-title">📦 局部变量 (v.)</div>';
-    vars.forEach(v=>{ const isConst=isConstantExpr(v.expr); const cardClass=isConst?'constant':'non-constant'; const inputClass=isConst?'constant-input':'non-constant-input'; const displayStr=`${v.name} = ${v.expr}`; const expanded=expandedVars.has(v.name); localHtml+=`<div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}"><div class="var-header" data-toggle="${v.name}"><input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}" placeholder="变量 = 表达式"><span class="var-expand">${expanded?'▲':'▼'}</span></div><div class="var-details" data-details="${v.name}" style="${expanded?'display:block':'display:none'}">${isConst?`<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${v.name}" data-dir="up"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="${v.name}" data-dir="down"><span>▼ 自减</span></button></div><div class="slider-container"><input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}"></div><div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>`:''}<button class="delete-var" data-var="${v.name}"><span>删除变量</span></button></div></div>`; });
-    container.innerHTML=globalHtml+localHtml;
-    newContainer.innerHTML=`<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.xxx = 0  或 t.xxx = 0 (回车创建)"></div>`;
+
+let expandedVars = new Set();
+let currentOpenGroup = null;
+
+const coreGroups = {
+    '位移': ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'],
+    '缩放': ['v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'],
+    '旋转': ['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez']
+};
+function getGroupForVar(varName) {
+    if (!varName.startsWith('v.')) return null;
+    for (let [groupName, vars] of Object.entries(coreGroups)) if (vars.includes(varName)) return groupName;
+    return '自定义变量';
+}
+
+function toggleVarDetail(header, varName, groupName) {
+    const details = document.querySelector(`.var-details[data-details="${varName}"]`);
+    if (!details) return;
+    const isVisible = details.style.display === 'block';
+    if (!isVisible) {
+        if (groupName) {
+            document.querySelectorAll(`.var-group[data-group="${groupName}"] .var-details`).forEach(d => { d.style.display = 'none'; });
+            document.querySelectorAll(`.var-group[data-group="${groupName}"] .var-expand`).forEach(span => { if (span) span.textContent = '▼'; });
+        }
+        details.style.display = 'block';
+        const expandSpan = header.querySelector('.var-expand');
+        if (expandSpan) expandSpan.textContent = '▲';
+        expandedVars.add(varName);
+    } else {
+        details.style.display = 'none';
+        const expandSpan = header.querySelector('.var-expand');
+        if (expandSpan) expandSpan.textContent = '▼';
+        expandedVars.delete(varName);
+    }
+}
+
+function toggleDetail(e) {
+    if (e.target.classList.contains('assignment-input') || e.target.closest('.auto-inc-btns') || e.target.closest('.slider-container')) return;
+    const header = e.currentTarget;
+    const varName = header.dataset.toggle;
+    const details = document.querySelector(`.var-details[data-details="${varName}"]`);
+    if (details) {
+        const isVisible = details.style.display === 'block';
+        details.style.display = isVisible ? 'none' : 'block';
+        const expandSpan = header.querySelector('.var-expand');
+        if (expandSpan) expandSpan.textContent = isVisible ? '▼' : '▲';
+        if (isVisible) expandedVars.delete(varName);
+        else expandedVars.add(varName);
+    }
+}
+
+function renderVariablesForBlock(block) {
+    const container = document.getElementById('varsContainer');
+    const newContainer = document.getElementById('newVarContainer');
+    if (!block) {
+        container.innerHTML = '<div class="empty-state"> 未选中任何方块<br>点击3D场景中的方块进行编辑</div>';
+        newContainer.innerHTML = '';
+        return;
+    }
+    
+    let globalHtml = '';
+    if (globalVars.size > 0) {
+        globalHtml += '<div class="section-title">🌍 全局变量 (t.)</div>';
+        for (let [name, g] of globalVars.entries()) {
+            const isConst = isConstantExpr(g.def.expr);
+            const cardClass = isConst ? 'constant' : 'non-constant';
+            const inputClass = isConst ? 'constant-input' : 'non-constant-input';
+            const displayStr = `t.${name} = ${g.def.expr}`;
+            const expanded = expandedVars.has(`t.${name}`);
+            globalHtml += `<div class="var-card global ${cardClass}" data-var="t.${name}" data-global="true"><div class="var-header" data-toggle="t.${name}"><input type="text" class="assignment-input ${inputClass}" data-var="t.${name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div><div class="var-details" data-details="t.${name}" style="${expanded ? 'display:block' : 'display:none'}">${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="t.${name}" data-dir="up"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="t.${name}" data-dir="down"><span>▼ 自减</span></button></div><div class="slider-container"><input type="range" class="var-slider" data-var="t.${name}" min="${g.def.rangeMin}" max="${g.def.rangeMax}" step="${g.def.step}" value="${g.def.value}"></div><div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="t.${name}" value="${g.def.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="t.${name}" value="${g.def.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="t.${name}" value="${g.def.step}" step="any"></div></div>` : ''}<button class="delete-var" data-var="t.${name}"><span>删除变量</span></button><div style="font-size:10px; color:#64748b; margin-top:6px;">📌 绑定方块: ${g.sourceBlockId || '无'}</div></div></div>`;
+        }
+    }
+    
+    const vars = block.getVarList();
+    const grouped = { '位移': [], '缩放': [], '旋转': [], '自定义变量': [] };
+    for (let v of vars) {
+        const group = getGroupForVar(v.name);
+        grouped[group].push(v);
+    }
+    
+    let rightGroupsHtml = '';
+    const groupOrderRight = ['位移', '缩放', '旋转'];
+    let rightOpenGroup = currentOpenGroup && groupOrderRight.includes(currentOpenGroup) ? currentOpenGroup : (grouped['位移'].length > 0 ? '位移' : (grouped['缩放'].length > 0 ? '缩放' : (grouped['旋转'].length > 0 ? '旋转' : null)));
+    for (let groupName of groupOrderRight) {
+        if (grouped[groupName].length === 0) continue;
+        const isOpen = (groupName === rightOpenGroup);
+        const toggleSym = isOpen ? '▼' : '▶';
+        rightGroupsHtml += `<div class="var-group" data-group="${groupName}"><div class="group-header" data-group-toggle="${groupName}"><span class="group-title">📁 ${groupName}</span><span class="group-toggle">${toggleSym}</span></div><div class="group-content ${isOpen ? '' : 'collapsed'}" data-group-content="${groupName}">`;
+        for (let v of grouped[groupName]) {
+            const isConst = isConstantExpr(v.expr);
+            const cardClass = isConst ? 'constant' : 'non-constant';
+            const inputClass = isConst ? 'constant-input' : 'non-constant-input';
+            const displayStr = `${v.name} = ${v.expr}`;
+            const expanded = expandedVars.has(v.name);
+            rightGroupsHtml += `<div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}"><div class="var-header" data-toggle="${v.name}" data-group="${groupName}"><input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div><div class="var-details" data-details="${v.name}" style="${expanded ? 'display:block' : 'display:none'}">${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${v.name}" data-dir="up"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="${v.name}" data-dir="down"><span>▼ 自减</span></button></div><div class="slider-container"><input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}"></div><div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}<button class="delete-var" data-var="${v.name}"><span>删除变量</span></button></div></div>`;
+        }
+        rightGroupsHtml += `</div></div>`;
+    }
+    
+    let leftHtml = '';
+    if (globalHtml) leftHtml += globalHtml;
+    if (grouped['自定义变量'].length > 0) {
+        const isCustomOpen = (currentOpenGroup === '自定义变量') || (currentOpenGroup === null && leftHtml === '');
+        const toggleSym = isCustomOpen ? '▼' : '▶';
+        leftHtml += `<div class="var-group" data-group="自定义变量"><div class="group-header" data-group-toggle="自定义变量"><span class="group-title">📁 自定义变量</span><span class="group-toggle">${toggleSym}</span></div><div class="group-content ${isCustomOpen ? '' : 'collapsed'}" data-group-content="自定义变量">`;
+        for (let v of grouped['自定义变量']) {
+            const isConst = isConstantExpr(v.expr);
+            const cardClass = isConst ? 'constant' : 'non-constant';
+            const inputClass = isConst ? 'constant-input' : 'non-constant-input';
+            const displayStr = `${v.name} = ${v.expr}`;
+            const expanded = expandedVars.has(v.name);
+            leftHtml += `<div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}"><div class="var-header" data-toggle="${v.name}" data-group="自定义变量"><input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div><div class="var-details" data-details="${v.name}" style="${expanded ? 'display:block' : 'display:none'}">${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${v.name}" data-dir="up"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="${v.name}" data-dir="down"><span>▼ 自减</span></button></div><div class="slider-container"><input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}"></div><div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}<button class="delete-var" data-var="${v.name}"><span>删除变量</span></button></div></div>`;
+        }
+        leftHtml += `</div></div>`;
+    }
+    if (!leftHtml) leftHtml = '<div class="empty-state">暂无全局变量或自定义变量<br>可在下方添加</div>';
+    
+    container.innerHTML = `<div class="variables-left">${leftHtml}</div><div class="variables-right">${rightGroupsHtml}</div>`;
+    newContainer.innerHTML = `<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.rotatex = 0  或 t.xxx = 0 (回车创建)"></div>`;
+    
     attachVariableEvents(block);
+    
+    document.querySelectorAll('.group-header').forEach(header => {
+        header.removeEventListener('click', groupClickHandler);
+        header.addEventListener('click', groupClickHandler);
+    });
+    function groupClickHandler(e) {
+        const groupName = this.dataset.groupToggle;
+        const contentDiv = document.querySelector(`.group-content[data-group-content="${groupName}"]`);
+        if (!contentDiv) return;
+        const isCollapsed = contentDiv.classList.contains('collapsed');
+        if (!isCollapsed) {
+            contentDiv.classList.add('collapsed');
+            this.querySelector('.group-toggle').textContent = '▶';
+            if (currentOpenGroup === groupName) currentOpenGroup = null;
+        } else {
+            if (['位移','缩放','旋转'].includes(groupName)) {
+                document.querySelectorAll('.variables-right .group-content').forEach(gc => gc.classList.add('collapsed'));
+                document.querySelectorAll('.variables-right .group-header .group-toggle').forEach(span => span.textContent = '▶');
+            }
+            contentDiv.classList.remove('collapsed');
+            this.querySelector('.group-toggle').textContent = '▼';
+            currentOpenGroup = groupName;
+        }
+    }
 }
-function attachVariableEvents(block){
-    // 折叠/展开
-    document.querySelectorAll('.var-header').forEach(header=>{ header.removeEventListener('click',toggleDetail); header.addEventListener('click',toggleDetail); });
-    // 赋值输入
-    document.querySelectorAll('.assignment-input').forEach(inp=>{ inp.removeEventListener('change',handleAssign); inp.addEventListener('change',handleAssign); function handleAssign(e){ e.stopPropagation(); const varName=inp.dataset.var; const newVal=inp.value; const parsed=parseAssignment(newVal); if(parsed&&parsed.name===varName){ if(varName.startsWith('t.')){ const key=varName.slice(2); const g=globalVars.get(key); if(g){ g.def.expr=parsed.expr; const sb=blocks.find(b=>b.id===g.sourceBlockId); if(sb){ let nv=isConstantExpr(parsed.expr)?parseFloat(parsed.expr):evaluateExpression(parsed.expr,sb.scope.vars,globalVars); if(g.def.rangeMin!==undefined){ if(nv>g.def.rangeMax) g.def.rangeMax=nv; if(nv<g.def.rangeMin) g.def.rangeMin=nv; nv=Math.min(g.def.rangeMax,Math.max(g.def.rangeMin,nv)); } g.def.value=nv; } blocks.forEach(b=>b.refresh()); recordAction(); renderVariablesForBlock(selectedBlock); } } else { block.scope.setVarExpr(varName,parsed.expr); block.refresh(); recordAction(); updateGlobalVarsDependingOn(block,varName); renderVariablesForBlock(selectedBlock); } } else { const v=varName.startsWith('t.')?globalVars.get(varName.slice(2))?.def:block.scope.vars.get(varName); if(v) inp.value=`${varName} = ${v.expr}`; } } });
-    // 自增自减
-    document.querySelectorAll('.inc-up, .inc-down').forEach(btn=>{ btn.removeEventListener('click',incClick); btn.addEventListener('click',incClick); function incClick(e){ e.stopPropagation(); const varName=btn.dataset.var; const dir=btn.dataset.dir; const delta=dir==='up'?1:-1; const isGlobal=varName.startsWith('t.'); if(isGlobal){ const key=varName.slice(2); const g=globalVars.get(key); if(g&&isConstantExpr(g.def.expr)) toggleAutoInc(btn,true,null,key,delta*g.def.step); } else { const def=block.scope.vars.get(varName); if(def&&isConstantExpr(def.expr)) toggleAutoInc(btn,false,block,varName,delta*def.step); } } });
-    // 滑块
-    document.querySelectorAll('.var-slider').forEach(slider=>{ slider.removeEventListener('input',slideInput); slider.addEventListener('input',slideInput); function slideInput(e){ e.stopPropagation(); const varName=slider.dataset.var; const val=parseFloat(slider.value); if(varName.startsWith('t.')){ const key=varName.slice(2); const g=globalVars.get(key); if(g){ g.def.expr=val.toString(); g.def.value=val; blocks.forEach(b=>b.refresh()); const inp=document.querySelector(`.assignment-input[data-var="${varName}"]`); if(inp) inp.value=`${varName} = ${val}`; recordAction(); } } else { const def=block.scope.vars.get(varName); if(def){ def.expr=val.toString(); def.value=val; block.refresh(); const inp=document.querySelector(`.assignment-input[data-var="${varName}"]`); if(inp) inp.value=`${varName} = ${val}`; recordAction(); updateGlobalVarsDependingOn(block,varName); } } } });
-    // 范围修改
-    document.querySelectorAll('.range-min, .range-max, .range-step').forEach(inp=>{ inp.removeEventListener('change',rangeChange); inp.addEventListener('change',rangeChange); function rangeChange(e){ e.stopPropagation(); const varName=inp.dataset.var; const isGlobal=varName.startsWith('t.'); let newMin,newMax,newStep; if(inp.classList.contains('range-min')) newMin=parseFloat(inp.value); if(inp.classList.contains('range-max')) newMax=parseFloat(inp.value); if(inp.classList.contains('range-step')) newStep=parseFloat(inp.value); if(isGlobal){ const key=varName.slice(2); const g=globalVars.get(key); if(g){ if(newMin!==undefined) g.def.rangeMin=newMin; if(newMax!==undefined) g.def.rangeMax=newMax; if(newStep!==undefined) g.def.step=newStep; let cur=g.def.value; if(cur<g.def.rangeMin){ g.def.expr=g.def.rangeMin.toString(); g.def.value=g.def.rangeMin; } else if(cur>g.def.rangeMax){ g.def.expr=g.def.rangeMax.toString(); g.def.value=g.def.rangeMax; } blocks.forEach(b=>b.refresh()); const slider=document.querySelector(`.var-slider[data-var="${varName}"]`); if(slider){ slider.min=g.def.rangeMin; slider.max=g.def.rangeMax; slider.step=g.def.step; slider.value=g.def.value; } const assignInp=document.querySelector(`.assignment-input[data-var="${varName}"]`); if(assignInp) assignInp.value=`${varName} = ${g.def.expr}`; recordAction(); renderVariablesForBlock(selectedBlock); } } else { const def=block.scope.vars.get(varName); if(def){ if(newMin!==undefined) def.rangeMin=newMin; if(newMax!==undefined) def.rangeMax=newMax; if(newStep!==undefined) def.step=newStep; let cur=def.value; if(cur<def.rangeMin){ def.expr=def.rangeMin.toString(); def.value=def.rangeMin; } else if(cur>def.rangeMax){ def.expr=def.rangeMax.toString(); def.value=def.rangeMax; } block.refresh(); const slider=document.querySelector(`.var-slider[data-var="${varName}"]`); if(slider){ slider.min=def.rangeMin; slider.max=def.rangeMax; slider.step=def.step; slider.value=def.value; } const assignInp=document.querySelector(`.assignment-input[data-var="${varName}"]`); if(assignInp) assignInp.value=`${varName} = ${def.expr}`; recordAction(); updateGlobalVarsDependingOn(block,varName); renderVariablesForBlock(selectedBlock); } } } });
-    // 删除变量
-    document.querySelectorAll('.delete-var').forEach(btn=>{ btn.removeEventListener('click',delVar); btn.addEventListener('click',delVar); function delVar(e){ e.stopPropagation(); const varName=btn.dataset.var; const isGlobal=varName.startsWith('t.'); if(isGlobal){ const key=varName.slice(2); showModal("确认删除",`确定删除全局变量 ${varName}?`,()=>{ stopAutoInc(true,key,0); globalVars.delete(key); blocks.forEach(b=>b.refresh()); renderVariablesForBlock(selectedBlock); recordAction(); },false); } else { if(varName.startsWith('v.')&&['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'].includes(varName.slice(2))){ showModal("禁止删除","不能删除核心变换变量",null,false); return; } showModal("确认删除",`确定删除局部变量 ${varName}?`,()=>{ stopAutoInc(false,varName,0); block.scope.deleteVar(varName); block.refresh(); renderVariablesForBlock(selectedBlock); recordAction(); updateGlobalVarsDependingOn(block,varName); },false); } } });
-    // 新建变量
-    const newInput=document.getElementById('newVarInput');
-    if(newInput){ newInput.removeEventListener('keydown',newVarHandler); newInput.addEventListener('keydown',newVarHandler); function newVarHandler(e){ if(e.key==='Enter'){ e.preventDefault(); const val=newInput.value.trim(); const parsed=parseAssignment(val); if(!parsed){ showModal("格式错误","请使用: v.变量名 = 表达式 或 t.变量名 = 表达式",null,false); return; } const {name,expr}=parsed; if(name.startsWith('t.')){ const varKey=name.slice(2); if(globalVars.has(varKey)){ showModal("变量已存在","全局变量已存在",null,false); return; } const defaultRange=getDefaultRange(name); globalVars.set(varKey,{ def:new VarDef(expr,0,defaultRange.min,defaultRange.max,1), sourceBlockId:block.id }); blocks.forEach(b=>b.refresh()); renderVariablesForBlock(block); recordAction(); newInput.value=''; } else { if(block.scope.vars.has(name)){ showModal("变量已存在","局部变量已存在",null,false); return; } const defaultRange=getDefaultRange(name); block.scope.addVar(name,expr,defaultRange.min,defaultRange.max,1); renderVariablesForBlock(block); recordAction(); newInput.value=''; } } } }
+
+function attachVariableEvents(block) {
+    document.querySelectorAll('.var-card.global .var-header').forEach(header => {
+        header.removeEventListener('click', toggleDetail);
+        header.addEventListener('click', toggleDetail);
+    });
+    document.querySelectorAll('.var-card:not(.global) .var-header').forEach(header => {
+        header.removeEventListener('click', localHeaderClick);
+        header.addEventListener('click', localHeaderClick);
+    });
+    function localHeaderClick(e) {
+        if (e.target.classList.contains('assignment-input') || e.target.closest('.auto-inc-btns') || e.target.closest('.slider-container')) return;
+        const varName = this.dataset.toggle;
+        const groupName = this.dataset.group;
+        toggleVarDetail(this, varName, groupName);
+    }
+    
+    document.querySelectorAll('.assignment-input').forEach(inp => {
+        inp.removeEventListener('change', handleAssign);
+        inp.addEventListener('change', handleAssign);
+        function handleAssign(e) {
+            e.stopPropagation();
+            const varName = inp.dataset.var;
+            const newVal = inp.value;
+            const parsed = parseAssignment(newVal);
+            if (parsed && parsed.name === varName) {
+                if (varName.startsWith('t.')) {
+                    const key = varName.slice(2);
+                    const g = globalVars.get(key);
+                    if (g) {
+                        g.def.expr = parsed.expr;
+                        const sb = blocks.find(b => b.id === g.sourceBlockId);
+                        if (sb) {
+                            let nv = isConstantExpr(parsed.expr) ? parseFloat(parsed.expr) : evaluateExpression(parsed.expr, sb.scope.vars, globalVars);
+                            if (g.def.rangeMin !== undefined) {
+                                if (nv > g.def.rangeMax) g.def.rangeMax = nv;
+                                if (nv < g.def.rangeMin) g.def.rangeMin = nv;
+                                nv = Math.min(g.def.rangeMax, Math.max(g.def.rangeMin, nv));
+                            }
+                            g.def.value = nv;
+                        }
+                        blocks.forEach(b => b.refresh());
+                        recordAction();
+                        renderVariablesForBlock(selectedBlock);
+                    }
+                } else {
+                    const card = inp.closest('.var-card');
+                    const blockId = card ? card.dataset.blockId : null;
+                    const targetBlock = blocks.find(b => b.id === blockId);
+                    if (!targetBlock) return;
+                    targetBlock.scope.setVarExpr(varName, parsed.expr);
+                    targetBlock.refresh();
+                    recordAction();
+                    updateGlobalVarsDependingOn(targetBlock, varName);
+                    renderVariablesForBlock(selectedBlock);
+                }
+            } else {
+                if (varName.startsWith('t.')) {
+                    const v = globalVars.get(varName.slice(2))?.def;
+                    if (v) inp.value = `${varName} = ${v.expr}`;
+                } else {
+                    const card = inp.closest('.var-card');
+                    const blockId = card ? card.dataset.blockId : null;
+                    const targetBlock = blocks.find(b => b.id === blockId);
+                    if (targetBlock) {
+                        const v = targetBlock.scope.vars.get(varName);
+                        if (v) inp.value = `${varName} = ${v.expr}`;
+                    }
+                }
+            }
+        }
+    });
+    
+    document.querySelectorAll('.inc-up, .inc-down').forEach(btn => {
+        btn.removeEventListener('click', incClick);
+        btn.addEventListener('click', incClick);
+        function incClick(e) {
+            e.stopPropagation();
+            const varName = btn.dataset.var;
+            const dir = btn.dataset.dir;
+            const delta = dir === 'up' ? 1 : -1;
+            const isGlobal = varName.startsWith('t.');
+            if (isGlobal) {
+                const key = varName.slice(2);
+                const g = globalVars.get(key);
+                if (g && isConstantExpr(g.def.expr)) toggleAutoInc(btn, true, null, key, delta * g.def.step);
+            } else {
+                const card = btn.closest('.var-card');
+                const blockId = card ? card.dataset.blockId : null;
+                const targetBlock = blocks.find(b => b.id === blockId);
+                if (!targetBlock) return;
+                const def = targetBlock.scope.vars.get(varName);
+                if (def && isConstantExpr(def.expr)) toggleAutoInc(btn, false, targetBlock, varName, delta * def.step);
+            }
+        }
+    });
+    
+    document.querySelectorAll('.var-slider').forEach(slider => {
+        slider.removeEventListener('input', slideInput);
+        slider.addEventListener('input', slideInput);
+        function slideInput(e) {
+            e.stopPropagation();
+            const varName = slider.dataset.var;
+            const val = parseFloat(slider.value);
+            if (varName.startsWith('t.')) {
+                const key = varName.slice(2);
+                const g = globalVars.get(key);
+                if (g) {
+                    g.def.expr = val.toString();
+                    g.def.value = val;
+                    blocks.forEach(b => b.refresh());
+                    const inp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
+                    if (inp) inp.value = `${varName} = ${val}`;
+                    recordAction();
+                }
+            } else {
+                const card = slider.closest('.var-card');
+                const blockId = card ? card.dataset.blockId : null;
+                const targetBlock = blocks.find(b => b.id === blockId);
+                if (!targetBlock) return;
+                const def = targetBlock.scope.vars.get(varName);
+                if (def) {
+                    def.expr = val.toString();
+                    def.value = val;
+                    targetBlock.refresh();
+                    const inp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
+                    if (inp) inp.value = `${varName} = ${val}`;
+                    recordAction();
+                    updateGlobalVarsDependingOn(targetBlock, varName);
+                }
+            }
+        }
+    });
+    
+    document.querySelectorAll('.range-min, .range-max, .range-step').forEach(inp => {
+        inp.removeEventListener('change', rangeChange);
+        inp.addEventListener('change', rangeChange);
+        function rangeChange(e) {
+            e.stopPropagation();
+            const varName = inp.dataset.var;
+            const isGlobal = varName.startsWith('t.');
+            let newMin, newMax, newStep;
+            if (inp.classList.contains('range-min')) newMin = parseFloat(inp.value);
+            if (inp.classList.contains('range-max')) newMax = parseFloat(inp.value);
+            if (inp.classList.contains('range-step')) newStep = parseFloat(inp.value);
+            if (isGlobal) {
+                const key = varName.slice(2);
+                const g = globalVars.get(key);
+                if (g) {
+                    if (newMin !== undefined) g.def.rangeMin = newMin;
+                    if (newMax !== undefined) g.def.rangeMax = newMax;
+                    if (newStep !== undefined) g.def.step = newStep;
+                    let cur = g.def.value;
+                    if (cur < g.def.rangeMin) { g.def.expr = g.def.rangeMin.toString(); g.def.value = g.def.rangeMin; }
+                    else if (cur > g.def.rangeMax) { g.def.expr = g.def.rangeMax.toString(); g.def.value = g.def.rangeMax; }
+                    blocks.forEach(b => b.refresh());
+                    const slider = document.querySelector(`.var-slider[data-var="${varName}"]`);
+                    if (slider) { slider.min = g.def.rangeMin; slider.max = g.def.rangeMax; slider.step = g.def.step; slider.value = g.def.value; }
+                    const assignInp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
+                    if (assignInp) assignInp.value = `${varName} = ${g.def.expr}`;
+                    recordAction();
+                    renderVariablesForBlock(selectedBlock);
+                }
+            } else {
+                const card = inp.closest('.var-card');
+                const blockId = card ? card.dataset.blockId : null;
+                const targetBlock = blocks.find(b => b.id === blockId);
+                if (!targetBlock) return;
+                const def = targetBlock.scope.vars.get(varName);
+                if (def) {
+                    if (newMin !== undefined) def.rangeMin = newMin;
+                    if (newMax !== undefined) def.rangeMax = newMax;
+                    if (newStep !== undefined) def.step = newStep;
+                    let cur = def.value;
+                    if (cur < def.rangeMin) { def.expr = def.rangeMin.toString(); def.value = def.rangeMin; }
+                    else if (cur > def.rangeMax) { def.expr = def.rangeMax.toString(); def.value = def.rangeMax; }
+                    targetBlock.refresh();
+                    const slider = document.querySelector(`.var-slider[data-var="${varName}"]`);
+                    if (slider) { slider.min = def.rangeMin; slider.max = def.rangeMax; slider.step = def.step; slider.value = def.value; }
+                    const assignInp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
+                    if (assignInp) assignInp.value = `${varName} = ${def.expr}`;
+                    recordAction();
+                    updateGlobalVarsDependingOn(targetBlock, varName);
+                    renderVariablesForBlock(selectedBlock);
+                }
+            }
+        }
+    });
+    
+    document.querySelectorAll('.delete-var').forEach(btn => {
+        btn.removeEventListener('click', delVar);
+        btn.addEventListener('click', delVar);
+        function delVar(e) {
+            e.stopPropagation();
+            const varName = btn.dataset.var;
+            const isGlobal = varName.startsWith('t.');
+            if (isGlobal) {
+                const key = varName.slice(2);
+                showModal("确认删除", `确定删除全局变量 ${varName}?`, () => {
+                    stopAutoInc(true, key, 0);
+                    globalVars.delete(key);
+                    blocks.forEach(b => b.refresh());
+                    renderVariablesForBlock(selectedBlock);
+                    recordAction();
+                }, false);
+            } else {
+                const card = btn.closest('.var-card');
+                const blockId = card ? card.dataset.blockId : null;
+                const targetBlock = blocks.find(b => b.id === blockId);
+                if (!targetBlock) return;
+                if (varName.startsWith('v.') && ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos','rotatex','rotatey','rotatez'].includes(varName.slice(2))) {
+                    showModal("禁止删除", "不能删除核心变换变量", null, false);
+                    return;
+                }
+                showModal("确认删除", `确定删除局部变量 ${varName}?`, () => {
+                    stopAutoInc(false, varName, 0, targetBlock.id);
+                    targetBlock.scope.deleteVar(varName);
+                    targetBlock.refresh();
+                    renderVariablesForBlock(selectedBlock);
+                    recordAction();
+                    updateGlobalVarsDependingOn(targetBlock, varName);
+                }, false);
+            }
+        }
+    });
+    
+    const newInput = document.getElementById('newVarInput');
+    if (newInput) {
+        newInput.removeEventListener('keydown', newVarHandler);
+        newInput.addEventListener('keydown', newVarHandler);
+        function newVarHandler(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = newInput.value.trim();
+                const parsed = parseAssignment(val);
+                if (!parsed) { showModal("格式错误", "请使用: v.变量名 = 表达式 或 t.变量名 = 表达式", null, false); return; }
+                const { name, expr } = parsed;
+                if (name.startsWith('t.')) {
+                    const varKey = name.slice(2);
+                    if (globalVars.has(varKey)) { showModal("变量已存在", "全局变量已存在", null, false); return; }
+                    const defaultRange = getDefaultRange(name);
+                    globalVars.set(varKey, { def: new VarDef(expr, 0, defaultRange.min, defaultRange.max, 1), sourceBlockId: block.id });
+                    blocks.forEach(b => b.refresh());
+                    renderVariablesForBlock(block);
+                    recordAction();
+                    newInput.value = '';
+                } else {
+                    if (block.scope.vars.has(name)) { showModal("变量已存在", "局部变量已存在", null, false); return; }
+                    const defaultRange = getDefaultRange(name);
+                    block.scope.addVar(name, expr, defaultRange.min, defaultRange.max, 1);
+                    renderVariablesForBlock(block);
+                    recordAction();
+                    newInput.value = '';
+                }
+            }
+        }
+    }
 }
-function toggleDetail(e){ if(e.target.classList.contains('assignment-input')||e.target.closest('.auto-inc-btns')||e.target.closest('.slider-container')) return; const header=e.currentTarget; const varName=header.dataset.toggle; const details=document.querySelector(`.var-details[data-details="${varName}"]`); if(details){ const isVisible=details.style.display==='block'; details.style.display=isVisible?'none':'block'; const expandSpan=header.querySelector('.var-expand'); if(expandSpan) expandSpan.textContent=isVisible?'▼':'▲'; if(isVisible) expandedVars.delete(varName); else expandedVars.add(varName); } }
-// 方块下拉菜单
-let activeDropdown=null;
-function showBlockDropdown(btn){
-    if(activeDropdown) activeDropdown.remove();
-    const menu=document.createElement('div'); menu.className='block-dropdown';
-    if(blocks.length===0){ menu.innerHTML='<div class="block-dropdown-item">暂无方块</div>'; }
-    else{ blocks.forEach(b=>{ const item=document.createElement('div'); item.className='block-dropdown-item'; item.innerHTML=`<span>${b.id} ${selectedBlock===b?'✓':''}</span><div class="dropdown-actions"><button class="copy-block" data-id="${b.id}">📋</button><button class="delete-block" data-id="${b.id}">🗑️</button></div>`; item.querySelector('.copy-block')?.addEventListener('click',(e)=>{ e.stopPropagation(); duplicateBlock(b); menu.remove(); activeDropdown=null; }); item.querySelector('.delete-block')?.addEventListener('click',(e)=>{ e.stopPropagation(); removeBlock(b); menu.remove(); activeDropdown=null; }); item.addEventListener('click',(e)=>{ if(e.target.tagName!=='BUTTON'){ selectBlock(b); menu.remove(); activeDropdown=null; } }); menu.appendChild(item); }); }
-    document.body.appendChild(menu); activeDropdown=menu;
-    function updatePosition(){ const rect=btn.getBoundingClientRect(); menu.style.position='fixed'; menu.style.left=rect.left+'px'; menu.style.top=(rect.bottom+5)+'px'; if(parseInt(menu.style.left)+menu.offsetWidth>window.innerWidth) menu.style.left=(window.innerWidth-menu.offsetWidth-10)+'px'; }
-    updatePosition();
-    const scrollListener=()=>{ if(menu.parentNode) updatePosition(); };
-    const panelContent=document.getElementById('panelContent');
-    panelContent.addEventListener('scroll',scrollListener);
-    const closeHandler=(e)=>{ if(!menu.contains(e.target) && e.target!==btn){ menu.remove(); activeDropdown=null; panelContent.removeEventListener('scroll',scrollListener); document.removeEventListener('click',closeHandler); } };
-    setTimeout(()=>{ document.addEventListener('click',closeHandler); },10);
+
+let activeDropdown = null;
+function showBlockDropdown(btn) {
+    if (activeDropdown) { activeDropdown.remove(); activeDropdown = null; }
+    const menu = document.createElement('div'); menu.className = 'block-dropdown';
+    if (blocks.length === 0) { menu.innerHTML = '<div class="block-dropdown-item">暂无方块</div>'; }
+    else {
+        blocks.forEach(b => {
+            const item = document.createElement('div'); item.className = 'block-dropdown-item';
+            item.innerHTML = `<span>${b.id} ${selectedBlock === b ? '✓' : ''}</span><div class="dropdown-actions"><button class="copy-block" data-id="${b.id}">📋</button><button class="delete-block" data-id="${b.id}">🗑️</button></div>`;
+            item.querySelector('.copy-block')?.addEventListener('click', (e) => { e.stopPropagation(); duplicateBlock(b); menu.remove(); activeDropdown = null; });
+            item.querySelector('.delete-block')?.addEventListener('click', (e) => { e.stopPropagation(); removeBlock(b); menu.remove(); activeDropdown = null; });
+            item.addEventListener('click', (e) => { if (e.target.tagName !== 'BUTTON') { selectBlock(b); menu.remove(); activeDropdown = null; } });
+            menu.appendChild(item);
+        });
+    }
+    document.body.appendChild(menu); activeDropdown = menu;
+    const rect = btn.getBoundingClientRect(); menu.style.left = rect.left + 'px'; menu.style.top = (rect.bottom + 5) + 'px';
+    if (parseInt(menu.style.left) + menu.offsetWidth > window.innerWidth) menu.style.left = (window.innerWidth - menu.offsetWidth - 10) + 'px';
+    const closeHandler = (e) => { if (!menu.contains(e.target) && e.target !== btn) { if (menu.parentNode) menu.remove(); activeDropdown = null; document.removeEventListener('click', closeHandler); } };
+    setTimeout(() => { document.addEventListener('click', closeHandler); }, 10);
 }
-document.getElementById('blockMenuBtn').addEventListener('click',(e)=>{ e.stopPropagation(); showBlockDropdown(e.currentTarget); });
-// 导入功能完整实现
-function importFromCommands(text){
-    const lines=text.split(/\r?\n/); let current='', inQuote=false, cmds=[];
-    for(let line of lines){
-        if(!inQuote && line.includes('playanimation')){ if(current) cmds.push(current); current=line; const qc=(line.match(/"/g)||[]).length; inQuote=qc%2===1; }
-        else if(inQuote){ current+='\n'+line; const qc=(line.match(/"/g)||[]).length; if(qc%2===1) inQuote=false; }
-        else if(current && !inQuote){ cmds.push(current); current=''; }
-    } if(current) cmds.push(current);
-    for(let cmd of cmds){
-        if(!cmd.includes('playanimation')) continue;
-        const quoteMatch=cmd.match(/"([^"]*)"/); if(!quoteMatch) continue;
-        const content=quoteMatch[1];
-        const assignments=[]; const reg=/([vt])\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g; let m;
-        while((m=reg.exec(content))!==null) assignments.push({type:m[1],name:m[2],expr:m[3].trim()});
-        const idMatch=content.match(/['"]方块编号：([^'"]+)['"]/); let rawId=idMatch?idMatch[1]:"新方块";
-        const existIds=blocks.map(b=>b.id); let finalId=rawId,cnt=0; while(existIds.includes(finalId)) finalId=rawId+String.fromCharCode(97+(cnt++%26));
-        const M=[0,0,0,0,0,0,1,1,0,0,0,0,0]; const varMap=new Map();
-        assignments.forEach(a=>{ if(a.type==='v') varMap.set(`v.${a.name}`,a.expr); });
-        const basic=['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
-        basic.forEach((name,idx)=>{ const val=varMap.get(`v.${name}`); if(val!==undefined && isConstantExpr(val)) M[idx]=parseFloat(val); });
-        const newBlock=new Block(finalId,M,null,'#c0c0c0');
-        assignments.forEach(a=>{ const full=`${a.type}.${a.name}`;
-            if(a.type==='v'){ if(newBlock.scope.vars.has(full)) newBlock.scope.setVarExpr(full,a.expr); else newBlock.scope.addVar(full,a.expr,-1000,1000,1); }
-            else if(a.type==='t'){ if(!globalVars.has(a.name)){ const rg=getDefaultRange(`t.${a.name}`); globalVars.set(a.name,{def:new VarDef(a.expr,0,rg.min,rg.max,1),sourceBlockId:newBlock.id}); }
-            else globalVars.get(a.name).def.expr=a.expr; }
+document.getElementById('blockMenuBtn').addEventListener('click', (e) => { e.stopPropagation(); showBlockDropdown(e.currentTarget); });
+
+function importFromCommands(text) {
+    const lines = text.split(/\r?\n/);
+    let current = '', inQuote = false, cmds = [];
+    for (let line of lines) {
+        if (!inQuote && line.includes('playanimation')) { if (current) cmds.push(current); current = line; const qc = (line.match(/"/g) || []).length; inQuote = qc % 2 === 1; }
+        else if (inQuote) { current += '\n' + line; const qc = (line.match(/"/g) || []).length; if (qc % 2 === 1) inQuote = false; }
+        else if (current && !inQuote) { cmds.push(current); current = ''; }
+    }
+    if (current) cmds.push(current);
+    for (let cmd of cmds) {
+        if (!cmd.includes('playanimation')) continue;
+        const quoteMatch = cmd.match(/"([^"]*)"/); if (!quoteMatch) continue;
+        const content = quoteMatch[1];
+        const assignments = []; const reg = /([vt])\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g; let m;
+        while ((m = reg.exec(content)) !== null) assignments.push({ type: m[1], name: m[2], expr: m[3].trim() });
+        const idMatch = content.match(/['"]方块编号：([^'"]+)['"]/); let rawId = idMatch ? idMatch[1] : "新方块";
+        const existIds = blocks.map(b => b.id); let finalId = rawId, cnt = 0; while (existIds.includes(finalId)) finalId = rawId + String.fromCharCode(97 + (cnt++ % 26));
+        const M = [0,0,0,0,0,0,1,1,0,0,0,0,0]; const varMap = new Map();
+        assignments.forEach(a => { if (a.type === 'v') varMap.set(`v.${a.name}`, a.expr); });
+        const basic = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+        basic.forEach((name, idx) => { const val = varMap.get(`v.${name}`); if (val !== undefined && isConstantExpr(val)) M[idx] = parseFloat(val); });
+        const newBlock = new Block(finalId, M, null, '#aaccff');
+        assignments.forEach(a => {
+            const full = `${a.type}.${a.name}`;
+            if (a.type === 'v') { if (newBlock.scope.vars.has(full)) newBlock.scope.setVarExpr(full, a.expr); else newBlock.scope.addVar(full, a.expr, -1000, 1000, 1); }
+            else if (a.type === 't') { if (!globalVars.has(a.name)) { const rg = getDefaultRange(`t.${a.name}`); globalVars.set(a.name, { def: new VarDef(a.expr, 0, rg.min, rg.max, 1), sourceBlockId: newBlock.id }); } else globalVars.get(a.name).def.expr = a.expr; }
         });
         newBlock.refresh(); addBlock(newBlock);
     }
-    for(let [n,g] of globalVars.entries()){ const sb=blocks.find(b=>b.id===g.sourceBlockId); if(sb){ let nv=isConstantExpr(g.def.expr)?parseFloat(g.def.expr):evaluateExpression(g.def.expr,sb.scope.vars,globalVars); if(g.def.rangeMin!==undefined){ if(nv>g.def.rangeMax) g.def.rangeMax=nv; if(nv<g.def.rangeMin) g.def.rangeMin=nv; nv=Math.min(g.def.rangeMax,Math.max(g.def.rangeMin,nv)); } g.def.value=nv; } }
-    blocks.forEach(b=>b.refresh()); if(selectedBlock) renderVariablesForBlock(selectedBlock);
-    showModal("导入完成",`成功创建 ${blocks.length} 个方块`,null,false);
-}
-// 事件绑定
-document.getElementById('importBtn').onclick=()=>showModal("导入数据","粘贴 playanimation 命令文本",(txt)=>{ if(txt) importFromCommands(txt); },true);
-document.getElementById('exportBtn').onclick=showCommandListModal;
-document.getElementById('addBlockBtn').onclick=()=>{ const defaultM=[0,0,0,0,0,0,1,1,-90,0,0,0,0]; let base="方块",id=base,idx=1; while(blocks.some(b=>b.id===id)) id=base+(idx++).toString(); addBlock(new Block(id,defaultM,null,'#c0c0c0')); selectBlock(blocks[blocks.length-1]); };
-document.getElementById('fullscreenBtn').onclick=()=>{ const panel=document.getElementById('dataPanel'); if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); panel.style.display='none'; } else { document.exitFullscreen(); panel.style.display='flex'; } };
-document.addEventListener('fullscreenchange',()=>{ const panel=document.getElementById('dataPanel'); panel.style.display=document.fullscreenElement?'none':'flex'; });
-document.getElementById('hideNameBtn').addEventListener('click',()=>{ hideNames=!hideNames; blocks.forEach(b=>{ if(b.label) b.label.visible=!hideNames; }); document.getElementById('hideNameBtn').querySelector('span').textContent=hideNames?'🏷️ 显示':'🏷️ 隐名'; });
-document.getElementById('undoBtn').addEventListener('click',()=>undo()); document.getElementById('redoBtn').addEventListener('click',()=>redo());
-window.addEventListener('keydown',(e)=>{ if(e.ctrlKey&&e.key==='z'){ e.preventDefault(); undo(); } if(e.ctrlKey&&e.key==='y'){ e.preventDefault(); redo(); } });
-document.getElementById('showAxesCheckbox').addEventListener('change',(e)=>{ showAxes=e.target.checked; updateAxesByDistance(true); });
-document.getElementById('showGridCheckbox').addEventListener('change',(e)=>{ showGrid=e.target.checked; updateAxesByDistance(true); });
-document.getElementById('showTicksCheckbox').addEventListener('change',(e)=>{ showTicks=e.target.checked; updateAxesByDistance(true); });
-// 3D点击选中 - 关键修复：移除 animate 中的 b.refresh()
-const raycaster=new THREE.Raycaster(); const pointer=new THREE.Vector2();
-function onCanvasClick(event){ 
-    if(event.target.closest('.data-panel')||event.target.closest('.top-bar')) return; 
-    const rect=renderer.domElement.getBoundingClientRect(); 
-    pointer.x=((event.clientX-rect.left)/rect.width)*2-1; 
-    pointer.y=-((event.clientY-rect.top)/rect.height)*2+1; 
-    raycaster.setFromCamera(pointer,camera); 
-    // 强制更新所有方块的世界矩阵
-    blocks.forEach(b=>{ if(b.mesh) b.mesh.updateMatrixWorld(true); }); 
-    const intersects=raycaster.intersectObjects(blocks.map(b=>b.mesh)); 
-    if(intersects.length){ 
-        const hit=intersects[0].object; 
-        const block=blocks.find(b=>b.mesh===hit); 
-        if(block) selectBlock(block); 
-    } else selectBlock(null); 
-}
-renderer.domElement.addEventListener('click',onCanvasClick);
-// 触摸事件同样处理
-renderer.domElement.addEventListener('touchstart', e => {
-    let start = { x: e.touches[0].clientX, y: e.touches[0].clientY }, moved = false;
-    const onMove = me => { if (Math.abs(me.touches[0].clientX - start.x) > 5 || Math.abs(me.touches[0].clientY - start.y) > 5) moved = true; };
-    const onEnd = ee => {
-        document.removeEventListener('touchmove', onMove);
-        document.removeEventListener('touchend', onEnd);
-        if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar')) {
-            const rect = renderer.domElement.getBoundingClientRect();
-            pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
-            pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1;
-            raycaster.setFromCamera(pointer, camera);
-            blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); });
-            const hits = raycaster.intersectObjects(blocks.map(b => b.mesh));
-            if (hits.length) { const hitBlock = blocks.find(b => b.mesh === hits[0].object); if (hitBlock) selectBlock(hitBlock); }
-            else selectBlock(null);
+    for (let [n, g] of globalVars.entries()) {
+        const sb = blocks.find(b => b.id === g.sourceBlockId);
+        if (sb) {
+            let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars);
+            if (g.def.rangeMin !== undefined) { if (nv > g.def.rangeMax) g.def.rangeMax = nv; if (nv < g.def.rangeMin) g.def.rangeMin = nv; nv = Math.min(g.def.rangeMax, Math.max(g.def.rangeMin, nv)); }
+            g.def.value = nv;
         }
-    };
-    document.addEventListener('touchmove', onMove);
-    document.addEventListener('touchend', onEnd);
-    e.preventDefault();
-}, { passive: false });
-// 动画循环中不要每帧刷新方块变换，只更新标签即可
-function animate(){ 
-    requestAnimationFrame(animate); 
-    controls.update(); 
-    updateAxesByDistance(); 
-    blocks.forEach(b=> updateBlockLabel(b)); 
-    renderer.render(scene,camera); 
-    labelRenderer.render(scene,camera); 
+    }
+    blocks.forEach(b => b.refresh()); if (selectedBlock) renderVariablesForBlock(selectedBlock);
+    showModal("导入完成", `成功创建 ${blocks.length} 个方块`, null, false);
 }
+
+document.getElementById('importBtn').onclick = () => showModal("导入数据", "粘贴 playanimation 命令文本", (txt) => { if (txt) importFromCommands(txt); }, true);
+document.getElementById('exportBtn').onclick = showCommandListModal;
+document.getElementById('addBlockBtn').onclick = () => {
+    const defaultM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
+    let base = "方块", id = base, idx = 1;
+    while (blocks.some(b => b.id === id)) id = base + (idx++).toString();
+    addBlock(new Block(id, defaultM, null, '#aaccff'));
+    selectBlock(blocks[blocks.length - 1]);
+};
+document.getElementById('fullscreenBtn').onclick = () => {
+    const panel = document.getElementById('dataPanel');
+    if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); panel.style.display = 'none'; }
+    else { document.exitFullscreen(); panel.style.display = 'flex'; }
+};
+document.addEventListener('fullscreenchange', () => {
+    const panel = document.getElementById('dataPanel');
+    panel.style.display = document.fullscreenElement ? 'none' : 'flex';
+});
+document.getElementById('hideNameBtn').addEventListener('click', () => {
+    hideNames = !hideNames;
+    blocks.forEach(b => { if (b.label) b.label.visible = !hideNames; });
+    document.getElementById('hideNameBtn').querySelector('span').textContent = hideNames ? ' 显示' : ' 隐名';
+});
+document.getElementById('undoBtn').addEventListener('click', () => undo());
+document.getElementById('redoBtn').addEventListener('click', () => redo());
+window.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); } });
+
+// 3D场景初始化
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x030617); scene.fog = new THREE.FogExp2(0x030617, 0.008);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.set(8, 6, 10);
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true; container.appendChild(renderer.domElement);
+const labelRenderer = new CSS2DRenderer(); labelRenderer.setSize(window.innerWidth, window.innerHeight); labelRenderer.domElement.style.position = 'absolute'; labelRenderer.domElement.style.top = '0px'; labelRenderer.domElement.style.left = '0px'; labelRenderer.domElement.style.pointerEvents = 'none'; container.appendChild(labelRenderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement); controls.target.set(0, 0, 0); controls.enablePan = false; controls.enableZoom = true; controls.zoomSpeed = 0.8; controls.rotateSpeed = 0.8; controls.enableDamping = true; controls.touchRotate = true; controls.touchZoom = true;
+const ambient = new THREE.AmbientLight(0x404060); scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0xfff5e0, 1.2); dirLight.position.set(3, 5, 2); dirLight.castShadow = true; scene.add(dirLight);
+const fillLight = new THREE.PointLight(0x6688cc, 0.5); fillLight.position.set(-2, 2, -3); scene.add(fillLight);
+const rimLight = new THREE.PointLight(0xffaa77, 0.4); rimLight.position.set(0, 1.5, -4); scene.add(rimLight);
+let axisGroup = null; let showAxes = true, showGrid = true, showTicks = true; let lastDistance = 0;
+function createDynamicAxesAndGrid(camDist) {
+    if (axisGroup) { axisGroup.traverse(c => { if (c.isCSS2DObject && c.element) c.element.remove(); }); scene.remove(axisGroup); }
+    axisGroup = new THREE.Group(); let maxLen = Math.min(200, Math.max(5, camDist * 1.5)); let step = 1; const targetSteps = [0.5,1,2,5,10,20,50]; for (let s of targetSteps) if (maxLen / s <= 16 && maxLen / s >= 6) { step = s; break; } const actualMax = Math.floor(maxLen / step) * step; const ticks = []; for (let v = -actualMax; v <= actualMax + 0.001; v += step) if (Math.abs(v) > 0.01) ticks.push(v); const axes = [{ start: new THREE.Vector3(-actualMax,0,0), end: new THREE.Vector3(actualMax,0,0), label:'X', color:0xff6666 }, { start: new THREE.Vector3(0,-actualMax,0), end: new THREE.Vector3(0,actualMax,0), label:'Y', color:0x66ff66 }, { start: new THREE.Vector3(0,0,-actualMax), end: new THREE.Vector3(0,0,actualMax), label:'Z', color:0x66aaff }]; const isMobile = window.innerWidth <= 700; const fontSize = isMobile ? '9px' : '12px'; const textColor = document.body.classList.contains('light-mode') ? '#0f172a' : '#e2e8f0'; axes.forEach(axis => { if (showAxes) { const points = [axis.start, axis.end]; const geo = new THREE.BufferGeometry().setFromPoints(points); const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: axis.color })); axisGroup.add(line); const dir = new THREE.Vector3().subVectors(axis.end, axis.start).normalize(); const arrow = new THREE.ArrowHelper(dir, axis.end, 0.4, axis.color, 0.2, 0.1); axisGroup.add(arrow); } if (showTicks) { ticks.forEach(val => { let pos = axis.label === 'X' ? new THREE.Vector3(val,0,0) : axis.label === 'Y' ? new THREE.Vector3(0,val,0) : new THREE.Vector3(0,0,val); let tickDir = axis.label === 'X' ? new THREE.Vector3(0,0.1,0.1) : axis.label === 'Y' ? new THREE.Vector3(0.1,0,0.1) : new THREE.Vector3(0.1,0.1,0); const tickGeo = new THREE.BufferGeometry().setFromPoints([pos, pos.clone().add(tickDir)]); const tickLine = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0x88aaff })); axisGroup.add(tickLine); const div = document.createElement('div'); div.textContent = val.toFixed(1); div.style.cssText = `color:${textColor};font-size:${fontSize};font-weight:bold;text-shadow:0 0 2px rgba(0,0,0,0.3);padding:0 2px;white-space:nowrap;`; const labelObj = new CSS2DObject(div); labelObj.position.copy(pos); axisGroup.add(labelObj); }); } }); if (showGrid) { const gridSize = actualMax * 2; const divisions = ticks.length * 2; const gridStep = gridSize / divisions; for (let i = -divisions/2; i <= divisions/2; i++) { const pos = i * gridStep; if (Math.abs(pos) > actualMax) continue; const pointsX = [new THREE.Vector3(-actualMax,0,pos), new THREE.Vector3(actualMax,0,pos)]; const geoX = new THREE.BufferGeometry().setFromPoints(pointsX); const lineX = new THREE.Line(geoX, new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.35 })); axisGroup.add(lineX); const pointsZ = [new THREE.Vector3(pos,0,-actualMax), new THREE.Vector3(pos,0,actualMax)]; const geoZ = new THREE.BufferGeometry().setFromPoints(pointsZ); const lineZ = new THREE.Line(geoZ, new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.35 })); axisGroup.add(lineZ); } } scene.add(axisGroup);
+}
+function updateAxesByDistance(force = false) { const dist = camera.position.length(); if (force || Math.abs(dist - lastDistance) > 0.5) { lastDistance = dist; createDynamicAxesAndGrid(dist); } }
+const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2();
+function onCanvasClick(event) { if (event.target.closest('.data-panel') || event.target.closest('.top-bar')) return; const rect = renderer.domElement.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(pointer, camera); blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); }); const intersects = raycaster.intersectObjects(blocks.map(b => b.mesh)); if (intersects.length) { const hit = intersects[0].object; const block = blocks.find(b => b.mesh === hit); if (block) selectBlock(block); } else selectBlock(null); }
+renderer.domElement.addEventListener('click', onCanvasClick);
+renderer.domElement.addEventListener('touchstart', e => { let start = { x: e.touches[0].clientX, y: e.touches[0].clientY }, moved = false; const onMove = me => { if (Math.abs(me.touches[0].clientX - start.x) > 5 || Math.abs(me.touches[0].clientY - start.y) > 5) moved = true; }; const onEnd = ee => { document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onEnd); if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar')) { const rect = renderer.domElement.getBoundingClientRect(); pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(pointer, camera); blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); }); const hits = raycaster.intersectObjects(blocks.map(b => b.mesh)); if (hits.length) { const hitBlock = blocks.find(b => b.mesh === hits[0].object); if (hitBlock) selectBlock(hitBlock); } else selectBlock(null); } }; document.addEventListener('touchmove', onMove); document.addEventListener('touchend', onEnd); e.preventDefault(); }, { passive: false });
+function animate() { requestAnimationFrame(animate); controls.update(); updateAxesByDistance(); blocks.forEach(b => updateBlockLabel(b)); renderer.render(scene, camera); labelRenderer.render(scene, camera); }
 animate();
 createDynamicAxesAndGrid(camera.position.length());
-const defM=[0,0,0,0,0,0,1,1,-90,0,0,0,0]; let base="方块",bid=base,idx=1; while(blocks.some(b=>b.id===bid)) bid=base+(idx++).toString();
-addBlock(new Block(bid,defM,null,'#c0c0c0')); selectBlock(blocks[0]);
+const defM = [0,0,0,0,0,0,1,1,-90,0,0,0,0]; let base = "方块", bid = base, idx = 1; while (blocks.some(b => b.id === bid)) bid = base + (idx++).toString();
+addBlock(new Block(bid, defM, null, '#aaccff')); selectBlock(blocks[0]);
+
+let isLightMode = false;
+function applyTheme() {
+    const body = document.body;
+    if (isLightMode) {
+        body.classList.add('light-mode');
+        scene.background = new THREE.Color(0xeef2ff);
+        if (scene.fog) scene.fog = null;
+        ambient.intensity = 0.9; dirLight.intensity = 1.4; fillLight.intensity = 0.8; rimLight.intensity = 0.6;
+        document.getElementById('modeSwitchBtn').innerHTML = '<span> 深色</span>';
+    } else {
+        body.classList.remove('light-mode');
+        scene.background = new THREE.Color(0x030617);
+        scene.fog = new THREE.FogExp2(0x030617, 0.008);
+        ambient.intensity = 0.6; dirLight.intensity = 1.2; fillLight.intensity = 0.5; rimLight.intensity = 0.4;
+        document.getElementById('modeSwitchBtn').innerHTML = '<span> 浅色</span>';
+    }
+    updateAxesByDistance(true);
+}
+document.getElementById('modeSwitchBtn').addEventListener('click', () => { isLightMode = !isLightMode; applyTheme(); });
 applyTheme();
+document.getElementById('showAxesCheckbox').addEventListener('change', (e) => { showAxes = e.target.checked; updateAxesByDistance(true); });
+document.getElementById('showGridCheckbox').addEventListener('change', (e) => { showGrid = e.target.checked; updateAxesByDistance(true); });
+document.getElementById('showTicksCheckbox').addEventListener('change', (e) => { showTicks = e.target.checked; updateAxesByDistance(true); });
+
+// 面板拖拽
+const panel = document.getElementById('dataPanel');
+const resizeHandle = document.getElementById('resizeHandle');
+let isDragging = false;
+let dragStartClientY = 0;
+let dragStartHeight = 0;
+function onPointerDown(e) { e.preventDefault(); isDragging = true; dragStartClientY = e.clientY; dragStartHeight = panel.offsetHeight; document.body.style.userSelect = 'none'; document.body.style.cursor = 'ns-resize'; document.addEventListener('pointermove', onPointerMove); document.addEventListener('pointerup', onPointerUp); }
+function onPointerMove(e) { if (!isDragging) return; const dy = e.clientY - dragStartClientY; let newHeight = dragStartHeight - dy; newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight)); panel.style.height = newHeight + 'px'; }
+function onPointerUp() { isDragging = false; document.body.style.userSelect = ''; document.body.style.cursor = ''; document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('pointerup', onPointerUp); }
+resizeHandle.addEventListener('pointerdown', onPointerDown);
+panel.style.height = '280px';
 </script>
 </body>
 </html>
