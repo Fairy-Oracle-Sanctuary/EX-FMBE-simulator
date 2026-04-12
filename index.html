@@ -1035,7 +1035,7 @@ body.light-mode .batch-reset-btn {
             <button class="tool-btn" id="exportBtn"><span>输出命令</span></button>
             <button class="tool-btn" id="materialPresetBtn"><span>add材质</span></button>
             <button class="tool-btn" id="modeSwitchBtn"><span>深色模式</span></button>
-            <button class="tool-btn" id="addBlockBtn"><span>新建cube</span></button>
+            <button class="tool-btn" id="addBlockBtn"><span>新建Cube</span></button>
             <button class="tool-btn" id="hideNameBtn"><span>隐藏编号</span></button>
             <button class="tool-btn" id="resetViewBtn"><span>重置视角🎥</span></button>
         </div>
@@ -1196,6 +1196,7 @@ class Block {
         this.mesh = null;
         this.label = null;
         this.axisHelper = null;
+        this.selectionWireframe = null;
         this.createMesh();
     }
     createMesh() {
@@ -1214,7 +1215,6 @@ class Block {
         this.axisHelper = axisGroup;
         this.mesh.add(this.axisHelper);
         this.axisHelper.visible = false;
-        // 确保即使超出视野也更新矩阵
         this.mesh.frustumCulled = false;
         this.updateTransform();
     }
@@ -1238,7 +1238,6 @@ class Block {
         this.mesh.matrix.copy(matrix);
         this.mesh.matrixAutoUpdate = false;
         this.mesh.matrixWorldNeedsUpdate = true;
-        // 强制更新世界矩阵
         this.mesh.updateMatrixWorld(true);
     }
     refresh() {
@@ -1261,6 +1260,38 @@ class Block {
         }
         return false;
     }
+    updateSelectionHighlight(selected) {
+        if (selected) {
+            if (!this.selectionWireframe) {
+                const vertices = [];
+                const corners = [
+                    new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3( 0.5, -0.5, -0.5),
+                    new THREE.Vector3( 0.5, -0.5,  0.5), new THREE.Vector3(-0.5, -0.5,  0.5),
+                    new THREE.Vector3(-0.5,  0.5, -0.5), new THREE.Vector3( 0.5,  0.5, -0.5),
+                    new THREE.Vector3( 0.5,  0.5,  0.5), new THREE.Vector3(-0.5,  0.5,  0.5)
+                ];
+                const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+                const positions = [];
+                edges.forEach(edge => {
+                    const p1 = corners[edge[0]], p2 = corners[edge[1]];
+                    positions.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+                });
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+                const material = new THREE.LineBasicMaterial({ color: 0xffaa00 });
+                this.selectionWireframe = new THREE.LineSegments(geometry, material);
+                scene.add(this.selectionWireframe);
+            }
+            this.selectionWireframe.visible = true;
+            const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scale = new THREE.Vector3();
+            this.mesh.matrixWorld.decompose(pos, quat, scale);
+            this.selectionWireframe.position.copy(pos);
+            this.selectionWireframe.quaternion.copy(quat);
+            this.selectionWireframe.scale.copy(scale);
+        } else {
+            if (this.selectionWireframe) this.selectionWireframe.visible = false;
+        }
+    }
 }
 
 let globalVars = new Map();
@@ -1273,26 +1304,21 @@ let currentOpenGroup = null;
 let expandedVars = new Set();
 let batchDeltas = new Map();
 
-// ==================== 历史记录节流与去重 ====================
-let lastRecordedState = null;
-let recordTimer = null;
+let isMouseInPanel = false;
+const panelEl = document.getElementById('dataPanel');
+panelEl.addEventListener('mouseenter', () => isMouseInPanel = true);
+panelEl.addEventListener('mouseleave', () => isMouseInPanel = false);
+
+// ==================== 历史记录（无节流，直接记录） ====================
 function recordAction() {
-    if (recordTimer) clearTimeout(recordTimer);
-    recordTimer = setTimeout(() => {
-        const currentState = getState();
-        const currentStr = JSON.stringify(currentState);
-        if (currentStr !== JSON.stringify(lastRecordedState)) {
-            history.record(currentState);
-            lastRecordedState = currentState;
-        }
-        recordTimer = null;
-    }, 1000);
+    const currentState = getState();
+    history.record(currentState);
 }
 
 const history = (() => {
     let u = [], r = [];
     return {
-        record(s) { u.push(JSON.parse(JSON.stringify(s))); if (u.length > 30) u.shift(); r = []; },
+        record(s) { u.push(JSON.parse(JSON.stringify(s))); if (u.length > 100) u.shift(); r = []; },
         undo(cur) { if (!u.length) return null; r.push(JSON.parse(JSON.stringify(cur))); return u.pop(); },
         redo(cur) { if (!r.length) return null; u.push(JSON.parse(JSON.stringify(cur))); return r.pop(); }
     };
@@ -1308,7 +1334,7 @@ function getState() {
 function restoreState(state) {
     for (let [k, i] of activeAutoIncMap) clearInterval(i);
     activeAutoIncMap.clear();
-    blocks.forEach(b => { scene.remove(b.mesh); if (b.label) scene.remove(b.label); });
+    blocks.forEach(b => { scene.remove(b.mesh); if (b.label) scene.remove(b.label); if (b.selectionWireframe) scene.remove(b.selectionWireframe); });
     blocks = [];
     state.blocks.forEach(s => {
         const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
@@ -1325,6 +1351,9 @@ function restoreState(state) {
     state.globalVars.forEach(g => globalVars.set(g.name, { def: new VarDef(g.expr, g.value, g.rangeMin, g.rangeMax, g.step), sourceBlockId: g.sourceBlockId }));
     if (selectedBlock) { const nb = blocks.find(b => b.id === selectedBlock.id); if (nb) selectBlock(nb); else selectBlock(null); }
     else renderVariablesForBlock(null);
+    if (selectedBlock) renderVariablesForBlock(selectedBlock);
+    else renderVariablesForBlock(null);
+    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
 function undo() { const cur = getState(); const prev = history.undo(cur); if (prev) restoreState(prev); }
@@ -1343,6 +1372,7 @@ function removeBlock(block) {
     if (idx !== -1) blocks.splice(idx, 1);
     scene.remove(block.mesh);
     if (block.label) scene.remove(block.label);
+    if (block.selectionWireframe) scene.remove(block.selectionWireframe);
     if (selectedBlock === block) {
         selectedBlock = blocks[0] || null;
         if (selectedBlock) selectBlock(selectedBlock);
@@ -1362,15 +1392,13 @@ function selectBlock(block) {
         renderVariablesForBlock(block);
     } else renderVariablesForBlock(null);
     updateAxesVisibility();
+    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
 function updateAxesVisibility() {
     blocks.forEach(block => {
-        if (selectedBlocksSet.size > 1) {
-            block.axisHelper.visible = selectedBlocksSet.has(block);
-        } else {
-            block.axisHelper.visible = (block === selectedBlock);
-        }
+        if (selectedBlocksSet.size > 1) block.axisHelper.visible = selectedBlocksSet.has(block);
+        else block.axisHelper.visible = (block === selectedBlock);
     });
 }
 
@@ -1385,12 +1413,13 @@ function updateBlockLabel(block) {
     block.label.visible = !hideNames;
     const pos = new THREE.Vector3();
     block.mesh.matrixWorld.decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
+    const scale = block.scope.vars.get('v.scale')?.value ?? 1;
     block.label.position.copy(pos);
-    block.label.position.y += 0.7;
+    block.label.position.y += scale * 0.5 + 0.1;
 }
 
 function duplicateBlock(original) {
-    let baseName = original.id, newId = baseName, cnt = 1;
+    let baseName = "Cube", newId = baseName, cnt = 1;
     while (blocks.some(b => b.id === newId)) newId = baseName + (cnt++);
     const M = original.scope.toM();
     const newBlock = new Block(newId, M, original.textureUrl, original.materialColor);
@@ -1402,52 +1431,38 @@ function duplicateBlock(original) {
     selectBlock(newBlock);
 }
 
-// ========== 新增：批量复制选中的方块 ==========
 function duplicateSelectedBlocks() {
     if (selectedBlocksSet.size === 0) return;
     const toDuplicate = Array.from(selectedBlocksSet);
-    const originalIds = new Set(toDuplicate.map(b => b.id));
     const newBlocks = [];
     for (let block of toDuplicate) {
         duplicateBlock(block);
         const newBlock = blocks[blocks.length - 1];
         newBlocks.push(newBlock);
     }
-    // 重新设置选中集合：原选中的 + 新复制的
     selectedBlocksSet.clear();
     toDuplicate.forEach(b => selectedBlocksSet.add(b));
     newBlocks.forEach(b => selectedBlocksSet.add(b));
     if (selectedBlock) renderVariablesForBlock(selectedBlock);
     updateAxesVisibility();
+    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
-// ========== 新增：批量删除选中的方块 ==========
 function deleteSelectedBlocks() {
     if (selectedBlocksSet.size === 0) return;
     const toDelete = Array.from(selectedBlocksSet);
-    for (let block of toDelete) {
-        removeBlock(block);
-    }
+    for (let block of toDelete) removeBlock(block);
     selectedBlocksSet.clear();
-    if (blocks.length > 0) {
-        selectBlock(blocks[0]);
-    } else {
-        selectBlock(null);
-        renderVariablesForBlock(null);
-    }
+    if (blocks.length > 0) selectBlock(blocks[0]);
+    else selectBlock(null);
     updateAxesVisibility();
+    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
-// ========== 新增：全屏切换函数（供按钮和F11复用） ==========
 function toggleFullscreen() {
     const panel = document.getElementById('dataPanel');
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-        panel.style.display = 'none';
-    } else {
-        document.exitFullscreen();
-        panel.style.display = 'flex';
-    }
+    if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); panel.style.display = 'none'; }
+    else { document.exitFullscreen(); panel.style.display = 'flex'; }
 }
 
 // ==================== 批量修改核心函数 ====================
@@ -1470,45 +1485,30 @@ function applyBatchDelta(varName, deltaChange) {
             def.expr = newVal.toString();
             def.value = newVal;
             block.refresh();
-            // 强制更新世界矩阵，确保视野外也生效
             block.mesh.updateMatrixWorld(true);
         }
     }
     recordAction();
 }
-
 function setBatchDelta(varName, newDelta) {
     const oldDelta = batchDeltas.get(varName) || 0;
     const change = newDelta - oldDelta;
-    if (change !== 0) {
-        applyBatchDelta(varName, change);
-        batchDeltas.set(varName, newDelta);
-    }
+    if (change !== 0) { applyBatchDelta(varName, change); batchDeltas.set(varName, newDelta); }
 }
-
 function resetBatchDelta(varName) {
     const oldDelta = batchDeltas.get(varName) || 0;
-    if (oldDelta !== 0) {
-        applyBatchDelta(varName, -oldDelta);
-        batchDeltas.set(varName, 0);
-    }
+    if (oldDelta !== 0) { applyBatchDelta(varName, -oldDelta); batchDeltas.set(varName, 0); }
 }
-
 function resetAllBatchDeltas() {
-    for (let varName of batchDeltas.keys()) {
-        resetBatchDelta(varName);
-    }
+    for (let varName of batchDeltas.keys()) resetBatchDelta(varName);
     renderVariablesForBlock(selectedBlock);
 }
-
 function syncStepToBlocks(varName, newStep) {
     for (let block of selectedBlocksSet) {
         const def = block.scope.vars.get(varName);
         if (def) {
             if (def.step !== newStep) {
-                // ★ 停止该变量所有自增自减定时器（无论 delta）
                 stopAutoInc(false, varName, 0, null);
-                // 清除按钮激活样式
                 const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`);
                 const downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
                 if (upBtn) upBtn.classList.remove('active');
@@ -1527,23 +1527,15 @@ function syncStepToBlocks(varName, newStep) {
     }
     recordAction();
 }
-
-
 function renderBatchPanel() {
     const batchGroups = {
         '位移': ['v.xpos', 'v.ypos', 'v.zpos', 'v.xbasepos', 'v.ybasepos', 'v.zbasepos'],
         '缩放': ['v.scale', 'v.extend_scale', 'v.extend_xrot', 'v.extend_yrot'],
         '旋转': ['v.rotatex', 'v.rotatey', 'v.rotatez']
     };
-    let html = `<div class="batch-panel">
-        <div class="batch-title">
-            <span>✏️ 批量修改 (${selectedBlocksSet.size} 个方块)</span>
-            <button class="batch-reset-all" id="batchResetAllBtn">重置所有增量</button>
-        </div>
-        <div class="batch-three-columns">`;
+    let html = `<div class="batch-panel"><div class="batch-title"><span>✏️ 批量修改 (${selectedBlocksSet.size} 个方块)</span><button class="batch-reset-all" id="batchResetAllBtn">重置所有增量</button></div><div class="batch-three-columns">`;
     for (let [groupName, varNames] of Object.entries(batchGroups)) {
-        html += `<div class="batch-column">
-            <div class="batch-column-title">📁 ${groupName}</div>`;
+        html += `<div class="batch-column"><div class="batch-column-title">📁 ${groupName}</div>`;
         for (let varName of varNames) {
             const displayName = varName.slice(2);
             const range = getDefaultRange(varName);
@@ -1552,25 +1544,13 @@ function renderBatchPanel() {
             const formattedDelta = parseFloat(currentDelta.toFixed(6));
             html += `<div class="batch-var-card" data-batch-var="${varName}">
                 <div class="batch-var-header" data-batch-toggle-var="${varName}">
-                    <span class="batch-var-title">${displayName}</span>
-                    <span class="var-expand">▼</span>
+                    <span class="batch-var-title">${displayName}</span><span class="var-expand">▼</span>
                 </div>
                 <div class="batch-var-details" data-batch-details="${varName}" style="display:none;">
-                    <div class="batch-control-row">
-                        <label>增量值:</label>
-                        <input type="number" class="batch-number" data-batch-input="${varName}" value="${formattedDelta}" step="${defaultStep}">
-                    </div>
-                    <div class="batch-control-row">
-                        <label>步长:</label>
-                        <input type="number" class="batch-step-input" data-batch-step="${varName}" value="${defaultStep}" step="any">
-                    </div>
-                    <div class="batch-control-row">
-                        <label>滑块:</label>
-                        <input type="range" class="batch-slider" data-batch-slider="${varName}" min="${range.min}" max="${range.max}" step="${defaultStep}" value="${formattedDelta}">
-                    </div>
-                    <div class="batch-control-row">
-                        <button class="batch-reset-btn" data-batch-reset="${varName}">重置</button>
-                    </div>
+                    <div class="batch-control-row"><label>增量值:</label><input type="number" class="batch-number" data-batch-input="${varName}" value="${formattedDelta}" step="${defaultStep}"></div>
+                    <div class="batch-control-row"><label>步长:</label><input type="number" class="batch-step-input" data-batch-step="${varName}" value="${defaultStep}" step="any"></div>
+                    <div class="batch-control-row"><label>滑块:</label><input type="range" class="batch-slider" data-batch-slider="${varName}" min="${range.min}" max="${range.max}" step="${defaultStep}" value="${formattedDelta}"></div>
+                    <div class="batch-control-row"><button class="batch-reset-btn" data-batch-reset="${varName}">重置</button></div>
                     <div class="batch-hint">实时预览：调整增量立即生效</div>
                 </div>
             </div>`;
@@ -1580,101 +1560,7 @@ function renderBatchPanel() {
     html += `</div></div>`;
     return html;
 }
-
-// =============变量重置==============
-function getDefaultValueForVar(varName) {
-    // 特殊处理：extend_xrot 默认 -90
-    if (varName === 'v.extend_xrot') return -90;
-    // scale 和 extend_scale 默认 1
-    if (varName === 'v.scale' || varName === 'v.extend_scale') return 1;
-    // 所有其他变量（包括位移、旋转、自定义、全局）默认 0
-    return 0;
-}
-
-// 重置变量到默认值
-function resetVariable(varName, block) {
-    const defaultValue = getDefaultValueForVar(varName);
-    
-    // 全局变量处理
-    if (varName.startsWith('t.')) {
-        const key = varName.slice(2);
-        const g = globalVars.get(key);
-        if (g && isConstantExpr(g.def.expr)) {
-            // 停止所有与该全局变量相关的自增/自减定时器
-            stopAutoInc(true, key, 0, null);
-            // 清除按钮高亮
-            const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`);
-            const downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
-            if (upBtn) upBtn.classList.remove('active');
-            if (downBtn) downBtn.classList.remove('active');
-            
-            // 重置值
-            g.def.expr = defaultValue.toString();
-            g.def.value = defaultValue;
-            // 确保范围包含默认值
-            if (defaultValue < g.def.rangeMin) g.def.rangeMin = defaultValue;
-            if (defaultValue > g.def.rangeMax) g.def.rangeMax = defaultValue;
-            // 刷新所有方块
-            blocks.forEach(b => b.refresh());
-            // 更新UI
-            const card = document.querySelector(`.var-card[data-var="${varName}"]`);
-            if (card) {
-                const slider = card.querySelector('.var-slider');
-                if (slider) {
-                    slider.value = defaultValue;
-                    slider.min = g.def.rangeMin;
-                    slider.max = g.def.rangeMax;
-                }
-                const inp = card.querySelector('.assignment-input');
-                if (inp) inp.value = `${varName} = ${defaultValue}`;
-            }
-            recordAction();
-            renderVariablesForBlock(selectedBlock);
-        }
-        return;
-    }
-    
-    // 局部变量处理
-    const targetBlock = block || selectedBlock;
-    if (!targetBlock) return;
-    const def = targetBlock.scope.vars.get(varName);
-    if (def && isConstantExpr(def.expr)) {
-        // 停止该变量所有自增/自减定时器
-        stopAutoInc(false, varName, 0, null);
-        // 清除按钮高亮
-        const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`);
-        const downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
-        if (upBtn) upBtn.classList.remove('active');
-        if (downBtn) downBtn.classList.remove('active');
-        
-        // 重置值
-        def.expr = defaultValue.toString();
-        def.value = defaultValue;
-        // 调整范围（如果需要）
-        if (defaultValue < def.rangeMin) def.rangeMin = defaultValue;
-        if (defaultValue > def.rangeMax) def.rangeMax = defaultValue;
-        targetBlock.refresh();
-        // 更新UI
-        const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${targetBlock.id}"]`);
-        if (card) {
-            const slider = card.querySelector('.var-slider');
-            if (slider) {
-                slider.value = defaultValue;
-                slider.min = def.rangeMin;
-                slider.max = def.rangeMax;
-            }
-            const inp = card.querySelector('.assignment-input');
-            if (inp) inp.value = `${varName} = ${defaultValue}`;
-        }
-        recordAction();
-        updateGlobalVarsDependingOn(targetBlock, varName);
-        renderVariablesForBlock(targetBlock);
-    }
-}
-
-
 function attachBatchEvents() {
-    // 变量卡片折叠（同列内互斥）
     document.querySelectorAll('[data-batch-toggle-var]').forEach(header => {
         header.removeEventListener('click', batchVarToggle);
         header.addEventListener('click', batchVarToggle);
@@ -1689,7 +1575,6 @@ function attachBatchEvents() {
             details.style.display = 'none';
             if (expandSpan) expandSpan.textContent = '▼';
         } else {
-            // 先关闭同一列（当前卡片所在的 .batch-column）内所有其他变量的详情
             const currentColumn = this.closest('.batch-column');
             if (currentColumn) {
                 const allVarCards = currentColumn.querySelectorAll('.batch-var-card');
@@ -1706,8 +1591,6 @@ function attachBatchEvents() {
             if (expandSpan) expandSpan.textContent = '▲';
         }
     }
-
-    // 以下为增量值、滑块、步长、重置等逻辑（保持不变）
     const allVars = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.rotatex','v.rotatey','v.rotatez'];
     for (let varName of allVars) {
         const input = document.querySelector(`.batch-number[data-batch-input="${varName}"]`);
@@ -1715,7 +1598,6 @@ function attachBatchEvents() {
         const stepInput = document.querySelector(`.batch-step-input[data-batch-step="${varName}"]`);
         const resetBtn = document.querySelector(`.batch-reset-btn[data-batch-reset="${varName}"]`);
         if (!input && !slider) continue;
-        
         const updateValue = (newDelta) => {
             newDelta = parseFloat(newDelta);
             if (isNaN(newDelta)) newDelta = 0;
@@ -1728,46 +1610,54 @@ function attachBatchEvents() {
             if (input) input.value = newDelta;
             if (slider) slider.value = newDelta;
         };
-        
-        if (input) {
-            input.removeEventListener('change', batchInputChange);
-            input.addEventListener('change', batchInputChange);
-            function batchInputChange(e) { updateValue(this.value); }
-        }
-        if (slider) {
-            slider.removeEventListener('input', batchSliderInput);
-            slider.addEventListener('input', batchSliderInput);
-            function batchSliderInput(e) { updateValue(this.value); }
-        }
-        if (stepInput) {
-            stepInput.removeEventListener('change', batchStepChange);
-            stepInput.addEventListener('change', batchStepChange);
-            function batchStepChange(e) {
-                let step = parseFloat(this.value);
-                if (isNaN(step)) step = 1;
-                if (input) input.step = step;
-                if (slider) slider.step = step;
-                syncStepToBlocks(varName, step);
-                if (input) updateValue(input.value);
-            }
-        }
-        if (resetBtn) {
-            resetBtn.removeEventListener('click', batchReset);
-            resetBtn.addEventListener('click', batchReset);
-            function batchReset(e) {
-                e.stopPropagation();
-                updateValue(0);
-            }
-        }
+        if (input) { input.removeEventListener('change', batchInputChange); input.addEventListener('change', batchInputChange); function batchInputChange(e) { updateValue(this.value); } }
+        if (slider) { slider.removeEventListener('change', batchSliderInput); slider.addEventListener('change', batchSliderInput); function batchSliderInput(e) { updateValue(this.value); } }
+        if (stepInput) { stepInput.removeEventListener('change', batchStepChange); stepInput.addEventListener('change', batchStepChange); function batchStepChange(e) { let step = parseFloat(this.value); if (isNaN(step)) step = 1; if (input) input.step = step; if (slider) slider.step = step; syncStepToBlocks(varName, step); if (input) updateValue(input.value); } }
+        if (resetBtn) { resetBtn.removeEventListener('click', batchReset); resetBtn.addEventListener('click', batchReset); function batchReset(e) { e.stopPropagation(); updateValue(0); } }
     }
     const resetAllBtn = document.getElementById('batchResetAllBtn');
-    if (resetAllBtn) {
-        resetAllBtn.removeEventListener('click', resetAll);
-        resetAllBtn.addEventListener('click', resetAll);
-        function resetAll(e) {
-            e.stopPropagation();
-            resetAllBatchDeltas();
+    if (resetAllBtn) { resetAllBtn.removeEventListener('click', resetAll); resetAllBtn.addEventListener('click', resetAll); function resetAll(e) { e.stopPropagation(); resetAllBatchDeltas(); } }
+}
+
+// ==================== 变量重置 ====================
+function getDefaultValueForVar(varName) {
+    if (varName === 'v.extend_xrot') return -90;
+    if (varName === 'v.scale' || varName === 'v.extend_scale') return 1;
+    return 0;
+}
+function resetVariable(varName, block) {
+    const defaultValue = getDefaultValueForVar(varName);
+    if (varName.startsWith('t.')) {
+        const key = varName.slice(2);
+        const g = globalVars.get(key);
+        if (g && isConstantExpr(g.def.expr)) {
+            stopAutoInc(true, key, 0, null);
+            const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
+            if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
+            g.def.expr = defaultValue.toString(); g.def.value = defaultValue;
+            if (defaultValue < g.def.rangeMin) g.def.rangeMin = defaultValue;
+            if (defaultValue > g.def.rangeMax) g.def.rangeMax = defaultValue;
+            blocks.forEach(b => b.refresh());
+            const card = document.querySelector(`.var-card[data-var="${varName}"]`);
+            if (card) { const slider = card.querySelector('.var-slider'); if (slider) { slider.value = defaultValue; slider.min = g.def.rangeMin; slider.max = g.def.rangeMax; } const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `${varName} = ${defaultValue}`; }
+            recordAction(); renderVariablesForBlock(selectedBlock);
         }
+        return;
+    }
+    const targetBlock = block || selectedBlock;
+    if (!targetBlock) return;
+    const def = targetBlock.scope.vars.get(varName);
+    if (def && isConstantExpr(def.expr)) {
+        stopAutoInc(false, varName, 0, null);
+        const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
+        if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
+        def.expr = defaultValue.toString(); def.value = defaultValue;
+        if (defaultValue < def.rangeMin) def.rangeMin = defaultValue;
+        if (defaultValue > def.rangeMax) def.rangeMax = defaultValue;
+        targetBlock.refresh();
+        const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${targetBlock.id}"]`);
+        if (card) { const slider = card.querySelector('.var-slider'); if (slider) { slider.value = defaultValue; slider.min = def.rangeMin; slider.max = def.rangeMax; } const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `${varName} = ${defaultValue}`; }
+        recordAction(); updateGlobalVarsDependingOn(targetBlock, varName); renderVariablesForBlock(targetBlock);
     }
 }
 
@@ -1788,25 +1678,16 @@ function toggleDetail(e) {
 }
 
 function attachVariableEvents(block) {
-    // 全局变量折叠
-    document.querySelectorAll('.var-card.global .var-header').forEach(header => {
-        header.removeEventListener('click', toggleDetail);
-        header.addEventListener('click', toggleDetail);
-    });
-    document.querySelectorAll('.var-card:not(.global) .var-header').forEach(header => {
-        header.removeEventListener('click', localHeaderClick);
-        header.addEventListener('click', localHeaderClick);
-    });
+    document.querySelectorAll('.var-card.global .var-header').forEach(header => { header.removeEventListener('click', toggleDetail); header.addEventListener('click', toggleDetail); });
+    document.querySelectorAll('.var-card:not(.global) .var-header').forEach(header => { header.removeEventListener('click', localHeaderClick); header.addEventListener('click', localHeaderClick); });
     function localHeaderClick(e) {
         if (e.target.classList.contains('assignment-input') || e.target.closest('.auto-inc-btns') || e.target.closest('.slider-container')) return;
-        const varName = this.dataset.toggle;
-        const groupName = this.dataset.group;
-        const details = document.querySelector(`.var-details[data-details="${varName}"]`);
+        const varName = this.dataset.toggle, groupName = this.dataset.group, details = document.querySelector(`.var-details[data-details="${varName}"]`);
         if (!details) return;
         const isVisible = details.style.display === 'block';
         if (!isVisible) {
             if (groupName) {
-                document.querySelectorAll(`.var-group[data-group="${groupName}"] .var-details`).forEach(d => { d.style.display = 'none'; });
+                document.querySelectorAll(`.var-group[data-group="${groupName}"] .var-details`).forEach(d => d.style.display = 'none');
                 document.querySelectorAll(`.var-group[data-group="${groupName}"] .var-expand`).forEach(span => { if (span) span.textContent = '▼'; });
             }
             details.style.display = 'block';
@@ -1821,19 +1702,15 @@ function attachVariableEvents(block) {
         }
     }
 
-    // 赋值输入框
     document.querySelectorAll('.assignment-input').forEach(inp => {
         inp.removeEventListener('change', handleAssign);
         inp.addEventListener('change', handleAssign);
         function handleAssign(e) {
             e.stopPropagation();
-            const varName = inp.dataset.var;
-            const newVal = inp.value;
-            const parsed = parseAssignment(newVal);
+            const varName = inp.dataset.var, newVal = inp.value, parsed = parseAssignment(newVal);
             if (parsed && parsed.name === varName) {
                 if (varName.startsWith('t.')) {
-                    const key = varName.slice(2);
-                    const g = globalVars.get(key);
+                    const key = varName.slice(2), g = globalVars.get(key);
                     if (g) {
                         g.def.expr = parsed.expr;
                         const sb = blocks.find(b => b.id === g.sourceBlockId);
@@ -1847,13 +1724,10 @@ function attachVariableEvents(block) {
                             g.def.value = nv;
                         }
                         blocks.forEach(b => b.refresh());
-                        recordAction();
-                        renderVariablesForBlock(selectedBlock);
+                        recordAction(); renderVariablesForBlock(selectedBlock);
                     }
                 } else {
-                    const card = inp.closest('.var-card');
-                    const blockId = card ? card.dataset.blockId : null;
-                    const targetBlock = blocks.find(b => b.id === blockId);
+                    const card = inp.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
                     if (!targetBlock) return;
                     targetBlock.scope.setVarExpr(varName, parsed.expr);
                     targetBlock.refresh();
@@ -1862,89 +1736,50 @@ function attachVariableEvents(block) {
                     renderVariablesForBlock(selectedBlock);
                 }
             } else {
-                if (varName.startsWith('t.')) {
-                    const v = globalVars.get(varName.slice(2))?.def;
-                    if (v) inp.value = `${varName} = ${v.expr}`;
-                } else {
-                    const card = inp.closest('.var-card');
-                    const blockId = card ? card.dataset.blockId : null;
-                    const targetBlock = blocks.find(b => b.id === blockId);
-                    if (targetBlock) {
-                        const v = targetBlock.scope.vars.get(varName);
-                        if (v) inp.value = `${varName} = ${v.expr}`;
-                    }
-                }
+                if (varName.startsWith('t.')) { const v = globalVars.get(varName.slice(2))?.def; if (v) inp.value = `${varName} = ${v.expr}`; }
+                else { const card = inp.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId); if (targetBlock) { const v = targetBlock.scope.vars.get(varName); if (v) inp.value = `${varName} = ${v.expr}`; } }
             }
         }
     });
 
-    // 自增自减按钮
     document.querySelectorAll('.inc-up, .inc-down').forEach(btn => {
         btn.removeEventListener('click', incClick);
         btn.addEventListener('click', incClick);
         function incClick(e) {
             e.stopPropagation();
-            const varName = this.dataset.var;
-            const dir = this.dataset.dir;
-            const delta = dir === 'up' ? 1 : -1;
-            const isGlobal = varName.startsWith('t.');
-            if (isGlobal) {
-                const key = varName.slice(2);
-                const g = globalVars.get(key);
-                if (g && isConstantExpr(g.def.expr)) toggleAutoInc(this, true, null, key, delta * g.def.step);
-            } else {
-                const card = this.closest('.var-card');
-                const blockId = card ? card.dataset.blockId : null;
-                const targetBlock = blocks.find(b => b.id === blockId);
-                if (!targetBlock) return;
-                const def = targetBlock.scope.vars.get(varName);
-                if (def && isConstantExpr(def.expr)) toggleAutoInc(this, false, targetBlock, varName, delta * def.step);
-            }
+            const varName = this.dataset.var, dir = this.dataset.dir, delta = dir === 'up' ? 1 : -1, isGlobal = varName.startsWith('t.');
+            if (isGlobal) { const key = varName.slice(2), g = globalVars.get(key); if (g && isConstantExpr(g.def.expr)) toggleAutoInc(this, true, null, key, delta * g.def.step); }
+            else { const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId); if (!targetBlock) return; const def = targetBlock.scope.vars.get(varName); if (def && isConstantExpr(def.expr)) toggleAutoInc(this, false, targetBlock, varName, delta * def.step); }
         }
     });
 
-    // 滑块（拖动时停止所有定时器）
     document.querySelectorAll('.var-slider').forEach(slider => {
-        slider.removeEventListener('input', slideInput);
-        slider.addEventListener('input', slideInput);
+        slider.removeEventListener('change', slideInput);
+        slider.addEventListener('change', slideInput);
         function slideInput(e) {
             e.stopPropagation();
-            const varName = this.dataset.var;
-            const val = parseFloat(this.value);
+            const varName = this.dataset.var, val = parseFloat(this.value);
             if (varName.startsWith('t.')) {
-                const key = varName.slice(2);
-                const g = globalVars.get(key);
+                const key = varName.slice(2), g = globalVars.get(key);
                 if (g) {
-                    // 停止全局变量的所有定时器
                     stopAutoInc(true, key, 0, null);
-                    const upBtn = document.querySelector(`.inc-up[data-var="t.${key}"]`);
-                    const downBtn = document.querySelector(`.inc-down[data-var="t.${key}"]`);
-                    if (upBtn) upBtn.classList.remove('active');
-                    if (downBtn) downBtn.classList.remove('active');
-
-                    g.def.expr = val.toString();
-                    g.def.value = val;
+                    const upBtn = document.querySelector(`.inc-up[data-var="t.${key}"]`), downBtn = document.querySelector(`.inc-down[data-var="t.${key}"]`);
+                    if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
+                    g.def.expr = val.toString(); g.def.value = val;
                     blocks.forEach(b => b.refresh());
                     const inp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
                     if (inp) inp.value = `${varName} = ${val}`;
                     recordAction();
                 }
             } else {
-                const card = this.closest('.var-card');
-                const blockId = card ? card.dataset.blockId : null;
-                const targetBlock = blocks.find(b => b.id === blockId);
+                const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
                 if (!targetBlock) return;
                 const def = targetBlock.scope.vars.get(varName);
                 if (def) {
-                    // 停止局部变量的所有定时器
-                    stopAutoInc(false, varName, 0, null);
-                    const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`);
-                    const downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
-                    if (upBtn) upBtn.classList.remove('active');
-                    if (downBtn) downBtn.classList.remove('active');
-
-                    def.expr = val.toString();
-                    def.value = val;
+                    stopAutoInc(false, varName, 1, targetBlock.id); stopAutoInc(false, varName, -1, targetBlock.id);
+                    const upBtn = document.querySelector(`.inc-up[data-var="${varName}"][data-block-id="${targetBlock.id}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"][data-block-id="${targetBlock.id}"]`);
+                    if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
+                    def.expr = val.toString(); def.value = val;
                     targetBlock.refresh();
                     const inp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
                     if (inp) inp.value = `${varName} = ${val}`;
@@ -1955,30 +1790,23 @@ function attachVariableEvents(block) {
         }
     });
 
-    // 范围最小值、最大值、步长修改（核心修复）
     document.querySelectorAll('.range-min, .range-max, .range-step').forEach(inp => {
         inp.removeEventListener('change', rangeChange);
         inp.addEventListener('change', rangeChange);
         function rangeChange(e) {
             e.stopPropagation();
-            const varName = this.dataset.var;
-            const isGlobal = varName.startsWith('t.');
+            const varName = this.dataset.var, isGlobal = varName.startsWith('t.');
             let newMin, newMax, newStep;
             if (this.classList.contains('range-min')) newMin = parseFloat(this.value);
             if (this.classList.contains('range-max')) newMax = parseFloat(this.value);
             if (this.classList.contains('range-step')) newStep = parseFloat(this.value);
-
             if (isGlobal) {
-                const key = varName.slice(2);
-                const g = globalVars.get(key);
+                const key = varName.slice(2), g = globalVars.get(key);
                 if (g) {
                     if (newStep !== undefined && g.def.step !== newStep) {
-                        // ★ 停止所有全局定时器
                         stopAutoInc(true, key, 0, null);
-                        const upBtn = document.querySelector(`.inc-up[data-var="t.${key}"]`);
-                        const downBtn = document.querySelector(`.inc-down[data-var="t.${key}"]`);
-                        if (upBtn) upBtn.classList.remove('active');
-                        if (downBtn) downBtn.classList.remove('active');
+                        const upBtn = document.querySelector(`.inc-up[data-var="t.${key}"]`), downBtn = document.querySelector(`.inc-down[data-var="t.${key}"]`);
+                        if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
                     }
                     if (newMin !== undefined) g.def.rangeMin = newMin;
                     if (newMax !== undefined) g.def.rangeMax = newMax;
@@ -1991,23 +1819,17 @@ function attachVariableEvents(block) {
                     if (slider) { slider.min = g.def.rangeMin; slider.max = g.def.rangeMax; slider.step = g.def.step; slider.value = g.def.value; }
                     const assignInp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
                     if (assignInp) assignInp.value = `${varName} = ${g.def.expr}`;
-                    recordAction();
-                    renderVariablesForBlock(selectedBlock);
+                    recordAction(); renderVariablesForBlock(selectedBlock);
                 }
             } else {
-                const card = this.closest('.var-card');
-                const blockId = card ? card.dataset.blockId : null;
-                const targetBlock = blocks.find(b => b.id === blockId);
+                const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
                 if (!targetBlock) return;
                 const def = targetBlock.scope.vars.get(varName);
                 if (def) {
                     if (newStep !== undefined && def.step !== newStep) {
-                        // ★ 停止所有局部定时器（无论 blockId 和 delta）
-                        stopAutoInc(false, varName, 0, null);
-                        const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`);
-                        const downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
-                        if (upBtn) upBtn.classList.remove('active');
-                        if (downBtn) downBtn.classList.remove('active');
+                        stopAutoInc(false, varName, 1, targetBlock.id); stopAutoInc(false, varName, -1, targetBlock.id);
+                        const upBtn = document.querySelector(`.inc-up[data-var="${varName}"][data-block-id="${targetBlock.id}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"][data-block-id="${targetBlock.id}"]`);
+                        if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
                     }
                     if (newMin !== undefined) def.rangeMin = newMin;
                     if (newMax !== undefined) def.rangeMax = newMax;
@@ -2028,14 +1850,12 @@ function attachVariableEvents(block) {
         }
     });
 
-    // 删除变量按钮
     document.querySelectorAll('.delete-var').forEach(btn => {
         btn.removeEventListener('click', delVar);
         btn.addEventListener('click', delVar);
         function delVar(e) {
             e.stopPropagation();
-            const varName = this.dataset.var;
-            const isGlobal = varName.startsWith('t.');
+            const varName = this.dataset.var, isGlobal = varName.startsWith('t.');
             if (isGlobal) {
                 const key = varName.slice(2);
                 showModal("确认删除", `确定删除全局变量 ${varName}?`, () => {
@@ -2046,15 +1866,10 @@ function attachVariableEvents(block) {
                     recordAction();
                 }, false);
             } else {
-                const card = this.closest('.var-card');
-                const blockId = card ? card.dataset.blockId : null;
-                const targetBlock = blocks.find(b => b.id === blockId);
+                const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
                 if (!targetBlock) return;
                 const coreList = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos','rotatex','rotatey','rotatez'];
-                if (varName.startsWith('v.') && coreList.includes(varName.slice(2))) {
-                    showModal("禁止删除", "不能删除核心变换变量", null, false);
-                    return;
-                }
+                if (varName.startsWith('v.') && coreList.includes(varName.slice(2))) { showModal("禁止删除", "不能删除核心变换变量", null, false); return; }
                 showModal("确认删除", `确定删除局部变量 ${varName}?`, () => {
                     stopAutoInc(false, varName, 0, null);
                     targetBlock.scope.deleteVar(varName);
@@ -2067,7 +1882,6 @@ function attachVariableEvents(block) {
         }
     });
 
-    // 新增变量输入框
     const newInput = document.getElementById('newVarInput');
     if (newInput) {
         newInput.removeEventListener('keydown', newVarHandler);
@@ -2075,8 +1889,7 @@ function attachVariableEvents(block) {
         function newVarHandler(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const val = newInput.value.trim();
-                const parsed = parseAssignment(val);
+                const val = newInput.value.trim(), parsed = parseAssignment(val);
                 if (!parsed) { showModal("格式错误", "请使用: v.变量名 = 表达式 或 t.变量名 = 表达式", null, false); return; }
                 const { name, expr } = parsed;
                 if (name.startsWith('t.')) {
@@ -2099,64 +1912,34 @@ function attachVariableEvents(block) {
             }
         }
     }
-// 绑定重置按钮事件
-document.querySelectorAll('.reset-btn').forEach(btn => {
-    btn.removeEventListener('click', resetClickHandler);
-    btn.addEventListener('click', resetClickHandler);
-});
-function resetClickHandler(e) {
-    e.stopPropagation();
-    const varName = this.dataset.resetVar;
-    if (!varName) return;
-    if (varName.startsWith('t.')) {
-        resetVariable(varName, null);
-    } else {
-        // 找到所属方块
-        const card = this.closest('.var-card');
-        const blockId = card ? card.dataset.blockId : null;
-        const targetBlock = blocks.find(b => b.id === blockId);
-        if (targetBlock) resetVariable(varName, targetBlock);
+    document.querySelectorAll('.reset-btn').forEach(btn => {
+        btn.removeEventListener('click', resetClickHandler);
+        btn.addEventListener('click', resetClickHandler);
+    });
+    function resetClickHandler(e) {
+        e.stopPropagation();
+        const varName = this.dataset.resetVar;
+        if (!varName) return;
+        if (varName.startsWith('t.')) resetVariable(varName, null);
+        else { const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId); if (targetBlock) resetVariable(varName, targetBlock); }
     }
-}}
+}
 
 function renderVariablesForBlock(block) {
-    const container = document.getElementById('varsContainer');
-    const newContainer = document.getElementById('newVarContainer');
-    if (selectedBlocksSet.size > 1) {
-        container.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`;
-        newContainer.innerHTML = '';
-        attachBatchEvents();
-        return;
-    }
-    if (!block) {
-        container.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>';
-        newContainer.innerHTML = '';
-        return;
-    }
+    const container = document.getElementById('varsContainer'), newContainer = document.getElementById('newVarContainer');
+    if (selectedBlocksSet.size > 1) { container.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`; newContainer.innerHTML = ''; attachBatchEvents(); return; }
+    if (!block) { container.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; newContainer.innerHTML = ''; return; }
     let globalHtml = '';
     if (globalVars.size > 0) {
-        globalHtml += '<div class="section-title">♨ ︎全局变量 (t.)</div>';
+        globalHtml += '<div class="section-title">🌍 全局变量 (t.)</div>';
         for (let [name, g] of globalVars.entries()) {
-            const isConst = isConstantExpr(g.def.expr);
-            const cardClass = isConst ? 'constant' : 'non-constant';
-            const inputClass = isConst ? 'constant-input' : 'non-constant-input';
-            const displayStr = `t.${name} = ${g.def.expr}`;
-            const expanded = expandedVars.has(`t.${name}`);
+            const isConst = isConstantExpr(g.def.expr), cardClass = isConst ? 'constant' : 'non-constant', inputClass = isConst ? 'constant-input' : 'non-constant-input', displayStr = `t.${name} = ${g.def.expr}`, expanded = expandedVars.has(`t.${name}`);
             globalHtml += `<div class="var-card global ${cardClass}" data-var="t.${name}" data-global="true">
-                <div class="var-header" data-toggle="t.${name}">
-                    <input type="text" class="assignment-input ${inputClass}" data-var="t.${name}" value="${escapeHtml(displayStr)}">
-                    <span class="var-expand">${expanded ? '▲' : '▼'}</span>
-                </div>
+                <div class="var-header" data-toggle="t.${name}"><input type="text" class="assignment-input ${inputClass}" data-var="t.${name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div>
                 <div class="var-details" data-details="t.${name}" style="${expanded ? 'display:block' : 'display:none'}">
-                    ${isConst ? `<div class="auto-inc-btns">
-    <button class="inc-btn inc-up" data-var="t.${name}" data-dir="up"><span>▲ 自增</span></button>
-    <button class="inc-btn inc-down" data-var="t.${name}" data-dir="down"><span>▼ 自减</span></button>
-    <button class="inc-btn reset-btn" data-reset-var="t.${name}"><span>⟳ 重置</span></button>
-</div>
+                    ${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="t.${name}" data-dir="up"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="t.${name}" data-dir="down"><span>▼ 自减</span></button><button class="inc-btn reset-btn" data-reset-var="t.${name}"><span>⟳ 重置</span></button></div>
                     <div class="slider-container"><input type="range" class="var-slider" data-var="t.${name}" min="${g.def.rangeMin}" max="${g.def.rangeMax}" step="${g.def.step}" value="${g.def.value}"></div>
-                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="t.${name}" value="${g.def.rangeMin}" step="any"></div>
-                    <div class="range-item">Max <input type="number" class="range-max" data-var="t.${name}" value="${g.def.rangeMax}" step="any"></div>
-                    <div class="range-item">步长 <input type="number" class="range-step" data-var="t.${name}" value="${g.def.step}" step="any"></div></div>` : ''}
+                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="t.${name}" value="${g.def.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="t.${name}" value="${g.def.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="t.${name}" value="${g.def.step}" step="any"></div></div>` : ''}
                     <button class="delete-var" data-var="t.${name}"><span>删除变量</span></button>
                     <div style="font-size:10px; color:#64748b; margin-top:6px;">📌 绑定方块: ${g.sourceBlockId || '无'}</div>
                 </div>
@@ -2169,10 +1952,7 @@ function renderVariablesForBlock(block) {
         '缩放': ['v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'],
         '旋转': ['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez']
     };
-    function getGroupForVar(varName) {
-        for (let [gname, vlist] of Object.entries(coreGroupsDef)) if (vlist.includes(varName)) return gname;
-        return '自定义变量';
-    }
+    function getGroupForVar(varName) { for (let [gname, vlist] of Object.entries(coreGroupsDef)) if (vlist.includes(varName)) return gname; return '自定义变量'; }
     const grouped = { '位移': [], '缩放': [], '旋转': [], '自定义变量': [] };
     for (let v of vars) grouped[getGroupForVar(v.name)].push(v);
     let rightGroupsHtml = '';
@@ -2180,33 +1960,15 @@ function renderVariablesForBlock(block) {
     for (let grp of groupOrder) {
         if (grouped[grp].length === 0) continue;
         const isOpen = (currentOpenGroup === grp);
-        rightGroupsHtml += `<div class="var-group" data-group="${grp}">
-            <div class="group-header" data-group-toggle="${grp}">
-                <span class="group-title">📁 ${grp}</span>
-                <span class="group-toggle">${isOpen ? '▼' : '▶'}</span>
-            </div>
-            <div class="group-content" data-group-content="${grp}" style="${isOpen ? 'display:block' : 'display:none'}">`;
+        rightGroupsHtml += `<div class="var-group" data-group="${grp}"><div class="group-header" data-group-toggle="${grp}"><span class="group-title">📁 ${grp}</span><span class="group-toggle">${isOpen ? '▼' : '▶'}</span></div><div class="group-content" data-group-content="${grp}" style="${isOpen ? 'display:block' : 'display:none'}">`;
         for (let v of grouped[grp]) {
-            const isConst = isConstantExpr(v.expr);
-            const cardClass = isConst ? 'constant' : 'non-constant';
-            const inputClass = isConst ? 'constant-input' : 'non-constant-input';
-            const displayStr = `${v.name} = ${v.expr}`;
-            const expanded = expandedVars.has(v.name);
+            const isConst = isConstantExpr(v.expr), cardClass = isConst ? 'constant' : 'non-constant', inputClass = isConst ? 'constant-input' : 'non-constant-input', displayStr = `${v.name} = ${v.expr}`, expanded = expandedVars.has(v.name);
             rightGroupsHtml += `<div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}">
-                <div class="var-header" data-toggle="${v.name}" data-group="${grp}">
-                    <input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}">
-                    <span class="var-expand">${expanded ? '▲' : '▼'}</span>
-                </div>
+                <div class="var-header" data-toggle="${v.name}" data-group="${grp}"><input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div>
                 <div class="var-details" data-details="${v.name}" style="${expanded ? 'display:block' : 'display:none'}">
-                    ${isConst ? `<div class="auto-inc-btns">
-    <button class="inc-btn inc-up" data-var="${v.name}" data-dir="up"><span>▲ 自增</span></button>
-    <button class="inc-btn inc-down" data-var="${v.name}" data-dir="down"><span>▼ 自减</span></button>
-    <button class="inc-btn reset-btn" data-reset-var="${v.name}"><span>⟳ 重置</span></button>
-</div>
+                    ${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${v.name}" data-dir="up" data-block-id="${block.id}"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="${v.name}" data-dir="down" data-block-id="${block.id}"><span>▼ 自减</span></button><button class="inc-btn reset-btn" data-reset-var="${v.name}"><span>⟳ 重置</span></button></div>
                     <div class="slider-container"><input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}"></div>
-                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div>
-                    <div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div>
-                    <div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}
+                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}
                     <button class="delete-var" data-var="${v.name}"><span>删除变量</span></button>
                 </div>
             </div>`;
@@ -2217,33 +1979,15 @@ function renderVariablesForBlock(block) {
     if (globalHtml) leftHtml += globalHtml;
     if (grouped['自定义变量'].length > 0) {
         const isCustomOpen = (currentOpenGroup === '自定义变量');
-        leftHtml += `<div class="var-group" data-group="自定义变量">
-            <div class="group-header" data-group-toggle="自定义变量">
-                <span class="group-title">📁 自定义变量</span>
-                <span class="group-toggle">${isCustomOpen ? '▼' : '▶'}</span>
-            </div>
-            <div class="group-content" data-group-content="自定义变量" style="${isCustomOpen ? 'display:block' : 'display:none'}">`;
+        leftHtml += `<div class="var-group" data-group="自定义变量"><div class="group-header" data-group-toggle="自定义变量"><span class="group-title">📁 自定义变量</span><span class="group-toggle">${isCustomOpen ? '▼' : '▶'}</span></div><div class="group-content" data-group-content="自定义变量" style="${isCustomOpen ? 'display:block' : 'display:none'}">`;
         for (let v of grouped['自定义变量']) {
-            const isConst = isConstantExpr(v.expr);
-            const cardClass = isConst ? 'constant' : 'non-constant';
-            const inputClass = isConst ? 'constant-input' : 'non-constant-input';
-            const displayStr = `${v.name} = ${v.expr}`;
-            const expanded = expandedVars.has(v.name);
+            const isConst = isConstantExpr(v.expr), cardClass = isConst ? 'constant' : 'non-constant', inputClass = isConst ? 'constant-input' : 'non-constant-input', displayStr = `${v.name} = ${v.expr}`, expanded = expandedVars.has(v.name);
             leftHtml += `<div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}">
-                <div class="var-header" data-toggle="${v.name}" data-group="自定义变量">
-                    <input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}">
-                    <span class="var-expand">${expanded ? '▲' : '▼'}</span>
-                </div>
+                <div class="var-header" data-toggle="${v.name}" data-group="自定义变量"><input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div>
                 <div class="var-details" data-details="${v.name}" style="${expanded ? 'display:block' : 'display:none'}">
-                    ${isConst ? `<div class="auto-inc-btns">
-    <button class="inc-btn inc-up" data-var="${v.name}" data-dir="up"><span>▲ 自增</span></button>
-    <button class="inc-btn inc-down" data-var="${v.name}" data-dir="down"><span>▼ 自减</span></button>
-    <button class="inc-btn reset-btn" data-reset-var="${v.name}"><span>⟳ 重置</span></button>
-</div>
+                    ${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${v.name}" data-dir="up" data-block-id="${block.id}"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="${v.name}" data-dir="down" data-block-id="${block.id}"><span>▼ 自减</span></button><button class="inc-btn reset-btn" data-reset-var="${v.name}"><span>⟳ 重置</span></button></div>
                     <div class="slider-container"><input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}"></div>
-                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div>
-                    <div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div>
-                    <div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}
+                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}
                     <button class="delete-var" data-var="${v.name}"><span>删除变量</span></button>
                 </div>
             </div>`;
@@ -2259,22 +2003,13 @@ function renderVariablesForBlock(block) {
         header.addEventListener('click', groupClickHandler);
     });
     function groupClickHandler(e) {
-        const groupName = this.dataset.groupToggle;
-        const contentDiv = document.querySelector(`.group-content[data-group-content="${groupName}"]`);
+        const groupName = this.dataset.groupToggle, contentDiv = document.querySelector(`.group-content[data-group-content="${groupName}"]`);
         if (!contentDiv) return;
         const isVisible = contentDiv.style.display !== 'none';
-        if (isVisible) {
-            contentDiv.style.display = 'none';
-            this.querySelector('.group-toggle').textContent = '▶';
-            if (currentOpenGroup === groupName) currentOpenGroup = null;
-        } else {
-            if (['位移','缩放','旋转'].includes(groupName)) {
-                document.querySelectorAll('.variables-right .group-content').forEach(gc => gc.style.display = 'none');
-                document.querySelectorAll('.variables-right .group-header .group-toggle').forEach(span => span.textContent = '▶');
-            }
-            contentDiv.style.display = 'block';
-            this.querySelector('.group-toggle').textContent = '▼';
-            currentOpenGroup = groupName;
+        if (isVisible) { contentDiv.style.display = 'none'; this.querySelector('.group-toggle').textContent = '▶'; if (currentOpenGroup === groupName) currentOpenGroup = null; }
+        else {
+            if (['位移','缩放','旋转'].includes(groupName)) { document.querySelectorAll('.variables-right .group-content').forEach(gc => gc.style.display = 'none'); document.querySelectorAll('.variables-right .group-header .group-toggle').forEach(span => span.textContent = '▶'); }
+            contentDiv.style.display = 'block'; this.querySelector('.group-toggle').textContent = '▼'; currentOpenGroup = groupName;
         }
     }
 }
@@ -2283,114 +2018,62 @@ function renderVariablesForBlock(block) {
 function startAutoInc(blockId, isGlobal, varName, delta, btn) {
     const key = isGlobal ? `global_${varName}_${delta}` : `${blockId}_${varName}_${delta}`;
     if (activeAutoIncMap.has(key)) return;
-
     const doInc = () => {
         if (!activeAutoIncMap.has(key)) return;
-
         if (isGlobal) {
             const g = globalVars.get(varName);
             if (g && isConstantExpr(g.def.expr)) {
-                // 【关键】动态获取当前步长，计算实际增量
-                const step = g.def.step;
-                const actualDelta = step * (delta > 0 ? 1 : -1);
+                const step = g.def.step, actualDelta = step * (delta > 0 ? 1 : -1);
                 let nv = g.def.value + actualDelta;
                 const dec = (step.toString().includes('.') ? step.toString().split('.')[1].length : 0);
                 nv = parseFloat(nv.toFixed(dec));
                 if (nv > g.def.rangeMax) nv = g.def.rangeMin;
                 else if (nv < g.def.rangeMin) nv = g.def.rangeMax;
-                g.def.expr = nv.toString();
-                g.def.value = nv;
+                g.def.expr = nv.toString(); g.def.value = nv;
                 blocks.forEach(b => b.refresh());
                 const card = document.querySelector(`.var-card[data-var="t.${varName}"]`);
-                if (card) {
-                    const slider = card.querySelector('.var-slider');
-                    if (slider) slider.value = nv;
-                    const inp = card.querySelector('.assignment-input');
-                    if (inp) inp.value = `t.${varName} = ${nv}`;
-                }
+                if (card) { const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `t.${varName} = ${nv}`; }
                 recordAction();
-            } else {
-                stopAutoInc(isGlobal, varName, delta);
-            }
+            } else stopAutoInc(isGlobal, varName, delta);
         } else {
             const target = blocks.find(b => b.id === blockId);
             if (target) {
                 const def = target.scope.vars.get(varName);
                 if (def && isConstantExpr(def.expr)) {
-                    // 动态获取当前步长
-                    const step = def.step;
-                    const actualDelta = step * (delta > 0 ? 1 : -1);
+                    const step = def.step, actualDelta = step * (delta > 0 ? 1 : -1);
                     let nv = def.value + actualDelta;
                     const dec = (step.toString().includes('.') ? step.toString().split('.')[1].length : 0);
                     nv = parseFloat(nv.toFixed(dec));
                     if (nv > def.rangeMax) nv = def.rangeMin;
                     else if (nv < def.rangeMin) nv = def.rangeMax;
-                    def.expr = nv.toString();
-                    def.value = nv;
+                    def.expr = nv.toString(); def.value = nv;
                     target.refresh();
                     const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${blockId}"]`);
-                    if (card) {
-                        const slider = card.querySelector('.var-slider');
-                        if (slider) slider.value = nv;
-                        const inp = card.querySelector('.assignment-input');
-                        if (inp) inp.value = `${varName} = ${def.expr}`;
-                    }
+                    if (card) { const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `${varName} = ${def.expr}`; }
                     recordAction();
                     updateGlobalVarsDependingOn(target, varName);
-                } else {
-                    stopAutoInc(isGlobal, varName, delta, blockId);
-                }
-            } else {
-                stopAutoInc(isGlobal, varName, delta, blockId);
-            }
+                } else stopAutoInc(isGlobal, varName, delta, blockId);
+            } else stopAutoInc(isGlobal, varName, delta, blockId);
         }
     };
-
     doInc();
     const intervalId = setInterval(() => doInc(), 1);
     activeAutoIncMap.set(key, intervalId);
     if (btn) btn.classList.add('active');
 }
-
 function stopAutoInc(isGlobal, varName, delta, blockId = null) {
     for (let [k, i] of activeAutoIncMap.entries()) {
-        if (isGlobal && k.startsWith(`global_${varName}_`)) {
-            clearInterval(i);
-            activeAutoIncMap.delete(k);
-        } else if (!isGlobal && blockId && k === `${blockId}_${varName}_${delta}`) {
-            clearInterval(i);
-            activeAutoIncMap.delete(k);
-        } else if (!isGlobal && !blockId && k.includes(`_${varName}_`)) {
-            clearInterval(i);
-            activeAutoIncMap.delete(k);
-        }
+        if (isGlobal && k.startsWith(`global_${varName}_`)) { clearInterval(i); activeAutoIncMap.delete(k); }
+        else if (!isGlobal && blockId && k === `${blockId}_${varName}_${delta}`) { clearInterval(i); activeAutoIncMap.delete(k); }
+        else if (!isGlobal && !blockId && k.includes(`_${varName}_`)) { clearInterval(i); activeAutoIncMap.delete(k); }
     }
 }
 function toggleAutoInc(btn, isGlobal, targetBlock, varName, delta) {
     const blockId = targetBlock ? targetBlock.id : null;
     const currentKey = isGlobal ? `global_${varName}_${delta}` : `${blockId}_${varName}_${delta}`;
-    const oppositeDelta = -delta;
-    const oppositeKey = isGlobal ? `global_${varName}_${oppositeDelta}` : `${blockId}_${varName}_${oppositeDelta}`;
-
-    // 如果当前方向已经在运行，则停止它（toggle 关闭）
-    if (activeAutoIncMap.has(currentKey)) {
-        stopAutoInc(isGlobal, varName, delta, blockId);
-        btn.classList.remove('active');
-        return;
-    }
-
-    // 如果相反方向正在运行，先停止它，并清除它的按钮样式
-    if (activeAutoIncMap.has(oppositeKey)) {
-        stopAutoInc(isGlobal, varName, oppositeDelta, blockId);
-        // 找到相反方向的按钮（同一个按钮容器内）
-        const container = btn.parentElement;
-        if (container) {
-            const oppositeBtn = container.querySelector(oppositeDelta > 0 ? '.inc-up' : '.inc-down');
-            if (oppositeBtn) oppositeBtn.classList.remove('active');
-        }
-    }
-
-    // 启动当前方向
+    const oppositeDelta = -delta, oppositeKey = isGlobal ? `global_${varName}_${oppositeDelta}` : `${blockId}_${varName}_${oppositeDelta}`;
+    if (activeAutoIncMap.has(currentKey)) { stopAutoInc(isGlobal, varName, delta, blockId); btn.classList.remove('active'); return; }
+    if (activeAutoIncMap.has(oppositeKey)) { stopAutoInc(isGlobal, varName, oppositeDelta, blockId); const container = btn.parentElement; if (container) { const oppositeBtn = container.querySelector(oppositeDelta > 0 ? '.inc-up' : '.inc-down'); if (oppositeBtn) oppositeBtn.classList.remove('active'); } }
     startAutoInc(blockId, isGlobal, varName, delta, btn);
 }
 function updateGlobalVarsDependingOn(block, localVarName) {
@@ -2404,12 +2087,7 @@ function updateGlobalVarsDependingOn(block, localVarName) {
                     g.def.value = nv;
                     changed = true;
                     const card = document.querySelector(`.var-card[data-var="t.${n}"]`);
-                    if (card) {
-                        const inp = card.querySelector('.assignment-input');
-                        if (inp) inp.value = `t.${n} = ${g.def.expr}`;
-                        const slider = card.querySelector('.var-slider');
-                        if (slider) slider.value = nv;
-                    }
+                    if (card) { const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `t.${n} = ${g.def.expr}`; const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; }
                 }
             }
         }
@@ -2419,33 +2097,19 @@ function updateGlobalVarsDependingOn(block, localVarName) {
 
 // ==================== 多选逻辑 ====================
 function toggleBlockSelection(block, isCtrlOrLongPress) {
-    if (!isCtrlOrLongPress) {
-        selectedBlocksSet.clear();
-        selectedBlocksSet.add(block);
-        selectBlock(block);
-    } else {
-        if (selectedBlocksSet.has(block)) {
-            selectedBlocksSet.delete(block);
-            if (selectedBlocksSet.size === 0) {
-                selectedBlocksSet.add(block);
-                selectBlock(block);
-            } else {
-                selectBlock(Array.from(selectedBlocksSet)[0]);
-            }
-        } else {
-            selectedBlocksSet.add(block);
-            selectBlock(block);
-        }
+    if (!isCtrlOrLongPress) { selectedBlocksSet.clear(); selectedBlocksSet.add(block); selectBlock(block); }
+    else {
+        if (selectedBlocksSet.has(block)) { selectedBlocksSet.delete(block); if (selectedBlocksSet.size === 0) { selectedBlocksSet.add(block); selectBlock(block); } else { selectBlock(Array.from(selectedBlocksSet)[0]); } }
+        else { selectedBlocksSet.add(block); selectBlock(block); }
     }
     if (selectedBlocksSet.size > 1) {
         batchDeltas.clear();
-        for (let varName of ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.rotatex','v.rotatey','v.rotatez']) {
-            batchDeltas.set(varName, 0);
-        }
+        for (let varName of ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.rotatex','v.rotatey','v.rotatez']) batchDeltas.set(varName, 0);
     }
     updateAxesVisibility();
     if (activeDropdown) refreshDropdownSelectionStyle();
     renderVariablesForBlock(selectedBlock);
+    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 function refreshDropdownSelectionStyle() {
     if (!activeDropdown) return;
@@ -2456,169 +2120,77 @@ function refreshDropdownSelectionStyle() {
         else item.classList.remove('selected');
     });
 }
-// ==================== 方块列表下拉菜单 ====================
-
-let activeDropdown = null;
-
+// ==================== 方块列表下拉菜单（修复滚动跟随）====================
+let activeDropdown = null, scrollListener = null;
+function updateDropdownPosition(btn) {
+    if (!activeDropdown || !btn) return;
+    const rect = btn.getBoundingClientRect();
+    activeDropdown.style.left = rect.left + 'px';
+    activeDropdown.style.top = (rect.bottom + 5) + 'px';
+    if (parseInt(activeDropdown.style.left) + activeDropdown.offsetWidth > window.innerWidth) activeDropdown.style.left = (window.innerWidth - activeDropdown.offsetWidth - 10) + 'px';
+}
 function showBlockDropdown(btn) {
-    // 关闭已打开的下拉菜单
-    if (activeDropdown) {
-        activeDropdown.remove();
-        activeDropdown = null;
-    }
-
-    const menu = document.createElement('div');
-    menu.className = 'block-dropdown';
-
-    if (blocks.length === 0) {
-        menu.innerHTML = '<div class="block-dropdown-item">暂无方块</div>';
-    } else {
+    if (activeDropdown) { activeDropdown.remove(); activeDropdown = null; }
+    if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; }
+    const menu = document.createElement('div'); menu.className = 'block-dropdown';
+    if (blocks.length === 0) menu.innerHTML = '<div class="block-dropdown-item">暂无方块</div>';
+    else {
         blocks.forEach(b => {
-            const item = document.createElement('div');
-            item.className = 'block-dropdown-item';
+            const item = document.createElement('div'); item.className = 'block-dropdown-item';
             if (selectedBlocksSet.has(b)) item.classList.add('selected');
-
-            // 使用普通英文/emoji，避免全角字符导致的样式问题
-            item.innerHTML = `
-    <span>${b.id} ${selectedBlocksSet.has(b) ? '✓' : ''}</span>
-    <div class="dropdown-actions">
-        <button class="copy-block" data-id="${b.id}"> 📄 复制</button>
-        <button class="delete-block" data-id="${b.id}"> 🗑 删除</button>
-        <button class="bone-block" data-id="${b.id}" style="background:#8b5cf6;">✛</button>
-    </div>
-`;
-
-// 在复制、删除按钮的事件绑定后添加：
-const boneBtn = item.querySelector('.bone-block');
-boneBtn.addEventListener('dblclick', (e) => {
-    e.stopPropagation();
-    showParentSelector(b);
-    menu.remove();
-    activeDropdown = null;
-});
-
-            // 复制按钮
+            item.innerHTML = `<span>${b.id} ${selectedBlocksSet.has(b) ? '✓' : ''}</span><div class="dropdown-actions"><button class="copy-block" data-id="${b.id}"> 📄 复制</button><button class="delete-block" data-id="${b.id}"> 🗑 删除</button><button class="bone-block" data-id="${b.id}" style="background:#8b5cf6;">✛</button></div>`;
+            const boneBtn = item.querySelector('.bone-block');
+            boneBtn.addEventListener('dblclick', (e) => { e.stopPropagation(); showParentSelector(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
             const copyBtn = item.querySelector('.copy-block');
-            copyBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                duplicateBlock(b);
-                menu.remove();
-                activeDropdown = null;
-            });
-
-            // 删除按钮
+            copyBtn.addEventListener('click', (e) => { e.stopPropagation(); duplicateBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
             const deleteBtn = item.querySelector('.delete-block');
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                removeBlock(b);
-                menu.remove();
-                activeDropdown = null;
-            });
-
-            // 点击项目主体（非按钮区域）：单选或多选
-            item.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') return;
-                const isCtrl = e.ctrlKey || e.metaKey;
-                toggleBlockSelection(b, isCtrl);
-                menu.remove();
-                activeDropdown = null;
-            });
-
-            // 移动端长按多选（contextmenu 事件，不影响 click）
-            item.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                toggleBlockSelection(b, true);
-                menu.remove();
-                activeDropdown = null;
-            });
-
+            deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); removeBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+            item.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') return; const isCtrl = e.ctrlKey || e.metaKey; toggleBlockSelection(b, isCtrl); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+            item.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleBlockSelection(b, true); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
             menu.appendChild(item);
         });
     }
-
-    document.body.appendChild(menu);
-    activeDropdown = menu;
-
-    // 定位菜单在按钮下方
+    document.body.appendChild(menu); activeDropdown = menu;
     const rect = btn.getBoundingClientRect();
-    menu.style.left = rect.left + 'px';
-    menu.style.top = (rect.bottom + 5) + 'px';
-
-    // 防止超出右边界
-    if (parseInt(menu.style.left) + menu.offsetWidth > window.innerWidth) {
-        menu.style.left = (window.innerWidth - menu.offsetWidth - 10) + 'px';
-    }
-
-    // 点击外部关闭菜单
-    const closeHandler = (e) => {
-        if (!menu.contains(e.target) && e.target !== btn) {
-            if (menu.parentNode) menu.remove();
-            activeDropdown = null;
-            document.removeEventListener('click', closeHandler);
-        }
-    };
-    setTimeout(() => {
-        document.addEventListener('click', closeHandler);
-    }, 10);
+    menu.style.left = rect.left + 'px'; menu.style.top = (rect.bottom + 5) + 'px';
+    if (parseInt(menu.style.left) + menu.offsetWidth > window.innerWidth) menu.style.left = (window.innerWidth - menu.offsetWidth - 10) + 'px';
+    const closeHandler = (e) => { if (!menu.contains(e.target) && e.target !== btn) { if (menu.parentNode) menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } document.removeEventListener('click', closeHandler); } };
+    setTimeout(() => { document.addEventListener('click', closeHandler); }, 10);
+    scrollListener = () => updateDropdownPosition(btn);
+    window.addEventListener('scroll', scrollListener);
+    const panelContent = document.querySelector('.panel-content');
+    if (panelContent) panelContent.addEventListener('scroll', scrollListener);
 }
-// ==================== 辅助函数 ==================
-//骨骼创建
+// ==================== 骨骼绑定（使用方块名称作为前缀）====================
 function showParentSelector(childBlock) {
     const candidates = blocks.filter(b => b.id !== childBlock.id);
-    if (candidates.length === 0) {
-        showModal("提示", "没有其他方块可以绑定", null, false);
-        return;
-    }
-    const menu = document.createElement('div');
-    menu.className = 'block-dropdown';
-    menu.style.top = '50%';
-    menu.style.left = '50%';
-    menu.style.transform = 'translate(-50%, -50%)';
-    menu.style.position = 'fixed';
-    menu.style.zIndex = '1001';
+    if (candidates.length === 0) { showModal("提示", "没有其他方块可以绑定", null, false); return; }
+    const menu = document.createElement('div'); menu.className = 'block-dropdown';
+    menu.style.top = '50%'; menu.style.left = '50%'; menu.style.transform = 'translate(-50%, -50%)'; menu.style.position = 'fixed'; menu.style.zIndex = '1001';
     menu.innerHTML = `<div style="padding:8px 12px; border-bottom:1px solid #334155; text-align:center;">请选择父级方块 (双击)<br><span style="font-size:11px; color:#94a3b8;">pos变量将被表达式强制覆盖</span></div>`;
     candidates.forEach(parent => {
-        const opt = document.createElement('div');
-        opt.className = 'block-dropdown-item';
-        opt.textContent = parent.id;
-        opt.addEventListener('dblclick', () => {
-            bindBone(childBlock, parent);
-            menu.remove();
-        });
+        const opt = document.createElement('div'); opt.className = 'block-dropdown-item'; opt.textContent = parent.id;
+        opt.addEventListener('dblclick', () => { bindBone(childBlock, parent); menu.remove(); });
         menu.appendChild(opt);
     });
-    const cancel = document.createElement('div');
-    cancel.className = 'block-dropdown-item';
-    cancel.textContent = '取消';
-    cancel.addEventListener('click', () => menu.remove());
+    const cancel = document.createElement('div'); cancel.className = 'block-dropdown-item'; cancel.textContent = '取消'; cancel.addEventListener('click', () => menu.remove());
     menu.appendChild(cancel);
     document.body.appendChild(menu);
 }
-
-
 function bindBone(child, parent) {
-    const parentIndex = blocks.indexOf(parent);
-    const parentCode = `p${parentIndex}`;
-    
-    // 1. 为父方块创建全局变量（原始旋转角度和世界位置）
-    ensureGlobalVar(`${parentCode}_xrot`, `v.xrot`, parent.id);
-    ensureGlobalVar(`${parentCode}_yrot`, `v.yrot`, parent.id);
-    ensureGlobalVar(`${parentCode}_zrot`, `v.zrot`, parent.id);
-    ensureGlobalVar(`${parentCode}_px`, `v.xpos`, parent.id);
-    ensureGlobalVar(`${parentCode}_py`, `v.ypos`, parent.id);
-    ensureGlobalVar(`${parentCode}_pz`, `v.zpos`, parent.id);
-
-    // 2. 为子方块添加偏移量变量（可调节）
+    const prefix = parent.id;
+    ensureGlobalVar(`${prefix}_xrot`, `v.xrot`, parent.id);
+    ensureGlobalVar(`${prefix}_yrot`, `v.yrot`, parent.id);
+    ensureGlobalVar(`${prefix}_zrot`, `v.zrot`, parent.id);
+    ensureGlobalVar(`${prefix}_px`, `v.xpos`, parent.id);
+    ensureGlobalVar(`${prefix}_py`, `v.ypos`, parent.id);
+    ensureGlobalVar(`${prefix}_pz`, `v.zpos`, parent.id);
     child.scope.addVar('v.xbasepos_bone', '0', -100, 100, 0.1);
     child.scope.addVar('v.ybasepos_bone', '1', -100, 100, 0.1);
     child.scope.addVar('v.zbasepos_bone', '0', -100, 100, 0.1);
-    
-    // 3. 为子方块添加父旋转角度变量（用于计算跟随）
-    child.scope.addVar('v.parent_xrot', `t.${parentCode}_xrot`, -180, 180, 1);
-    child.scope.addVar('v.parent_yrot', `t.${parentCode}_yrot`, -180, 180, 1);
-    child.scope.addVar('v.parent_zrot', `t.${parentCode}_zrot`, -180, 180, 1);
-    
-    // 4. 添加父旋转矩阵的临时计算变量
+    child.scope.addVar('v.parent_xrot', `t.${prefix}_xrot`, -180, 180, 1);
+    child.scope.addVar('v.parent_yrot', `t.${prefix}_yrot`, -180, 180, 1);
+    child.scope.addVar('v.parent_zrot', `t.${prefix}_zrot`, -180, 180, 1);
     child.scope.addVar('v.p_cx', 'math.cos(v.parent_xrot)', -1, 1, 0.01);
     child.scope.addVar('v.p_sx', 'math.sin(v.parent_xrot)', -1, 1, 0.01);
     child.scope.addVar('v.p_cy', 'math.cos(v.parent_yrot)', -1, 1, 0.01);
@@ -2634,47 +2206,26 @@ function bindBone(child, parent) {
     child.scope.addVar('v.pR20', 'v.p_sy*v.p_cz - v.p_cy*v.p_sx*v.p_sz', -2, 2, 0.01);
     child.scope.addVar('v.pR21', 'v.p_sy*v.p_sz + v.p_cy*v.p_sx*v.p_cz', -2, 2, 0.01);
     child.scope.addVar('v.pR22', 'v.p_cy*v.p_cx', -2, 2, 0.01);
-    
-    // 5. 强制覆盖子方块的位置表达式
-    const px = `t.${parentCode}_px`;
-    const py = `t.${parentCode}_py`;
-    const pz = `t.${parentCode}_pz`;
-    const offX = 'v.xbasepos_bone', offY = 'v.ybasepos_bone', offZ = 'v.zbasepos_bone';
-    
+    const px = `t.${prefix}_px`, py = `t.${prefix}_py`, pz = `t.${prefix}_pz`, offX = 'v.xbasepos_bone', offY = 'v.ybasepos_bone', offZ = 'v.zbasepos_bone';
     child.scope.setVarExpr('v.xpos', `${px} + v.pR00*${offX} + v.pR01*${offY} + v.pR02*${offZ}`);
     child.scope.setVarExpr('v.ypos', `${py} + v.pR10*${offX} + v.pR11*${offY} + v.pR12*${offZ}`);
     child.scope.setVarExpr('v.zpos', `${pz} + v.pR20*${offX} + v.pR21*${offY} + v.pR22*${offZ}`);
-    
-    // 6. 刷新子方块
-    child.refresh();
-    recordAction();
+    child.refresh(); recordAction();
     showModal("骨骼绑定", `已将 ${child.id} 绑定到 ${parent.id}（跟随移动+旋转）`, null, false);
 }
-
-// 辅助函数：确保全局变量存在（key 为纯英文，例如 "p0_xrot"）
 function ensureGlobalVar(key, expr, sourceBlockId) {
-    if (!globalVars.has(key)) {
-        const rg = getDefaultRange(`t.${key}`);
-        globalVars.set(key, { def: new VarDef(expr, 0, rg.min, rg.max, 1), sourceBlockId: sourceBlockId });
-    } else {
-        const g = globalVars.get(key);
-        g.def.expr = expr;
-        g.sourceBlockId = sourceBlockId;
-    }
+    if (!globalVars.has(key)) { const rg = getDefaultRange(`t.${key}`); globalVars.set(key, { def: new VarDef(expr, 0, rg.min, rg.max, 1), sourceBlockId: sourceBlockId }); }
+    else { const g = globalVars.get(key); g.def.expr = expr; g.sourceBlockId = sourceBlockId; }
 }
 function escapeHtml(str) { return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
 function showModal(title, content, onConfirm = null, isTextarea = true) {
-    const modalDiv = document.createElement('div');
-    modalDiv.className = 'modal';
+    const modalDiv = document.createElement('div'); modalDiv.className = 'modal';
     let innerHtml = `<div class="modal-content"><h3 style="color:#38bdf8;">${title}</h3>`;
     if (isTextarea) innerHtml += `<textarea class="modal-input-text" id="modalInput" rows="5">${content || ''}</textarea>`;
     else innerHtml += `<div class="preview-code" id="modalPreview">${content || ''}</div>`;
     innerHtml += `<div class="modal-buttons"><button class="modal-btn" id="modalConfirm">确认</button><button class="modal-btn" id="modalCancel">取消</button></div></div>`;
-    modalDiv.innerHTML = innerHtml;
-    document.body.appendChild(modalDiv);
-    const confirmBtn = modalDiv.querySelector('#modalConfirm');
-    const cancelBtn = modalDiv.querySelector('#modalCancel');
-    const input = modalDiv.querySelector('#modalInput');
+    modalDiv.innerHTML = innerHtml; document.body.appendChild(modalDiv);
+    const confirmBtn = modalDiv.querySelector('#modalConfirm'), cancelBtn = modalDiv.querySelector('#modalCancel'), input = modalDiv.querySelector('#modalInput');
     confirmBtn.onclick = () => { const val = input ? input.value : null; modalDiv.remove(); if (onConfirm) onConfirm(val); };
     cancelBtn.onclick = () => modalDiv.remove(); if (input) input.focus();
 }
@@ -2683,89 +2234,37 @@ function parseAssignment(str) { const m = str.match(/^([vt]\.[a-zA-Z_][a-zA-Z0-9
 // ==================== 导出命令 ====================
 let exportPrefix = localStorage.getItem('ex_export_prefix') || `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`;
 let exportSuffix = localStorage.getItem('ex_export_suffix') || ` '方块编号：{id}'; "`;
-function savePrefixSuffix() {
-    localStorage.setItem('ex_export_prefix', exportPrefix);
-    localStorage.setItem('ex_export_suffix', exportSuffix);
-}
+function savePrefixSuffix() { localStorage.setItem('ex_export_prefix', exportPrefix); localStorage.setItem('ex_export_suffix', exportSuffix); }
 function showCommandListModal() {
-    const modalDiv = document.createElement('div');
-    modalDiv.className = 'modal';
-    let html = `<div class="modal-content">
-        <h3>✏️ 自定义命令前后缀</h3>
-        <div class="label-hint">前缀（可包含命令和固定文本）</div>
-        <input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}">
-        <div class="label-hint">后缀（使用 {id} 作为方块ID占位符）</div>
-        <input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}">
-        <div class="modal-buttons">
-            <button class="modal-btn" id="resetDefaultBtn">重置默认</button>
-            <button class="modal-btn" id="confirmExportBtn">生成命令列表</button>
-            <button class="modal-btn" id="cancelModalBtn">取消</button>
-        </div>
-    </div>`;
-    modalDiv.innerHTML = html;
-    document.body.appendChild(modalDiv);
-    const prefixInp = modalDiv.querySelector('#prefixInput');
-    const suffixInp = modalDiv.querySelector('#suffixInput');
-    const confirmBtn = modalDiv.querySelector('#confirmExportBtn');
-    const cancelBtn = modalDiv.querySelector('#cancelModalBtn');
-    const resetBtn = modalDiv.querySelector('#resetDefaultBtn');
-    const closeModal = () => modalDiv.remove();
-    resetBtn.onclick = () => {
-        prefixInp.value = `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`;
-        suffixInp.value = ` '方块编号：{id}'; "`;
-    };
+    const modalDiv = document.createElement('div'); modalDiv.className = 'modal';
+    let html = `<div class="modal-content"><h3>✏️ 自定义命令前后缀</h3><div class="label-hint">前缀（可包含命令和固定文本）</div><input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}"><div class="label-hint">后缀（使用 {id} 作为方块ID占位符）</div><input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}"><div class="modal-buttons"><button class="modal-btn" id="resetDefaultBtn">重置默认</button><button class="modal-btn" id="confirmExportBtn">生成命令列表</button><button class="modal-btn" id="cancelModalBtn">取消</button></div></div>`;
+    modalDiv.innerHTML = html; document.body.appendChild(modalDiv);
+    const prefixInp = modalDiv.querySelector('#prefixInput'), suffixInp = modalDiv.querySelector('#suffixInput'), confirmBtn = modalDiv.querySelector('#confirmExportBtn'), cancelBtn = modalDiv.querySelector('#cancelModalBtn'), resetBtn = modalDiv.querySelector('#resetDefaultBtn'), closeModal = () => modalDiv.remove();
+    resetBtn.onclick = () => { prefixInp.value = `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`; suffixInp.value = ` '方块编号：{id}'; "`; };
     confirmBtn.onclick = () => {
-        exportPrefix = prefixInp.value.trim();
-        exportSuffix = suffixInp.value.trim();
-        savePrefixSuffix();
-        closeModal();
-        const listModal = document.createElement('div');
-        listModal.className = 'modal';
+        exportPrefix = prefixInp.value.trim(); exportSuffix = suffixInp.value.trim(); savePrefixSuffix(); closeModal();
+        const listModal = document.createElement('div'); listModal.className = 'modal';
         let listHtml = `<div class="modal-content"><h3>📋 命令列表</h3><div style="max-height:60vh; overflow-y:auto;">`;
         if (blocks.length === 0) listHtml += '<div class="empty-state">暂无方块</div>';
-        else {
-            for (let b of blocks) {
-                let varsStr = '';
-                for (let [name, def] of b.scope.vars.entries()) if (name.startsWith('v.')) varsStr += `${name}=${def.expr}; `;
-                const owned = Array.from(globalVars.entries()).filter(([n, g]) => g.sourceBlockId === b.id);
-                for (let [gn, g] of owned) varsStr += `t.${gn}=${g.def.expr}; `;
-                const suffix = exportSuffix.replace(/{id}/g, b.id);
-                const cmdText = exportPrefix + varsStr + suffix;
-                listHtml += `<div class="command-card"><div class="command-header"><span class="block-id-badge">📦 ${escapeHtml(b.id)}</span><button class="copy-cmd-btn" data-cmd="${escapeHtml(cmdText)}">📋 复制</button></div><pre class="cmd-preview">${escapeHtml(cmdText)}</pre></div>`;
-            }
+        else for (let b of blocks) {
+            let varsStr = '';
+            for (let [name, def] of b.scope.vars.entries()) if (name.startsWith('v.')) varsStr += `${name}=${def.expr}; `;
+            const owned = Array.from(globalVars.entries()).filter(([n, g]) => g.sourceBlockId === b.id);
+            for (let [gn, g] of owned) varsStr += `t.${gn}=${g.def.expr}; `;
+            const suffix = exportSuffix.replace(/{id}/g, b.id);
+            const cmdText = exportPrefix + varsStr + suffix;
+            listHtml += `<div class="command-card"><div class="command-header"><span class="block-id-badge">📦 ${escapeHtml(b.id)}</span><button class="copy-cmd-btn" data-cmd="${escapeHtml(cmdText)}">📋 复制</button></div><pre class="cmd-preview">${escapeHtml(cmdText)}</pre></div>`;
         }
         listHtml += `</div><div class="modal-buttons"><button class="modal-btn" id="copyAllBtn">📋 全部</button><button class="modal-btn" id="closeListBtn">关闭</button></div></div>`;
-        listModal.innerHTML = listHtml;
-        document.body.appendChild(listModal);
-        listModal.querySelectorAll('.copy-cmd-btn').forEach(btn => {
-            btn.addEventListener('click', e => {
-                e.stopPropagation();
-                const cmd = btn.dataset.cmd;
-                navigator.clipboard.writeText(cmd).then(() => {
-                    const orig = btn.innerText;
-                    btn.innerText = '✅ 已复制';
-                    setTimeout(() => btn.innerText = orig, 1500);
-                });
-            });
-        });
-        const copyAllBtn = listModal.querySelector('#copyAllBtn');
-        if (copyAllBtn) {
-            copyAllBtn.addEventListener('click', () => {
-                const allCmds = Array.from(listModal.querySelectorAll('.cmd-preview')).map(pre => pre.textContent).join('\n');
-                navigator.clipboard.writeText(allCmds).then(() => {
-                    const orig = copyAllBtn.innerText;
-                    copyAllBtn.innerText = '✅ 已复制全部';
-                    setTimeout(() => copyAllBtn.innerText = orig, 1500);
-                });
-            });
-        }
+        listModal.innerHTML = listHtml; document.body.appendChild(listModal);
+        listModal.querySelectorAll('.copy-cmd-btn').forEach(btn => { btn.addEventListener('click', e => { e.stopPropagation(); const cmd = btn.dataset.cmd; navigator.clipboard.writeText(cmd).then(() => { const orig = btn.innerText; btn.innerText = '✅ 已复制'; setTimeout(() => btn.innerText = orig, 1500); }); }); });
+        const copyAllBtn = listModal.querySelector('#copyAllBtn'); if (copyAllBtn) copyAllBtn.addEventListener('click', () => { const allCmds = Array.from(listModal.querySelectorAll('.cmd-preview')).map(pre => pre.textContent).join('\n'); navigator.clipboard.writeText(allCmds).then(() => { const orig = copyAllBtn.innerText; copyAllBtn.innerText = '✅ 已复制全部'; setTimeout(() => copyAllBtn.innerText = orig, 1500); }); });
         listModal.querySelector('#closeListBtn').onclick = () => listModal.remove();
     };
     cancelBtn.onclick = closeModal;
 }
 document.getElementById('exportBtn').onclick = showCommandListModal;
 
-// 导入（简化版）
 function importFromCommands(text) {
     const lines = text.split(/\r?\n/);
     let current = '', inQuote = false, cmds = [];
@@ -2809,157 +2308,49 @@ function importFromCommands(text) {
 document.getElementById('importBtn').onclick = () => showModal("导入数据", "粘贴 playanimation 命令文本", (txt) => { if (txt) importFromCommands(txt); }, true);
 
 // 材质菜单
-const materialMenuDiv = document.createElement('div');
-materialMenuDiv.className = 'material-menu';
-materialMenuDiv.style.display = 'none';
-document.body.appendChild(materialMenuDiv);
+const materialMenuDiv = document.createElement('div'); materialMenuDiv.className = 'material-menu'; materialMenuDiv.style.display = 'none'; document.body.appendChild(materialMenuDiv);
 const colorPresets = ['#aaccff','#88aaff','#06b6d4','#8b5cf6','#f43f5e','#10b981','#facc15','#ffffff','#1e293b','#ef4444','#3b82f6','#eab308','#ec4899','#14b8a6','#a855f7','#ff7f50','#2dd4bf','#f97316','#6366f1','#94a3b8'];
 function buildMaterialMenu() {
     materialMenuDiv.innerHTML = `<div class="menu-title">🎨 纯色预设</div><div class="color-palette">${colorPresets.map(c => `<div class="color-swatch" style="background:${c};" data-color="${c}"></div>`).join('')}</div><div class="menu-divider"></div><div class="menu-option" id="customTextureOption">🖼️ 自定贴图</div>`;
-    document.querySelectorAll('.color-swatch').forEach(sw => {
-        sw.addEventListener('click', e => {
-            e.stopPropagation();
-            if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); materialMenuDiv.style.display = 'none'; return; }
-            selectedBlock.setSolidColor(sw.dataset.color);
-            recordAction();
-            materialMenuDiv.style.display = 'none';
-        });
-    });
-    const texOpt = materialMenuDiv.querySelector('#customTextureOption');
-    if (texOpt) texOpt.onclick = () => {
-        materialMenuDiv.style.display = 'none';
-        if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; }
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.onchange = (e) => {
-            if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; }
-            const file = e.target.files[0];
-            if (file) selectedBlock.loadTexture(URL.createObjectURL(file));
-            recordAction();
-        };
-        fileInput.click();
-    };
-}
-document.getElementById('materialPresetBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; }
-    buildMaterialMenu();
-    const rect = e.target.getBoundingClientRect();
-    materialMenuDiv.style.display = 'block';
-    materialMenuDiv.style.top = (rect.bottom + 5) + 'px';
-    materialMenuDiv.style.right = (window.innerWidth - rect.right - 5) + 'px';
-    if (window.innerWidth < 700) materialMenuDiv.style.right = '10px';
-    setTimeout(() => {
-        const close = (ev) => {
-            if (!materialMenuDiv.contains(ev.target) && ev.target !== e.target) {
-                materialMenuDiv.style.display = 'none';
-                document.removeEventListener('click', close);
-            }
-        };
-        document.addEventListener('click', close);
-    }, 10);
-});
+    document.querySelectorAll('.color-swatch').forEach(sw => { sw.addEventListener('click', e => { e.stopPropagation(); if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); materialMenuDiv.style.display = 'none'; return; } selectedBlock.setSolidColor(sw.dataset.color); recordAction(); materialMenuDiv.style.display = 'none'; }); });
+    const texOpt = materialMenuDiv.querySelector('#customTextureOption'); if (texOpt) texOpt.onclick = () => { materialMenuDiv.style.display = 'none'; if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; } const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.onchange = (e) => { if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; } const file = e.target.files[0]; if (file) selectedBlock.loadTexture(URL.createObjectURL(file)); recordAction(); }; fileInput.click(); }; }
+document.getElementById('materialPresetBtn').addEventListener('click', (e) => { e.stopPropagation(); if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; } buildMaterialMenu(); const rect = e.target.getBoundingClientRect(); materialMenuDiv.style.display = 'block'; materialMenuDiv.style.top = (rect.bottom + 5) + 'px'; materialMenuDiv.style.right = (window.innerWidth - rect.right - 5) + 'px'; if (window.innerWidth < 700) materialMenuDiv.style.right = '10px'; setTimeout(() => { const close = (ev) => { if (!materialMenuDiv.contains(ev.target) && ev.target !== e.target) { materialMenuDiv.style.display = 'none'; document.removeEventListener('click', close); } }; document.addEventListener('click', close); }, 10); });
 
 // 主题切换
 let isLightMode = false;
 function applyTheme() {
     const body = document.body;
-    if (isLightMode) {
-        body.classList.add('light-mode');
-        scene.background = new THREE.Color(0xeef2ff);
-        if (scene.fog) scene.fog = null;
-        ambient.intensity = 0.9; dirLight.intensity = 1.4; fillLight.intensity = 0.8; rimLight.intensity = 0.6;
-        document.getElementById('modeSwitchBtn').innerHTML = '<span>深色模式</span>';
-    } else {
-        body.classList.remove('light-mode');
-        scene.background = new THREE.Color(0x030617);
-        scene.fog = new THREE.FogExp2(0x030617, 0.008);
-        ambient.intensity = 0.6; dirLight.intensity = 1.2; fillLight.intensity = 0.5; rimLight.intensity = 0.4;
-        document.getElementById('modeSwitchBtn').innerHTML = '<span>浅色模式</span>';
-    }
+    if (isLightMode) { body.classList.add('light-mode'); scene.background = new THREE.Color(0xeef2ff); if (scene.fog) scene.fog = null; ambient.intensity = 0.9; dirLight.intensity = 1.4; fillLight.intensity = 0.8; rimLight.intensity = 0.6; document.getElementById('modeSwitchBtn').innerHTML = '<span>深色模式</span>'; }
+    else { body.classList.remove('light-mode'); scene.background = new THREE.Color(0x030617); scene.fog = new THREE.FogExp2(0x030617, 0.008); ambient.intensity = 0.6; dirLight.intensity = 1.2; fillLight.intensity = 0.5; rimLight.intensity = 0.4; document.getElementById('modeSwitchBtn').innerHTML = '<span>浅色模式</span>'; }
     updateAxesByDistance(true);
 }
 document.getElementById('modeSwitchBtn').addEventListener('click', () => { isLightMode = !isLightMode; applyTheme(); });
 document.getElementById('addBlockBtn').onclick = () => {
     const defaultM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
-    let base = "方块", id = base, idx = 1;
+    let base = "Cube", id = base, idx = 1;
     while (blocks.some(b => b.id === id)) id = base + (idx++).toString();
     addBlock(new Block(id, defaultM, null, '#aaccff'));
     selectBlock(blocks[blocks.length - 1]);
 };
-// 全屏按钮改用独立函数
 document.getElementById('fullscreenBtn').onclick = () => toggleFullscreen();
-document.addEventListener('fullscreenchange', () => {
-    const panel = document.getElementById('dataPanel');
-    panel.style.display = document.fullscreenElement ? 'none' : 'flex';
-});
-document.getElementById('hideNameBtn').addEventListener('click', () => {
-    hideNames = !hideNames;
-    blocks.forEach(b => { if (b.label) b.label.visible = !hideNames; });
-    document.getElementById('hideNameBtn').querySelector('span').textContent = hideNames ? '显示' : '隐藏编号';
-});
+document.addEventListener('fullscreenchange', () => { const panel = document.getElementById('dataPanel'); panel.style.display = document.fullscreenElement ? 'none' : 'flex'; });
+document.getElementById('hideNameBtn').addEventListener('click', () => { hideNames = !hideNames; blocks.forEach(b => { if (b.label) b.label.visible = !hideNames; }); document.getElementById('hideNameBtn').querySelector('span').textContent = hideNames ? '显示' : '隐藏编号'; });
 document.getElementById('undoBtn').addEventListener('click', () => undo());
 document.getElementById('redoBtn').addEventListener('click', () => redo());
 
-// ========== 键盘快捷键（增强版） ==========
 window.addEventListener('keydown', (e) => {
-    // 如果焦点在输入框或文本域内，不拦截删除键，让浏览器正常处理文字删除
     const activeEl = document.activeElement;
-    const isEditable = activeEl && (
-        activeEl.tagName === 'INPUT' ||
-        activeEl.tagName === 'TEXTAREA' ||
-        activeEl.isContentEditable ||
-        activeEl.getAttribute('contenteditable') === 'true'
-    );
-    
-    // 撤销 / 重做（Ctrl+Z / Ctrl+Y）通常在输入框内也应该保留，但为了统一，也允许在输入框内使用
-    if (e.ctrlKey && e.key === 'z') {
-        e.preventDefault();
-        undo();
-        return;
-    }
-    if (e.ctrlKey && e.key === 'y') {
-        e.preventDefault();
-        redo();
-        return;
-    }
-    // 复制选中方块 (Ctrl + D) - 如果焦点在输入框内，不触发
-    if (e.ctrlKey && e.key === 'd' && !isEditable) {
-        e.preventDefault();
-        duplicateSelectedBlocks();
-        return;
-    }
-    // 删除选中方块 (Delete 或 Backspace) - 仅当焦点不在可编辑元素上时触发
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable) {
-        e.preventDefault();
-        deleteSelectedBlocks();
-        return;
-    }
-    // 导出命令 (Ctrl + Shift + E) - 通常不受输入框影响，但也可以加上判断
-    if (e.ctrlKey && e.shiftKey && (e.code === 'KeyE' || e.key === 'E') && !isEditable) {
-        e.preventDefault();
-        showCommandListModal();
-        return;
-    }
-    // 全屏 (F11) - 不需要判断输入框，因为 F11 是浏览器级功能，但为了不冲突，保留
-    if (e.key === 'F11') {
-        e.preventDefault();
-        toggleFullscreen();
-        return;
-    }
+    const isEditable = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable || activeEl.getAttribute('contenteditable') === 'true');
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); return; }
+    if (e.ctrlKey && e.key === 'd' && !isEditable) { e.preventDefault(); duplicateSelectedBlocks(); return; }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable && !isMouseInPanel) { e.preventDefault(); deleteSelectedBlocks(); return; }
+    if (e.ctrlKey && e.shiftKey && (e.code === 'KeyE' || e.key === 'E') && !isEditable) { e.preventDefault(); showCommandListModal(); return; }
+    if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
 });
-document.getElementById('resetViewBtn').addEventListener('click', () => {
-    camera.position.set(8, 6, 10);
-    controls.target.set(0, 0, 0);
-    controls.update();
-});
+document.getElementById('resetViewBtn').addEventListener('click', () => { camera.position.set(8, 6, 10); controls.target.set(0, 0, 0); controls.update(); });
+document.getElementById('blockMenuBtn').addEventListener('click', (e) => { e.stopPropagation(); showBlockDropdown(e.currentTarget); });
 
-// 选择方块二级菜单修复插入
-document.getElementById('blockMenuBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    showBlockDropdown(e.currentTarget);
-});
 // 3D场景初始化
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x030617); scene.fog = new THREE.FogExp2(0x030617, 0.008);
@@ -2967,110 +2358,56 @@ const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true; container.appendChild(renderer.domElement);
 const labelRenderer = new CSS2DRenderer(); labelRenderer.setSize(window.innerWidth, window.innerHeight); labelRenderer.domElement.style.position = 'absolute'; labelRenderer.domElement.style.top = '0px'; labelRenderer.domElement.style.left = '0px'; labelRenderer.domElement.style.pointerEvents = 'none'; container.appendChild(labelRenderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0, 0);
-controls.enablePan = true;
-controls.panSpeed = 1.0;
-controls.enableZoom = true;
-controls.zoomSpeed = 0.8;
-controls.rotateSpeed = 0.8;
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.touchRotate = true;
-controls.touchZoom = true;
-controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-controls.listenToKeyEvents(window);
-
+controls.target.set(0, 0, 0); controls.enablePan = true; controls.panSpeed = 1.0; controls.enableZoom = true; controls.zoomSpeed = 0.8; controls.rotateSpeed = 0.8; controls.enableDamping = true; controls.dampingFactor = 0.05; controls.touchRotate = true; controls.touchZoom = true; controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }; controls.listenToKeyEvents(window);
 const ambient = new THREE.AmbientLight(0x404060,1); scene.add(ambient);
 const dirLight = new THREE.DirectionalLight(0xfff5e0, 1); dirLight.position.set(3, 5, 2); dirLight.castShadow = true; scene.add(dirLight);
 const fillLight = new THREE.PointLight(0x6688cc, 1); fillLight.position.set(-2, 2, -3); scene.add(fillLight);
 const rimLight = new THREE.PointLight(0xffaa77, 1); rimLight.position.set(0, 1.5, -4); scene.add(rimLight);
 let axisGroup = null; let showAxes = true, showGrid = true, showTicks = true; let lastDistance = 0;
-
-
 function createDynamicAxesAndGrid(camDist) {
     if (axisGroup) { axisGroup.traverse(c => { if (c.isCSS2DObject && c.element) c.element.remove(); }); scene.remove(axisGroup); }
     axisGroup = new THREE.Group(); let maxLen = Math.min(200, Math.max(5, camDist * 1.5)); let step = 1; const targetSteps = [0.5,1,2,5,10,20,50]; for (let s of targetSteps) if (maxLen / s <= 16 && maxLen / s >= 6) { step = s; break; } const actualMax = Math.floor(maxLen / step) * step; const ticks = []; for (let v = -actualMax; v <= actualMax + 0.001; v += step) if (Math.abs(v) > 0.01) ticks.push(v); const axes = [{ start: new THREE.Vector3(-actualMax,0,0), end: new THREE.Vector3(actualMax,0,0), label:'X', color:0xff6666 }, { start: new THREE.Vector3(0,-actualMax,0), end: new THREE.Vector3(0,actualMax,0), label:'Y', color:0x66ff66 }, { start: new THREE.Vector3(0,0,-actualMax), end: new THREE.Vector3(0,0,actualMax), label:'Z', color:0x66aaff }]; const isMobile = window.innerWidth <= 700; const fontSize = isMobile ? '9px' : '12px'; const textColor = document.body.classList.contains('light-mode') ? '#0f172a' : '#e2e8f0'; axes.forEach(axis => { if (showAxes) { const points = [axis.start, axis.end]; const geo = new THREE.BufferGeometry().setFromPoints(points); const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: axis.color })); axisGroup.add(line); const dir = new THREE.Vector3().subVectors(axis.end, axis.start).normalize(); const arrow = new THREE.ArrowHelper(dir, axis.end, 0.4, axis.color, 0.2, 0.1); axisGroup.add(arrow); } if (showTicks) { ticks.forEach(val => { let pos = axis.label === 'X' ? new THREE.Vector3(val,0,0) : axis.label === 'Y' ? new THREE.Vector3(0,val,0) : new THREE.Vector3(0,0,val); let tickDir = axis.label === 'X' ? new THREE.Vector3(0,0.1,0.1) : axis.label === 'Y' ? new THREE.Vector3(0.1,0,0.1) : new THREE.Vector3(0.1,0.1,0); const tickGeo = new THREE.BufferGeometry().setFromPoints([pos, pos.clone().add(tickDir)]); const tickLine = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0x88aaff })); axisGroup.add(tickLine); const div = document.createElement('div'); div.textContent = val.toFixed(1); div.style.cssText = `color:${textColor};font-size:${fontSize};font-weight:bold;text-shadow:0 0 2px rgba(0,0,0,0.3);padding:0 2px;white-space:nowrap;`; const labelObj = new CSS2DObject(div); labelObj.position.copy(pos); axisGroup.add(labelObj); }); } }); if (showGrid) { const gridSize = actualMax * 2; const divisions = ticks.length * 2; const gridStep = gridSize / divisions; for (let i = -divisions/2; i <= divisions/2; i++) { const pos = i * gridStep; if (Math.abs(pos) > actualMax) continue; const pointsX = [new THREE.Vector3(-actualMax,0,pos), new THREE.Vector3(actualMax,0,pos)]; const geoX = new THREE.BufferGeometry().setFromPoints(pointsX); const lineX = new THREE.Line(geoX, new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.35 })); axisGroup.add(lineX); const pointsZ = [new THREE.Vector3(pos,0,-actualMax), new THREE.Vector3(pos,0,actualMax)]; const geoZ = new THREE.BufferGeometry().setFromPoints(pointsZ); const lineZ = new THREE.Line(geoZ, new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.35 })); axisGroup.add(lineZ); } } scene.add(axisGroup);
 }
 function updateAxesByDistance(force = false) { const dist = camera.position.length(); if (force || Math.abs(dist - lastDistance) > 0.5) { lastDistance = dist; createDynamicAxesAndGrid(dist); } }
 const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2();
-
-// ========== 双击检测（替代长按多选） ==========
 let clickTimer = null;
 function onCanvasClick(event) {
     if (event.target.closest('.data-panel') || event.target.closest('.top-bar')) return;
-    
     const rect = renderer.domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
     blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); });
     const intersects = raycaster.intersectObjects(blocks.map(b => b.mesh));
-    
     if (intersects.length) {
-        const hit = intersects[0].object;
-        const block = blocks.find(b => b.mesh === hit);
+        const hit = intersects[0].object, block = blocks.find(b => b.mesh === hit);
         if (block) {
-            if (clickTimer !== null) {
-                // 双击：多选模式（相当于 Ctrl+点击）
-                toggleBlockSelection(block, true);
-                clearTimeout(clickTimer);
-                clickTimer = null;
-            } else {
-                // 第一次单击：延迟执行单选，避免双击误触发
-                clickTimer = setTimeout(() => {
-                    toggleBlockSelection(block, event.ctrlKey || event.metaKey);
-                    clickTimer = null;
-                }, 200);
-            }
+            if (clickTimer !== null) { toggleBlockSelection(block, true); clearTimeout(clickTimer); clickTimer = null; }
+            else { clickTimer = setTimeout(() => { toggleBlockSelection(block, event.ctrlKey || event.metaKey); clickTimer = null; }, 200); }
         }
-    } else if (!event.ctrlKey) {
-        if (clickTimer) {
-            clearTimeout(clickTimer);
-            clickTimer = null;
-        }
-        selectedBlocksSet.clear();
-        selectBlock(null);
-        renderVariablesForBlock(null);
-    }
+    } else if (!event.ctrlKey) { if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; } selectedBlocksSet.clear(); selectBlock(null); renderVariablesForBlock(null); }
 }
 renderer.domElement.addEventListener('click', onCanvasClick);
-// 触摸事件保留原有的单击检测（不做长按，因为双击已足够）
-renderer.domElement.addEventListener('touchstart', e => { 
-    let start = { x: e.touches[0].clientX, y: e.touches[0].clientY }, moved = false; 
-    const onMove = me => { if (Math.abs(me.touches[0].clientX - start.x) > 5 || Math.abs(me.touches[0].clientY - start.y) > 5) moved = true; }; 
-    const onEnd = ee => { 
-        document.removeEventListener('touchmove', onMove); 
-        document.removeEventListener('touchend', onEnd); 
-        if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar')) { 
-            const rect = renderer.domElement.getBoundingClientRect(); 
-            pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1; 
-            pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1; 
-            raycaster.setFromCamera(pointer, camera); 
-            blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); }); 
-            const hits = raycaster.intersectObjects(blocks.map(b => b.mesh)); 
-            if (hits.length) { 
-                const hitBlock = blocks.find(b => b.mesh === hits[0].object); 
-                if (hitBlock) {
-                    // 触摸端使用双击检测逻辑：因为触摸事件没有双击原生事件，我们模拟单击（不检测双击）
-                    // 为了简化，这里直接单选（用户可通过 Ctrl+点击? 无法在触摸端按 Ctrl，所以保留单击单选）
-                    toggleBlockSelection(hitBlock, false);
-                }
-            } else { 
-                selectedBlocksSet.clear(); 
-                selectBlock(null); 
-                renderVariablesForBlock(null); 
-            } 
-        } 
-    }; 
-    document.addEventListener('touchmove', onMove); 
-    document.addEventListener('touchend', onEnd); 
-    e.preventDefault(); 
-}, { passive: false });
-
-function animate() { requestAnimationFrame(animate); controls.update(); updateAxesByDistance(); blocks.forEach(b => updateBlockLabel(b)); renderer.render(scene, camera); labelRenderer.render(scene, camera); }
+renderer.domElement.addEventListener('touchstart', e => { let start = { x: e.touches[0].clientX, y: e.touches[0].clientY }, moved = false; const onMove = me => { if (Math.abs(me.touches[0].clientX - start.x) > 5 || Math.abs(me.touches[0].clientY - start.y) > 5) moved = true; }; const onEnd = ee => { document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onEnd); if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar')) { const rect = renderer.domElement.getBoundingClientRect(); pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(pointer, camera); blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); }); const hits = raycaster.intersectObjects(blocks.map(b => b.mesh)); if (hits.length) { const hitBlock = blocks.find(b => b.mesh === hits[0].object); if (hitBlock) toggleBlockSelection(hitBlock, false); } else { selectedBlocksSet.clear(); selectBlock(null); renderVariablesForBlock(null); } } }; document.addEventListener('touchmove', onMove); document.addEventListener('touchend', onEnd); e.preventDefault(); }, { passive: false });
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update(); updateAxesByDistance();
+    blocks.forEach(b => updateBlockLabel(b));
+    for (let block of selectedBlocksSet) {
+        if (block.selectionWireframe && block.selectionWireframe.visible) {
+            const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scale = new THREE.Vector3();
+            block.mesh.matrixWorld.decompose(pos, quat, scale);
+            block.selectionWireframe.position.copy(pos);
+            block.selectionWireframe.quaternion.copy(quat);
+            block.selectionWireframe.scale.copy(scale);
+        }
+    }
+    renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
+}
 animate();
 createDynamicAxesAndGrid(camera.position.length());
-const defM = [0,0,0,0,0,0,1,1,-90,0,0,0,0]; let base = "方块", bid = base, idx = 1; while (blocks.some(b => b.id === bid)) bid = base + (idx++).toString();
+const defM = [0,0,0,0,0,0,1,1,-90,0,0,0,0]; let base = "Cube", bid = base, idx = 1; while (blocks.some(b => b.id === bid)) bid = base + (idx++).toString();
 addBlock(new Block(bid, defM, null, '#aaccff')); selectBlock(blocks[0]);
 applyTheme();
 document.getElementById('showAxesCheckbox').addEventListener('change', (e) => { showAxes = e.target.checked; updateAxesByDistance(true); });
@@ -3088,4 +2425,4 @@ resizeHandle.addEventListener('pointerdown', onPointerDown);
 panel.style.height = '280px';
 </script>
 </body>
-    </html>
+</html>
