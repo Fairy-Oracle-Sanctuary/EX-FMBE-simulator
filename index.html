@@ -6,978 +6,219 @@
     <title>EX fmbe模拟器</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
-.batch-three-columns {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
-    justify-content: space-between;
-}
-.batch-column {
-    flex: 1;
-    min-width: 200px;
-    background: transparent;
-    border-radius: 12px;
-}
-.batch-column-title {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 12px;
-    padding-left: 10px;
-    border-left: 4px solid #3b82f6;
-    color: #60a5fa;
-}
-body.light-mode .batch-column-title {
-    color: #1e293b;
-    border-left-color: #3b82f6;
-}
-@media (max-width: 768px) {
-    .batch-three-columns {
-        flex-direction: column;
-        gap: 16px;
-    }
-    .batch-column {
-        width: 100%;
-    }
-}
-.batch-control-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-}
+.batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
+.batch-column { flex: 1; min-width: 200px; background: transparent; border-radius: 12px; }
+.batch-column-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; padding-left: 10px; border-left: 4px solid #3b82f6; color: #60a5fa; }
+body.light-mode .batch-column-title { color: #1e293b; border-left-color: #3b82f6; }
+@media (max-width: 768px) { .batch-three-columns { flex-direction: column; gap: 16px; } .batch-column { width: 100%; } }
+.batch-control-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .batch-control-row label {
     width: 50px;
     font-size: 12px;
-}
-.batch-number, .batch-step-input {
-    width: 100px;
-    padding: 4px 8px;
-    border-radius: 8px;
-}
-.batch-slider {
-    flex: 1;
-    min-width: 120px;
-}
-.batch-reset-btn {
-    margin-left: auto;
-}
-.batch-hint {
-    font-size: 10px;
-    color: #94a3b8;
-    margin-top: 8px;
-    text-align: center;
-}
-
-/* ========== 全局重置 ========== */
-* {
-    box-sizing: border-box;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-body {
-    margin: 0;
-    overflow: hidden;
-    font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
-    transition: background 0.2s, color 0.2s;
-}
-
-/* ---------- 深色模式（默认） ---------- */
-body {
-    background: #0a0f1a;
-}
-body .data-panel {
-    background: rgba(18, 25, 45, 0.94);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid #2d3a5e;
-}
-body .panel-content {
-    background: transparent;
-}
-body .var-card {
-    background: #162136;
-    border: 1px solid #2a3a5a;
-}
-body .var-header {
-    background: #0f172a;
-}
-body .info-note {
-    background: #0f172a;
-    color: #cbd5e6;
-}
-body .tool-btn, body .skew-btn, body .inc-btn, body .block-menu-btn, body .modal-btn {
-    background: linear-gradient(135deg, #1e2a4a, #0f172a);
-    border: 1px solid #3b82f6;
-    color: #cbd5e6;
-}
-body .block-dropdown-item:hover {
-    background: #3b82f6;
-    color: #0f172a;
-}
-body .assignment-input.constant-input {
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px);
-    background-blend-mode: overlay;
-}
-body .assignment-input.non-constant-input {
-    background: linear-gradient(135deg, #5b21b6, #8b5cf6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px);
-    background-blend-mode: overlay;
-}
-body .axis-controls {
-    background: #0f172a;
-    border: 1px solid #2a3a5a;
-}
-
-/* ---------- 浅色模式 ---------- */
-body.light-mode {
-    background: #f4f7fc;
-}
-body.light-mode .data-panel {
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid #dce5f0;
-}
-body.light-mode .panel-content {
-    background: #ffffff;
-}
-body.light-mode .var-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-}
-body.light-mode .var-header {
-    background: #f8fafc;
-}
-body.light-mode .info-note {
-    background: #f1f5f9;
-    color: #1e293b;
-}
-body.light-mode .tool-btn, body.light-mode .skew-btn, body.light-mode .inc-btn, body.light-mode .block-menu-btn, body.light-mode .modal-btn {
-    background: linear-gradient(135deg, #ffffff, #f1f5f9);
-    border: 1px solid #cbd5e1;
-    color: #1e293b;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-body.light-mode .tool-btn:hover, body.light-mode .skew-btn:hover, body.light-mode .inc-btn:hover, body.light-mode .block-menu-btn:hover {
-    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-    transform: skewX(-12deg) translateY(-1px);
-}
-body.light-mode .axis-controls {
-    background: #e2e8f0;
-    border: 1px solid #cbd5e1;
-}
-body.light-mode .control-item {
-    background: #cbd5e1;
-    color: #0f172a;
-}
-body.light-mode .control-item label {
-    color: #0f172a;
-}
-body.light-mode .block-dropdown-item:hover {
-    background: #3b82f6;
-    color: white;
-}
-body.light-mode .assignment-input.constant-input {
-    background: linear-gradient(135deg, #1e4a76, #3b82f6), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 8px);
-    background-blend-mode: overlay;
-    color: white;
-}
-body.light-mode .assignment-input.non-constant-input {
-    background: linear-gradient(135deg, #6d28d9, #a78bfa), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 8px);
-    background-blend-mode: overlay;
-    color: white;
-}
-body.light-mode .var-details {
-    background: #f8fafc;
-    border-top-color: #e2e8f0;
-}
-body.light-mode .range-item {
-    background: #e2e8f0;
-    color: #1e293b;
-}
-body.light-mode .range-item input {
-    background: #ffffff;
-    border-color: #94a3b8;
-    color: #0f172a;
-}
-/* 浅色模式模态框修复 */
-body.light-mode .modal-content {
-    background: #ffffff;
-    color: #1e293b;
-    border-color: #cbd5e1;
-}
-body.light-mode .modal-input-text {
-    background: #f8fafc;
-    color: #0f172a;
-    border-color: #cbd5e1;
-}
-body.light-mode .command-card {
-    background: #f8fafc;
-    border-left-color: #3b82f6;
-}
-body.light-mode .block-id-badge {
-    background: #e2e8f0;
-    color: #1e293b;
-    border-color: #cbd5e1;
-}
-body.light-mode .copy-cmd-btn {
-    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
-    color: #0f172a;
-}
-
-/* ========== 材质菜单 ========== */
-.material-menu {
-    position: fixed;
-    background: #0f172a;
-    border-radius: 20px;
-    padding: 14px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-    z-index: 200;
-    width: 270px;
-    right: 16px;
-    top: 70px;
-    border: 1px solid #3b82f6;
-    backdrop-filter: blur(8px);
-    color: #e2e8f0;
-}
-.material-menu .menu-title {
-    font-weight: bold;
-    margin-bottom: 12px;
-    font-size: 14px;
-}
-.material-menu .menu-divider {
-    height: 1px;
-    background: #334155;
-    margin: 12px 0;
-}
-.material-menu .menu-option {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-radius: 12px;
-    transition: 0.1s;
-    font-size: 13px;
-    color: #e2e8f0;
-}
-.material-menu .menu-option:hover {
-    background: #1e293b;
-}
-body.light-mode .material-menu {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    color: #0f172a;
-}
-body.light-mode .material-menu .menu-option {
-    color: #0f172a;
-}
-body.light-mode .material-menu .menu-option:hover {
-    background: #e2e8f0;
-}
-
-/* ========== 命令预览 ========== */
-body .cmd-preview {
-    background: #0a0f1a;
-    color: #4ade80;
-    padding: 12px;
-    border-radius: 16px;
-    font-family: monospace;
-    font-size: 11px;
-    white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 120px;
-    overflow-y: auto;
-    border: 1px solid #2a3a5a;
-}
-body.light-mode .cmd-preview {
-    background: #f1f5f9;
-    color: #16a34a;
-    border: 1px solid #cbd5e1;
-}
-
-/* ========== 3D 容器和顶部栏 ========== */
-#canvas-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    touch-action: none;
-}
-.top-bar {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 20;
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    pointer-events: auto;
-}
-.skew-btn {
-    padding: 8px 20px;
-    font-size: 14px;
-    cursor: pointer;
-    transform: skewX(-12deg);
-    border-radius: 12px;
-    transition: all 0.2s ease;
-    font-weight: bold;
-}
-.skew-btn span {
-    display: inline-block;
-    transform: skewX(12deg);
-}
-
-/* ========== 底部面板 ========== */
-.data-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 15;
-    display: flex;
-    flex-direction: column;
-    pointer-events: auto;
-    overflow: hidden;
-    min-height: 140px;
-    border-radius: 20px 20px 0 0;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
-    transition: height 0.05s linear;
-}
-.resize-handle {
-    height: 10px;
-    background: linear-gradient(135deg, #1e4a76, #3b82f6);
-    cursor: ns-resize;
-    touch-action: none;
-    position: relative;
-    border-radius: 0;
-    z-index: 16;
-    flex-shrink: 0;
-}
-.resize-handle::after {
-    content: "┎┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┒";
-    position: absolute;
-    left: 50%;
-    top: 4px;
-    transform: translateX(-50%);
-    color: white;
-    font-size: 16px;
-    letter-spacing: 6px;
-    font-weight: bold;
-    text-shadow: 0 0 2px #000;
-    pointer-events: none;
-}
-.panel-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    scrollbar-width: thin;
-}
-
-/* ========== 工具栏 ========== */
-.toolbar-integrated {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid rgba(59, 130, 246, 0.5);
-    align-items: center;
-}
-.tool-btn {
-    padding: 6px 14px;
-    font-size: 12px;
-    cursor: pointer;
-    transform: skewX(-12deg);
-    border-radius: 10px;
-    font-weight: bold;
-    transition: all 0.2s;
-}
-.tool-btn span {
-    display: inline-block;
-    transform: skewX(12deg);
-}
-
-/* ========== 轴线控件 ========== */
-.axis-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 16px;
-    padding: 8px 14px;
-    border-radius: 16px;
-    transform: skewX(-4deg);
-}
-.control-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(59, 130, 246, 0.15);
-    padding: 3px 12px;
-    border-radius: 24px;
-    transform: skewX(4deg);
-    font-size: 12px;
-}
-.control-item input {
-    accent-color: #3b82f6;
-}
-.block-menu-btn {
-    transform: skewX(-12deg);
-    padding: 6px 18px;
-    cursor: pointer;
-    font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: 12px;
-    font-size: 13px;
-    margin-bottom: 12px;
-    transition: 0.2s;
-}
-
-/* ========== 方块下拉菜单 ========== */
-.block-dropdown {
-    position: fixed;
-    background: #162136;
-    border-radius: 16px;
-    padding: 6px 0;
-    min-width: 220px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-    z-index: 300;
-    transform: skewX(-5deg);
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid #3b82f6;
-    backdrop-filter: blur(4px);
-}
-.block-dropdown-item {
-    padding: 8px 16px;
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    transition: 0.1s;
-    color: #e2e8f0;
-}
-.block-dropdown-item.selected {
-    background: #3b82f6;
-    color: #0f172a;
-}
-.dropdown-actions {
-    display: flex;
-    gap: 8px;
-}
-.dropdown-actions button {
-    background: rgba(0, 0, 0, 0.5);
-    border: none;
-    color: white;
-    font-size: 12px;
-    padding: 2px 8px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: 0.1s;
-}
-.dropdown-actions button:hover {
-    background: #f43f5e;
-}
-
-/* ========== 变量双列布局 ========== */
-.variables-container {
-    display: flex;
-    gap: 24px;
-    position: relative;
-}
-.variables-left {
-    flex: 1;
-    min-width: 0;
-    border-right: 1px solid rgba(100, 116, 139, 0.3);
-    padding-right: 20px;
-}
-.variables-right {
-    flex: 1;
-    min-width: 0;
-}
-body.light-mode .variables-left {
-    border-right-color: rgba(100, 116, 139, 0.4);
-}
-@media (max-width: 768px) {
-    .variables-container {
-        flex-direction: column;
-        gap: 16px;
-    }
-    .variables-left {
-        border-right: none;
-        padding-right: 0;
-    }
-}
-
-/* ========== 变量卡片 ========== */
-.section-title {
-    font-size: 14px;
-    font-weight: bold;
-    margin: 18px 0 10px;
-    padding-left: 10px;
-    border-left: 4px solid #3b82f6;
-    color: #60a5fa;
-    letter-spacing: 0.5px;
-}
-.var-card {
-    margin-bottom: 12px;
-    border-left-width: 4px;
-    border-left-style: solid;
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.2s;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-.var-card.constant {
-    border-left-color: #3b82f6;
-}
-.var-card.non-constant {
-    border-left-color: #a78bfa;
-}
-.var-card.global {
-    background: #0f172a;
-    border-left-color: #3b82f6;
-}
-.var-header {
-    padding: 8px 12px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.assignment-input {
-    flex: 1;
-    font-weight: bold;
-    padding: 8px 14px;
-    font-size: 14px;
-    transform: skewX(-12deg);
-    font-family: monospace;
-    outline: none;
-    margin-right: 8px;
-    border-radius: 10px;
-    border: none;
-    color: white;
-}
-.var-expand {
-    font-size: 14px;
-    color: #3b82f6;
-    font-weight: bold;
-}
-.var-details {
-    padding: 12px;
-    border-top: 1px solid #2a3a5a;
-    display: none;
-    background: #0f172a;
-}
-.auto-inc-btns {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-.inc-btn {
-    transform: skewX(-12deg);
-    padding: 6px 16px;
-    font-weight: bold;
-    cursor: pointer;
-    border: none;
-    border-radius: 10px;
-    font-size: 13px;
-    transition: 0.1s;
-}
-.inc-btn.active {
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    box-shadow: 0 0 8px #3b82f6;
-    color: #0f172a;
-}
-.new-var-row {
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 2px solid #3b82f6;
-    display: flex;
-    gap: 10px;
-}
-.new-var-input {
-    flex: 2;
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-    border: none;
-    color: white;
-    font-weight: bold;
-    padding: 8px 14px;
-    font-size: 14px;
-    transform: skewX(-12deg);
-    font-family: monospace;
-    border-radius: 12px;
-    outline: none;
-}
-.new-var-input::placeholder {
-    color: rgba(255, 255, 240, 0.7);
-}
-.info-note {
-    font-size: 11px;
-    text-align: center;
-    margin: 16px 0 8px;
-    padding: 6px;
-    transform: skewX(-6deg);
-    border-radius: 12px;
-}
-
-/* ========== 滑块 ========== */
-.slider-container {
-    margin: 8px 0;
-}
-input[type="range"] {
-    width: 100%;
-    height: 8px;
-    -webkit-appearance: none;
-    background: #334155;
-    border-radius: 4px;
-}
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    background: #3b82f6;
-    cursor: pointer;
-    border-radius: 50%;
-    box-shadow: 0 0 6px #3b82f6;
-    transition: 0.1s;
-}
-input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-}
-.range-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-    align-items: center;
-}
-.range-item {
-    padding: 4px 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    transform: skewX(-8deg);
-    border-radius: 20px;
-    background: #1e293b;
-    color: #cbd5e1;
-}
-.range-item input {
-    background: #0f172a;
-    border: 1px solid #3b82f6;
-    color: white;
-    padding: 4px 6px;
-    text-align: center;
-    border-radius: 8px;
-    width: 80px;
-    font-size: 12px;
-}
-.delete-var {
-    background: linear-gradient(135deg, #9f1239, #e11d48);
-    transform: skewX(-12deg);
-    padding: 6px 16px;
-    cursor: pointer;
-    color: white;
-    border: none;
-    margin-top: 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    transition: 0.1s;
-}
-
-/* ========== 模态框 ========== */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.modal-content {
-    background: #162136;
-    border-radius: 24px;
-    padding: 24px;
-    width: 90%;
-    max-width: 700px;
-    max-height: 80vh;
-    overflow-y: auto;
-    border: 1px solid #3b82f6;
-    box-shadow: 0 20px 35px rgba(0, 0, 0, 0.5);
-    color: #e2e8f0;
-}
-.command-card {
-    background: #1e293b;
-    border-radius: 16px;
-    margin-bottom: 16px;
-    padding: 12px;
-    border-left: 4px solid #3b82f6;
-}
-.command-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-.block-id-badge {
-    font-weight: bold;
-    background: #0f172a;
-    color: #60a5fa;
-    padding: 4px 14px;
-    border-radius: 40px;
-    font-size: 12px;
-    border: 1px solid #3b82f6;
-}
-.copy-cmd-btn {
-    background: linear-gradient(135deg, #0f2b3d, #1e4a76);
-    border: none;
-    color: white;
-    padding: 5px 14px;
-    border-radius: 30px;
-    cursor: pointer;
-    font-size: 12px;
-}
-.color-palette {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
-    margin: 10px 0;
-}
-.color-swatch {
-    width: 32px;
-    height: 32px;
-    border-radius: 12px;
-    cursor: pointer;
-    border: 2px solid #334155;
-    transition: 0.1s;
-}
-.empty-state {
-    text-align: center;
-    color: #64748b;
-    padding: 24px;
-    font-size: 13px;
-}
-.modal-input-text {
-    width: 100%;
-    padding: 10px;
-    border-radius: 16px;
-    border: 1px solid #3b82f6;
-    background: #1e293b;
-    color: white;
-    margin-bottom: 12px;
-    transform: skewX(-4deg);
-    font-size: 14px;
-}
-.modal-btn {
-    padding: 8px 20px;
-    transform: skewX(-10deg);
-    border-radius: 40px;
-    cursor: pointer;
-    margin: 0 6px;
-    font-size: 13px;
-}
-
-/* ========== 滚动条 ========== */
-::-webkit-scrollbar {
-    width: 5px;
-}
-::-webkit-scrollbar-track {
-    background: #0f172a;
-    border-radius: 10px;
-}
-::-webkit-scrollbar-thumb {
-    background: #3b82f6;
-    border-radius: 10px;
-}
-
-/* ========== 变量分组 ========== */
-.var-group {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    overflow: hidden;
-}
-.group-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: #0f172a;
-    border: 1px solid #2a3a5a;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: 0.1s;
-    margin-bottom: 6px;
-    font-weight: bold;
-}
-.group-header .group-title {
-    font-size: 14px;
-    letter-spacing: 0.5px;
-    color: #60a5fa;
-}
-.group-header .group-toggle {
-    font-size: 12px;
-    color: #3b82f6;
-}
-.group-content {
-    display: block;
-}
-.group-content.collapsed {
-    display: none;
-}
-body.light-mode .group-header {
-    background: #e2e8f0;
-    border-color: #cbd5e1;
-    color: #0f172a;
-}
-body.light-mode .group-header .group-title {
-    color: #0f172a;
-}
-
-/* ========== 批量修改面板 ========== */
-.batch-panel {
-    background: transparent;
-    border-radius: 16px;
-    padding: 0;
-    margin-bottom: 16px;
-    border: none;
-}
-.batch-title {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 12px;
-    color: #60a5fa;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-left: 10px;
-    border-left: 4px solid #3b82f6;
-}
-body.light-mode .batch-title {
-    color: #0f172a;
-}
-.batch-reset-all {
-    background: linear-gradient(135deg, #1e2a4a, #0f172a);
-    border: 1px solid #3b82f6;
-    color: #cbd5e6;
-    border-radius: 8px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: 0.1s;
-}
-body.light-mode .batch-reset-all {
-    background: linear-gradient(135deg, #d9eaff, #b0d4ff);
-    border: 1px solid #475569;
-    color: #0f172a;
-}
-.batch-var-card {
-    margin-bottom: 16px;
-    border-left-width: 4px;
-    border-left-style: solid;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #162136;
-    border: 1px solid #2a3a5a;
-    border-left-color: #3b82f6;
-}
-body.light-mode .batch-var-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-left-color: #3b82f6;
-}
-.batch-var-header {
-    padding: 8px 12px;
-    background: #0f172a;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    color: #e2e8f0;
-}
-body.light-mode .batch-var-header {
-    background: #f1f5f9;
-    color: #0f172a;
-}
-.batch-var-title {
-    font-weight: bold;
-    font-size: 14px;
-}
-.batch-var-details {
-    padding: 12px;
-    border-top: 1px solid #2a3a5a;
-    display: none;
-    background: #0f172a;
-}
-body.light-mode .batch-var-details {
-    background: #f8fafc;
-    border-top-color: #e2e8f0;
-}
-.batch-control-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: 8px;
-}
-.batch-control-row label {
-    font-size: 12px;
-    min-width: 60px;
-    color: #cbd5e6;
+    color: #cbd5e6;   /* 深色模式浅色文字 */
 }
 body.light-mode .batch-control-row label {
-    color: #0f172a;
+    color: #1e293b;   /* 浅色模式深色文字 */
 }
-body:not(.light-mode) .batch-number, body:not(.light-mode) .batch-step-input {
-    background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+/* 批量修改输入框（深色模式） */
+body .batch-number, body .batch-step-input {
+    background: #0f172a;
     border: 1px solid #3b82f6;
     color: white;
-    padding: 6px 12px;
+    padding: 6px 10px;
     border-radius: 10px;
     width: 120px;
     font-family: monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border 0.2s;
 }
-body.light-mode .batch-number, body.light-mode .batch-step-input {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(255, 255, 255, 1));
-    border: 1px solid #3b82f6;
-    color: #0f172a;
-    padding: 6px 12px;
-    border-radius: 10px;
-    width: 120px;
-    font-family: monospace;
-}
-.batch-slider {
-    flex: 1;
-    min-width: 150px;
-}
-.batch-reset-btn {
-    background: linear-gradient(135deg, #9f1239, #e11d48);
-    transform: skewX(-12deg);
-    padding: 6px 16px;
-    cursor: pointer;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-size: 12px;
-    transition: 0.1s;
-    margin-left: auto;
-}
-body.light-mode .batch-reset-btn {
-    background: #fee2e2;
-    color: #b91c1c;
-    border: 1px solid #fecaca;
+body .batch-number:focus, body .batch-step-input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
 }
 
-/* ========== 响应式调整 ========== */
+/* 批量修改输入框（浅色模式） */
+body.light-mode .batch-number, body.light-mode .batch-step-input {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+    padding: 6px 10px;
+    border-radius: 10px;
+    width: 120px;
+    font-family: monospace;
+    font-size: 13px;
+    outline: none;
+}
+body.light-mode .batch-number:focus, body.light-mode .batch-step-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+}
+.batch-slider { flex: 1; min-width: 120px; }
+.batch-reset-btn { margin-left: auto; }
+.batch-hint { font-size: 10px; color: #94a3b8; margin-top: 8px; text-align: center; }
+
+/* ========== 全局重置 ========== */
+* { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif; transition: background 0.2s, color 0.2s; background: #0a0f1a; }
+body .data-panel { background: rgba(18, 25, 45, 0.94); backdrop-filter: blur(12px); border-top: 1px solid #2d3a5e; }
+body .panel-content { background: transparent; }
+body .var-card { background: #162136; border: 1px solid #2a3a5a; }
+body .var-header { background: #0f172a; }
+body .info-note { background: #0f172a; color: #cbd5e6; }
+body .tool-btn, body .skew-btn, body .inc-btn, body .block-menu-btn, body .modal-btn { background: linear-gradient(135deg, #1e2a4a, #0f172a); border: 1px solid #3b82f6; color: #cbd5e6; }
+body .block-dropdown-item:hover { background: #3b82f6; color: #0f172a; }
+body .assignment-input.constant-input { background: linear-gradient(135deg, #1e3a8a, #3b82f6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; }
+body .assignment-input.non-constant-input { background: linear-gradient(135deg, #5b21b6, #8b5cf6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; }
+body .axis-controls { background: #0f172a; border: 1px solid #2a3a5a; }
+
+/* 浅色模式 */
+body.light-mode { background: #e9eef3; }
+body.light-mode .data-panel { background: rgba(248, 250, 252, 0.72); backdrop-filter: blur(14px) grayscale(0.15); border-top: 1px solid rgba(0,0,0,0.08); }
+body.light-mode .panel-content { background: transparent; }
+body.light-mode .var-card { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(0,0,0,0.08); }
+body.light-mode .var-header { background: rgba(248, 250, 252, 0.8); }
+body.light-mode .info-note { background: rgba(241, 245, 249, 0.8); color: #1e293b; }
+body.light-mode .tool-btn, body.light-mode .skew-btn, body.light-mode .inc-btn, body.light-mode .block-menu-btn, body.light-mode .modal-btn { background: linear-gradient(135deg, #f9fafb, #eef2f6); border: 1px solid #b9c7da; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+body.light-mode .tool-btn:hover, body.light-mode .skew-btn:hover, body.light-mode .inc-btn:hover, body.light-mode .block-menu-btn:hover { background: linear-gradient(135deg, #ffffff, #e2e8f0); transform: skewX(-12deg) translateY(-1px); }
+body.light-mode .axis-controls { background: #e9eef3; border: 1px solid #cbd5e1; }
+body.light-mode .control-item { background: #d9e2ef; color: #0f172a; }
+body.light-mode .control-item label { color: #0f172a; }
+body.light-mode .block-dropdown-item:hover { background: #3b82f6; color: white; }
+body.light-mode .assignment-input.constant-input { background: linear-gradient(135deg, #1e4a76, #3b82f6), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; color: white; }
+body.light-mode .assignment-input.non-constant-input { background: linear-gradient(135deg, #6d28d9, #a78bfa), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; color: white; }
+body.light-mode .var-details { background: rgba(248, 250, 252, 0.9); border-top-color: #d1d9e6; }
+body.light-mode .range-item { background: #e2e8f0; color: #1e293b; }
+body.light-mode .range-item input { background: #ffffff; border-color: #94a3b8; color: #0f172a; }
+body.light-mode .modal-content { background: #fbfdff; color: #1e293b; border-color: #cbd5e1; }
+body.light-mode .modal-input-text { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+body.light-mode .command-card { background: #f8fafc; border-left-color: #3b82f6; }
+body.light-mode .block-id-badge { background: #e2e8f0; color: #1e293b; border-color: #cbd5e1; }
+body.light-mode .copy-cmd-btn { background: linear-gradient(135deg, #e2e8f0, #cbd5e1); color: #0f172a; }
+
+/* 材质菜单 */
+.material-menu { position: fixed; background: #0f172a; border-radius: 20px; padding: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 200; width: 270px; right: 16px; top: 70px; border: 1px solid #3b82f6; backdrop-filter: blur(8px); color: #e2e8f0; }
+.material-menu .menu-title { font-weight: bold; margin-bottom: 12px; font-size: 14px; }
+.material-menu .menu-divider { height: 1px; background: #334155; margin: 12px 0; }
+.material-menu .menu-option { padding: 8px 12px; cursor: pointer; border-radius: 12px; transition: 0.1s; font-size: 13px; color: #e2e8f0; }
+.material-menu .menu-option:hover { background: #1e293b; }
+body.light-mode .material-menu { background: #ffffff; border: 1px solid #cbd5e1; color: #0f172a; }
+body.light-mode .material-menu .menu-option { color: #0f172a; }
+body.light-mode .material-menu .menu-option:hover { background: #e2e8f0; }
+
+/* 命令预览 */
+body .cmd-preview { background: #0a0f1a; color: #4ade80; padding: 12px; border-radius: 16px; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border: 1px solid #2a3a5a; }
+body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px solid #cbd5e1; }
+
+/* 3D容器 */
+#canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
+.top-bar { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; }
+.skew-btn { padding: 8px 20px; font-size: 14px; cursor: pointer; transform: skewX(-12deg); border-radius: 12px; transition: all 0.2s ease; font-weight: bold; }
+.skew-btn span { display: inline-block; transform: skewX(12deg); }
+
+/* 底部面板 */
+.data-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.3); transition: height 0.05s linear; }
+.resize-handle { height: 10px; background: linear-gradient(135deg, #1e4a76, #3b82f6); cursor: ns-resize; touch-action: none; position: relative; border-radius: 0; z-index: 16; flex-shrink: 0; }
+.resize-handle::after { content: "┎┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┒"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%); color: white; font-size: 16px; letter-spacing: 6px; font-weight: bold; text-shadow: 0 0 2px #000; pointer-events: none; }
+.panel-content { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; }
+
+/* 工具栏 */
+.toolbar-integrated { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid rgba(59,130,246,0.5); align-items: center; }
+.tool-btn { padding: 6px 14px; font-size: 12px; cursor: pointer; transform: skewX(-12deg); border-radius: 10px; font-weight: bold; transition: all 0.2s; }
+.tool-btn span { display: inline-block; transform: skewX(12deg); }
+
+/* 轴线控件 */
+.axis-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 8px 14px; border-radius: 16px; transform: skewX(-4deg); }
+.control-item { display: inline-flex; align-items: center; gap: 6px; background: rgba(59,130,246,0.15); padding: 3px 12px; border-radius: 24px; transform: skewX(4deg); font-size: 12px; }
+.control-item input { accent-color: #3b82f6; }
+.block-menu-btn { transform: skewX(-12deg); padding: 6px 18px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-size: 13px; margin-bottom: 12px; transition: 0.2s; }
+
+/* 下拉菜单 */
+.block-dropdown { position: fixed; background: #162136; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; transform: skewX(-5deg); max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
+.block-dropdown-item { padding: 8px 16px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: 0.1s; color: #e2e8f0; }
+.block-dropdown-item.selected { background: #3b82f6; color: #0f172a; }
+.dropdown-actions { display: flex; gap: 8px; }
+.dropdown-actions button { background: rgba(0,0,0,0.5); border: none; color: white; font-size: 12px; padding: 2px 8px; border-radius: 20px; cursor: pointer; transition: 0.1s; }
+.dropdown-actions button:hover { background: #f43f5e; }
+
+/* 变量布局 */
+.variables-container { display: flex; gap: 24px; position: relative; }
+.variables-left { flex: 1; min-width: 0; border-right: 1px solid rgba(100,116,139,0.3); padding-right: 20px; }
+.variables-right { flex: 1; min-width: 0; }
+body.light-mode .variables-left { border-right-color: rgba(100,116,139,0.4); }
+@media (max-width: 768px) { .variables-container { flex-direction: column; gap: 16px; } .variables-left { border-right: none; padding-right: 0; } }
+
+/* 变量卡片 */
+.section-title { font-size: 14px; font-weight: bold; margin: 18px 0 10px; padding-left: 10px; border-left: 4px solid #3b82f6; color: #60a5fa; letter-spacing: 0.5px; }
+.var-card { margin-bottom: 12px; border-left-width: 4px; border-left-style: solid; border-radius: 12px; overflow: hidden; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.var-card.constant { border-left-color: #3b82f6; }
+.var-card.non-constant { border-left-color: #a78bfa; }
+.var-card.global { background: #0f172a; border-left-color: #3b82f6; }
+.var-header { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.assignment-input { flex: 1; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; outline: none; margin-right: 8px; border-radius: 10px; border: none; color: white; }
+.var-expand { font-size: 14px; color: #3b82f6; font-weight: bold; }
+.var-details { padding: 12px; border-top: 1px solid #2a3a5a; display: none; background: #0f172a; }
+.auto-inc-btns { display: flex; gap: 10px; margin-bottom: 12px; }
+.inc-btn { transform: skewX(-12deg); padding: 6px 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 10px; font-size: 13px; transition: 0.1s; }
+.inc-btn.active { background: linear-gradient(135deg, #3b82f6, #8b5cf6); box-shadow: 0 0 8px #3b82f6; color: #0f172a; }
+.new-var-row { margin-top: 16px; padding-top: 12px; border-top: 2px solid #3b82f6; display: flex; gap: 10px; }
+.new-var-input { flex: 2; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border: none; color: white; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; border-radius: 12px; outline: none; }
+.new-var-input::placeholder { color: rgba(255,255,240,0.7); }
+.info-note { font-size: 11px; text-align: center; margin: 16px 0 8px; padding: 6px; transform: skewX(-6deg); border-radius: 12px; }
+
+/* 滑块 */
+.slider-container { margin: 8px 0; }
+input[type="range"] { width: 100%; height: 8px; -webkit-appearance: none; background: #334155; border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #3b82f6; cursor: pointer; border-radius: 50%; box-shadow: 0 0 6px #3b82f6; transition: 0.1s; }
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.range-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.range-item { padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; transform: skewX(-8deg); border-radius: 20px; background: #1e293b; color: #cbd5e1; }
+.range-item input { background: #0f172a; border: 1px solid #3b82f6; color: white; padding: 4px 6px; text-align: center; border-radius: 8px; width: 80px; font-size: 12px; }
+.delete-var { background: linear-gradient(135deg, #9f1239, #e11d48); transform: skewX(-12deg); padding: 6px 16px; cursor: pointer; color: white; border: none; margin-top: 10px; border-radius: 20px; font-size: 12px; transition: 0.1s; }
+
+/* 模态框 */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.modal-content { background: #162136; border-radius: 24px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; border: 1px solid #3b82f6; box-shadow: 0 20px 35px rgba(0,0,0,0.5); color: #e2e8f0; }
+.command-card { background: #1e293b; border-radius: 16px; margin-bottom: 16px; padding: 12px; border-left: 4px solid #3b82f6; }
+.command-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.block-id-badge { font-weight: bold; background: #0f172a; color: #60a5fa; padding: 4px 14px; border-radius: 40px; font-size: 12px; border: 1px solid #3b82f6; }
+.copy-cmd-btn { background: linear-gradient(135deg, #0f2b3d, #1e4a76); border: none; color: white; padding: 5px 14px; border-radius: 30px; cursor: pointer; font-size: 12px; }
+.color-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 10px 0; }
+.color-swatch { width: 32px; height: 32px; border-radius: 12px; cursor: pointer; border: 2px solid #334155; transition: 0.1s; }
+.empty-state { text-align: center; color: #64748b; padding: 24px; font-size: 13px; }
+.modal-input-text { width: 100%; padding: 10px; border-radius: 16px; border: 1px solid #3b82f6; background: #1e293b; color: white; margin-bottom: 12px; transform: skewX(-4deg); font-size: 14px; }
+.modal-btn { padding: 8px 20px; transform: skewX(-10deg); border-radius: 40px; cursor: pointer; margin: 0 6px; font-size: 13px; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+
+/* 变量分组 */
+.var-group { margin-bottom: 20px; border-radius: 12px; overflow: hidden; }
+.group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #0f172a; border: 1px solid #2a3a5a; border-radius: 12px; cursor: pointer; transition: 0.1s; margin-bottom: 6px; font-weight: bold; }
+.group-header .group-title { font-size: 14px; letter-spacing: 0.5px; color: #60a5fa; }
+.group-header .group-toggle { font-size: 12px; color: #3b82f6; }
+.group-content { display: block; }
+.group-content.collapsed { display: none; }
+body.light-mode .group-header { background: #e2e8f0; border-color: #cbd5e1; color: #0f172a; }
+body.light-mode .group-header .group-title { color: #0f172a; }
+
+/* 批量修改面板 */
+.batch-panel { background: transparent; border-radius: 16px; padding: 0; margin-bottom: 16px; border: none; }
+.batch-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #60a5fa; display: flex; justify-content: space-between; align-items: center; padding-left: 10px; border-left: 4px solid #3b82f6; }
+body.light-mode .batch-title { color: #0f172a; }
+.batch-reset-all { background: linear-gradient(135deg, #1e2a4a, #0f172a); border: 1px solid #3b82f6; color: #cbd5e6; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; transition: 0.1s; }
+body.light-mode .batch-reset-all { background: linear-gradient(135deg, #d9eaff, #b0d4ff); border: 1px solid #475569; color: #0f172a; }
+.batch-var-card { margin-bottom: 16px; border-left-width: 4px; border-left-style: solid; border-radius: 12px; overflow: hidden; background: #162136; border: 1px solid #2a3a5a; border-left-color: #3b82f6; }
+body.light-mode .batch-var-card { background: #ffffff; border: 1px solid #e2e8f0; border-left-color: #3b82f6; }
+.batch-var-header { padding: 8px 12px; background: #0f172a; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #e2e8f0; }
+body.light-mode .batch-var-header { background: #f1f5f9; color: #0f172a; }
+.batch-var-title { font-weight: bold; font-size: 14px; }
+.batch-var-details { padding: 12px; border-top: 1px solid #2a3a5a; display: none; background: #0f172a; }
+body.light-mode .batch-var-details { background: #f8fafc; border-top-color: #e2e8f0; }
+
+/* 响应式 */
 @media (min-width: 1024px) {
     .assignment-input { padding: 10px 16px; font-size: 15px; }
     .inc-btn { padding: 8px 18px; font-size: 14px; }
@@ -991,34 +232,7 @@ body.light-mode .batch-reset-btn {
     .tool-btn { padding: 8px 16px; font-size: 13px; }
     .skew-btn { padding: 10px 24px; font-size: 15px; }
 }
-@media (max-width: 768px) {
-    .batch-control-row {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        gap: 8px;
-        padding-bottom: 4px;
-    }
-    .batch-control-row label {
-        flex-shrink: 0;
-        font-size: 12px;
-    }
-    .batch-number, .batch-step-input {
-        width: 70px !important;
-        flex-shrink: 0;
-        font-size: 12px;
-        padding: 4px 8px;
-    }
-    .batch-slider {
-        min-width: 120px;
-    }
-    .batch-reset-btn {
-        padding: 4px 12px;
-        font-size: 11px;
-    }
-}
 </style>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
 <div id="canvas-container"></div>
@@ -1047,7 +261,7 @@ body.light-mode .batch-reset-btn {
         <button class="block-menu-btn" id="blockMenuBtn"><span>📦 方块列表 ▼</span></button>
         <div id="varsContainer" class="variables-container"></div>
         <div id="newVarContainer" style="margin-top: 12px;"></div>
-        <div class="info-note">✨ 反馈: 3155929574@qq.com<br>
+        <div class="info-note">✨ 反馈: 3155929574@qq.com<br></div>
     </div>
 </div>
 
@@ -1059,7 +273,6 @@ body.light-mode .batch-reset-btn {
     }
 }
 </script>
-
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1145,8 +358,6 @@ const degToRad = d => d * Math.PI / 180;
 
 function computeTransformMatrix(M, rotatex = 0, rotatey = 0, rotatez = 0) {
     const [px, py, pz, rx, ry, rz, s, es, ex, ey, bx, by, bz] = M;
-
-    // ----- 局部变换（不包含最终位置平移）-----
     const matB = new THREE.Matrix4().makeTranslation(bx, by, bz);
     const matEsy = new THREE.Matrix4().makeScale(1, es, 1);
     const matEyr = new THREE.Matrix4().makeRotationY(-degToRad(ey));
@@ -1160,30 +371,16 @@ function computeTransformMatrix(M, rotatex = 0, rotatey = 0, rotatez = 0) {
     const matRz = new THREE.Matrix4().makeRotationZ(degToRad(-rz));
 
     let localMat = matB.clone();
-    localMat.premultiply(matEsy)
-           .premultiply(matEyr)
-           .premultiply(matExr)
-           .premultiply(matEs)
-           .premultiply(matExl)
-           .premultiply(matEyl)
-           .premultiply(matS)
-           .premultiply(matRz)
-           .premultiply(matRx)
-           .premultiply(matRy);
+    localMat.premultiply(matEsy).premultiply(matEyr).premultiply(matExr).premultiply(matEs).premultiply(matExl).premultiply(matEyl).premultiply(matS).premultiply(matRz).premultiply(matRx).premultiply(matRy);
 
-    // ----- 全局旋转（围绕原点，不影响后续平移方向）-----
     const globalRz = new THREE.Matrix4().makeRotationZ(degToRad(-rotatez));
     const globalRx = new THREE.Matrix4().makeRotationX(degToRad(rotatex));
     const globalRy = new THREE.Matrix4().makeRotationY(degToRad(-rotatey));
-    
     const globalRot = globalRy.clone().multiply(globalRx).multiply(globalRz);
-
-    // ----- 最终平移（世界坐标轴方向）-----
     const matP = new THREE.Matrix4().makeTranslation(px, py, pz);
-
-    // 最终变换：先局部变换，再全局旋转，最后平移到世界位置
     return matP.clone().multiply(globalRot).multiply(localMat);
 }
+
 class Block {
     constructor(id, M, textureUrl = null, materialColor = '#aaccff') {
         this.id = id;
@@ -1263,19 +460,10 @@ class Block {
     updateSelectionHighlight(selected) {
         if (selected) {
             if (!this.selectionWireframe) {
-                const vertices = [];
-                const corners = [
-                    new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3( 0.5, -0.5, -0.5),
-                    new THREE.Vector3( 0.5, -0.5,  0.5), new THREE.Vector3(-0.5, -0.5,  0.5),
-                    new THREE.Vector3(-0.5,  0.5, -0.5), new THREE.Vector3( 0.5,  0.5, -0.5),
-                    new THREE.Vector3( 0.5,  0.5,  0.5), new THREE.Vector3(-0.5,  0.5,  0.5)
-                ];
+                const corners = [new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, -0.5, -0.5), new THREE.Vector3(0.5, -0.5, 0.5), new THREE.Vector3(-0.5, -0.5, 0.5), new THREE.Vector3(-0.5, 0.5, -0.5), new THREE.Vector3(0.5, 0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5), new THREE.Vector3(-0.5, 0.5, 0.5)];
                 const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
                 const positions = [];
-                edges.forEach(edge => {
-                    const p1 = corners[edge[0]], p2 = corners[edge[1]];
-                    positions.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-                });
+                edges.forEach(edge => { const p1 = corners[edge[0]], p2 = corners[edge[1]]; positions.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z); });
                 const geometry = new THREE.BufferGeometry();
                 geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
                 const material = new THREE.LineBasicMaterial({ color: 0xffaa00 });
@@ -1288,9 +476,7 @@ class Block {
             this.selectionWireframe.position.copy(pos);
             this.selectionWireframe.quaternion.copy(quat);
             this.selectionWireframe.scale.copy(scale);
-        } else {
-            if (this.selectionWireframe) this.selectionWireframe.visible = false;
-        }
+        } else { if (this.selectionWireframe) this.selectionWireframe.visible = false; }
     }
 }
 
@@ -1303,16 +489,16 @@ let selectedBlocksSet = new Set();
 let currentOpenGroup = null;
 let expandedVars = new Set();
 let batchDeltas = new Map();
-
 let isMouseInPanel = false;
+
 const panelEl = document.getElementById('dataPanel');
 panelEl.addEventListener('mouseenter', () => isMouseInPanel = true);
 panelEl.addEventListener('mouseleave', () => isMouseInPanel = false);
 
-// ==================== 历史记录（无节流，直接记录） ====================
+let recordDebounceTimer = null;
 function recordAction() {
-    const currentState = getState();
-    history.record(currentState);
+    if (recordDebounceTimer) clearTimeout(recordDebounceTimer);
+    recordDebounceTimer = setTimeout(() => { const s = getState(); history.record(s); }, 200);
 }
 
 const history = (() => {
@@ -1326,15 +512,15 @@ const history = (() => {
 
 function getState() {
     return {
-        blocks: blocks.map(b => ({ id: b.id, vars: Array.from(b.scope.vars.entries()).map(([n, d]) => ({ name: n, expr: d.expr, value: d.value, rangeMin: d.rangeMin, rangeMax: d.rangeMax, step: d.step })), textureUrl: b.textureUrl, materialColor: b.materialColor, materialType: b.materialType })),
-        globalVars: Array.from(globalVars.entries()).map(([n, g]) => ({ name: n, expr: g.def.expr, value: g.def.value, rangeMin: g.def.rangeMin, rangeMax: g.def.rangeMax, step: g.def.step, sourceBlockId: g.sourceBlockId }))
+        blocks: blocks.map(b => ({ id: b.id, vars: Array.from(b.scope.vars.entries()).map(([n,d]) => ({ name:n, expr:d.expr, value:d.value, rangeMin:d.rangeMin, rangeMax:d.rangeMax, step:d.step })), textureUrl: b.textureUrl, materialColor: b.materialColor, materialType: b.materialType })),
+        globalVars: Array.from(globalVars.entries()).map(([n,g]) => ({ name:n, expr:g.def.expr, value:g.def.value, rangeMin:g.def.rangeMin, rangeMax:g.def.rangeMax, step:g.def.step, sourceBlockId:g.sourceBlockId }))
     };
 }
 
 function restoreState(state) {
-    for (let [k, i] of activeAutoIncMap) clearInterval(i);
+    for (let [k,i] of activeAutoIncMap) clearInterval(i);
     activeAutoIncMap.clear();
-    blocks.forEach(b => { scene.remove(b.mesh); if (b.label) scene.remove(b.label); if (b.selectionWireframe) scene.remove(b.selectionWireframe); });
+    blocks.forEach(b => { scene.remove(b.mesh); if(b.label) scene.remove(b.label); if(b.selectionWireframe) scene.remove(b.selectionWireframe); });
     blocks = [];
     state.blocks.forEach(s => {
         const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
@@ -1373,11 +559,7 @@ function removeBlock(block) {
     scene.remove(block.mesh);
     if (block.label) scene.remove(block.label);
     if (block.selectionWireframe) scene.remove(block.selectionWireframe);
-    if (selectedBlock === block) {
-        selectedBlock = blocks[0] || null;
-        if (selectedBlock) selectBlock(selectedBlock);
-        else renderVariablesForBlock(null);
-    }
+    if (selectedBlock === block) { selectedBlock = blocks[0] || null; if (selectedBlock) selectBlock(selectedBlock); else renderVariablesForBlock(null); }
     selectedBlocksSet.delete(block);
     updateAxesVisibility();
     recordAction();
@@ -1386,501 +568,374 @@ function removeBlock(block) {
 function selectBlock(block) {
     if (selectedBlock && selectedBlock.axisHelper) selectedBlock.axisHelper.visible = false;
     selectedBlock = block;
-    if (block) {
-        block.axisHelper.visible = true;
-        blocks.forEach(b => { if (b.mesh.material) b.mesh.material.emissiveIntensity = (b === block) ? 0.2 : 0; });
-        renderVariablesForBlock(block);
-    } else renderVariablesForBlock(null);
+    if (block) { block.axisHelper.visible = true; blocks.forEach(b => { if(b.mesh.material) b.mesh.material.emissiveIntensity = (b===block)?0.2:0; }); renderVariablesForBlock(block); }
+    else renderVariablesForBlock(null);
     updateAxesVisibility();
     blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
 function updateAxesVisibility() {
-    blocks.forEach(block => {
-        if (selectedBlocksSet.size > 1) block.axisHelper.visible = selectedBlocksSet.has(block);
-        else block.axisHelper.visible = (block === selectedBlock);
-    });
+    blocks.forEach(block => { if (selectedBlocksSet.size > 1) block.axisHelper.visible = selectedBlocksSet.has(block); else block.axisHelper.visible = (block === selectedBlock); });
 }
 
 function updateBlockLabel(block) {
     if (!block.label) {
-        const div = document.createElement('div');
-        div.textContent = block.id;
+        const div = document.createElement('div'); div.textContent = block.id;
         div.style.cssText = 'background:rgba(15,23,42,0.85);padding:2px 12px;font-size:11px;border-left:3px solid #06b6d4;color:#a5f3fc;font-weight:bold;transform:skewX(-8deg);border-radius:40px;backdrop-filter:blur(4px);';
-        block.label = new CSS2DObject(div);
-        scene.add(block.label);
+        block.label = new CSS2DObject(div); scene.add(block.label);
     }
     block.label.visible = !hideNames;
-    const pos = new THREE.Vector3();
-    block.mesh.matrixWorld.decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
+    const pos = new THREE.Vector3(); block.mesh.matrixWorld.decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
     const scale = block.scope.vars.get('v.scale')?.value ?? 1;
-    block.label.position.copy(pos);
-    block.label.position.y += scale * 0.5 + 0.1;
+    block.label.position.copy(pos); block.label.position.y += scale * 0.5 + 0.1;
 }
 
 function duplicateBlock(original) {
-    let baseName = "Cube", newId = baseName, cnt = 1;
-    while (blocks.some(b => b.id === newId)) newId = baseName + (cnt++);
+    let base = "Cube", newId = base, cnt = 1;
+    while (blocks.some(b => b.id === newId)) newId = base + (cnt++);
     const M = original.scope.toM();
-    const newBlock = new Block(newId, M, original.textureUrl, original.materialColor);
-    newBlock.materialType = original.materialType;
-    newBlock.scope.vars.clear();
-    for (let [name, def] of original.scope.vars.entries()) newBlock.scope.vars.set(name, new VarDef(def.expr, def.value, def.rangeMin, def.rangeMax, def.step));
-    newBlock.refresh();
-    addBlock(newBlock, true);
-    selectBlock(newBlock);
+    const nb = new Block(newId, M, original.textureUrl, original.materialColor);
+    nb.materialType = original.materialType;
+    nb.scope.vars.clear();
+    for (let [n,d] of original.scope.vars.entries()) nb.scope.vars.set(n, new VarDef(d.expr, d.value, d.rangeMin, d.rangeMax, d.step));
+    nb.refresh(); addBlock(nb, true); selectBlock(nb);
 }
 
 function duplicateSelectedBlocks() {
     if (selectedBlocksSet.size === 0) return;
-    const toDuplicate = Array.from(selectedBlocksSet);
-    const newBlocks = [];
-    for (let block of toDuplicate) {
-        duplicateBlock(block);
-        const newBlock = blocks[blocks.length - 1];
-        newBlocks.push(newBlock);
-    }
-    selectedBlocksSet.clear();
-    toDuplicate.forEach(b => selectedBlocksSet.add(b));
-    newBlocks.forEach(b => selectedBlocksSet.add(b));
+    const toDup = Array.from(selectedBlocksSet), newBs = [];
+    for (let b of toDup) { duplicateBlock(b); newBs.push(blocks[blocks.length-1]); }
+    selectedBlocksSet.clear(); toDup.forEach(b => selectedBlocksSet.add(b)); newBs.forEach(b => selectedBlocksSet.add(b));
     if (selectedBlock) renderVariablesForBlock(selectedBlock);
-    updateAxesVisibility();
-    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+    updateAxesVisibility(); blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
 function deleteSelectedBlocks() {
     if (selectedBlocksSet.size === 0) return;
-    const toDelete = Array.from(selectedBlocksSet);
-    for (let block of toDelete) removeBlock(block);
+    for (let b of Array.from(selectedBlocksSet)) removeBlock(b);
     selectedBlocksSet.clear();
-    if (blocks.length > 0) selectBlock(blocks[0]);
-    else selectBlock(null);
-    updateAxesVisibility();
-    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+    if (blocks.length) selectBlock(blocks[0]); else selectBlock(null);
+    updateAxesVisibility(); blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
 function toggleFullscreen() {
-    const panel = document.getElementById('dataPanel');
-    if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); panel.style.display = 'none'; }
-    else { document.exitFullscreen(); panel.style.display = 'flex'; }
+    const p = document.getElementById('dataPanel');
+    if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); p.style.display = 'none'; }
+    else { document.exitFullscreen(); p.style.display = 'flex'; }
 }
 
-// ==================== 批量修改核心函数 ====================
-function applyBatchDelta(varName, deltaChange) {
-    if (deltaChange === 0) return;
-    for (let block of selectedBlocksSet) {
-        let def = block.scope.vars.get(varName);
+// ========== 批量修改 ==========
+function applyBatchDelta(varName, delta) {
+    if (delta === 0) return;
+    for (let b of selectedBlocksSet) {
+        let def = b.scope.vars.get(varName);
         if (!def) {
             const rg = getDefaultRange(varName);
-            block.scope.addVar(varName, "0", rg.min, rg.max, 1);
-            def = block.scope.vars.get(varName);
+            b.scope.addVar(varName, "0", rg.min, rg.max, 1);
+            def = b.scope.vars.get(varName);
         }
         if (def) {
-            let newVal = def.value + deltaChange;
-            const range = getDefaultRange(varName);
-            if (newVal > range.max) newVal = range.max;
-            if (newVal < range.min) newVal = range.min;
-            const step = def.step || 1;
-            newVal = Math.round(newVal / step) * step;
-            def.expr = newVal.toString();
-            def.value = newVal;
-            block.refresh();
-            block.mesh.updateMatrixWorld(true);
+            // 判断原表达式是否为纯数字常量
+            const isConst = isConstantExpr(def.expr);
+            let newExpr;
+            
+            if (isConst) {
+                // 常量表达式：直接计算新数值
+                let nv = parseFloat(def.expr) + delta;
+                const range = getDefaultRange(varName);
+                nv = Math.min(range.max, Math.max(range.min, nv));
+                const step = def.step || 1;
+                nv = Math.round(nv / step) * step;
+                newExpr = nv.toString();
+                def.value = nv;
+            } else {
+                // 非常量表达式：在原表达式基础上增加偏移量
+                const deltaStr = delta >= 0 ? ` + ${delta}` : ` - ${-delta}`;
+                newExpr = `(${def.expr})${deltaStr}`;
+                // 立即计算一次新值（可选，refresh 后也会更新）
+                def.value = evaluateExpression(newExpr, b.scope.vars, globalVars);
+            }
+            
+            def.expr = newExpr;
+            b.refresh();
+            b.mesh.updateMatrixWorld(true);
         }
     }
     recordAction();
 }
-function setBatchDelta(varName, newDelta) {
-    const oldDelta = batchDeltas.get(varName) || 0;
-    const change = newDelta - oldDelta;
-    if (change !== 0) { applyBatchDelta(varName, change); batchDeltas.set(varName, newDelta); }
-}
-function resetBatchDelta(varName) {
-    const oldDelta = batchDeltas.get(varName) || 0;
-    if (oldDelta !== 0) { applyBatchDelta(varName, -oldDelta); batchDeltas.set(varName, 0); }
-}
-function resetAllBatchDeltas() {
-    for (let varName of batchDeltas.keys()) resetBatchDelta(varName);
-    renderVariablesForBlock(selectedBlock);
-}
-function syncStepToBlocks(varName, newStep) {
-    for (let block of selectedBlocksSet) {
-        const def = block.scope.vars.get(varName);
-        if (def) {
-            if (def.step !== newStep) {
-                stopAutoInc(false, varName, 0, null);
-                const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`);
-                const downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
-                if (upBtn) upBtn.classList.remove('active');
-                if (downBtn) downBtn.classList.remove('active');
-            }
-            def.step = newStep;
-            let cur = def.value;
-            let rounded = Math.round(cur / newStep) * newStep;
-            if (Math.abs(rounded - cur) > 1e-8) {
-                def.expr = rounded.toString();
-                def.value = rounded;
-                block.refresh();
-                block.mesh.updateMatrixWorld(true);
-            }
-        }
+function setBatchDelta(varName, newDelta) { const old = batchDeltas.get(varName)||0; applyBatchDelta(varName, newDelta-old); batchDeltas.set(varName, newDelta); }
+function resetBatchDelta(varName) { const old = batchDeltas.get(varName)||0; applyBatchDelta(varName, -old); batchDeltas.set(varName, 0); }
+function resetAllBatchDeltas() { for (let v of batchDeltas.keys()) resetBatchDelta(v); renderVariablesForBlock(selectedBlock); }
+
+function syncStepToBlocks(varName, step) {
+    for (let b of selectedBlocksSet) {
+        const def = b.scope.vars.get(varName); if (!def) continue;
+        if (def.step !== step) { stopAutoInc(false, varName, 0, null); }
+        def.step = step; let cur = def.value; let rounded = Math.round(cur/step)*step;
+        if (Math.abs(rounded-cur) > 1e-8) { def.expr = rounded.toString(); def.value = rounded; b.refresh(); }
     }
     recordAction();
-}
-function renderBatchPanel() {
-    const batchGroups = {
-        '位移': ['v.xpos', 'v.ypos', 'v.zpos', 'v.xbasepos', 'v.ybasepos', 'v.zbasepos'],
-        '缩放': ['v.scale', 'v.extend_scale', 'v.extend_xrot', 'v.extend_yrot'],
-        '旋转': ['v.rotatex', 'v.rotatey', 'v.rotatez']
-    };
-    let html = `<div class="batch-panel"><div class="batch-title"><span>✏️ 批量修改 (${selectedBlocksSet.size} 个方块)</span><button class="batch-reset-all" id="batchResetAllBtn">重置所有增量</button></div><div class="batch-three-columns">`;
-    for (let [groupName, varNames] of Object.entries(batchGroups)) {
-        html += `<div class="batch-column"><div class="batch-column-title">📁 ${groupName}</div>`;
-        for (let varName of varNames) {
-            const displayName = varName.slice(2);
-            const range = getDefaultRange(varName);
-            const defaultStep = range.step || 1;
-            const currentDelta = batchDeltas.get(varName) || 0;
-            const formattedDelta = parseFloat(currentDelta.toFixed(6));
-            html += `<div class="batch-var-card" data-batch-var="${varName}">
-                <div class="batch-var-header" data-batch-toggle-var="${varName}">
-                    <span class="batch-var-title">${displayName}</span><span class="var-expand">▼</span>
-                </div>
-                <div class="batch-var-details" data-batch-details="${varName}" style="display:none;">
-                    <div class="batch-control-row"><label>增量值:</label><input type="number" class="batch-number" data-batch-input="${varName}" value="${formattedDelta}" step="${defaultStep}"></div>
-                    <div class="batch-control-row"><label>步长:</label><input type="number" class="batch-step-input" data-batch-step="${varName}" value="${defaultStep}" step="any"></div>
-                    <div class="batch-control-row"><label>滑块:</label><input type="range" class="batch-slider" data-batch-slider="${varName}" min="${range.min}" max="${range.max}" step="${defaultStep}" value="${formattedDelta}"></div>
-                    <div class="batch-control-row"><button class="batch-reset-btn" data-batch-reset="${varName}">重置</button></div>
-                    <div class="batch-hint">实时预览：调整增量立即生效</div>
-                </div>
-            </div>`;
-        }
-        html += `</div>`;
-    }
-    html += `</div></div>`;
-    return html;
-}
-function attachBatchEvents() {
-    document.querySelectorAll('[data-batch-toggle-var]').forEach(header => {
-        header.removeEventListener('click', batchVarToggle);
-        header.addEventListener('click', batchVarToggle);
-    });
-    function batchVarToggle(e) {
-        const varName = this.dataset.batchToggleVar;
-        const details = document.querySelector(`.batch-var-details[data-batch-details="${varName}"]`);
-        const expandSpan = this.querySelector('.var-expand');
-        if (!details) return;
-        const isVisible = details.style.display !== 'none';
-        if (isVisible) {
-            details.style.display = 'none';
-            if (expandSpan) expandSpan.textContent = '▼';
-        } else {
-            const currentColumn = this.closest('.batch-column');
-            if (currentColumn) {
-                const allVarCards = currentColumn.querySelectorAll('.batch-var-card');
-                allVarCards.forEach(card => {
-                    const otherDetails = card.querySelector('.batch-var-details');
-                    if (otherDetails && otherDetails !== details) {
-                        otherDetails.style.display = 'none';
-                        const otherHeader = card.querySelector('.batch-var-header .var-expand');
-                        if (otherHeader) otherHeader.textContent = '▼';
-                    }
-                });
-            }
-            details.style.display = 'block';
-            if (expandSpan) expandSpan.textContent = '▲';
-        }
-    }
-    const allVars = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.rotatex','v.rotatey','v.rotatez'];
-    for (let varName of allVars) {
-        const input = document.querySelector(`.batch-number[data-batch-input="${varName}"]`);
-        const slider = document.querySelector(`.batch-slider[data-batch-slider="${varName}"]`);
-        const stepInput = document.querySelector(`.batch-step-input[data-batch-step="${varName}"]`);
-        const resetBtn = document.querySelector(`.batch-reset-btn[data-batch-reset="${varName}"]`);
-        if (!input && !slider) continue;
-        const updateValue = (newDelta) => {
-            newDelta = parseFloat(newDelta);
-            if (isNaN(newDelta)) newDelta = 0;
-            const step = parseFloat(stepInput?.value) || 1;
-            newDelta = Math.round(newDelta / step) * step;
-            newDelta = parseFloat(newDelta.toFixed(6));
-            const range = getDefaultRange(varName);
-            newDelta = Math.min(range.max, Math.max(range.min, newDelta));
-            setBatchDelta(varName, newDelta);
-            if (input) input.value = newDelta;
-            if (slider) slider.value = newDelta;
-        };
-        if (input) { input.removeEventListener('change', batchInputChange); input.addEventListener('change', batchInputChange); function batchInputChange(e) { updateValue(this.value); } }
-        if (slider) { slider.removeEventListener('change', batchSliderInput); slider.addEventListener('change', batchSliderInput); function batchSliderInput(e) { updateValue(this.value); } }
-        if (stepInput) { stepInput.removeEventListener('change', batchStepChange); stepInput.addEventListener('change', batchStepChange); function batchStepChange(e) { let step = parseFloat(this.value); if (isNaN(step)) step = 1; if (input) input.step = step; if (slider) slider.step = step; syncStepToBlocks(varName, step); if (input) updateValue(input.value); } }
-        if (resetBtn) { resetBtn.removeEventListener('click', batchReset); resetBtn.addEventListener('click', batchReset); function batchReset(e) { e.stopPropagation(); updateValue(0); } }
-    }
-    const resetAllBtn = document.getElementById('batchResetAllBtn');
-    if (resetAllBtn) { resetAllBtn.removeEventListener('click', resetAll); resetAllBtn.addEventListener('click', resetAll); function resetAll(e) { e.stopPropagation(); resetAllBatchDeltas(); } }
 }
 
-// ==================== 变量重置 ====================
-function getDefaultValueForVar(varName) {
-    if (varName === 'v.extend_xrot') return -90;
-    if (varName === 'v.scale' || varName === 'v.extend_scale') return 1;
+function renderBatchPanel() {
+    const groups = { '位移':['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'], '缩放':['v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'], '旋转': ['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez'] };
+    let h = `<div class="batch-panel"><div class="batch-title"><span>✏️ 批量修改 (${selectedBlocksSet.size})</span><button class="batch-reset-all" id="batchResetAllBtn">重置</button></div><div class="batch-three-columns">`;
+    for (let [gn, vars] of Object.entries(groups)) {
+        h += `<div class="batch-column"><div class="batch-column-title">📁 ${gn}</div>`;
+        for (let vn of vars) {
+            const d = getDefaultRange(vn), step = d.step||1, delta = batchDeltas.get(vn)||0;
+            h += `<div class="batch-var-card"><div class="batch-var-header" data-batch-toggle-var="${vn}"><span class="batch-var-title">${vn.slice(2)}</span><span class="var-expand">▼</span></div>
+                <div class="batch-var-details" data-batch-details="${vn}" style="display:none;">
+                    <div class="batch-control-row"><label>增量</label><input type="number" class="batch-number" data-batch-input="${vn}" value="${delta.toFixed(6)}" step="${step}"></div>
+                    <div class="batch-control-row"><label>步长</label><input type="number" class="batch-step-input" data-batch-step="${vn}" value="${step}" step="any"></div>
+                    <div class="batch-control-row"><label>滑块</label><input type="range" class="batch-slider" data-batch-slider="${vn}" min="${d.min}" max="${d.max}" step="${step}" value="${delta}"></div>
+                    <div class="batch-control-row"><button class="batch-reset-btn" data-batch-reset="${vn}">重置</button></div>
+                    <div class="batch-hint">实时预览</div>
+                </div></div>`;
+        }
+        h += `</div>`;
+    }
+    h += `</div></div>`; return h;
+}
+function attachBatchEvents() {
+    document.querySelectorAll('[data-batch-toggle-var]').forEach(h => h.addEventListener('click', function(){
+        const vn = this.dataset.batchToggleVar, det = document.querySelector(`.batch-var-details[data-batch-details="${vn}"]`);
+        if (!det) return; const vis = det.style.display !== 'none';
+        if (vis) { det.style.display = 'none'; this.querySelector('.var-expand').textContent = '▼'; }
+        else { this.closest('.batch-column').querySelectorAll('.batch-var-details').forEach(d => d.style.display = 'none'); det.style.display = 'block'; this.querySelector('.var-expand').textContent = '▲'; }
+    }));
+    const vars = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez'];
+    vars.forEach(vn => {
+        const inp = document.querySelector(`.batch-number[data-batch-input="${vn}"]`), sld = document.querySelector(`.batch-slider[data-batch-slider="${vn}"]`), stepInp = document.querySelector(`.batch-step-input[data-batch-step="${vn}"]`), rst = document.querySelector(`.batch-reset-btn[data-batch-reset="${vn}"]`);
+        const upd = (nv) => { nv = parseFloat(nv)||0; const st = parseFloat(stepInp?.value)||1; nv = Math.round(nv/st)*st; nv = Math.min(getDefaultRange(vn).max, Math.max(getDefaultRange(vn).min, nv)); setBatchDelta(vn, nv); if(inp) inp.value = nv; if(sld) sld.value = nv; };
+        if(inp) inp.addEventListener('change', e => upd(e.target.value));
+        if(sld) sld.addEventListener('input', e => upd(e.target.value));
+        if(stepInp) stepInp.addEventListener('change', e => { const st = parseFloat(e.target.value)||1; if(inp) inp.step = st; if(sld) sld.step = st; syncStepToBlocks(vn, st); });
+        if(rst) rst.addEventListener('click', () => upd(0));
+    });
+    document.getElementById('batchResetAllBtn')?.addEventListener('click', resetAllBatchDeltas);
+}
+
+function getDefaultValueForVar(vn) {
+    if (vn === 'v.extend_xrot') return -90;
+    if (vn === 'v.scale' || vn === 'v.extend_scale') return 1;
     return 0;
 }
 function resetVariable(varName, block) {
-    const defaultValue = getDefaultValueForVar(varName);
+    const defVal = getDefaultValueForVar(varName);
     if (varName.startsWith('t.')) {
-        const key = varName.slice(2);
-        const g = globalVars.get(key);
-        if (g && isConstantExpr(g.def.expr)) {
-            stopAutoInc(true, key, 0, null);
-            const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
-            if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
-            g.def.expr = defaultValue.toString(); g.def.value = defaultValue;
-            if (defaultValue < g.def.rangeMin) g.def.rangeMin = defaultValue;
-            if (defaultValue > g.def.rangeMax) g.def.rangeMax = defaultValue;
-            blocks.forEach(b => b.refresh());
-            const card = document.querySelector(`.var-card[data-var="${varName}"]`);
-            if (card) { const slider = card.querySelector('.var-slider'); if (slider) { slider.value = defaultValue; slider.min = g.def.rangeMin; slider.max = g.def.rangeMax; } const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `${varName} = ${defaultValue}`; }
-            recordAction(); renderVariablesForBlock(selectedBlock);
-        }
+        const key = varName.slice(2), g = globalVars.get(key);
+        if (g && isConstantExpr(g.def.expr)) { stopAutoInc(true, key, 0, null); g.def.expr = defVal.toString(); g.def.value = defVal; blocks.forEach(b=>b.refresh()); recordAction(); renderVariablesForBlock(selectedBlock); }
         return;
     }
-    const targetBlock = block || selectedBlock;
-    if (!targetBlock) return;
-    const def = targetBlock.scope.vars.get(varName);
-    if (def && isConstantExpr(def.expr)) {
-        stopAutoInc(false, varName, 0, null);
-        const upBtn = document.querySelector(`.inc-up[data-var="${varName}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"]`);
-        if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
-        def.expr = defaultValue.toString(); def.value = defaultValue;
-        if (defaultValue < def.rangeMin) def.rangeMin = defaultValue;
-        if (defaultValue > def.rangeMax) def.rangeMax = defaultValue;
-        targetBlock.refresh();
-        const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${targetBlock.id}"]`);
-        if (card) { const slider = card.querySelector('.var-slider'); if (slider) { slider.value = defaultValue; slider.min = def.rangeMin; slider.max = def.rangeMax; } const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `${varName} = ${defaultValue}`; }
-        recordAction(); updateGlobalVarsDependingOn(targetBlock, varName); renderVariablesForBlock(targetBlock);
+    const target = block || selectedBlock; if (!target) return;
+    const def = target.scope.vars.get(varName);
+    if (def && isConstantExpr(def.expr)) { stopAutoInc(false, varName, 0, null); def.expr = defVal.toString(); def.value = defVal; target.refresh(); recordAction(); updateGlobalVarsDependingOn(target, varName); renderVariablesForBlock(target); }
+}
+
+// ========== 分组辅助函数 ==========
+function groupByPrefix(vars, prefixType) {
+    const groups = new Map(), standalone = [];
+    for (let item of vars) {
+        const key = item.name.slice(2);
+        const idx = key.indexOf('_');
+        if (idx > 0) {
+            const p = key.substring(0, idx);
+            if (!groups.has(p)) groups.set(p, []);
+            groups.get(p).push(item);
+        } else standalone.push(item);
+    }
+    const finalGroups = [];
+    for (let [p, arr] of groups) if (arr.length >= 3) finalGroups.push({prefix: p, vars: arr}); else standalone.push(...arr);
+    return {groups: finalGroups, standalone};
+}
+
+function renderVarCard(v, blockId) {
+    const isConst = isConstantExpr(v.expr), cls = isConst?'constant':'non-constant', inpCls = isConst?'constant-input':'non-constant-input', exp = expandedVars.has(v.name);
+    return `<div class="var-card ${cls}" data-var="${v.name}" data-block-id="${blockId}">
+        <div class="var-header" data-toggle="${v.name}"><input class="assignment-input ${inpCls}" data-var="${v.name}" value="${escapeHtml(`${v.name} = ${v.expr}`)}"><span class="var-expand">${exp?'▲':'▼'}</span></div>
+        <div class="var-details" data-details="${v.name}" style="${exp?'display:block':'display:none'}">` + renderVarDetails(v.name, v, null) + `</div></div>`;
+}
+
+function renderVarDetails(name, def, sourceId) {
+    const isConst = isConstantExpr(def.expr);
+    let html = isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${name}" data-dir="up">▲自增</button><button class="inc-btn inc-down" data-var="${name}" data-dir="down">▼自减</button><button class="inc-btn reset-btn" data-reset-var="${name}">⟳重置</button></div>
+    <div class="slider-container"><input type="range" class="var-slider" data-var="${name}" min="${def.rangeMin}" max="${def.rangeMax}" step="${def.step}" value="${def.value}"></div>
+    <div class="range-row"><div class="range-item">Min<input class="range-min" data-var="${name}" value="${def.rangeMin}"></div><div class="range-item">Max<input class="range-max" data-var="${name}" value="${def.rangeMax}"></div><div class="range-item">步长<input class="range-step" data-var="${name}" value="${def.step}"></div></div>` : '';
+    html += `<button class="delete-var" data-var="${name}">删除</button>`;
+    if (sourceId !== undefined) html += `<div style="font-size:10px;color:#64748b;">📌 ${sourceId||'无'}</div>`;
+    return html;
+}
+
+// ========== 渲染变量面板（完全重构） ==========
+function renderVariablesForBlock(block) {
+    const cont = document.getElementById('varsContainer'), newC = document.getElementById('newVarContainer');
+    if (selectedBlocksSet.size > 1) { cont.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`; newC.innerHTML = ''; attachBatchEvents(); return; }
+    if (!block) { cont.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; newC.innerHTML = ''; return; }
+
+    // 局部变量分组
+    const vars = block.getVarList();
+    const localGrouped = {位移:[],缩放:[],旋转:[],自定义:[]};
+    const core = {位移:['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'],缩放:['v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'],旋转:['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez']};
+    vars.forEach(v => { let placed=false; for(let g in core) if(core[g].includes(v.name)) { localGrouped[g].push(v); placed=true; break; } if(!placed) localGrouped.自定义.push(v); });
+
+    // 局部自定义变量分组
+    const customItems = localGrouped.自定义.map(v => ({name: v.name, def: v}));
+    const customGroups = groupByPrefix(customItems, 'v.');
+
+    // 全局变量分组（整体放入“🌎 全局变量”文件夹）
+    let globalHtml = '';
+    if (globalVars.size) {
+        const globalItems = Array.from(globalVars.entries()).map(([k,g]) => ({name: `t.${k}`, def: g.def, source: g.sourceBlockId}));
+        const globalGrouped = groupByPrefix(globalItems, 't.');
+        let inner = '';
+        // 独立全局变量
+        globalGrouped.standalone.forEach(({name, def, source}) => {
+            inner += renderGlobalVarCard(name, def, source);
+        });
+        // 全局子文件夹
+        globalGrouped.groups.forEach(g => {
+            const gid = `global_${g.prefix}`, open = expandedVars.has(gid);
+            inner += `<div class="var-group" data-group="${gid}"><div class="group-header" data-group-toggle="${gid}"><span class="group-title">📁 t.${g.prefix}_ (${g.vars.length})</span><span class="group-toggle">${open?'▼':'▶'}</span></div><div class="group-content" data-group-content="${gid}" style="${open?'display:block':'display:none'}">`;
+            g.vars.forEach(({name, def, source}) => inner += renderGlobalVarCard(name, def, source));
+            inner += `</div></div>`;
+        });
+        globalHtml = `<div class="var-group" data-group="global_top"><div class="group-header" data-group-toggle="global_top"><span class="group-title">🌎 全局变量 (${globalVars.size})</span><span class="group-toggle">${expandedVars.has('global_top')?'▼':'▶'}</span></div><div class="group-content" data-group-content="global_top" style="${expandedVars.has('global_top')?'display:block':'display:none'}">${inner}</div></div>`;
+    }
+
+    // 右侧固定分组
+    let rightHtml = '';
+    ['位移','缩放','旋转'].forEach(g => {
+        if (!localGrouped[g].length) return;
+        const open = currentOpenGroup === g;
+        rightHtml += `<div class="var-group" data-group="${g}"><div class="group-header" data-group-toggle="${g}"><span class="group-title">📁 ${g}</span><span class="group-toggle">${open?'▼':'▶'}</span></div><div class="group-content" data-group-content="${g}" style="${open?'display:block':'display:none'}">`;
+        localGrouped[g].forEach(v => { rightHtml += renderVarCard(v, block.id); });
+        rightHtml += `</div></div>`;
+    });
+
+    // 左侧：全局变量 + 自定义变量（含子分组）
+    let customHtml = '';
+    if (customGroups.standalone.length || customGroups.groups.length) {
+        const customOpen = currentOpenGroup === '自定义';
+        customHtml += `<div class="var-group" data-group="自定义"><div class="group-header" data-group-toggle="自定义"><span class="group-title">📁 自定义变量</span><span class="group-toggle">${customOpen?'▼':'▶'}</span></div><div class="group-content" data-group-content="自定义" style="${customOpen?'display:block':'display:none'}">`;
+        // 独立自定义
+        customGroups.standalone.forEach(({name, def}) => { customHtml += renderVarCard(def, block.id); });
+        // 自定义子分组
+        customGroups.groups.forEach(g => {
+            const gid = `custom_${g.prefix}`, open = expandedVars.has(gid);
+            customHtml += `<div class="var-group" data-group="${gid}"><div class="group-header" data-group-toggle="${gid}"><span class="group-title">📁 v.${g.prefix}_ (${g.vars.length})</span><span class="group-toggle">${open?'▼':'▶'}</span></div><div class="group-content" data-group-content="${gid}" style="${open?'display:block':'display:none'}">`;
+            g.vars.forEach(({name, def}) => { customHtml += renderVarCard(def, block.id); });
+            customHtml += `</div></div>`;
+        });
+        customHtml += `</div></div>`;
+    }
+    let leftHtml = globalHtml + customHtml;
+    if (!leftHtml) leftHtml = '<div class="empty-state">暂无全局/自定义变量</div>';
+
+    cont.innerHTML = `<div class="variables-left">${leftHtml}</div><div class="variables-right">${rightHtml}</div>`;
+    newC.innerHTML = `<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.变量 = 值 / t.变量 = 值 (回车)"></div>`;
+    attachVariableEvents(block);
+    // 分组折叠事件
+    document.querySelectorAll('.group-header').forEach(h => {
+        h.removeEventListener('click', groupClick); h.addEventListener('click', groupClick);
+    });
+    function groupClick(e) {
+        const gn = this.dataset.groupToggle, cnt = document.querySelector(`.group-content[data-group-content="${gn}"]`);
+        if (!cnt) return; const vis = cnt.style.display !== 'none';
+        if (vis) { cnt.style.display = 'none'; this.querySelector('.group-toggle').textContent = '▶'; if (currentOpenGroup === gn) currentOpenGroup = null; expandedVars.delete(gn); }
+        else {
+            const parent = this.closest('.group-content')?.closest('.var-group')?.dataset.group;
+            if (parent) {
+                // 同级互斥
+                const siblings = document.querySelectorAll(`.var-group[data-group="${parent}"] > .group-content > .var-group`);
+                siblings.forEach(g => { const c = g.querySelector('.group-content'); if(c) c.style.display = 'none'; g.querySelector('.group-toggle').textContent = '▶'; });
+            }
+            cnt.style.display = 'block'; this.querySelector('.group-toggle').textContent = '▼';
+            if (['位移','缩放','旋转','自定义'].includes(gn)) currentOpenGroup = gn;
+            expandedVars.add(gn);
+        }
     }
 }
 
-// ==================== 单方块渲染与事件绑定 ====================
-function toggleDetail(e) {
-    if (e.target.classList.contains('assignment-input') || e.target.closest('.auto-inc-btns') || e.target.closest('.slider-container')) return;
-    const header = e.currentTarget;
-    const varName = header.dataset.toggle;
-    const details = document.querySelector(`.var-details[data-details="${varName}"]`);
-    if (details) {
-        const isVisible = details.style.display === 'block';
-        details.style.display = isVisible ? 'none' : 'block';
-        const expandSpan = header.querySelector('.var-expand');
-        if (expandSpan) expandSpan.textContent = isVisible ? '▼' : '▲';
-        if (isVisible) expandedVars.delete(varName);
-        else expandedVars.add(varName);
-    }
+function renderGlobalVarCard(name, def, source) {
+    const isConst = isConstantExpr(def.expr), cls = isConst?'constant':'non-constant', inpCls = isConst?'constant-input':'non-constant-input', exp = expandedVars.has(name);
+    return `<div class="var-card global ${cls}" data-var="${name}"><div class="var-header" data-toggle="${name}"><input class="assignment-input ${inpCls}" data-var="${name}" value="${escapeHtml(`${name} = ${def.expr}`)}"><span class="var-expand">${exp?'▲':'▼'}</span></div>
+        <div class="var-details" data-details="${name}" style="${exp?'display:block':'display:none'}">` + renderVarDetails(name, def, source) + `</div></div>`;
 }
-
+// ========== 事件绑定 ==========
 function attachVariableEvents(block) {
-    document.querySelectorAll('.var-card.global .var-header').forEach(header => { header.removeEventListener('click', toggleDetail); header.addEventListener('click', toggleDetail); });
-    document.querySelectorAll('.var-card:not(.global) .var-header').forEach(header => { header.removeEventListener('click', localHeaderClick); header.addEventListener('click', localHeaderClick); });
-    function localHeaderClick(e) {
+    document.querySelectorAll('.var-card .var-header').forEach(h => { h.removeEventListener('click', toggleDetail); h.addEventListener('click', toggleDetail); });
+    function toggleDetail(e) {
         if (e.target.classList.contains('assignment-input') || e.target.closest('.auto-inc-btns') || e.target.closest('.slider-container')) return;
-        const varName = this.dataset.toggle, groupName = this.dataset.group, details = document.querySelector(`.var-details[data-details="${varName}"]`);
-        if (!details) return;
-        const isVisible = details.style.display === 'block';
-        if (!isVisible) {
-            if (groupName) {
-                document.querySelectorAll(`.var-group[data-group="${groupName}"] .var-details`).forEach(d => d.style.display = 'none');
-                document.querySelectorAll(`.var-group[data-group="${groupName}"] .var-expand`).forEach(span => { if (span) span.textContent = '▼'; });
-            }
-            details.style.display = 'block';
-            const expandSpan = this.querySelector('.var-expand');
-            if (expandSpan) expandSpan.textContent = '▲';
-            expandedVars.add(varName);
-        } else {
-            details.style.display = 'none';
-            const expandSpan = this.querySelector('.var-expand');
-            if (expandSpan) expandSpan.textContent = '▼';
-            expandedVars.delete(varName);
-        }
+        const vn = this.dataset.toggle, det = document.querySelector(`.var-details[data-details="${vn}"]`), exp = this.querySelector('.var-expand');
+        if (!det) return; const vis = det.style.display === 'block';
+        if (vis) { det.style.display = 'none'; if(exp) exp.textContent = '▼'; expandedVars.delete(vn); }
+        else { det.style.display = 'block'; if(exp) exp.textContent = '▲'; expandedVars.add(vn); }
     }
 
-    document.querySelectorAll('.assignment-input').forEach(inp => {
-        inp.removeEventListener('change', handleAssign);
-        inp.addEventListener('change', handleAssign);
-        function handleAssign(e) {
-            e.stopPropagation();
-            const varName = inp.dataset.var, newVal = inp.value, parsed = parseAssignment(newVal);
-            if (parsed && parsed.name === varName) {
-                if (varName.startsWith('t.')) {
-                    const key = varName.slice(2), g = globalVars.get(key);
-                    if (g) {
-                        g.def.expr = parsed.expr;
-                        const sb = blocks.find(b => b.id === g.sourceBlockId);
-                        if (sb) {
-                            let nv = isConstantExpr(parsed.expr) ? parseFloat(parsed.expr) : evaluateExpression(parsed.expr, sb.scope.vars, globalVars);
-                            if (g.def.rangeMin !== undefined) {
-                                if (nv > g.def.rangeMax) g.def.rangeMax = nv;
-                                if (nv < g.def.rangeMin) g.def.rangeMin = nv;
-                                nv = Math.min(g.def.rangeMax, Math.max(g.def.rangeMin, nv));
-                            }
-                            g.def.value = nv;
-                        }
-                        blocks.forEach(b => b.refresh());
-                        recordAction(); renderVariablesForBlock(selectedBlock);
-                    }
-                } else {
-                    const card = inp.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
-                    if (!targetBlock) return;
-                    targetBlock.scope.setVarExpr(varName, parsed.expr);
-                    targetBlock.refresh();
-                    recordAction();
-                    updateGlobalVarsDependingOn(targetBlock, varName);
-                    renderVariablesForBlock(selectedBlock);
-                }
-            } else {
-                if (varName.startsWith('t.')) { const v = globalVars.get(varName.slice(2))?.def; if (v) inp.value = `${varName} = ${v.expr}`; }
-                else { const card = inp.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId); if (targetBlock) { const v = targetBlock.scope.vars.get(varName); if (v) inp.value = `${varName} = ${v.expr}`; } }
-            }
+    document.querySelectorAll('.assignment-input').forEach(inp => inp.addEventListener('change', e => {
+        const vn = inp.dataset.var, parsed = parseAssignment(inp.value);
+        if (parsed && parsed.name === vn) {
+            if (vn.startsWith('t.')) { const g = globalVars.get(vn.slice(2)); if(g){ g.def.expr = parsed.expr; blocks.forEach(b=>b.refresh()); recordAction(); renderVariablesForBlock(selectedBlock); } }
+            else { const card = inp.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ tb.scope.setVarExpr(vn, parsed.expr); tb.refresh(); recordAction(); updateGlobalVarsDependingOn(tb, vn); renderVariablesForBlock(selectedBlock); } }
         }
-    });
+    }));
 
-    document.querySelectorAll('.inc-up, .inc-down').forEach(btn => {
-        btn.removeEventListener('click', incClick);
-        btn.addEventListener('click', incClick);
-        function incClick(e) {
-            e.stopPropagation();
-            const varName = this.dataset.var, dir = this.dataset.dir, delta = dir === 'up' ? 1 : -1, isGlobal = varName.startsWith('t.');
-            if (isGlobal) { const key = varName.slice(2), g = globalVars.get(key); if (g && isConstantExpr(g.def.expr)) toggleAutoInc(this, true, null, key, delta * g.def.step); }
-            else { const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId); if (!targetBlock) return; const def = targetBlock.scope.vars.get(varName); if (def && isConstantExpr(def.expr)) toggleAutoInc(this, false, targetBlock, varName, delta * def.step); }
-        }
-    });
+    document.querySelectorAll('.inc-up, .inc-down').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const vn = btn.dataset.var, delta = btn.dataset.dir==='up'?1:-1, isG = vn.startsWith('t.');
+        if (isG) { const g = globalVars.get(vn.slice(2)); if(g && isConstantExpr(g.def.expr)) toggleAutoInc(btn, true, null, vn.slice(2), delta * g.def.step); }
+        else { const card = btn.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ const d = tb.scope.vars.get(vn); if(d && isConstantExpr(d.expr)) toggleAutoInc(btn, false, tb, vn, delta * d.step); } }
+    }));
 
-    document.querySelectorAll('.var-slider').forEach(slider => {
-        slider.removeEventListener('change', slideInput);
-        slider.addEventListener('change', slideInput);
-        function slideInput(e) {
-            e.stopPropagation();
-            const varName = this.dataset.var, val = parseFloat(this.value);
-            if (varName.startsWith('t.')) {
-                const key = varName.slice(2), g = globalVars.get(key);
-                if (g) {
-                    stopAutoInc(true, key, 0, null);
-                    const upBtn = document.querySelector(`.inc-up[data-var="t.${key}"]`), downBtn = document.querySelector(`.inc-down[data-var="t.${key}"]`);
-                    if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
-                    g.def.expr = val.toString(); g.def.value = val;
-                    blocks.forEach(b => b.refresh());
-                    const inp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
-                    if (inp) inp.value = `${varName} = ${val}`;
-                    recordAction();
-                }
-            } else {
-                const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
-                if (!targetBlock) return;
-                const def = targetBlock.scope.vars.get(varName);
-                if (def) {
-                    stopAutoInc(false, varName, 1, targetBlock.id); stopAutoInc(false, varName, -1, targetBlock.id);
-                    const upBtn = document.querySelector(`.inc-up[data-var="${varName}"][data-block-id="${targetBlock.id}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"][data-block-id="${targetBlock.id}"]`);
-                    if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
-                    def.expr = val.toString(); def.value = val;
-                    targetBlock.refresh();
-                    const inp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
-                    if (inp) inp.value = `${varName} = ${val}`;
-                    recordAction();
-                    updateGlobalVarsDependingOn(targetBlock, varName);
-                }
-            }
-        }
-    });
+    document.querySelectorAll('.var-slider').forEach(s => s.addEventListener('input', e => {
+        const vn = s.dataset.var, val = parseFloat(s.value), card = s.closest('.var-card'), inp = card?.querySelector('.assignment-input');
+        if (vn.startsWith('t.')) { const g = globalVars.get(vn.slice(2)); if(g){ stopAutoInc(true, vn.slice(2),0,null); g.def.expr = val.toString(); g.def.value = val; blocks.forEach(b=>b.refresh()); if(inp) inp.value = `${vn} = ${val}`; recordAction(); } }
+        else { const bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ const d = tb.scope.vars.get(vn); if(d){ stopAutoInc(false, vn,0,null); d.expr = val.toString(); d.value = val; tb.refresh(); if(inp) inp.value = `${vn} = ${val}`; recordAction(); updateGlobalVarsDependingOn(tb, vn); } } }
+    }));
 
-    document.querySelectorAll('.range-min, .range-max, .range-step').forEach(inp => {
-        inp.removeEventListener('change', rangeChange);
-        inp.addEventListener('change', rangeChange);
-        function rangeChange(e) {
-            e.stopPropagation();
-            const varName = this.dataset.var, isGlobal = varName.startsWith('t.');
-            let newMin, newMax, newStep;
-            if (this.classList.contains('range-min')) newMin = parseFloat(this.value);
-            if (this.classList.contains('range-max')) newMax = parseFloat(this.value);
-            if (this.classList.contains('range-step')) newStep = parseFloat(this.value);
-            if (isGlobal) {
-                const key = varName.slice(2), g = globalVars.get(key);
-                if (g) {
-                    if (newStep !== undefined && g.def.step !== newStep) {
-                        stopAutoInc(true, key, 0, null);
-                        const upBtn = document.querySelector(`.inc-up[data-var="t.${key}"]`), downBtn = document.querySelector(`.inc-down[data-var="t.${key}"]`);
-                        if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
-                    }
-                    if (newMin !== undefined) g.def.rangeMin = newMin;
-                    if (newMax !== undefined) g.def.rangeMax = newMax;
-                    if (newStep !== undefined) g.def.step = newStep;
-                    let cur = g.def.value;
-                    if (cur < g.def.rangeMin) { g.def.expr = g.def.rangeMin.toString(); g.def.value = g.def.rangeMin; }
-                    else if (cur > g.def.rangeMax) { g.def.expr = g.def.rangeMax.toString(); g.def.value = g.def.rangeMax; }
-                    blocks.forEach(b => b.refresh());
-                    const slider = document.querySelector(`.var-slider[data-var="${varName}"]`);
-                    if (slider) { slider.min = g.def.rangeMin; slider.max = g.def.rangeMax; slider.step = g.def.step; slider.value = g.def.value; }
-                    const assignInp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
-                    if (assignInp) assignInp.value = `${varName} = ${g.def.expr}`;
-                    recordAction(); renderVariablesForBlock(selectedBlock);
-                }
-            } else {
-                const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
-                if (!targetBlock) return;
-                const def = targetBlock.scope.vars.get(varName);
-                if (def) {
-                    if (newStep !== undefined && def.step !== newStep) {
-                        stopAutoInc(false, varName, 1, targetBlock.id); stopAutoInc(false, varName, -1, targetBlock.id);
-                        const upBtn = document.querySelector(`.inc-up[data-var="${varName}"][data-block-id="${targetBlock.id}"]`), downBtn = document.querySelector(`.inc-down[data-var="${varName}"][data-block-id="${targetBlock.id}"]`);
-                        if (upBtn) upBtn.classList.remove('active'); if (downBtn) downBtn.classList.remove('active');
-                    }
-                    if (newMin !== undefined) def.rangeMin = newMin;
-                    if (newMax !== undefined) def.rangeMax = newMax;
-                    if (newStep !== undefined) def.step = newStep;
-                    let cur = def.value;
-                    if (cur < def.rangeMin) { def.expr = def.rangeMin.toString(); def.value = def.rangeMin; }
-                    else if (cur > def.rangeMax) { def.expr = def.rangeMax.toString(); def.value = def.rangeMax; }
-                    targetBlock.refresh();
-                    const slider = document.querySelector(`.var-slider[data-var="${varName}"]`);
-                    if (slider) { slider.min = def.rangeMin; slider.max = def.rangeMax; slider.step = def.step; slider.value = def.value; }
-                    const assignInp = document.querySelector(`.assignment-input[data-var="${varName}"]`);
-                    if (assignInp) assignInp.value = `${varName} = ${def.expr}`;
-                    recordAction();
-                    updateGlobalVarsDependingOn(targetBlock, varName);
-                    renderVariablesForBlock(selectedBlock);
-                }
-            }
+    document.querySelectorAll('.range-min, .range-max, .range-step').forEach(inp => inp.addEventListener('change', e => {
+        const vn = inp.dataset.var, isG = vn.startsWith('t.'); let newMin, newMax, newStep;
+        if (inp.classList.contains('range-min')) newMin = parseFloat(inp.value);
+        if (inp.classList.contains('range-max')) newMax = parseFloat(inp.value);
+        if (inp.classList.contains('range-step')) newStep = parseFloat(inp.value);
+        if (isG) {
+            const g = globalVars.get(vn.slice(2)); if (!g) return;
+            if (newStep !== undefined && g.def.step !== newStep) stopAutoInc(true, vn.slice(2), 0, null);
+            if (newMin !== undefined) g.def.rangeMin = newMin;
+            if (newMax !== undefined) g.def.rangeMax = newMax;
+            if (newStep !== undefined) g.def.step = newStep;
+            let cur = g.def.value;
+            if (cur < g.def.rangeMin) { g.def.expr = g.def.rangeMin.toString(); g.def.value = g.def.rangeMin; }
+            else if (cur > g.def.rangeMax) { g.def.expr = g.def.rangeMax.toString(); g.def.value = g.def.rangeMax; }
+            blocks.forEach(b=>b.refresh()); recordAction(); renderVariablesForBlock(selectedBlock);
+        } else {
+            const card = inp.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(!tb) return;
+            const d = tb.scope.vars.get(vn); if(!d) return;
+            if (newStep !== undefined && d.step !== newStep) { stopAutoInc(false, vn, 1, tb.id); stopAutoInc(false, vn, -1, tb.id); }
+            if (newMin !== undefined) d.rangeMin = newMin;
+            if (newMax !== undefined) d.rangeMax = newMax;
+            if (newStep !== undefined) d.step = newStep;
+            let cur = d.value;
+            if (cur < d.rangeMin) { d.expr = d.rangeMin.toString(); d.value = d.rangeMin; }
+            else if (cur > d.rangeMax) { d.expr = d.rangeMax.toString(); d.value = d.rangeMax; }
+            tb.refresh(); recordAction(); updateGlobalVarsDependingOn(tb, vn); renderVariablesForBlock(selectedBlock);
         }
-    });
+    }));
 
-    document.querySelectorAll('.delete-var').forEach(btn => {
-        btn.removeEventListener('click', delVar);
-        btn.addEventListener('click', delVar);
-        function delVar(e) {
-            e.stopPropagation();
-            const varName = this.dataset.var, isGlobal = varName.startsWith('t.');
-            if (isGlobal) {
-                const key = varName.slice(2);
-                showModal("确认删除", `确定删除全局变量 ${varName}?`, () => {
-                    stopAutoInc(true, key, 0, null);
-                    globalVars.delete(key);
-                    blocks.forEach(b => b.refresh());
-                    renderVariablesForBlock(selectedBlock);
-                    recordAction();
-                }, false);
-            } else {
-                const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId);
-                if (!targetBlock) return;
-                const coreList = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos','rotatex','rotatey','rotatez'];
-                if (varName.startsWith('v.') && coreList.includes(varName.slice(2))) { showModal("禁止删除", "不能删除核心变换变量", null, false); return; }
-                showModal("确认删除", `确定删除局部变量 ${varName}?`, () => {
-                    stopAutoInc(false, varName, 0, null);
-                    targetBlock.scope.deleteVar(varName);
-                    targetBlock.refresh();
-                    renderVariablesForBlock(selectedBlock);
-                    recordAction();
-                    updateGlobalVarsDependingOn(targetBlock, varName);
-                }, false);
-            }
+    document.querySelectorAll('.delete-var').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const vn = btn.dataset.var, isG = vn.startsWith('t.');
+        if (isG) {
+            const key = vn.slice(2);
+            showModal("确认删除", `确定删除全局变量 ${vn}?`, () => { stopAutoInc(true, key, 0, null); globalVars.delete(key); blocks.forEach(b=>b.refresh()); renderVariablesForBlock(selectedBlock); recordAction(); }, false);
+        } else {
+            const card = btn.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(!tb) return;
+            const coreList = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos','rotatex','rotatey','rotatez'];
+            if (vn.startsWith('v.') && coreList.includes(vn.slice(2))) { showModal("禁止删除", "不能删除核心变换变量", null, false); return; }
+            showModal("确认删除", `确定删除局部变量 ${vn}?`, () => { stopAutoInc(false, vn, 0, null); tb.scope.deleteVar(vn); tb.refresh(); renderVariablesForBlock(selectedBlock); recordAction(); updateGlobalVarsDependingOn(tb, vn); }, false);
         }
-    });
+    }));
 
     const newInput = document.getElementById('newVarInput');
     if (newInput) {
@@ -1898,229 +953,86 @@ function attachVariableEvents(block) {
                     const defaultRange = getDefaultRange(name);
                     globalVars.set(varKey, { def: new VarDef(expr, 0, defaultRange.min, defaultRange.max, 1), sourceBlockId: block.id });
                     blocks.forEach(b => b.refresh());
-                    renderVariablesForBlock(block);
-                    recordAction();
-                    newInput.value = '';
+                    renderVariablesForBlock(block); recordAction(); newInput.value = '';
                 } else {
                     if (block.scope.vars.has(name)) { showModal("变量已存在", "局部变量已存在", null, false); return; }
                     const defaultRange = getDefaultRange(name);
                     block.scope.addVar(name, expr, defaultRange.min, defaultRange.max, 1);
-                    renderVariablesForBlock(block);
-                    recordAction();
-                    newInput.value = '';
+                    renderVariablesForBlock(block); recordAction(); newInput.value = '';
                 }
             }
         }
     }
-    document.querySelectorAll('.reset-btn').forEach(btn => {
-        btn.removeEventListener('click', resetClickHandler);
-        btn.addEventListener('click', resetClickHandler);
-    });
-    function resetClickHandler(e) {
+
+    document.querySelectorAll('.reset-btn').forEach(btn => btn.addEventListener('click', e => {
         e.stopPropagation();
-        const varName = this.dataset.resetVar;
-        if (!varName) return;
-        if (varName.startsWith('t.')) resetVariable(varName, null);
-        else { const card = this.closest('.var-card'), blockId = card ? card.dataset.blockId : null, targetBlock = blocks.find(b => b.id === blockId); if (targetBlock) resetVariable(varName, targetBlock); }
-    }
+        const vn = btn.dataset.resetVar; if(!vn) return;
+        if (vn.startsWith('t.')) resetVariable(vn, null);
+        else { const card = btn.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb) resetVariable(vn, tb); }
+    }));
 }
 
-function renderVariablesForBlock(block) {
-    const container = document.getElementById('varsContainer'), newContainer = document.getElementById('newVarContainer');
-    if (selectedBlocksSet.size > 1) { container.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`; newContainer.innerHTML = ''; attachBatchEvents(); return; }
-    if (!block) { container.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; newContainer.innerHTML = ''; return; }
-    let globalHtml = '';
-    if (globalVars.size > 0) {
-        globalHtml += '<div class="section-title">🌍 全局变量 (t.)</div>';
-        for (let [name, g] of globalVars.entries()) {
-            const isConst = isConstantExpr(g.def.expr), cardClass = isConst ? 'constant' : 'non-constant', inputClass = isConst ? 'constant-input' : 'non-constant-input', displayStr = `t.${name} = ${g.def.expr}`, expanded = expandedVars.has(`t.${name}`);
-            globalHtml += `<div class="var-card global ${cardClass}" data-var="t.${name}" data-global="true">
-                <div class="var-header" data-toggle="t.${name}"><input type="text" class="assignment-input ${inputClass}" data-var="t.${name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div>
-                <div class="var-details" data-details="t.${name}" style="${expanded ? 'display:block' : 'display:none'}">
-                    ${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="t.${name}" data-dir="up"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="t.${name}" data-dir="down"><span>▼ 自减</span></button><button class="inc-btn reset-btn" data-reset-var="t.${name}"><span>⟳ 重置</span></button></div>
-                    <div class="slider-container"><input type="range" class="var-slider" data-var="t.${name}" min="${g.def.rangeMin}" max="${g.def.rangeMax}" step="${g.def.step}" value="${g.def.value}"></div>
-                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="t.${name}" value="${g.def.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="t.${name}" value="${g.def.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="t.${name}" value="${g.def.step}" step="any"></div></div>` : ''}
-                    <button class="delete-var" data-var="t.${name}"><span>删除变量</span></button>
-                    <div style="font-size:10px; color:#64748b; margin-top:6px;">📌 绑定方块: ${g.sourceBlockId || '无'}</div>
-                </div>
-            </div>`;
-        }
-    }
-    const vars = block.getVarList();
-    const coreGroupsDef = {
-        '位移': ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'],
-        '缩放': ['v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'],
-        '旋转': ['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez']
-    };
-    function getGroupForVar(varName) { for (let [gname, vlist] of Object.entries(coreGroupsDef)) if (vlist.includes(varName)) return gname; return '自定义变量'; }
-    const grouped = { '位移': [], '缩放': [], '旋转': [], '自定义变量': [] };
-    for (let v of vars) grouped[getGroupForVar(v.name)].push(v);
-    let rightGroupsHtml = '';
-    const groupOrder = ['位移', '缩放', '旋转'];
-    for (let grp of groupOrder) {
-        if (grouped[grp].length === 0) continue;
-        const isOpen = (currentOpenGroup === grp);
-        rightGroupsHtml += `<div class="var-group" data-group="${grp}"><div class="group-header" data-group-toggle="${grp}"><span class="group-title">📁 ${grp}</span><span class="group-toggle">${isOpen ? '▼' : '▶'}</span></div><div class="group-content" data-group-content="${grp}" style="${isOpen ? 'display:block' : 'display:none'}">`;
-        for (let v of grouped[grp]) {
-            const isConst = isConstantExpr(v.expr), cardClass = isConst ? 'constant' : 'non-constant', inputClass = isConst ? 'constant-input' : 'non-constant-input', displayStr = `${v.name} = ${v.expr}`, expanded = expandedVars.has(v.name);
-            rightGroupsHtml += `<div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}">
-                <div class="var-header" data-toggle="${v.name}" data-group="${grp}"><input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div>
-                <div class="var-details" data-details="${v.name}" style="${expanded ? 'display:block' : 'display:none'}">
-                    ${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${v.name}" data-dir="up" data-block-id="${block.id}"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="${v.name}" data-dir="down" data-block-id="${block.id}"><span>▼ 自减</span></button><button class="inc-btn reset-btn" data-reset-var="${v.name}"><span>⟳ 重置</span></button></div>
-                    <div class="slider-container"><input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}"></div>
-                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}
-                    <button class="delete-var" data-var="${v.name}"><span>删除变量</span></button>
-                </div>
-            </div>`;
-        }
-        rightGroupsHtml += `</div></div>`;
-    }
-    let leftHtml = '';
-    if (globalHtml) leftHtml += globalHtml;
-    if (grouped['自定义变量'].length > 0) {
-        const isCustomOpen = (currentOpenGroup === '自定义变量');
-        leftHtml += `<div class="var-group" data-group="自定义变量"><div class="group-header" data-group-toggle="自定义变量"><span class="group-title">📁 自定义变量</span><span class="group-toggle">${isCustomOpen ? '▼' : '▶'}</span></div><div class="group-content" data-group-content="自定义变量" style="${isCustomOpen ? 'display:block' : 'display:none'}">`;
-        for (let v of grouped['自定义变量']) {
-            const isConst = isConstantExpr(v.expr), cardClass = isConst ? 'constant' : 'non-constant', inputClass = isConst ? 'constant-input' : 'non-constant-input', displayStr = `${v.name} = ${v.expr}`, expanded = expandedVars.has(v.name);
-            leftHtml += `<div class="var-card ${cardClass}" data-var="${v.name}" data-block-id="${block.id}">
-                <div class="var-header" data-toggle="${v.name}" data-group="自定义变量"><input type="text" class="assignment-input ${inputClass}" data-var="${v.name}" value="${escapeHtml(displayStr)}"><span class="var-expand">${expanded ? '▲' : '▼'}</span></div>
-                <div class="var-details" data-details="${v.name}" style="${expanded ? 'display:block' : 'display:none'}">
-                    ${isConst ? `<div class="auto-inc-btns"><button class="inc-btn inc-up" data-var="${v.name}" data-dir="up" data-block-id="${block.id}"><span>▲ 自增</span></button><button class="inc-btn inc-down" data-var="${v.name}" data-dir="down" data-block-id="${block.id}"><span>▼ 自减</span></button><button class="inc-btn reset-btn" data-reset-var="${v.name}"><span>⟳ 重置</span></button></div>
-                    <div class="slider-container"><input type="range" class="var-slider" data-var="${v.name}" min="${v.rangeMin}" max="${v.rangeMax}" step="${v.step}" value="${v.value}"></div>
-                    <div class="range-row"><div class="range-item">Min <input type="number" class="range-min" data-var="${v.name}" value="${v.rangeMin}" step="any"></div><div class="range-item">Max <input type="number" class="range-max" data-var="${v.name}" value="${v.rangeMax}" step="any"></div><div class="range-item">步长 <input type="number" class="range-step" data-var="${v.name}" value="${v.step}" step="any"></div></div>` : ''}
-                    <button class="delete-var" data-var="${v.name}"><span>删除变量</span></button>
-                </div>
-            </div>`;
-        }
-        leftHtml += `</div></div>`;
-    }
-    if (!leftHtml) leftHtml = '<div class="empty-state">暂无全局变量或自定义变量</div>';
-    container.innerHTML = `<div class="variables-left">${leftHtml}</div><div class="variables-right">${rightGroupsHtml}</div>`;
-    newContainer.innerHTML = `<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.rotatex = 0  或 t.xxx = 0 (回车创建)"></div>`;
-    attachVariableEvents(block);
-    document.querySelectorAll('.group-header').forEach(header => {
-        header.removeEventListener('click', groupClickHandler);
-        header.addEventListener('click', groupClickHandler);
-    });
-    function groupClickHandler(e) {
-        const groupName = this.dataset.groupToggle, contentDiv = document.querySelector(`.group-content[data-group-content="${groupName}"]`);
-        if (!contentDiv) return;
-        const isVisible = contentDiv.style.display !== 'none';
-        if (isVisible) { contentDiv.style.display = 'none'; this.querySelector('.group-toggle').textContent = '▶'; if (currentOpenGroup === groupName) currentOpenGroup = null; }
-        else {
-            if (['位移','缩放','旋转'].includes(groupName)) { document.querySelectorAll('.variables-right .group-content').forEach(gc => gc.style.display = 'none'); document.querySelectorAll('.variables-right .group-header .group-toggle').forEach(span => span.textContent = '▶'); }
-            contentDiv.style.display = 'block'; this.querySelector('.group-toggle').textContent = '▼'; currentOpenGroup = groupName;
-        }
-    }
-}
-
-// ==================== 自增自控辅助函数 ====================
+// ========== 自增自减 ==========
 function startAutoInc(blockId, isGlobal, varName, delta, btn) {
     const key = isGlobal ? `global_${varName}_${delta}` : `${blockId}_${varName}_${delta}`;
     if (activeAutoIncMap.has(key)) return;
     const doInc = () => {
         if (!activeAutoIncMap.has(key)) return;
         if (isGlobal) {
-            const g = globalVars.get(varName);
-            if (g && isConstantExpr(g.def.expr)) {
-                const step = g.def.step, actualDelta = step * (delta > 0 ? 1 : -1);
-                let nv = g.def.value + actualDelta;
-                const dec = (step.toString().includes('.') ? step.toString().split('.')[1].length : 0);
-                nv = parseFloat(nv.toFixed(dec));
-                if (nv > g.def.rangeMax) nv = g.def.rangeMin;
-                else if (nv < g.def.rangeMin) nv = g.def.rangeMax;
-                g.def.expr = nv.toString(); g.def.value = nv;
-                blocks.forEach(b => b.refresh());
-                const card = document.querySelector(`.var-card[data-var="t.${varName}"]`);
-                if (card) { const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `t.${varName} = ${nv}`; }
-                recordAction();
-            } else stopAutoInc(isGlobal, varName, delta);
+            const g = globalVars.get(varName); if (!g) return;
+            let nv = g.def.value + delta;
+if (nv > g.def.rangeMax) nv = g.def.rangeMin;
+else if (nv < g.def.rangeMin) nv = g.def.rangeMax;
+const step = g.def.step;
+const dec = (step.toString().includes('.') ? step.toString().split('.')[1].length : 0);
+nv = parseFloat(nv.toFixed(dec));
+            g.def.expr = nv.toString(); g.def.value = nv; blocks.forEach(b=>b.refresh());
+            const card = document.querySelector(`.var-card[data-var="t.${varName}"]`);
+            if(card){ card.querySelector('.var-slider').value = nv; card.querySelector('.assignment-input').value = `t.${varName} = ${nv}`; }
+            recordAction();
         } else {
-            const target = blocks.find(b => b.id === blockId);
-            if (target) {
-                const def = target.scope.vars.get(varName);
-                if (def && isConstantExpr(def.expr)) {
-                    const step = def.step, actualDelta = step * (delta > 0 ? 1 : -1);
-                    let nv = def.value + actualDelta;
-                    const dec = (step.toString().includes('.') ? step.toString().split('.')[1].length : 0);
-                    nv = parseFloat(nv.toFixed(dec));
-                    if (nv > def.rangeMax) nv = def.rangeMin;
-                    else if (nv < def.rangeMin) nv = def.rangeMax;
-                    def.expr = nv.toString(); def.value = nv;
-                    target.refresh();
-                    const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${blockId}"]`);
-                    if (card) { const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `${varName} = ${def.expr}`; }
-                    recordAction();
-                    updateGlobalVarsDependingOn(target, varName);
-                } else stopAutoInc(isGlobal, varName, delta, blockId);
-            } else stopAutoInc(isGlobal, varName, delta, blockId);
+            const tb = blocks.find(b=>b.id===blockId); if(!tb) return;
+            const d = tb.scope.vars.get(varName); if(!d) return;
+            let nv = d.value + delta;
+if (nv > d.rangeMax) nv = d.rangeMin;
+else if (nv < d.rangeMin) nv = d.rangeMax;
+// 保留步长精度处理
+const dec = (d.step.toString().includes('.') ? d.step.toString().split('.')[1].length : 0);
+nv = parseFloat(nv.toFixed(dec));
+            d.expr = nv.toString(); d.value = nv; tb.refresh();
+            const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${blockId}"]`);
+            if(card){ card.querySelector('.var-slider').value = nv; card.querySelector('.assignment-input').value = `${varName} = ${nv}`; }
+            recordAction(); updateGlobalVarsDependingOn(tb, varName);
         }
     };
-    doInc();
-    const intervalId = setInterval(() => doInc(), 1);
-    activeAutoIncMap.set(key, intervalId);
-    if (btn) btn.classList.add('active');
+    doInc(); const int = setInterval(doInc, 1); activeAutoIncMap.set(key, int); if(btn) btn.classList.add('active');
 }
-function stopAutoInc(isGlobal, varName, delta, blockId = null) {
-    for (let [k, i] of activeAutoIncMap.entries()) {
-        if (isGlobal && k.startsWith(`global_${varName}_`)) { clearInterval(i); activeAutoIncMap.delete(k); }
-        else if (!isGlobal && blockId && k === `${blockId}_${varName}_${delta}`) { clearInterval(i); activeAutoIncMap.delete(k); }
-        else if (!isGlobal && !blockId && k.includes(`_${varName}_`)) { clearInterval(i); activeAutoIncMap.delete(k); }
-    }
+function stopAutoInc(isGlobal, varName, delta, blockId) {
+    for (let [k,i] of activeAutoIncMap) if ((isGlobal && k.startsWith(`global_${varName}_`)) || (!isGlobal && blockId && k===`${blockId}_${varName}_${delta}`)) { clearInterval(i); activeAutoIncMap.delete(k); }
 }
-function toggleAutoInc(btn, isGlobal, targetBlock, varName, delta) {
-    const blockId = targetBlock ? targetBlock.id : null;
-    const currentKey = isGlobal ? `global_${varName}_${delta}` : `${blockId}_${varName}_${delta}`;
-    const oppositeDelta = -delta, oppositeKey = isGlobal ? `global_${varName}_${oppositeDelta}` : `${blockId}_${varName}_${oppositeDelta}`;
-    if (activeAutoIncMap.has(currentKey)) { stopAutoInc(isGlobal, varName, delta, blockId); btn.classList.remove('active'); return; }
-    if (activeAutoIncMap.has(oppositeKey)) { stopAutoInc(isGlobal, varName, oppositeDelta, blockId); const container = btn.parentElement; if (container) { const oppositeBtn = container.querySelector(oppositeDelta > 0 ? '.inc-up' : '.inc-down'); if (oppositeBtn) oppositeBtn.classList.remove('active'); } }
-    startAutoInc(blockId, isGlobal, varName, delta, btn);
+function toggleAutoInc(btn, isGlobal, tb, varName, delta) {
+    const bid = tb?.id; const key = isGlobal ? `global_${varName}_${delta}` : `${bid}_${varName}_${delta}`;
+    if (activeAutoIncMap.has(key)) { stopAutoInc(isGlobal, varName, delta, bid); btn.classList.remove('active'); return; }
+    startAutoInc(bid, isGlobal, varName, delta, btn);
 }
 function updateGlobalVarsDependingOn(block, localVarName) {
     let changed = false;
-    for (let [n, g] of globalVars.entries()) {
-        if (g.sourceBlockId === block.id) {
-            const sb = blocks.find(b => b.id === g.sourceBlockId);
-            if (sb) {
-                let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars);
-                if (Math.abs(nv - g.def.value) > 1e-8) {
-                    g.def.value = nv;
-                    changed = true;
-                    const card = document.querySelector(`.var-card[data-var="t.${n}"]`);
-                    if (card) { const inp = card.querySelector('.assignment-input'); if (inp) inp.value = `t.${n} = ${g.def.expr}`; const slider = card.querySelector('.var-slider'); if (slider) slider.value = nv; }
-                }
-            }
-        }
+    for (let [n, g] of globalVars) if (g.sourceBlockId === block.id) {
+        const sb = blocks.find(b=>b.id===g.sourceBlockId); if(!sb) continue;
+        let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars);
+        if (Math.abs(nv - g.def.value) > 1e-8) { g.def.value = nv; changed = true; }
     }
-    if (changed) blocks.forEach(b => b.refresh());
+    if (changed) blocks.forEach(b=>b.refresh());
 }
 
-// ==================== 多选逻辑 ====================
-function toggleBlockSelection(block, isCtrlOrLongPress) {
-    if (!isCtrlOrLongPress) { selectedBlocksSet.clear(); selectedBlocksSet.add(block); selectBlock(block); }
-    else {
-        if (selectedBlocksSet.has(block)) { selectedBlocksSet.delete(block); if (selectedBlocksSet.size === 0) { selectedBlocksSet.add(block); selectBlock(block); } else { selectBlock(Array.from(selectedBlocksSet)[0]); } }
-        else { selectedBlocksSet.add(block); selectBlock(block); }
-    }
-    if (selectedBlocksSet.size > 1) {
-        batchDeltas.clear();
-        for (let varName of ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.rotatex','v.rotatey','v.rotatez']) batchDeltas.set(varName, 0);
-    }
-    updateAxesVisibility();
-    if (activeDropdown) refreshDropdownSelectionStyle();
-    renderVariablesForBlock(selectedBlock);
-    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+function toggleBlockSelection(block, multi) {
+    if (!multi) { selectedBlocksSet.clear(); selectedBlocksSet.add(block); selectBlock(block); }
+    else { if (selectedBlocksSet.has(block)) { selectedBlocksSet.delete(block); if (selectedBlocksSet.size===0) { selectedBlocksSet.add(block); selectBlock(block); } else selectBlock(Array.from(selectedBlocksSet)[0]); } else { selectedBlocksSet.add(block); selectBlock(block); } }
+    if (selectedBlocksSet.size>1) { batchDeltas.clear(); ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez'].forEach(v=>batchDeltas.set(v,0)); }
+    updateAxesVisibility(); renderVariablesForBlock(selectedBlock); blocks.forEach(b=>b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
-function refreshDropdownSelectionStyle() {
-    if (!activeDropdown) return;
-    activeDropdown.querySelectorAll('.block-dropdown-item').forEach(item => {
-        const id = item.querySelector('span')?.innerText.split(' ')[0];
-        const block = blocks.find(b => b.id === id);
-        if (block && selectedBlocksSet.has(block)) item.classList.add('selected');
-        else item.classList.remove('selected');
-    });
-}
-// ==================== 方块列表下拉菜单（修复滚动跟随）====================
+
+// ========== 方块列表下拉菜单 ==========
 let activeDropdown = null, scrollListener = null;
 function updateDropdownPosition(btn) {
     if (!activeDropdown || !btn) return;
@@ -2161,22 +1073,24 @@ function showBlockDropdown(btn) {
     const panelContent = document.querySelector('.panel-content');
     if (panelContent) panelContent.addEventListener('scroll', scrollListener);
 }
-// ==================== 骨骼绑定（使用方块名称作为前缀）====================
-function showParentSelector(childBlock) {
-    const candidates = blocks.filter(b => b.id !== childBlock.id);
-    if (candidates.length === 0) { showModal("提示", "没有其他方块可以绑定", null, false); return; }
+
+function showParentSelector(child) {
+    const candidates = blocks.filter(b => b.id !== child.id);
+    if (!candidates.length) return;
     const menu = document.createElement('div'); menu.className = 'block-dropdown';
-    menu.style.top = '50%'; menu.style.left = '50%'; menu.style.transform = 'translate(-50%, -50%)'; menu.style.position = 'fixed'; menu.style.zIndex = '1001';
-    menu.innerHTML = `<div style="padding:8px 12px; border-bottom:1px solid #334155; text-align:center;">请选择父级方块 (双击)<br><span style="font-size:11px; color:#94a3b8;">pos变量将被表达式强制覆盖</span></div>`;
-    candidates.forEach(parent => {
-        const opt = document.createElement('div'); opt.className = 'block-dropdown-item'; opt.textContent = parent.id;
-        opt.addEventListener('dblclick', () => { bindBone(childBlock, parent); menu.remove(); });
-        menu.appendChild(opt);
-    });
-    const cancel = document.createElement('div'); cancel.className = 'block-dropdown-item'; cancel.textContent = '取消'; cancel.addEventListener('click', () => menu.remove());
-    menu.appendChild(cancel);
-    document.body.appendChild(menu);
+    menu.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);position:fixed;z-index:1001;';
+    const isLight = document.body.classList.contains('light-mode');
+    const textColor = isLight ? '#0f172a' : 'white';
+    const bgColor = isLight ? 'rgba(255,255,255,0.5)' : '#162136';
+    menu.style.background = bgColor;
+    menu.style.backdropFilter = 'blur(8px)';
+    menu.style.border = isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid #3b82f6';
+    menu.innerHTML = `<div style="padding:8px 12px;border-bottom:1px solid ${isLight?'#cbd5e1':'#334155'};color:${textColor};">请选择父级方块 (双击)</div>`;
+    candidates.forEach(p => { const opt = document.createElement('div'); opt.className = 'block-dropdown-item'; opt.style.color = textColor; opt.textContent = p.id; opt.addEventListener('dblclick', () => { bindBone(child, p); menu.remove(); }); menu.appendChild(opt); });
+    const cancel = document.createElement('div'); cancel.className = 'block-dropdown-item'; cancel.style.color = textColor; cancel.textContent = '取消'; cancel.addEventListener('click', ()=>menu.remove());
+    menu.appendChild(cancel); document.body.appendChild(menu);
 }
+
 function bindBone(child, parent) {
     const prefix = parent.id;
     ensureGlobalVar(`${prefix}_xrot`, `v.xrot`, parent.id);
@@ -2213,6 +1127,7 @@ function bindBone(child, parent) {
     child.refresh(); recordAction();
     showModal("骨骼绑定", `已将 ${child.id} 绑定到 ${parent.id}（跟随移动+旋转）`, null, false);
 }
+
 function ensureGlobalVar(key, expr, sourceBlockId) {
     if (!globalVars.has(key)) { const rg = getDefaultRange(`t.${key}`); globalVars.set(key, { def: new VarDef(expr, 0, rg.min, rg.max, 1), sourceBlockId: sourceBlockId }); }
     else { const g = globalVars.get(key); g.def.expr = expr; g.sourceBlockId = sourceBlockId; }
@@ -2307,14 +1222,15 @@ function importFromCommands(text) {
 }
 document.getElementById('importBtn').onclick = () => showModal("导入数据", "粘贴 playanimation 命令文本", (txt) => { if (txt) importFromCommands(txt); }, true);
 
-// 材质菜单
+// 材质菜单（支持多选批量）
 const materialMenuDiv = document.createElement('div'); materialMenuDiv.className = 'material-menu'; materialMenuDiv.style.display = 'none'; document.body.appendChild(materialMenuDiv);
 const colorPresets = ['#aaccff','#88aaff','#06b6d4','#8b5cf6','#f43f5e','#10b981','#facc15','#ffffff','#1e293b','#ef4444','#3b82f6','#eab308','#ec4899','#14b8a6','#a855f7','#ff7f50','#2dd4bf','#f97316','#6366f1','#94a3b8'];
 function buildMaterialMenu() {
     materialMenuDiv.innerHTML = `<div class="menu-title">🎨 纯色预设</div><div class="color-palette">${colorPresets.map(c => `<div class="color-swatch" style="background:${c};" data-color="${c}"></div>`).join('')}</div><div class="menu-divider"></div><div class="menu-option" id="customTextureOption">🖼️ 自定贴图</div>`;
-    document.querySelectorAll('.color-swatch').forEach(sw => { sw.addEventListener('click', e => { e.stopPropagation(); if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); materialMenuDiv.style.display = 'none'; return; } selectedBlock.setSolidColor(sw.dataset.color); recordAction(); materialMenuDiv.style.display = 'none'; }); });
-    const texOpt = materialMenuDiv.querySelector('#customTextureOption'); if (texOpt) texOpt.onclick = () => { materialMenuDiv.style.display = 'none'; if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; } const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.onchange = (e) => { if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; } const file = e.target.files[0]; if (file) selectedBlock.loadTexture(URL.createObjectURL(file)); recordAction(); }; fileInput.click(); }; }
-document.getElementById('materialPresetBtn').addEventListener('click', (e) => { e.stopPropagation(); if (!selectedBlock) { showModal("提示", "请先选中一个方块", null, false); return; } buildMaterialMenu(); const rect = e.target.getBoundingClientRect(); materialMenuDiv.style.display = 'block'; materialMenuDiv.style.top = (rect.bottom + 5) + 'px'; materialMenuDiv.style.right = (window.innerWidth - rect.right - 5) + 'px'; if (window.innerWidth < 700) materialMenuDiv.style.right = '10px'; setTimeout(() => { const close = (ev) => { if (!materialMenuDiv.contains(ev.target) && ev.target !== e.target) { materialMenuDiv.style.display = 'none'; document.removeEventListener('click', close); } }; document.addEventListener('click', close); }, 10); });
+    document.querySelectorAll('.color-swatch').forEach(sw => { sw.addEventListener('click', e => { e.stopPropagation(); const targetBlocks = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock?[selectedBlock]:[]); if(!targetBlocks.length) { showModal("提示", "请先选中至少一个方块", null, false); materialMenuDiv.style.display = 'none'; return; } targetBlocks.forEach(b => b.setSolidColor(sw.dataset.color)); recordAction(); materialMenuDiv.style.display = 'none'; }); });
+    const texOpt = materialMenuDiv.querySelector('#customTextureOption'); if (texOpt) texOpt.onclick = () => { materialMenuDiv.style.display = 'none'; const targetBlocks = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock?[selectedBlock]:[]); if(!targetBlocks.length) { showModal("提示", "请先选中至少一个方块", null, false); return; } const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.onchange = (e) => { const file = e.target.files[0]; if (!file) return; const url = URL.createObjectURL(file); targetBlocks.forEach(b => b.loadTexture(url)); recordAction(); }; fileInput.click(); };
+}
+document.getElementById('materialPresetBtn').addEventListener('click', (e) => { e.stopPropagation(); const targetBlocks = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock?[selectedBlock]:[]); if(!targetBlocks.length) { showModal("提示", "请先选中至少一个方块", null, false); return; } buildMaterialMenu(); const rect = e.target.getBoundingClientRect(); materialMenuDiv.style.display = 'block'; materialMenuDiv.style.top = (rect.bottom + 5) + 'px'; materialMenuDiv.style.right = (window.innerWidth - rect.right - 5) + 'px'; if (window.innerWidth < 700) materialMenuDiv.style.right = '10px'; setTimeout(() => { const close = (ev) => { if (!materialMenuDiv.contains(ev.target) && ev.target !== e.target) { materialMenuDiv.style.display = 'none'; document.removeEventListener('click', close); } }; document.addEventListener('click', close); }, 10); });
 
 // 主题切换
 let isLightMode = false;
