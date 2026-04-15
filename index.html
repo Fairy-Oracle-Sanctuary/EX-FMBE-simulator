@@ -1151,31 +1151,114 @@ let exportPrefix = localStorage.getItem('ex_export_prefix') || `execute  positio
 let exportSuffix = localStorage.getItem('ex_export_suffix') || ` '方块编号：{id}'; "`;
 function savePrefixSuffix() { localStorage.setItem('ex_export_prefix', exportPrefix); localStorage.setItem('ex_export_suffix', exportSuffix); }
 function showCommandListModal() {
-    const modalDiv = document.createElement('div'); modalDiv.className = 'modal';
-    let html = `<div class="modal-content"><h3>✏️ 自定义命令前后缀</h3><div class="label-hint">前缀（可包含命令和固定文本）</div><input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}"><div class="label-hint">后缀（使用 {id} 作为方块ID占位符）</div><input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}"><div class="modal-buttons"><button class="modal-btn" id="resetDefaultBtn">重置默认</button><button class="modal-btn" id="confirmExportBtn">生成命令列表</button><button class="modal-btn" id="cancelModalBtn">取消</button></div></div>`;
-    modalDiv.innerHTML = html; document.body.appendChild(modalDiv);
-    const prefixInp = modalDiv.querySelector('#prefixInput'), suffixInp = modalDiv.querySelector('#suffixInput'), confirmBtn = modalDiv.querySelector('#confirmExportBtn'), cancelBtn = modalDiv.querySelector('#cancelModalBtn'), resetBtn = modalDiv.querySelector('#resetDefaultBtn'), closeModal = () => modalDiv.remove();
-    resetBtn.onclick = () => { prefixInp.value = `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`; suffixInp.value = ` '方块编号：{id}'; "`; };
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    let html = `<div class="modal-content"><h3>✏️ 自定义命令前后缀</h3>
+        <div class="label-hint">前缀（可包含命令和固定文本）</div>
+        <input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}">
+        <div class="label-hint">后缀（使用 {id} 作为方块ID占位符）</div>
+        <input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}">
+        <div class="modal-buttons">
+            <button class="modal-btn" id="resetDefaultBtn">重置默认</button>
+            <button class="modal-btn" id="confirmExportBtn">生成命令列表</button>
+            <button class="modal-btn" id="cancelModalBtn">取消</button>
+        </div></div>`;
+    modalDiv.innerHTML = html;
+    document.body.appendChild(modalDiv);
+
+    const prefixInp = modalDiv.querySelector('#prefixInput');
+    const suffixInp = modalDiv.querySelector('#suffixInput');
+    const confirmBtn = modalDiv.querySelector('#confirmExportBtn');
+    const cancelBtn = modalDiv.querySelector('#cancelModalBtn');
+    const resetBtn = modalDiv.querySelector('#resetDefaultBtn');
+
+    const closeModal = () => modalDiv.remove();
+
+    resetBtn.onclick = () => {
+        prefixInp.value = `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`;
+        suffixInp.value = ` '方块编号：{id}'; "`;
+    };
+
     confirmBtn.onclick = () => {
-        exportPrefix = prefixInp.value.trim(); exportSuffix = suffixInp.value.trim(); savePrefixSuffix(); closeModal();
-        const listModal = document.createElement('div'); listModal.className = 'modal';
+        exportPrefix = prefixInp.value.trim();
+        exportSuffix = suffixInp.value.trim();
+        savePrefixSuffix();
+        closeModal();
+
+        // 生成命令列表模态框
+        const listModal = document.createElement('div');
+        listModal.className = 'modal';
         let listHtml = `<div class="modal-content"><h3>📋 命令列表</h3><div style="max-height:60vh; overflow-y:auto;">`;
-        if (blocks.length === 0) listHtml += '<div class="empty-state">暂无方块</div>';
-        else for (let b of blocks) {
-            let varsStr = '';
-            for (let [name, def] of b.scope.vars.entries()) if (name.startsWith('v.')) varsStr += `${name}=${def.expr}; `;
-            const owned = Array.from(globalVars.entries()).filter(([n, g]) => g.sourceBlockId === b.id);
-            for (let [gn, g] of owned) varsStr += `t.${gn}=${g.def.expr}; `;
-            const suffix = exportSuffix.replace(/{id}/g, b.id);
-            const cmdText = exportPrefix + varsStr + suffix;
-            listHtml += `<div class="command-card"><div class="command-header"><span class="block-id-badge">📦 ${escapeHtml(b.id)}</span><button class="copy-cmd-btn" data-cmd="${escapeHtml(cmdText)}">📋 复制</button></div><pre class="cmd-preview">${escapeHtml(cmdText)}</pre></div>`;
+
+        if (blocks.length === 0) {
+            listHtml += '<div class="empty-state">暂无方块</div>';
+        } else {
+            for (let b of blocks) {
+                let varsStr = '';
+                for (let [name, def] of b.scope.vars.entries()) {
+                    if (name.startsWith('v.')) varsStr += `${name}=${def.expr}; `;
+                }
+                const owned = Array.from(globalVars.entries()).filter(([n, g]) => g.sourceBlockId === b.id);
+                for (let [gn, g] of owned) varsStr += `t.${gn}=${g.def.expr}; `;
+                const suffix = exportSuffix.replace(/{id}/g, b.id);
+                const cmdText = exportPrefix + varsStr + suffix;
+
+                listHtml += `<div class="command-card">
+                    <div class="command-header">
+                        <span class="block-id-badge">📦 ${escapeHtml(b.id)}</span>
+                        <button class="copy-cmd-btn" data-block-id="${b.id}">📋 复制</button>
+                    </div>
+                    <pre class="cmd-preview">${escapeHtml(cmdText)}</pre>
+                </div>`;
+            }
         }
-        listHtml += `</div><div class="modal-buttons"><button class="modal-btn" id="copyAllBtn">📋 全部</button><button class="modal-btn" id="closeListBtn">关闭</button></div></div>`;
-        listModal.innerHTML = listHtml; document.body.appendChild(listModal);
-        listModal.querySelectorAll('.copy-cmd-btn').forEach(btn => { btn.addEventListener('click', e => { e.stopPropagation(); const cmd = btn.dataset.cmd; navigator.clipboard.writeText(cmd).then(() => { const orig = btn.innerText; btn.innerText = '✅ 已复制'; setTimeout(() => btn.innerText = orig, 1500); }); }); });
-        const copyAllBtn = listModal.querySelector('#copyAllBtn'); if (copyAllBtn) copyAllBtn.addEventListener('click', () => { const allCmds = Array.from(listModal.querySelectorAll('.cmd-preview')).map(pre => pre.textContent).join('\n'); navigator.clipboard.writeText(allCmds).then(() => { const orig = copyAllBtn.innerText; copyAllBtn.innerText = '✅ 已复制全部'; setTimeout(() => copyAllBtn.innerText = orig, 1500); }); });
+
+        listHtml += `</div><div class="modal-buttons">
+            <button class="modal-btn" id="copyAllBtn">📋 全部复制</button>
+            <button class="modal-btn" id="closeListBtn">关闭</button>
+        </div></div>`;
+
+        listModal.innerHTML = listHtml;
+        document.body.appendChild(listModal);
+
+        // 单个复制：直接从相邻的 .cmd-preview 获取命令文本（避免 data-* 属性引号截断）
+        listModal.querySelectorAll('.copy-cmd-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const card = btn.closest('.command-card');
+                const preview = card?.querySelector('.cmd-preview');
+                if (!preview) return;
+                const cmd = preview.textContent;
+                navigator.clipboard.writeText(cmd).then(() => {
+                    const orig = btn.innerText;
+                    btn.innerText = '✅ 已复制';
+                    setTimeout(() => btn.innerText = orig, 1500);
+                }).catch(() => {
+                    const orig = btn.innerText;
+                    btn.innerText = '❌ 失败';
+                    setTimeout(() => btn.innerText = orig, 1500);
+                });
+            });
+        });
+
+        // 全部复制：遍历所有 .cmd-preview 获取文本
+        const copyAllBtn = listModal.querySelector('#copyAllBtn');
+        if (copyAllBtn) {
+            copyAllBtn.addEventListener('click', () => {
+                const allCmds = Array.from(listModal.querySelectorAll('.cmd-preview'))
+                    .map(pre => pre.textContent)
+                    .join('\n');
+                navigator.clipboard.writeText(allCmds).then(() => {
+                    const orig = copyAllBtn.innerText;
+                    copyAllBtn.innerText = '✅ 已复制全部';
+                    setTimeout(() => copyAllBtn.innerText = orig, 1500);
+                });
+            });
+        }
+
         listModal.querySelector('#closeListBtn').onclick = () => listModal.remove();
     };
+
     cancelBtn.onclick = closeModal;
 }
 document.getElementById('exportBtn').onclick = showCommandListModal;
