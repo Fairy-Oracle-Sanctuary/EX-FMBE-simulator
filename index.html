@@ -635,28 +635,26 @@ function applyBatchDelta(varName, delta) {
             def = b.scope.vars.get(varName);
         }
         if (def) {
-            // 判断原表达式是否为纯数字常量
             const isConst = isConstantExpr(def.expr);
             let newExpr;
             
             if (isConst) {
-                // 常量表达式：直接计算新数值
+                // 直接增加 delta，不钳位，也不按步长取整
                 let nv = parseFloat(def.expr) + delta;
-                const range = getDefaultRange(varName);
-                nv = Math.min(range.max, Math.max(range.min, nv));
-                const step = def.step || 1;
-                nv = Math.round(nv / step) * step;
+                // 保留足够精度，避免浮点数误差累积
+                const dec = (def.step.toString().includes('.') ? def.step.toString().split('.')[1].length : 0);
+                nv = parseFloat(nv.toFixed(dec));
                 newExpr = nv.toString();
                 def.value = nv;
             } else {
-                // 非常量表达式：在原表达式基础上增加偏移量
+                // 非常量表达式：拼接偏移量
                 const deltaStr = delta >= 0 ? ` + ${delta}` : ` - ${-delta}`;
                 newExpr = `(${def.expr})${deltaStr}`;
-                // 立即计算一次新值（可选，refresh 后也会更新）
                 def.value = evaluateExpression(newExpr, b.scope.vars, globalVars);
             }
             
             def.expr = newExpr;
+            // refresh 时会自动根据当前值扩展 rangeMin / rangeMax
             b.refresh();
             b.mesh.updateMatrixWorld(true);
         }
