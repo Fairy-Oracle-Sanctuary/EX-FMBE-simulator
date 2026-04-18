@@ -433,39 +433,59 @@ class Block {
         } 
         else if (this.type === 'flag') {
             const createCustomCube = (vertices, color, materialType, textureUrl) => {
-    // 根据旗帜模型的顶点顺序，明确定义6个面，每个面4个顶点（逆时针，从外部看）
-    // 顶点布局：0-1-2-3 构成底面（或背面），4-5-6-7 构成顶面（或前面），对应棱边：0-4,1-5,2-6,3-7
     const faces = [
-        { indices: [0, 1, 2, 3] }, // 面1
-        { indices: [4, 7, 6, 5] }, // 面2（对面）
+        { indices: [0, 1, 2, 3] }, // 面1：底面（Y最小）
+        { indices: [4, 7, 6, 5] }, // 面2：顶面（与面1相对）
         { indices: [0, 3, 7, 4] }, // 面3
         { indices: [1, 5, 6, 2] }, // 面4
         { indices: [3, 2, 6, 7] }, // 面5
         { indices: [0, 4, 5, 1] }  // 面6
     ];
 
+    // 修改了第一项：V值翻转，实现上下颠倒
+    const faceUVs = [
+        [0,1, 1,1, 1,0, 0,0], // 面1：上下颠倒（V翻转）
+        [1,0, 0,0, 0,1, 1,1], // 面2：U翻转（保持与面1同向，不镜像）
+        [0,0, 1,0, 1,1, 0,1], // 面3
+        [0,0, 1,0, 1,1, 0,1], // 面4
+        [0,0, 1,0, 1,1, 0,1], // 面5
+        [0,0, 1,0, 1,1, 0,1]  // 面6
+    ];
+
     const positions = [];
     const normals = [];
+    const uvs = [];
 
-    faces.forEach(face => {
-        // 每个四边形拆成两个三角形 (0,1,2) 和 (0,2,3)
-        const tri1 = [face.indices[0], face.indices[1], face.indices[2]];
-        const tri2 = [face.indices[0], face.indices[2], face.indices[3]];
+    faces.forEach((face, faceIdx) => {
+        const quad = face.indices;
+        const uvData = faceUVs[faceIdx];
+        const tri1 = [quad[0], quad[1], quad[2]];
+        const tri2 = [quad[0], quad[2], quad[3]];
 
-        [tri1, tri2].forEach(tri => {
-            const v0 = vertices[tri[0]];
-            const v1 = vertices[tri[1]];
-            const v2 = vertices[tri[2]];
+        const uv1 = [
+            [uvData[0], uvData[1]],
+            [uvData[2], uvData[3]],
+            [uvData[4], uvData[5]]
+        ];
+        const uv2 = [
+            [uvData[0], uvData[1]],
+            [uvData[4], uvData[5]],
+            [uvData[6], uvData[7]]
+        ];
 
-            // 计算法线（叉乘顺序遵循顶点逆时针）
+        [ { tri: tri1, uvs: uv1 }, { tri: tri2, uvs: uv2 } ].forEach(item => {
+            const v0 = vertices[item.tri[0]];
+            const v1 = vertices[item.tri[1]];
+            const v2 = vertices[item.tri[2]];
+
             const u = new THREE.Vector3().subVectors(v1, v0);
             const v = new THREE.Vector3().subVectors(v2, v0);
             const normal = new THREE.Vector3().crossVectors(u, v).normalize();
 
-            // 添加三个顶点坐标和法线
-            [v0, v1, v2].forEach(vtx => {
+            [v0, v1, v2].forEach((vtx, i) => {
                 positions.push(vtx.x, vtx.y, vtx.z);
                 normals.push(normal.x, normal.y, normal.z);
+                uvs.push(item.uvs[i][0], item.uvs[i][1]);
             });
         });
     });
@@ -473,8 +493,8 @@ class Block {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
     geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
 
-    // 材质：如果指定了贴图，则基础色为白色，否则使用传入颜色；启用双面渲染避免背面剔除
     const material = (materialType === 'texture' && textureUrl)
         ? new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide })
         : new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide });
@@ -483,7 +503,6 @@ class Block {
     mesh.castShadow = true;
     return mesh;
 };
-
             const cube1_vertices = [
                 new THREE.Vector3(0.128575, 0.23571425, 0.5464255),
                 new THREE.Vector3(0.228575, 0.23571425, 0.5464255),
@@ -565,41 +584,50 @@ class Block {
 
     loadTextureForFlag(url) {
     new THREE.TextureLoader().load(url, tex => {
-        if (this.meshes.length >= 3) {
-            const cube3 = this.meshes[2];
-            if (cube3.material) {
-                cube3.material.map = tex;
-                cube3.material.side = THREE.DoubleSide; // ✅ 保持双面
-                cube3.material.needsUpdate = true;
-            }
-        }
+        const cube3 = this.meshes[2];
+        if (!cube3) return;
+        
+        // 直接替换材质，避免 map 设置失效（因为原材质可能不是 MeshStandardMaterial）
+        const newMat = new THREE.MeshStandardMaterial({
+            map: tex,
+            roughness: 0.4,
+            metalness: 0.2,
+            side: THREE.DoubleSide
+        });
+        if (cube3.material) cube3.material.dispose();
+        cube3.material = newMat;
     });
     this.textureUrl = url;
     this.materialType = 'texture';
     this.materialColor = null;
 }
 
+
+
+
 setSolidColor(hex) {
     if (!this.mesh) return;
     if (this.type === 'flag') {
-    if (this.meshes.length >= 3) {
+        // 旗帜：只修改主体 cube3（meshes[2]）
         const cube3 = this.meshes[2];
         const newMat = new THREE.MeshStandardMaterial({
             color: hex,
             roughness: 0.4,
             metalness: 0.2,
-            side: THREE.DoubleSide  // ✅ 双面渲染
+            side: THREE.DoubleSide
         });
         if (cube3.material) cube3.material.dispose();
         cube3.material = newMat;
-    }
-    this.materialType = 'color';
-    this.materialColor = hex;
-    this.textureUrl = null;
-
+        this.materialType = 'color';
+        this.materialColor = hex;
+        this.textureUrl = null;
     } else {
-        // 立方体无需双面，维持原样
-        const newMat = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4, metalness: 0.2 });
+        // 立方体：正常替换材质
+        const newMat = new THREE.MeshStandardMaterial({
+            color: hex,
+            roughness: 0.4,
+            metalness: 0.2
+        });
         if (this.mesh.material) this.mesh.material.dispose();
         this.mesh.material = newMat;
         this.materialType = 'color';
@@ -607,7 +635,6 @@ setSolidColor(hex) {
         this.textureUrl = null;
     }
 }
-
     loadTexture(url, skipCreate = false) {
         if (this.type === 'flag') {
             this.loadTextureForFlag(url);
@@ -2020,4 +2047,4 @@ resizeHandle.addEventListener('pointerdown', onPointerDown);
 panel.style.height = '280px';
 </script>
 </body>
-    </html>
+</html>
