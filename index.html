@@ -356,15 +356,17 @@ class VariableScope {
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 const degToRad = d => d * Math.PI / 180;
 
+
+//ey旋转
 function computeTransformMatrix(M, rotatex = 0, rotatey = 0, rotatez = 0) {
     const [px, py, pz, rx, ry, rz, s, es, ex, ey, bx, by, bz] = M;
     const matB = new THREE.Matrix4().makeTranslation(bx, by, bz);
     const matEsy = new THREE.Matrix4().makeScale(1, es, 1);
-    const matEyr = new THREE.Matrix4().makeRotationY(-degToRad(ey));
+    const matEyr = new THREE.Matrix4().makeRotationY(-degToRad(-ey));
     const matExr = new THREE.Matrix4().makeRotationX(-degToRad(ex));
     const matEs = new THREE.Matrix4().makeScale(1, 1, es);
     const matExl = new THREE.Matrix4().makeRotationX(degToRad(ex));
-    const matEyl = new THREE.Matrix4().makeRotationY(degToRad(ey));
+    const matEyl = new THREE.Matrix4().makeRotationY(degToRad(-ey));
     const matS = new THREE.Matrix4().makeScale(s, s, s);
     const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
     const matRy = new THREE.Matrix4().makeRotationY(degToRad(-ry));
