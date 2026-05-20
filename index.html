@@ -232,6 +232,37 @@ body.light-mode .batch-var-details { background: #f8fafc; border-top-color: #e2e
     .tool-btn { padding: 8px 16px; font-size: 13px; }
     .skew-btn { padding: 10px 24px; font-size: 15px; }
 }
+   /* 预设菜单专用样式：紧凑行间距 */
+.preset-item {
+    line-height: 1.2;
+}
+.preset-item + .preset-item {
+    border-top: none;
+}
+.modal-content .preset-item:last-child {
+    border-bottom: none;
+}
+    /* 深色模式默认背景（纯色或图片） */
+body {
+    background: #0a0f1a;  /* 深色备用背景 */
+}
+
+body.light-mode {
+    background-color: #e9eef3;  /* 后备浅色，图片加载失败时显示 */
+}
+  .color-palette {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+}
+.menu-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: 0.1s;
+    font-size: 13px;
+}
 </style>
 </head>
 <body>
@@ -401,6 +432,7 @@ class Block {
         this.scope.recompute();
         this.textureUrl = textureUrl;
         this.materialColor = materialColor;
+        this.materialPresetName = null;   // 记录材质预设名称（仅立方体使用）
         this.materialType = textureUrl ? 'texture' : 'color';
         this.rootGroup = null;
         this.meshes = [];
@@ -440,8 +472,10 @@ class Block {
             this.axisHelper.visible = false;
 
             if (this.materialType === 'texture' && this.textureUrl) this.loadTexture(this.textureUrl, true);
-            this.updateTransform();
-            return;
+this.updateTransform();
+this.updateMaterialSide();   // 新增
+return;
+            
         } 
         else if (this.type === 'flag') {
             const createCustomCube = (vertices, color, materialType, textureUrl) => {
@@ -576,10 +610,10 @@ class Block {
             this.axisHelper = axisGroup;
             this.rootGroup.add(this.axisHelper);
             this.axisHelper.visible = false;
-
-            this.rootGroup.frustumCulled = false;
-            this.updateTransform();
-            return;
+this.rootGroup.frustumCulled = false;
+this.updateTransform();
+this.updateMaterialSide();   // 新增
+return;
         }
 
         // 其他类型（理论上不会执行到这里）
@@ -596,10 +630,12 @@ class Block {
 
     loadTextureForFlag(url) {
     new THREE.TextureLoader().load(url, tex => {
+        tex.anisotropy = 16;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        
         const cube3 = this.meshes[2];
         if (!cube3) return;
-        
-        // 直接替换材质，避免 map 设置失效（因为原材质可能不是 MeshStandardMaterial）
         const newMat = new THREE.MeshStandardMaterial({
             map: tex,
             roughness: 0.4,
@@ -613,7 +649,6 @@ class Block {
     this.materialType = 'texture';
     this.materialColor = null;
 }
-
 
 
 
@@ -633,6 +668,7 @@ setSolidColor(hex) {
         this.materialType = 'color';
         this.materialColor = hex;
         this.textureUrl = null;
+        this.materialPresetName = null;   // 清除材质名称
     } else {
         // 立方体：正常替换材质
         const newMat = new THREE.MeshStandardMaterial({
@@ -645,27 +681,50 @@ setSolidColor(hex) {
         this.materialType = 'color';
         this.materialColor = hex;
         this.textureUrl = null;
+        this.materialPresetName = null;   // 清除材质名称
     }
 }
-    loadTexture(url, skipCreate = false) {
-        if (this.type === 'flag') {
-            this.loadTextureForFlag(url);
-            return;
-        }
-        if (!skipCreate && this.mesh) {
-            this.mesh.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.2 });
-        }
-        new THREE.TextureLoader().load(url, tex => {
-            if (this.mesh && this.mesh.material) {
-                this.mesh.material.map = tex;
-                this.mesh.material.needsUpdate = true;
-            }
-        });
-        this.textureUrl = url;
-        this.materialType = 'texture';
-        this.materialColor = null;
+// 增加材质预设名称参数，默认为 null
+loadTexture(url, presetName = null, skipCreate = false) {
+    if (this.type === 'flag') {
+        this.loadTextureForFlag(url);
+        return;
     }
-
+    const loader = new THREE.TextureLoader();
+    loader.load(url, tex => {
+    // 提高纹理远处清晰度
+    tex.anisotropy = 16;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    
+    if (this.mesh) {
+        const isGlass = url.includes('glass') || url.includes('stained_glass');
+        if (this.mesh.material) {
+            this.mesh.material.map = tex;
+            this.mesh.material.color.setHex(0xffffff);
+            this.mesh.material.needsUpdate = true;
+            this.mesh.material.transparent = isGlass;
+            if (isGlass) {
+                this.mesh.material.side = THREE.DoubleSide;
+            } else {
+                this.mesh.material.side = THREE.FrontSide;
+            }
+        } else {
+            this.mesh.material = new THREE.MeshStandardMaterial({
+                map: tex,
+                roughness: 0.4,
+                metalness: 0.2,
+                transparent: isGlass,
+                side: isGlass ? THREE.DoubleSide : THREE.FrontSide
+            });
+        }
+    }
+    this.textureUrl = url;
+    this.materialType = 'texture';
+    this.materialColor = null;
+    this.materialPresetName = presetName;
+}, undefined, (err) => console.warn('纹理加载失败', err));
+}
     
 
     updateTransform() {
@@ -679,12 +738,37 @@ setSolidColor(hex) {
         this.mesh.matrixWorldNeedsUpdate = true;
         this.mesh.updateMatrixWorld(true);
     }
+    // 根据 v.scale 的正负切换材质的渲染面，实现负体积效果
+updateMaterialSide() {
+    const scale = this.scope.vars.get('v.scale')?.value ?? 1;
+    const targetSide = scale < 0 ? THREE.BackSide : THREE.FrontSide;
+
+    if (this.type === 'cube' && this.mesh && this.mesh.material) {
+        if (this.mesh.material.side !== targetSide) {
+            this.mesh.material.side = targetSide;
+            this.mesh.material.needsUpdate = true;
+        }
+    } 
+    else if (this.type === 'flag') {
+        // 旗帜的所有部件（cube1, cube2, cube3）都要同步
+        for (let i = 0; i < this.meshes.length; i++) {
+            const part = this.meshes[i];
+            if (part && part.material) {
+                if (part.material.side !== targetSide) {
+                    part.material.side = targetSide;
+                    part.material.needsUpdate = true;
+                }
+            }
+        }
+    }
+}
 
     refresh() {
-        this.scope.recompute();
-        this.updateTransform();
-        updateGlobalVarsDependingOn(this, null);
-    }
+    this.scope.recompute();
+    this.updateTransform();
+    updateGlobalVarsDependingOn(this, null);
+    this.updateMaterialSide();   // 新增：根据 scale 调整材质背面
+}
 
     getVarList() {
         return Array.from(this.scope.vars.entries()).map(([n, d]) => ({ name: n, expr: d.expr, value: d.value, rangeMin: d.rangeMin, rangeMax: d.rangeMax, step: d.step }));
@@ -1515,8 +1599,42 @@ function showBlockDropdown(btn) {
     if (activeDropdown) { activeDropdown.remove(); activeDropdown = null; }
     if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; }
     const menu = document.createElement('div'); menu.className = 'block-dropdown';
-    if (blocks.length === 0) menu.innerHTML = '<div class="block-dropdown-item">暂无方块</div>';
-    else {
+    if (blocks.length === 0) {
+        menu.innerHTML = '<div class="block-dropdown-item">暂无方块</div>';
+    } else {
+        // ----- 全选按钮-----
+        const allItem = document.createElement('div');
+        allItem.className = 'block-dropdown-item';
+        allItem.innerHTML = `<span>--- ALL ---</span>`;
+        allItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedBlocksSet.clear();
+            blocks.forEach(b => selectedBlocksSet.add(b));
+            if (selectedBlock) {
+                selectedBlock.axisHelper.visible = false;
+                selectedBlock = null;
+            }
+            updateAxesVisibility();
+            renderVariablesForBlock(null);
+            blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+            menu.remove();
+            activeDropdown = null;
+            if (scrollListener) {
+                window.removeEventListener('scroll', scrollListener);
+                document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                scrollListener = null;
+            }
+        });
+        menu.appendChild(allItem);
+
+        // 分隔线
+        const divider = document.createElement('div');
+        divider.style.height = '1px';
+        divider.style.background = '#334155';
+        divider.style.margin = '4px 0';
+        menu.appendChild(divider);
+
+        // 原有方块列表
         blocks.forEach(b => {
             const item = document.createElement('div'); item.className = 'block-dropdown-item';
             if (selectedBlocksSet.has(b)) item.classList.add('selected');
@@ -1543,7 +1661,6 @@ function showBlockDropdown(btn) {
     const panelContent = document.querySelector('.panel-content');
     if (panelContent) panelContent.addEventListener('scroll', scrollListener);
 }
-
 function showParentSelector(child) {
     const candidates = blocks.filter(b => b.id !== child.id);
     if (!candidates.length) return;
@@ -1618,11 +1735,148 @@ function showModal(title, content, onConfirm = null, isTextarea = true) {
     cancelBtn.onclick = () => modalDiv.remove(); if (input) input.focus();
 }
 function parseAssignment(str) { const m = str.match(/^([vt]\.[a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/); if (m) return { name: m[1], expr: m[2].trim() }; return null; }
-// ==================== 导出命令（支持旗帜强制前缀） ====================
+
+
+// 导出命令的前缀/后缀（带本地存储）
 let exportPrefix = localStorage.getItem('ex_export_prefix') || `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "`;
 let exportSuffix = localStorage.getItem('ex_export_suffix') || ` '方块编号：{id}'; "`;
-function savePrefixSuffix() { localStorage.setItem('ex_export_prefix', exportPrefix); localStorage.setItem('ex_export_suffix', exportSuffix); }
+function savePrefixSuffix() {
+    localStorage.setItem('ex_export_prefix', exportPrefix);
+    localStorage.setItem('ex_export_suffix', exportSuffix);
+}
+// ==================== 变量依赖排序与命令生成（修复依赖顺序） ====================
+// 获取一个方块的所有可导出变量（局部变量 + 该方块创建的全局变量）
+function getExportableVariables(block) {
+    const localEntries = Array.from(block.scope.vars.entries()).map(([name, def]) => ({
+        name: name,           // 例如 "v.xpos"
+        def: def,
+        type: 'local'
+    }));
+    const globalEntries = Array.from(globalVars.entries())
+        .filter(([_, g]) => g.sourceBlockId === block.id)
+        .map(([key, g]) => ({
+            name: `t.${key}`,
+            def: g.def,
+            type: 'global'
+        }));
+    return [...localEntries, ...globalEntries];
+}
 
+// 从表达式中提取依赖的变量名（仅限 v.xxx 或 t.xxx）
+function extractDependencies(expr, allVarNames) {
+    const deps = new Set();
+    const regex = /(?:v|t)\.[a-zA-Z_][a-zA-Z0-9_]*/g;
+    let match;
+    while ((match = regex.exec(expr)) !== null) {
+        const depName = match[0];
+        if (allVarNames.has(depName)) {
+            deps.add(depName);
+        }
+    }
+    return deps;
+}
+
+// 拓扑排序变量，确保依赖的变量出现在前面
+function topologicalSortVariables(variables) {
+    const nodeMap = new Map(); // name -> { def, type, expr, deps }
+    const allNames = new Set(variables.map(v => v.name));
+    
+    for (const v of variables) {
+        const expr = v.def.expr;
+        const deps = extractDependencies(expr, allNames);
+        nodeMap.set(v.name, {
+            def: v.def,
+            type: v.type,
+            expr: expr,
+            deps: deps
+        });
+    }
+    
+    // Kahn 算法
+    const inDegree = new Map();
+    const graph = new Map(); // 被依赖者 -> 依赖者列表
+    for (const [name, node] of nodeMap.entries()) {
+        inDegree.set(name, 0);
+        graph.set(name, []);
+    }
+    for (const [name, node] of nodeMap.entries()) {
+        for (const dep of node.deps) {
+            if (nodeMap.has(dep)) {
+                inDegree.set(name, (inDegree.get(name) || 0) + 1);
+                graph.get(dep).push(name);
+            }
+        }
+    }
+    
+    const queue = [];
+    for (const [name, deg] of inDegree.entries()) {
+        if (deg === 0) queue.push(name);
+    }
+    const sorted = [];
+    while (queue.length) {
+        const curr = queue.shift();
+        sorted.push(curr);
+        for (const next of graph.get(curr)) {
+            inDegree.set(next, inDegree.get(next) - 1);
+            if (inDegree.get(next) === 0) {
+                queue.push(next);
+            }
+        }
+    }
+    
+    // 如果有环，把剩余未排序的节点追加到末尾（维持原有顺序尽可能）
+    const remaining = [];
+    for (const [name, deg] of inDegree.entries()) {
+        if (deg > 0 && !sorted.includes(name)) {
+            remaining.push(name);
+        }
+    }
+    // 按原始顺序追加剩余节点
+    for (const v of variables) {
+        if (remaining.includes(v.name) && !sorted.includes(v.name)) {
+            sorted.push(v.name);
+        }
+    }
+    
+    // 返回排序后的变量对象数组
+    const sortedVars = [];
+    for (const name of sorted) {
+        const original = variables.find(v => v.name === name);
+        if (original) sortedVars.push(original);
+    }
+    return sortedVars;
+}
+
+// 为单个方块生成排序后的赋值语句字符串（不包括额外标记）
+function getOrderedAssignmentsString(block) {
+    const variables = getExportableVariables(block);
+    if (variables.length === 0) return '';
+    const sorted = topologicalSortVariables(variables);
+    const statements = [];
+    for (const v of sorted) {
+        // 注意：表达式中可能包含特殊字符，但无需转义，直接原样输出
+        statements.push(`${v.name}=${v.def.expr};`);
+    }
+    return statements.join(' ');
+}
+
+// 获取单个方块的完整命令文本（包括前缀、后缀、旗帜标记）
+function getCommandTextForBlock(block) {
+    let varsStr = getOrderedAssignmentsString(block);
+    // 处理材质名称前缀（仅立方体有效）
+    let blockIdPrefix = '';
+    if (block.type === 'cube' && block.materialPresetName) {
+        blockIdPrefix = `'block：${block.materialPresetName}'; `;
+    }
+    // 旗帜类型强制在最前面添加 '方块类型：旗帜'
+    if (block.type === 'flag') {
+        varsStr = `'方块类型：旗帜'; ` + varsStr;
+    }
+    const suffix = exportSuffix.replace(/{id}/g, block.id);
+    return exportPrefix + blockIdPrefix + varsStr + suffix;
+}
+
+// 覆盖原有的 showCommandListModal 函数，使用依赖排序
 function showCommandListModal() {
     const modalDiv = document.createElement('div');
     modalDiv.className = 'modal';
@@ -1659,25 +1913,13 @@ function showCommandListModal() {
 
         const listModal = document.createElement('div');
         listModal.className = 'modal';
-        let listHtml = `<div class="modal-content"><h3>📋 命令列表</h3><div style="max-height:60vh; overflow-y:auto;">`;
+        let listHtml = `<div class="modal-content"><h3>📋 命令列表（变量已按依赖排序）</h3><div style="max-height:60vh; overflow-y:auto;">`;
 
         if (blocks.length === 0) {
             listHtml += '<div class="empty-state">暂无方块</div>';
         } else {
             for (let b of blocks) {
-                let varsStr = '';
-                for (let [name, def] of b.scope.vars.entries()) {
-                    if (name.startsWith('v.')) varsStr += `${name}=${def.expr}; `;
-                }
-                const owned = Array.from(globalVars.entries()).filter(([n, g]) => g.sourceBlockId === b.id);
-                for (let [gn, g] of owned) varsStr += `t.${gn}=${g.def.expr}; `;
-                const suffix = exportSuffix.replace(/{id}/g, b.id);
-                // 旗帜类型强制在变量列表前添加 '方块类型：旗帜';
-                let finalVarsStr = varsStr;
-                if (b.type === 'flag') {
-                    finalVarsStr = `'方块类型：旗帜'; ` + varsStr;
-                }
-                const cmdText = exportPrefix + finalVarsStr + suffix;
+                const cmdText = getCommandTextForBlock(b);
                 listHtml += `<div class="command-card">
                     <div class="command-header">
                         <span class="block-id-badge">📦 ${escapeHtml(b.id)} (${b.type === 'flag' ? '旗帜' : '立方体'})</span>
@@ -1696,7 +1938,7 @@ function showCommandListModal() {
         listModal.innerHTML = listHtml;
         document.body.appendChild(listModal);
 
-        // 单个复制：直接从预览元素获取文本
+        // 单个复制
         listModal.querySelectorAll('.copy-cmd-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1733,8 +1975,9 @@ function showCommandListModal() {
     };
     cancelBtn.onclick = closeModal;
 }
-document.getElementById('exportBtn').onclick = showCommandListModal;
 
+// 重新绑定导出按钮事件（确保使用新的函数）
+document.getElementById('exportBtn').onclick = showCommandListModal;
 // ==================== 导入命令（自动识别旗帜标识） ====================
 function importFromCommands(text) {
     const lines = text.split(/\r?\n/);
@@ -1756,14 +1999,36 @@ function importFromCommands(text) {
     }
     if (current) cmds.push(current);
 
+    let successCount = 0;
+    let failCount = 0;
+
+    // 预先建立材质名称到URL的映射（不区分大小写）
+    const nameToUrl = new Map();
+    texturePresets.forEach(p => {
+        nameToUrl.set(p.name.toLowerCase(), p.url);
+    });
+
     for (let cmd of cmds) {
-        if (!cmd.includes('playanimation')) continue;
+        if (!cmd.includes('playanimation')) {
+            failCount++;
+            continue;
+        }
         const quoteMatch = cmd.match(/"([^"]*)"/);
-        if (!quoteMatch) continue;
+        if (!quoteMatch) {
+            failCount++;
+            continue;
+        }
         const content = quoteMatch[1];
         
         // 检查是否包含旗帜标识
         const isFlag = content.includes("'方块类型：旗帜'") || content.includes('"方块类型：旗帜"');
+        
+        // 提取材质名称 'block：xxx'（仅立方体使用）
+        let blockMaterialName = null;
+        const blockMatch = content.match(/['"]block：([^'"]+)['"]/);
+        if (blockMatch) {
+            blockMaterialName = blockMatch[1].trim();
+        }
         
         const assignments = [];
         const reg = /([vt])\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g;
@@ -1786,7 +2051,7 @@ function importFromCommands(text) {
             if (val !== undefined && isConstantExpr(val)) M[idx] = parseFloat(val);
         });
         
-        // 根据 isFlag 决定创建类型
+        // 创建方块
         const newBlock = new Block(finalId, M, null, '#aaccff', isFlag ? 'flag' : 'cube');
         assignments.forEach(a => {
             const full = `${a.type}.${a.name}`;
@@ -1802,10 +2067,24 @@ function importFromCommands(text) {
                 }
             }
         });
+        
+        // 如果存在材质名称，尝试应用贴图（仅立方体）
+        if (blockMaterialName && newBlock.type === 'cube') {
+            const lowerName = blockMaterialName.toLowerCase();
+            const url = nameToUrl.get(lowerName);
+            if (url) {
+                newBlock.loadTexture(url, blockMaterialName);
+            } else {
+                console.warn(`未找到材质预设: ${blockMaterialName}`);
+            }
+        }
+        
         newBlock.refresh();
         addBlock(newBlock);
+        successCount++;
     }
     
+    // 更新全局变量
     for (let [n, g] of globalVars.entries()) {
         const sb = blocks.find(b => b.id === g.sourceBlockId);
         if (sb) {
@@ -1820,7 +2099,13 @@ function importFromCommands(text) {
     }
     blocks.forEach(b => b.refresh());
     if (selectedBlock) renderVariablesForBlock(selectedBlock);
-    showModal("导入完成", `成功创建 ${blocks.length} 个方块`, null, false);
+    
+    // 显示结果提示
+    if (failCount > 0) {
+        showModal("导入完成", `成功导入 ${successCount} 个方块，${failCount} 条指令无法解析`, null, false);
+    } else {
+        showModal("导入完成", `成功导入 ${successCount} 个方块`, null, false);
+    }
 }
 document.getElementById('importBtn').onclick = () => showModal("导入数据", "粘贴 playanimation 命令文本", (txt) => { if (txt) importFromCommands(txt); }, true);
 
@@ -1830,45 +2115,183 @@ materialMenuDiv.className = 'material-menu';
 materialMenuDiv.style.display = 'none';
 document.body.appendChild(materialMenuDiv);
 const colorPresets = ['#aaccff','#88aaff','#06b6d4','#8b5cf6','#f43f5e','#10b981','#facc15','#ffffff','#1e293b','#ef4444','#3b82f6','#eab308','#ec4899','#14b8a6','#a855f7','#ff7f50','#2dd4bf','#f97316','#6366f1','#94a3b8'];
+
+// ============== 贴图预设 ==================
+const texturePresets = [
+    { name: "钻石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/3bb557edad19b9e8fd33b32bb34bea20.jpg" },        
+    { name: "绿宝石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/a228c3c53167ea83318b58ec106cfbd9.jpg" },
+    { name: "圆石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/69afaa5d9fc5c0acfd6bd18b7d3414a1.jpg" },
+    
+    
+    { name: "凿制石砖", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/chiseled_stone_bricks_1024x1024.png" },
+    
+    { name: "石砖", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/stone_bricks_1024x1024.png" },
+    
+    { name: "平滑石砖", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/smooth_stone_1024x1024.png" },
+    
+    { name: "泥土", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/dirt_1024x1024-5.png" },
+    
+    { name: "萤石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/glowstone_1024x1024.png" },
+    
+    { name: "紫红色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/magenta_stained_glass_1024x1024.png" },
+    
+    { name: "棕色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/brown_stained_glass_1024x1024.png" },
+    
+    { name: "淡蓝色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_stained_glass_1024x1024-3.png" },
+    
+    { name: "黄色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/yellow_stained_glass_1024x1024.png" },
+    
+    { name: "黑色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_stained_glass_1024x1024-1.png" },
+      { name: "蓝色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_stained_glass_1024x1024-1.png" },
+        { name: "红色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/red_stained_glass_1024x1024.png" },    
+        { name: "白色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/white_stained_glass_1024x1024.png" },
+        { name: "遮光玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/tinted_glass_1024x1024.png" },
+       { name: "淡蓝色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_wool_1024x1024.png" },
+       { name: "白色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/white_wool_1024x1024.png" },
+       { name: "蓝色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/blue_wool_1024x1024.png" },
+       { name: "粉色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/pink_wool_1024x1024.png" },    
+       { name: "黑色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/black_wool_1024x1024.png" },    
+       { name: "粉色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/pink_wool_1024x1024.png" },    
+       { name: "红色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/red_wool_1024x1024.png" },    
+                      
+];
+
+
+
 function buildMaterialMenu() {
-    materialMenuDiv.innerHTML = `<div class="menu-title">🎨 纯色预设</div><div class="color-palette">${colorPresets.map(c => `<div class="color-swatch" style="background:${c};" data-color="${c}"></div>`).join('')}</div><div class="menu-divider"></div><div class="menu-option" id="customTextureOption">🖼️ 自定贴图</div>`;
-    document.querySelectorAll('.color-swatch').forEach(sw => {
-        sw.addEventListener('click', e => {
+    materialMenuDiv.innerHTML = '';
+    const targetBlocks = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock ? [selectedBlock] : []);
+    const hasFlag = targetBlocks.some(b => b.type === 'flag');
+    const mainMenu = document.createElement('div');
+    mainMenu.className = 'material-menu-main';
+    
+    const solidBtn = document.createElement('div');
+    solidBtn.className = 'menu-option';
+    solidBtn.textContent = '纯色材质';
+    solidBtn.style.marginBottom = '8px';
+    solidBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showColorPalette();
+    });
+    mainMenu.appendChild(solidBtn);
+    
+    if (!hasFlag) {
+        const textureBtn = document.createElement('div');
+        textureBtn.className = 'menu-option';
+        textureBtn.textContent = '原版材质';
+        textureBtn.style.marginBottom = '8px';
+        textureBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const targetBlocks = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock ? [selectedBlock] : []);
-            if (!targetBlocks.length) {
-                showModal("提示", "请先选中至少一个方块", null, false);
-                materialMenuDiv.style.display = 'none';
-                return;
-            }
-            targetBlocks.forEach(b => b.setSolidColor(sw.dataset.color));
+            showTexturePresets();
+        });
+        mainMenu.appendChild(textureBtn);
+    }
+    
+    const customBtn = document.createElement('div');
+    customBtn.className = 'menu-option';
+    customBtn.textContent = '自定义贴图';
+    customBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            targetBlocks.forEach(b => b.loadTexture(url));
             recordAction();
             materialMenuDiv.style.display = 'none';
-        });
-    });
-    const texOpt = materialMenuDiv.querySelector('#customTextureOption');
-    if (texOpt) {
-        texOpt.onclick = () => {
-            materialMenuDiv.style.display = 'none';
-            const targetBlocks = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock ? [selectedBlock] : []);
-            if (!targetBlocks.length) {
-                showModal("提示", "请先选中至少一个方块", null, false);
-                return;
-            }
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = 'image/*';
-            fileInput.onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const url = URL.createObjectURL(file);
-                targetBlocks.forEach(b => b.loadTexture(url));
-                recordAction();
-            };
-            fileInput.click();
         };
+        fileInput.click();
+    });
+    mainMenu.appendChild(customBtn);
+    materialMenuDiv.appendChild(mainMenu);
+    
+    function showColorPalette() {
+        const panel = document.createElement('div');
+        panel.className = 'color-palette';
+        panel.style.cssText = 'display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:12px;';
+        colorPresets.forEach(hex => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = hex;
+            swatch.style.border = '2px solid #334155';
+            swatch.style.borderRadius = '12px';
+            swatch.style.cursor = 'pointer';
+            swatch.addEventListener('click', () => {
+                targetBlocks.forEach(b => b.setSolidColor(hex));
+                recordAction();
+                materialMenuDiv.style.display = 'none';
+            });
+            panel.appendChild(swatch);
+        });
+        materialMenuDiv.innerHTML = '';
+        materialMenuDiv.appendChild(panel);
+        const backBtn = document.createElement('div');
+        backBtn.className = 'menu-option';
+        backBtn.textContent = '◀ 返回';
+        backBtn.style.marginTop = '12px';
+        backBtn.addEventListener('click', () => {
+            buildMaterialMenu();
+        });
+        materialMenuDiv.appendChild(backBtn);
+    }
+    
+    function showTexturePresets() {
+        const panel = document.createElement('div');
+        panel.style.display = 'flex';
+        panel.style.flexDirection = 'column';
+        panel.style.gap = '8px';
+        panel.style.maxHeight = '400px';
+        panel.style.overflowY = 'auto';
+        texturePresets.forEach(preset => {
+            const item = document.createElement('div');
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.style.padding = '4px 8px';
+            item.style.cursor = 'pointer';
+            item.className = 'menu-option';
+            item.addEventListener('click', () => {
+                targetBlocks.forEach(b => {
+                    b.loadTexture(preset.url, preset.name);
+                });
+                recordAction();
+                materialMenuDiv.style.display = 'none';
+            });
+            const label = document.createElement('span');
+            label.textContent = preset.name;
+            const img = document.createElement('img');
+            img.src = preset.url;
+            img.crossOrigin = 'Anonymous';
+            img.style.width = '32px';
+            img.style.height = '32px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '4px';
+            img.style.marginLeft = '8px';
+            img.onerror = () => { img.style.display = 'none'; };
+            item.appendChild(label);
+            item.appendChild(img);
+            panel.appendChild(item);
+        });
+        materialMenuDiv.innerHTML = '';
+        materialMenuDiv.appendChild(panel);
+        const backBtn = document.createElement('div');
+        backBtn.className = 'menu-option';
+        backBtn.textContent = '◀ 返回';
+        backBtn.style.marginTop = '12px';
+        backBtn.addEventListener('click', () => {
+            buildMaterialMenu();
+        });
+        materialMenuDiv.appendChild(backBtn);
     }
 }
+
+// 材质菜单滚动监听器（全局）
+let materialMenuScrollListener = null;
+
+// 绑定材质按钮事件
 document.getElementById('materialPresetBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     const targetBlocks = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock ? [selectedBlock] : []);
@@ -1877,56 +2300,185 @@ document.getElementById('materialPresetBtn').addEventListener('click', (e) => {
         return;
     }
     buildMaterialMenu();
-    const rect = e.target.getBoundingClientRect();
+    const btn = e.target;
+    const rect = btn.getBoundingClientRect();
     materialMenuDiv.style.display = 'block';
     materialMenuDiv.style.top = (rect.bottom + 5) + 'px';
     materialMenuDiv.style.right = (window.innerWidth - rect.right - 5) + 'px';
     if (window.innerWidth < 700) materialMenuDiv.style.right = '10px';
-    setTimeout(() => {
-        const close = (ev) => {
-            if (!materialMenuDiv.contains(ev.target) && ev.target !== e.target) {
-                materialMenuDiv.style.display = 'none';
-                document.removeEventListener('click', close);
+    
+    if (materialMenuScrollListener) {
+        window.removeEventListener('scroll', materialMenuScrollListener);
+        document.querySelector('.panel-content')?.removeEventListener('scroll', materialMenuScrollListener);
+    }
+    materialMenuScrollListener = () => {
+        const newRect = btn.getBoundingClientRect();
+        materialMenuDiv.style.top = (newRect.bottom + 5) + 'px';
+        materialMenuDiv.style.right = (window.innerWidth - newRect.right - 5) + 'px';
+        if (window.innerWidth < 700) materialMenuDiv.style.right = '10px';
+    };
+    window.addEventListener('scroll', materialMenuScrollListener);
+    const panelContent = document.querySelector('.panel-content');
+    if (panelContent) panelContent.addEventListener('scroll', materialMenuScrollListener);
+    
+    const closeHandler = (ev) => {
+        if (!materialMenuDiv.contains(ev.target) && ev.target !== btn) {
+            materialMenuDiv.style.display = 'none';
+            document.removeEventListener('click', closeHandler);
+            if (materialMenuScrollListener) {
+                window.removeEventListener('scroll', materialMenuScrollListener);
+                panelContent?.removeEventListener('scroll', materialMenuScrollListener);
+                materialMenuScrollListener = null;
             }
-        };
-        document.addEventListener('click', close);
-    }, 10);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
 });
 
-
 // ==================== 按钮事件 ====================
-document.getElementById('addBlockBtn').onclick = () => {
+
+function showCreateBlockMenu() {
     const modalDiv = document.createElement('div');
     modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1001';
     modalDiv.innerHTML = `
-        <div class="modal-content" style="max-width:300px; text-align:center;">
-            <h3 style="margin-bottom:1px;">选择方块类型</h3>
-            <button class="modal-btn" id="chooseCubeBtn" style="margin:8px;">❒方块.</button>
-            <button class="modal-btn" id="chooseFlagBtn" style="margin:8px;">🏳️旗帜</button>
-            <button class="modal-btn" id="cancelTypeBtn">☒关闭</button>
+        <div class="modal-content" style="max-width: 320px; padding: 16px 20px; text-align: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <span style="font-size: 18px; font-weight: bold;">选择方块类型</span>
+                <button id="closeTypeMenuBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: inherit;">✕</button>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <div id="createCubeBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit;">❒ 方块</div>
+                <div id="createFlagBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">🏳️ 旗帜</div>
+            </div>
+            <div style="border-top: 1px solid #334155; margin: 12px 0;"></div>
+            <div id="presetBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; font-style: italic; color: inherit;">📁 预设</div>
         </div>
     `;
     document.body.appendChild(modalDiv);
+
     const closeModal = () => modalDiv.remove();
-    const createBlock = (type) => {
-        const defaultM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
-        let base = (type === 'flag') ? "Flag" : "Cube";
-        let id = base, idx = 1;
-        while (blocks.some(b => b.id === id)) id = base + (idx++).toString();
-        const newBlock = new Block(id, defaultM, null, '#aaccff', type);
-        addBlock(newBlock);
-        selectBlock(newBlock);
+    modalDiv.querySelector('#closeTypeMenuBtn').onclick = closeModal;
+    
+    const createCubeBtn = modalDiv.querySelector('#createCubeBtn');
+    const createFlagBtn = modalDiv.querySelector('#createFlagBtn');
+    const presetBtn = modalDiv.querySelector('#presetBtn');
+    
+    // 悬停效果（与预设菜单一致）
+    const addHoverEffect = (el) => {
+        el.addEventListener('mouseenter', () => {
+            el.style.backgroundColor = '#3b82f6';
+            el.style.color = '#0f172a';
+        });
+        el.addEventListener('mouseleave', () => {
+            el.style.backgroundColor = '';
+            el.style.color = '';
+        });
+    };
+    addHoverEffect(createCubeBtn);
+    addHoverEffect(createFlagBtn);
+    addHoverEffect(presetBtn);
+    
+    createCubeBtn.onclick = () => {
+        createBlockOfType('cube');
         closeModal();
     };
-    modalDiv.querySelector('#chooseCubeBtn').onclick = () => createBlock('cube');
-    modalDiv.querySelector('#chooseFlagBtn').onclick = () => createBlock('flag');
-    modalDiv.querySelector('#cancelTypeBtn').onclick = closeModal;
+    createFlagBtn.onclick = () => {
+        createBlockOfType('flag');
+        closeModal();
+    };
+    presetBtn.onclick = () => {
+        closeModal();
+        showPresetMenu();
+    };
+}
+// 实际创建方块的函数（复用原有逻辑）
+function createBlockOfType(type) {
+    const defaultM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
+    let base = (type === 'flag') ? "Flag" : "Cube";
+    let id = base, idx = 1;
+    while (blocks.some(b => b.id === id)) id = base + (idx++).toString();
+    const newBlock = new Block(id, defaultM, null, '#aaccff', type);
+    addBlock(newBlock);
+    selectBlock(newBlock);
+}
+
+// 绑定新建按钮
+document.getElementById('addBlockBtn').onclick = () => {
+    showCreateBlockMenu();
 };
-document.getElementById('fullscreenBtn').onclick = () => toggleFullscreen();
-document.addEventListener('fullscreenchange', () => {
-    const panel = document.getElementById('dataPanel');
-    panel.style.display = document.fullscreenElement ? 'none' : 'flex';
-});
+
+// ==================== 预设模板数据中心 ====================
+const presetTemplates = [
+    {
+        description: "两边一角控制Cube顶面大小",
+        command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=-v.scy_or * v.scy_rot; v.yrot=0; v.zrot=90; v.scale=v.d1/10; v.extend_scale=v.d2/v.d1; v.extend_xrot=0; v.extend_yrot=0.5*math.atan2(2*v.R12,v.R11-v.R22); v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.l1=10; v.l2=10; v.xita=39.1; v.first=math.pow(v.l1,2); v.B=math.pow(v.l2,2); v.C=v.l1*v.l2*math.cos(v.xita); v.det=v.first*v.B-math.pow(v.C,2); v.D=math.sqrt(v.det); v.T=math.sqrt(v.first+v.B+2*v.D); v.R11=(v.first+v.D)/v.T; v.R12=v.C/v.T; v.R22=(v.B+v.D)/v.T; v.c=math.cos(v.extend_yrot); v.scale_sin=math.sin(v.extend_yrot); v.d1=v.c*v.c*v.R11+2*v.c*v.scale_sin*v.R12+v.scale_sin*v.scale_sin*v.R22; v.d2=v.scale_sin*v.scale_sin*v.R11-2*v.c*v.scale_sin*v.R12+v.c*v.c*v.R22; v.rotatez=0; v.rotatey=0; v.scy_sy=v.extend_scale*math.cos(v.extend_yrot)*math.cos(v.extend_yrot); v.scy_y=math.sin(v.extend_yrot)*math.sin(v.extend_yrot); v.scy_division=(-v.scy_sy-v.scy_y) / math.sqrt(v.scy_sy*v.extend_scale+v.scy_y); v.scy_rot=180-math.acos(v.scy_division); v.scy_or=(90 - v.xita)/math.abs(v.xita - 90); v.rotatex=0; '方块编号：Cube'; "`
+    },
+    {
+        description: "两边一角控制2DのCube大小",
+        command: `待完善`
+    },
+    {
+        description: "旗帜杆 根部为旋转中心",
+        command: `待完善`
+    }
+    // 添加新预设只需在此数组中增加对象即可
+];
+
+// 显示预设选择菜单
+function showPresetMenu() {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1002';
+    
+    let itemsHtml = '';
+    for (let i = 0; i < presetTemplates.length; i++) {
+        const preset = presetTemplates[i];
+        itemsHtml += `
+            <div class="preset-item" data-index="${i}" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #334155;">
+                <div style="font-size: 14px;">${escapeHtml(preset.description)}</div>
+                <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">双击导入</div>
+            </div>
+        `;
+    }
+    
+    modalDiv.innerHTML = `
+        <div class="modal-content" style="max-width: 400px; padding: 16px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span style="font-size: 18px; font-weight: bold;">选中并创建预设</span>
+                <button id="closePresetMenuBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: inherit;">✕</button>
+            </div>
+            <div id="presetList" style="max-height: 400px; overflow-y: auto;">
+                ${itemsHtml}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+    
+    const closeModal = () => modalDiv.remove();
+    modalDiv.querySelector('#closePresetMenuBtn').onclick = closeModal;
+    
+    const presetItems = modalDiv.querySelectorAll('.preset-item');
+    presetItems.forEach(item => {
+        item.addEventListener('dblclick', (e) => {
+            const idx = parseInt(item.dataset.index);
+            const preset = presetTemplates[idx];
+            if (preset && preset.command) {
+                importFromCommands(preset.command);  // 使用已有的导入函数
+                closeModal();
+            }
+        });
+        item.addEventListener('mouseenter', () => {
+            item.style.backgroundColor = '#3b82f6';
+            item.style.color = '#0f172a';
+        });
+        item.addEventListener('mouseleave', () => {
+            item.style.backgroundColor = '';
+            item.style.color = '';
+        });
+    });
+}
+
 document.getElementById('hideNameBtn').addEventListener('click', () => {
     hideNames = !hideNames;
     blocks.forEach(b => { if (b.label) b.label.visible = !hideNames; });
@@ -1963,7 +2515,8 @@ scene.background = new THREE.Color(0x030617);
 scene.fog = new THREE.FogExp2(0x030617, 0.008);
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(8, 6, 10);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0); // 完全透明
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true; // 如需关闭阴影可改为 false
 container.appendChild(renderer.domElement);
@@ -1988,6 +2541,17 @@ controls.touchZoom = true;
 controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
 controls.listenToKeyEvents(window);
 
+// 监听窗口尺寸变化，自适应屏幕
+window.addEventListener('resize', onWindowResize, false);
+function onWindowResize() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+    labelRenderer.setSize(width, height);
+}
+
 // 环境光
 const ambient = new THREE.AmbientLight(0x404060, 1);
 scene.add(ambient);
@@ -2005,32 +2569,48 @@ fillLight.decay = 0;
 scene.add(fillLight);
 // ==================== 主题切换 ====================
 let isLightMode = false;
+// 只保留这一个标志变量
+let lightModeBgSet = false;
+
 function applyTheme() {
     const body = document.body;
     if (isLightMode) {
         body.classList.add('light-mode');
-        scene.background = new THREE.Color(0xeef2ff);
+        // 每次浅色模式都设置背景图片（浏览器缓存图片，无需担心重复加载）
+        const bgUrl = 'https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/IMG_20260518_130827.jpg';
+        body.style.backgroundImage = `url('${bgUrl}')`;
+        body.style.backgroundSize = 'cover';
+        body.style.backgroundPosition = 'center';
+        body.style.backgroundRepeat = 'no-repeat';
+        body.style.backgroundAttachment = 'fixed';
+        body.style.backgroundColor = '#eef2ff'; // 后备纯色
+        // Three.js 背景透明
+        scene.background = null;
         if (scene.fog) scene.fog = null;
-        ambient.intensity = 1.0;       // 提高环境光
-        mainLight.intensity = 1.0;     // 浅色模式稍亮
+        ambient.intensity = 1.0;
+        mainLight.intensity = 1.0;
         fillLight.intensity = 0.6;
         document.getElementById('modeSwitchBtn').innerHTML = '<span>深色模式</span>';
     } else {
         body.classList.remove('light-mode');
+        // 清除 CSS 背景
+        body.style.backgroundImage = '';
+        body.style.backgroundColor = '';
+        // 恢复 Three.js 深色背景
         scene.background = new THREE.Color(0x030617);
         scene.fog = new THREE.FogExp2(0x030617, 0.008);
-        ambient.intensity = 0.8;       // 深色模式基础亮度
-        mainLight.intensity = 0.85;    // 避免过曝
+        ambient.intensity = 0.8;
+        mainLight.intensity = 0.85;
         fillLight.intensity = 0.5;
         document.getElementById('modeSwitchBtn').innerHTML = '<span>浅色模式</span>';
     }
     updateAxesByDistance(true);
 }
+// 绑定主题切换按钮事件
 document.getElementById('modeSwitchBtn').addEventListener('click', () => {
-    isLightMode = !isLightMode;
-    applyTheme();
+    isLightMode = !isLightMode;   // 翻转状态
+    applyTheme();                  // 应用主题
 });
-
 // 轴线与网格
 let axisGroup = null;
 let showAxes = true, showGrid = true, showTicks = true;
@@ -2199,7 +2779,7 @@ function animate() {
     mainLight.position.copy(camera.position).add(lightDir.clone().multiplyScalar(8));
     mainLight.target.position.copy(camera.position).add(camDir.clone().multiplyScalar(10));
     mainLight.target.updateMatrixWorld();
-   
+
     // 补光位置：从摄像机下方打来（也可固定，这里跟随摄像机位置偏移）
     fillLight.position.copy(camera.position).add(new THREE.Vector3(0, -2, 0));
 
@@ -2234,7 +2814,7 @@ applyTheme();
 const panel = document.getElementById('dataPanel');
 const resizeHandle = document.getElementById('resizeHandle');
 let isDraggingPanel = false, dragStartClientY = 0, dragStartHeight = 0;
- function onPointerDown(e) {
+function onPointerDown(e) {
     e.preventDefault();
     isDraggingPanel = true;
     dragStartClientY = e.clientY;
