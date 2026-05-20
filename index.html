@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器51</title>
+    <title>EX fmbe模拟器</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -2412,15 +2412,16 @@ document.getElementById('addBlockBtn').onclick = () => {
 const presetTemplates = [
     {
         description: "两边一角控制Cube顶面大小",
-        command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=-v.scy_or * v.scy_rot; v.yrot=0; v.zrot=90; v.scale=v.d1/10; v.extend_scale=v.d2/v.d1; v.extend_xrot=0; v.extend_yrot=0.5*math.atan2(2*v.R12,v.R11-v.R22); v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.l1=10; v.l2=10; v.xita=39.1; v.first=math.pow(v.l1,2); v.B=math.pow(v.l2,2); v.C=v.l1*v.l2*math.cos(v.xita); v.det=v.first*v.B-math.pow(v.C,2); v.D=math.sqrt(v.det); v.T=math.sqrt(v.first+v.B+2*v.D); v.R11=(v.first+v.D)/v.T; v.R12=v.C/v.T; v.R22=(v.B+v.D)/v.T; v.c=math.cos(v.extend_yrot); v.scale_sin=math.sin(v.extend_yrot); v.d1=v.c*v.c*v.R11+2*v.c*v.scale_sin*v.R12+v.scale_sin*v.scale_sin*v.R22; v.d2=v.scale_sin*v.scale_sin*v.R11-2*v.c*v.scale_sin*v.R12+v.c*v.c*v.R22; v.rotatez=0; v.rotatey=0; v.scy_sy=v.extend_scale*math.cos(v.extend_yrot)*math.cos(v.extend_yrot); v.scy_y=math.sin(v.extend_yrot)*math.sin(v.extend_yrot); v.scy_division=(-v.scy_sy-v.scy_y) / math.sqrt(v.scy_sy*v.extend_scale+v.scy_y); v.scy_rot=180-math.acos(v.scy_division); v.scy_or=(90 - v.xita)/math.abs(v.xita - 90); v.rotatex=0; '方块编号：Cube'; "`
+        command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'block：钻石块'; v.xpos=0; v.ypos=0; v.zpos=0; v.yrot=0; v.zrot=90; v.extend_xrot=0; v.xbasepos=0.5; v.ybasepos=0; v.zbasepos=0; v.l1=2.16; v.l2=1.43; v.xita=136.43; v.rotatez=0; v.rotatey=0; v.rotatex=0; v.first=math.pow(v.l1*10,2); v.B=math.pow(v.l2*10,2); v.C=100*v.l1*v.l2*math.cos(v.xita); v.scy_or=(90 - v.xita)/math.abs(v.xita - 90); v.det=v.first*v.B-math.pow(v.C,2); v.D=math.sqrt(v.det); v.T=math.sqrt(v.first+v.B+2*v.D); v.R11=(v.first+v.D)/v.T; v.R12=v.C/v.T; v.R22=(v.B+v.D)/v.T; v.extend_yrot=0.5*math.atan2(2*v.R12,v.R11-v.R22); v.c=math.cos(v.extend_yrot); v.scale_sin=math.sin(v.extend_yrot); v.scy_y=math.sin(v.extend_yrot)*math.sin(v.extend_yrot); v.d1=v.c*v.c*v.R11+2*v.c*v.scale_sin*v.R12+v.scale_sin*v.scale_sin*v.R22; v.d2=v.scale_sin*v.scale_sin*v.R11-2*v.c*v.scale_sin*v.R12+v.c*v.c*v.R22; v.scale=v.d1/10; v.extend_scale=v.d2/v.d1; v.scy_sy=v.extend_scale*math.cos(v.extend_yrot)*math.cos(v.extend_yrot); v.scy_division=(-v.scy_sy-v.scy_y) / math.sqrt(v.scy_sy*v.extend_scale+v.scy_y); v.scy_rot=180-math.acos(v.scy_division); v.xrot=-v.scy_or * v.scy_rot;'方块编号：Cube1'; "`
     },
     {
         description: "两边一角控制2DのCube大小",
-        command: `待完善`
+        command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=0; v.yrot=0; v.zrot=0; v.scale=v.S1/(1+v.k); v.extend_scale=0.0001; v.extend_xrot=math.asin(math.sqrt(math.abs(v.k))); v.extend_yrot=0.5*math.atan2(2*v.r12,v.r11-v.r22); v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.l1=10; v.l2=10; v.xita=90; v.a=math.pow(v.l1,2); v.c=math.pow(v.l2,2); v.cos=math.cos(v.xita); v.b=v.l1*v.l2*v.cos; v.detG=v.a*v.c-v.b*v.b; v.sG=math.sqrt(math.abs(v.detG)); v.tG=math.sqrt(v.a+v.c+2*v.sG); v.r11=(v.a+v.sG)/v.tG; v.r12=v.b/v.tG; v.r22=(v.c+v.sG)/v.tG; v.S1=v.r11+v.r22; v.D=v.r11*v.r22-v.r12*v.r12+0.000001; v.T=v.S1*v.S1/v.D; v.k=(v.T-2-math.sqrt(math.abs(v.T*v.T-4*v.T)))/2; '方块编号：新方块'; "
+两边一角控制平面大小（不完善）`
     },
     {
         description: "旗帜杆 根部为旋转中心",
-        command: `待完善`
+        command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'方块类型：旗帜'; v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=3; v.yrot=0; v.zrot=180; v.scale=1; v.extend_scale=1; v.extend_xrot=-90; v.extend_yrot=0; v.xbasepos=-0.178575; v.ybasepos=-0.33571425; v.zbasepos=-0.5464285; '方块编号：Flag'; "旗帜`
     }
     // 添加新预设只需在此数组中增加对象即可
 ];
