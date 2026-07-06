@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器</title>
+    <title>EX fmbe模拟器v.1.1</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -83,8 +83,26 @@ body.light-mode .tool-btn, body.light-mode .skew-btn, body.light-mode .inc-btn, 
 body.light-mode .tool-btn:hover, body.light-mode .skew-btn:hover, body.light-mode .inc-btn:hover, body.light-mode .block-menu-btn:hover { background: linear-gradient(135deg, #ffffff, #e2e8f0); transform: skewX(-12deg) translateY(-1px); }
 body.light-mode .axis-controls { background: #e9eef3; border: 1px solid #cbd5e1; }
 body.light-mode .control-item { background: #d9e2ef; color: #0f172a; }
+body .settings-toggle-btn, body.light-mode .settings-toggle-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(15,23,42,0.85); color: #cbd5e6; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transform: skewX(-5deg); transition: background 0.2s, transform 0.2s; }
+body.light-mode .settings-toggle-btn { background: rgba(255,255,255,0.75); color: #0f172a; border-color: rgba(0,0,0,0.08); }
+body .settings-toggle-btn span, body.light-mode .settings-toggle-btn span { display:inline-block; transform: skewX(5deg); }
+.panel-content { position: relative; }
+.ui-settings-panel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%) skewX(-5deg); width: 300px; background: rgba(10,15,26,0.95); border: 1px solid #3b82f6; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(10px); padding: 10px; z-index: 1010; }
+body.light-mode .ui-settings-panel { background: rgba(255,255,255,0.9); border-color: #cbd5e1; }
+.ui-settings-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(15,23,42,0.8); border-radius: 10px; transform: skewX(-5deg); cursor: pointer; }
+body.light-mode .ui-settings-item { background: rgba(255,255,255,0.9); }
+.ui-settings-item span { display: inline-block; transform: skewX(5deg); color: #e2e8f0; font-size: 13px; line-height: 1.3; }
+body.light-mode .ui-settings-item span { color: #0f172a; }
+.ui-checkbox { width: 18px; height: 18px; border-radius: 6px; border: 1px solid #cbd5e6; background: rgba(255,255,255,0.1); cursor: pointer; transform: skewX(-5deg); }
+.ui-checkbox { width: 18px; height: 18px; border-radius: 6px; border: 1px solid #cbd5e6; background: rgba(255,255,255,0.03); cursor: pointer; transform: skewX(-5deg); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+.ui-checkbox::after { content: '\2713'; display: inline-block; line-height: 1; opacity: 0; transform: skewX(5deg) scale(0.8); transition: transform 0.12s ease, opacity 0.12s ease; color: #16a34a; }
+.ui-checkbox.checked { background: rgba(22,163,74,0.08); border-color: #16a34a; color: #16a34a; }
+.ui-checkbox.checked::after { opacity: 1; transform: skewX(5deg) scale(1); }
+body.light-mode .ui-checkbox { border-color: #94a3b8; background: rgba(255,255,255,0.85); }
+body.light-mode .ui-checkbox.checked { background: rgba(16,185,129,0.12); border-color: #10b981; color: #10b981; }
 body.light-mode .control-item label { color: #0f172a; }
 body.light-mode .block-dropdown-item:hover { background: #3b82f6; color: white; }
+body.light-mode .block-dropdown-item.selected { background: #3b82f6; color: #0f172a; border-radius: 0; }
 body.light-mode .assignment-input.constant-input { background: linear-gradient(135deg, #1e4a76, #3b82f6), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; color: white; }
 body.light-mode .assignment-input.non-constant-input { background: linear-gradient(135deg, #6d28d9, #a78bfa), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; color: white; }
 body.light-mode .var-details { background: rgba(248, 250, 252, 0.9); border-top-color: #d1d9e6; }
@@ -110,17 +128,113 @@ body.light-mode .material-menu .menu-option:hover { background: #e2e8f0; }
 body .cmd-preview { background: #0a0f1a; color: #4ade80; padding: 12px; border-radius: 16px; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border: 1px solid #2a3a5a; }
 body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px solid #cbd5e1; }
 
-/* 3D容器 */
+/* 全屏退出按钮：只在全屏时显示 */
+.fullscreen-exit-btn {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 10px 24px;
+    background: rgba(15,23,42,0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid #3b82f6;
+    color: white;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    display: none;
+    pointer-events: auto;
+}
+.fullscreen-exit-btn:hover { background: #1e293b; }
+body.light-mode .fullscreen-exit-btn { background: rgba(255,255,255,0.9); color: #0f172a; border-color: #cbd5e1; }
 #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
 .top-bar { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; }
+
+/* 左上角方块列表按钮 */
+.top-left-bar { position: fixed; top: 16px; left: 16px; z-index: 20; display: flex; gap: 8px; pointer-events: auto; }
+.top-left-bar .skew-btn { padding: 8px 14px; font-size: 13px; }
+
+/* 下拉折叠头部 */
+.block-dropdown { position: fixed; background: #162136; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; transform: skewX(-5deg); max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
+.block-dropdown-header { padding: 8px 12px; font-weight: bold; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.block-dropdown-content { max-height: 260px; overflow-y: auto; }
+
+/* 下拉项样式（深/浅色自适应） */
+.block-dropdown .block-dropdown-item {
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #e2e8f0;
+}
+.block-dropdown .block-dropdown-item:hover { background: rgba(59,130,246,0.08); }
+.block-dropdown .dropdown-actions button {
+    background: rgba(0,0,0,0.45);
+    border: none;
+    color: white;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 0;
+    cursor: pointer;
+    transform: skewX(-3deg);
+}
+.block-dropdown .dropdown-actions button span { display:inline-block; transform:skewX(3deg); font-family: Inter, 'PingFang SC','Microsoft YaHei', Arial, sans-serif; }
+.block-dropdown .dropdown-actions .action-para { box-shadow: none; }
+.block-dropdown .dropdown-actions button:hover { opacity: 0.95; }
+
+body.light-mode .block-dropdown { background: #ffffff; border: 1px solid #cbd5e1; color: #0f172a; }
+body.light-mode .block-dropdown .block-dropdown-item { color: #0f172a; }
+body.light-mode .block-dropdown .block-dropdown-item:hover { background: rgba(59,130,246,0.12); }
+body.light-mode .block-dropdown .dropdown-actions button { background: rgba(0,0,0,0.06); color: #0f172a; border: 1px solid #e2e8f0; border-radius: 0; transform: skewX(-3deg); }
+body.light-mode .block-dropdown .dropdown-actions button span { transform:skewX(3deg); font-family: Inter, 'PingFang SC','Microsoft YaHei', Arial, sans-serif; }
+
+/* 分隔线风格 */
+.block-dropdown .divider { height: 1px; background: rgba(51,65,85,0.6); margin: 6px 0; }
+body.light-mode .block-dropdown .divider { background: rgba(0,0,0,0.06); }
 .skew-btn { padding: 8px 20px; font-size: 14px; cursor: pointer; transform: skewX(-12deg); border-radius: 12px; transition: all 0.2s ease; font-weight: bold; }
 .skew-btn span { display: inline-block; transform: skewX(12deg); }
 
 /* 底部面板 */
-.data-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.3); transition: height 0.05s linear; }
-.resize-handle { height: 10px; background: linear-gradient(135deg, #1e4a76, #3b82f6); cursor: ns-resize; touch-action: none; position: relative; border-radius: 0; z-index: 16; flex-shrink: 0; }
-.resize-handle::after { content: "┎┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┒"; position: absolute; left: 50%; top: 4px; transform: translateX(0%); color: white; font-size: 16px; letter-spacing: 6px; font-weight: bold; text-shadow: 0 0 2px #000; pointer-events: none; }
-.panel-content { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; }
+.data-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.3); transition: height 0.05s linear, width 0.05s linear; }
+.data-panel.side-panel { top: 0; bottom: 0; left: auto; right: 0; width: 360px; max-width: 80%; min-width: 5px; height: 100%; min-height: auto; border-radius: 20px 0 0 20px; flex-direction: row; box-shadow: -8px 0 30px rgba(0,0,0,0.3); overflow: visible; }
+.data-panel.side-panel[data-collapsed="true"] .panel-content { display: none; }
+.resize-handle { background: linear-gradient(135deg, #1e4a76, #3b82f6); cursor: ns-resize; touch-action: none; position: relative; border-radius: 0; z-index: 16; flex-shrink: 0; width: 100%; height: 10px; }
+.data-panel.side-panel .resize-handle { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; height: auto; cursor: ew-resize; border-radius: 20px 0 0 20px; }
+.resize-handle::after { content: "︽"; position: absolute; left: 50%; top: -10px; transform: translateX(-50%); color: white; font-size: 16px; letter-spacing: 6px; font-weight: bold; text-shadow: 0 0 2px #000; pointer-events: none; }
+.data-panel.side-panel .resize-handle::after { content: "╎"; top: 50%; left: 50%; transform: translate(-50%, -50%); letter-spacing: 0; font-size: 18px; }
+.panel-content { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; min-width: 0; }
+.data-panel.side-panel .panel-content { padding-top: 72px; }
+.panel-header { display: none; flex-wrap: wrap; gap: 10px; position: absolute; top: 12px; left: 12px; right: 12px; z-index: 20; }
+.data-panel.side-panel .panel-header { display: flex; }
+.panel-control-btn { padding: 8px 14px; font-size: 12px; }
+.data-panel.side-panel[data-narrow="true"] .panel-header { flex-wrap: nowrap !important; overflow-x: auto; width: max-content; min-width: 100%; }
+.data-panel.side-panel[data-narrow="true"] .panel-header .panel-control-btn { flex: 0 0 auto !important; white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .toolbar-integrated { flex-wrap: nowrap !important; overflow-x: auto; width: max-content; min-width: 100%; }
+.data-panel.side-panel[data-narrow="true"] .toolbar-integrated .tool-btn { flex: 0 0 auto !important; white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .toolbar-integrated .tool-btn span { white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .axis-controls { flex-wrap: nowrap !important; overflow-x: auto; width: max-content; min-width: 100%; }
+.data-panel.side-panel[data-narrow="true"] .axis-controls .control-item { flex: 0 0 auto !important; white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .section-title { white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .var-card { min-width: 0 !important; }
+.data-panel.side-panel[data-narrow="true"] .var-header { white-space: nowrap !important; flex-wrap: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .var-header .var-expand { flex: 0 0 auto !important; }
+.data-panel.side-panel[data-narrow="true"] .var-details { white-space: nowrap !important; overflow-x: auto; }
+.data-panel.side-panel[data-narrow="true"] .var-details .assignment-input { white-space: nowrap !important; min-width: auto !important; flex: 0 0 auto !important; }
+.data-panel.side-panel[data-narrow="true"] .batch-three-columns { flex-wrap: nowrap !important; overflow-x: auto; width: max-content; min-width: 100%; }
+.data-panel.side-panel[data-narrow="true"] .batch-column { min-width: auto !important; width: auto !important; }
+.data-panel.side-panel[data-narrow="true"] .batch-column-title { white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .batch-var-header { white-space: nowrap !important; flex-wrap: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .batch-control-row { flex-wrap: nowrap !important; white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="false"] .panel-header,
+.data-panel.side-panel[data-narrow="false"] .toolbar-integrated,
+.data-panel.side-panel[data-narrow="false"] .axis-controls,
+.data-panel.side-panel:not([data-narrow]) .panel-header,
+.data-panel.side-panel:not([data-narrow]) .toolbar-integrated,
+.data-panel.side-panel:not([data-narrow]) .axis-controls { flex-wrap: wrap !important; }
 
 /* 工具栏 */
 .toolbar-integrated { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid rgba(59,130,246,0.5); align-items: center; }
@@ -128,7 +242,7 @@ body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px 
 .tool-btn span { display: inline-block; transform: skewX(12deg); }
 
 /* 轴线控件 */
-.axis-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 8px 14px; border-radius: 16px; transform: skewX(-4deg); }
+.axis-controls { position: relative; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 8px 14px; border-radius: 16px; transform: skewX(-4deg); }
 .control-item { display: inline-flex; align-items: center; gap: 6px; background: rgba(59,130,246,0.15); padding: 3px 12px; border-radius: 24px; transform: skewX(4deg); font-size: 12px; }
 .control-item input { accent-color: #3b82f6; }
 .block-menu-btn { transform: skewX(-12deg); padding: 6px 18px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-size: 13px; margin-bottom: 12px; transition: 0.2s; }
@@ -136,7 +250,7 @@ body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px 
 /* 下拉菜单 */
 .block-dropdown { position: fixed; background: #162136; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; transform: skewX(-5deg); max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
 .block-dropdown-item { padding: 8px 16px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: 0.1s; color: #e2e8f0; }
-.block-dropdown-item.selected { background: #3b82f6; color: #0f172a; }
+.block-dropdown-item.selected { background: #3b82f6; color: #0f172a; border-radius: 0; }
 .dropdown-actions { display: flex; gap: 8px; }
 .dropdown-actions button { background: rgba(0,0,0,0.5); border: none; color: white; font-size: 12px; padding: 2px 8px; border-radius: 20px; cursor: pointer; transition: 0.1s; }
 .dropdown-actions button:hover { background: #f43f5e; }
@@ -168,8 +282,8 @@ body.light-mode .variables-left { border-right-color: rgba(100,116,139,0.4); }
 
 /* 滑块 */
 .slider-container { margin: 8px 0; }
-input[type="range"] { width: 100%; height: 8px; -webkit-appearance: none; background: #334155; border-radius: 4px; }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #3b82f6; cursor: pointer; border-radius: 50%; box-shadow: 0 0 6px #3b82f6; transition: 0.1s; }
+input[type="range"] { width: 100%; height: 8px; appearance: none; -webkit-appearance: none; background: #334155; border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; background: #3b82f6; cursor: pointer; border-radius: 50%; box-shadow: 0 0 6px #3b82f6; transition: 0.1s; }
 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .range-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
 .range-item { padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; transform: skewX(-8deg); border-radius: 20px; background: #1e293b; color: #cbd5e1; }
@@ -178,7 +292,31 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
 /* 模态框 */
 .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #162136; border-radius: 24px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; border: 1px solid #3b82f6; box-shadow: 0 20px 35px rgba(0,0,0,0.5); color: #e2e8f0; }
+.modal-content { background: var(--modal-bg-grayscale, #162136); border-radius: 24px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; border: 1px solid #3b82f6; box-shadow: 0 20px 35px rgba(0,0,0,0.5); color: #e2e8f0; }
+:root { --modal-bg-grayscale: #162136; }
+
+/* data panel 背景覆盖层，不影响面板内控件颜色 */
+#dataPanelBgOverlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; border-radius: 20px 20px 0 0; }
+.data-panel > .panel-content { position: relative; z-index: 1; }
+
+/* Canvas 背景与工具栏背景覆盖层 */
+#canvasBgOverlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; background-size: cover; background-position: center; }
+.toolbar-bg-overlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; border-radius: inherit; background-size: cover; background-position: center; }
+.toolbar-integrated, .top-bar { position: relative; }
+.toolbar-integrated > .toolbar-bg-overlay, .top-bar > .toolbar-bg-overlay { z-index: 0; }
+.toolbar-integrated * , .top-bar * { position: relative; z-index: 1; }
+
+/* 过渡动画 */
+#canvasBgOverlay, #dataPanelBgOverlay, .toolbar-bg-overlay { transition: opacity 320ms ease, filter 320ms ease, background 320ms ease; opacity: 0; }
+.modal-content { transition: background 320ms ease, color 200ms ease; }
+.ui-settings-panel { transition: opacity 220ms ease, transform 220ms ease; }
+
+/* 灰度滑块禁用时样式（深色模式下显示为黑色不可拖动） */
+#grayscaleRange.grayscale-disabled { opacity: 0.85; }
+#grayscaleRange.grayscale-disabled::-webkit-slider-thumb { background: #000; border: 2px solid #111; }
+#grayscaleRange.grayscale-disabled::-moz-range-thumb { background: #000; border: 2px solid #111; }
+#grayscaleRange::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: 2px solid #0f172a; }
+#grayscaleRange::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: 2px solid #0f172a; }
 .command-card { background: #1e293b; border-radius: 16px; margin-bottom: 16px; padding: 12px; border-left: 4px solid #3b82f6; }
 .command-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .block-id-badge { font-weight: bold; background: #0f172a; color: #60a5fa; padding: 4px 14px; border-radius: 40px; font-size: 12px; border: 1px solid #3b82f6; }
@@ -263,33 +401,290 @@ body.light-mode {
     transition: 0.1s;
     font-size: 13px;
 }
+/* ========== 更新日志弹窗 ========== */
+.changelog-modal .modal-content {
+    max-width: 640px;
+    max-height: 75vh;
+    padding: 20px 24px 24px;
+}
+.changelog-modal .modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3b82f6;
+    color: #60a5fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+body.light-mode .changelog-modal .modal-title {
+    color: #1e293b;
+    border-bottom-color: #3b82f6;
+}
+.changelog-modal .modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: color 0.2s;
+    padding: 0 4px;
+}
+.changelog-modal .modal-close-btn:hover {
+    color: #f43f5e;
+}
+body.light-mode .changelog-modal .modal-close-btn {
+    color: #64748b;
+}
+body.light-mode .changelog-modal .modal-close-btn:hover {
+    color: #e11d48;
+}
+.changelog-list {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.changelog-item {
+    border-bottom: 1px solid rgba(100,116,139,0.2);
+    border-radius: 0;
+}
+body.light-mode .changelog-item {
+    border-bottom-color: rgba(0,0,0,0.08);
+}
+.changelog-item:last-child {
+    border-bottom: none;
+}
+.changelog-date-header {
+    cursor: pointer;
+    padding: 10px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px;
+    transition: background 0.15s;
+    user-select: none;
+}
+.changelog-date-header:hover {
+    background: rgba(59,130,246,0.08);
+}
+body.light-mode .changelog-date-header:hover {
+    background: rgba(59,130,246,0.06);
+}
+.changelog-date-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.changelog-date-text {
+    font-weight: 600;
+    font-size: 15px;
+    color: #e2e8f0;
+}
+body.light-mode .changelog-date-text {
+    color: #0f172a;
+}
+.changelog-version-tag {
+    font-size: 12px;
+    background: #3b82f6;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    opacity: 0.9;
+}
+body.light-mode .changelog-version-tag {
+    background: #3b82f6;
+    color: white;
+}
+.changelog-toggle-icon {
+    font-size: 14px;
+    color: #94a3b8;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+.changelog-toggle-icon.open {
+    transform: rotate(180deg);
+}
+.changelog-body {
+    padding: 0 8px 12px 8px;
+    display: none;
+    animation: fadeSlide 0.2s ease;
+}
+.changelog-body.open {
+    display: block;
+}
+@keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.changelog-body ul {
+    margin: 4px 0 0 0;
+    padding-left: 22px;
+    list-style-type: disc;
+}
+.changelog-body li {
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 2px 0;
+    color: #cbd5e6;
+}
+body.light-mode .changelog-body li {
+    color: #1e293b;
+}
+.changelog-empty {
+    text-align: center;
+    padding: 30px 0;
+    color: #94a3b8;
+    font-size: 14px;
+}
+.changelog-modal .modal-footer {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(100,116,139,0.2);
+    display: flex;
+    justify-content: flex-end;
+}
+body.light-mode .changelog-modal .modal-footer {
+    border-top-color: rgba(0,0,0,0.08);
+}
+.changelog-modal .modal-footer .modal-btn {
+    padding: 6px 24px;
+    font-size: 13px;
+}
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 500px) {
+    .changelog-modal .modal-content {
+        max-width: 70vw;
+        max-height: 85vh;
+        padding: 16px 20px;
+    }
+    .changelog-modal .modal-title {
+        font-size: 20px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+    }
+    .changelog-list {
+        max-height: 50vh;
+    }
+    .changelog-date-header {
+        padding: 6px 6px;
+    }
+    .changelog-date-text {
+        font-size: 13px;
+    }
+    .changelog-body li {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+}
+@media (max-width: 480px) {
+    .changelog-modal .modal-content {
+        padding: 16px;
+        max-width: 94%;
+    }
+    .changelog-modal .modal-title {
+        font-size: 20px;
+    }
+    .changelog-date-text {
+        font-size: 13px;
+    }
+    .changelog-version-tag {
+        font-size: 10px;
+        padding: 1px 8px;
+    }
+    .changelog-body li {
+        font-size: 12px;
+    }
+}
+
+/* 悬浮方块名称：响应式自适应，替代原内联超小字体 */
+.block-label {
+    display: inline-block;
+}
+@media (max-width: 480px) {
+    .block-label { display: inline-block; }
+}
+
+/* 内层元素用于应用缩放，避免被 CSS2DRenderer 覆写 */
+.block-label-inner {
+    display: inline-block;
+    transform-origin: center;
+    transition: transform 0.12s linear, opacity 0.12s linear;
+    /* 背景和文本都放在内层，这样 scale 会同时作用于背景 */
+    background: rgba(15,23,42,0.85);
+    color: #a5f3fc;
+    font-weight: bold;
+    border-left: 3px solid #06b6d4;
+    border-radius: 999px;
+    backdrop-filter: blur(4px);
+    white-space: nowrap;
+    /* 响应式字号与内边距 */
+    font-size: clamp(10px, 1.0vw, 14px);
+    padding: clamp(3px, 0.5vw, 6px) clamp(7px, 1.2vw, 10px);
+    transform: skewX(-8deg); /* 保持斜切外观，JS 缩放时会在此基础上合并 */
+}
 </style>
 </head>
 <body>
+<button class="fullscreen-exit-btn" id="fullscreenExitBtn">⛶ 退出全屏</button>
 <div id="canvas-container"></div>
 <div class="top-bar">
+    <button class="skew-btn" id="fullscreenBtn"><span>⛶ 全屏</span></button>
     <button class="skew-btn" id="undoBtn"><span>↩ 撤销</span></button>
     <button class="skew-btn" id="redoBtn"><span>↪ 重做</span></button>
-    <button class="skew-btn" id="fullscreenBtn"><span>⛶ 全屏</span></button>
+</div>
+<div class="top-left-bar">
+    <button class="skew-btn" id="blockListTopBtn"><span>📦 方块列表</span></button>
 </div>
 <div class="data-panel" id="dataPanel">
     <div class="resize-handle" id="resizeHandle"></div>
     <div class="panel-content" id="panelContent">
+        <div class="panel-header">
+            <button class="skew-btn panel-control-btn" id="fullscreenBtnSide"><span>⛶ 全屏</span></button>
+            <button class="skew-btn panel-control-btn" id="undoBtnSide"><span>↩ 撤销</span></button>
+            <button class="skew-btn panel-control-btn" id="redoBtnSide"><span>↪ 重做</span></button>
+        </div>
         <div class="toolbar-integrated">
-            <button class="tool-btn" id="importBtn"><span>导入命令</span></button>
-            <button class="tool-btn" id="exportBtn"><span>输出命令</span></button>
-            <button class="tool-btn" id="materialPresetBtn"><span>add材质</span></button>
-            <button class="tool-btn" id="modeSwitchBtn"><span>深色模式</span></button>
-            <button class="tool-btn" id="addBlockBtn"><span>新建模型</span></button>
-            <button class="tool-btn" id="hideNameBtn"><span>隐藏</span></button>
-            <button class="tool-btn" id="resetViewBtn"><span>重置视角🎥</span></button>
-        </div>
+    <button class="tool-btn" id="importBtn"><span>导入命令</span></button>
+    <button class="tool-btn" id="exportBtn"><span>输出命令</span></button>
+    <button class="tool-btn" id="materialPresetBtn"><span>add材质</span></button>
+    <button class="tool-btn" id="modeSwitchBtn" style="display:none;"><span>深色模式</span></button>
+    <button class="tool-btn" id="addBlockBtn"><span>新建模型</span></button>
+    <button class="tool-btn" id="hideNameBtn"><span>隐藏</span></button>
+    <button class="tool-btn" id="resetViewBtn"><span>重置视角🎥</span></button>
+    <button class="tool-btn" id="changelogBtn"><span>📋 网站日志</span></button>
+</div>
         <div class="axis-controls">
-            <div class="control-item"><input type="checkbox" id="showAxesCheckbox" checked><label>显示轴线</label></div>
-            <div class="control-item"><input type="checkbox" id="showGridCheckbox" checked><label>显示平面</label></div>
-            <div class="control-item"><input type="checkbox" id="showTicksCheckbox" checked><label>显示刻度</label></div>
+            <div class="control-item"><input type="checkbox" id="showAxesCheckbox" checked><label for="showAxesCheckbox">显示轴线</label></div>
+            <div class="control-item"><input type="checkbox" id="showGridCheckbox" checked><label for="showGridCheckbox">显示平面</label></div>
+            <div class="control-item"><input type="checkbox" id="showTicksCheckbox" checked><label for="showTicksCheckbox">显示刻度</label></div>
+            <button class="settings-toggle-btn" id="uiSettingsBtn" type="button"><span>⚙</span></button>
         </div>
-        <button class="block-menu-btn" id="blockMenuBtn"><span>📦 方块列表 ▼</span></button>
+        <button class="block-menu-btn" id="blockMenuBtn" style="display:none;"><span>📦 方块列表 ▼</span></button>
+        <div class="ui-settings-panel" id="uiSettingsPanel" style="display:none;">
+            <div class="ui-settings-item" id="blockListTopLeftSetting">
+                <span>方块列表UI布局在左上角</span>
+                <button class="ui-checkbox checked" id="blockListPositionCheckbox" type="button" aria-pressed="true"></button>
+            </div>
+            <div class="ui-settings-item" id="themeSetting" style="margin-top:8px;">
+                <span>浅色模式</span>
+                <button class="ui-checkbox" id="themeToggleCheckbox" type="button" aria-pressed="false"></button>
+            </div>
+            <div class="ui-settings-item" id="sidePanelSetting" style="margin-top:8px;">
+                <span>数据面板侧边显示</span>
+                <button class="ui-checkbox" id="sidePanelCheckbox" type="button" aria-pressed="false"></button>
+            </div>
+            <div class="ui-settings-item" id="sidePanelWidthSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>数据面板宽度</span><span id="sidePanelWidthLabel">360px</span></div>
+                <input id="sidePanelWidthRange" type="range" min="5" max="640" value="360" style="width:100%;">
+            </div>
+            <div class="ui-settings-item" id="grayscaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span>灰度强度</span><span id="grayscaleValueLabel">0%</span></div>
+                <input id="grayscaleRange" type="range" min="0" max="100" value="0" style="width:100%;">
+            </div>
+        </div>
         <div id="varsContainer" class="variables-container"></div>
         <div id="newVarContainer" style="margin-top: 12px;"></div>
         <div class="info-note">✨ 反馈: 3155929574@qq.com<br></div>
@@ -309,6 +704,20 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
+// 全局错误/未处理 promise 捕获，用于定位类似扩展引起的异步响应通道错误
+window.addEventListener('unhandledrejection', (ev) => {
+    try {
+        console.warn('UnhandledPromiseRejection captured:', ev.reason);
+        // 如果来自扩展，其堆栈或消息常包含 chrome-extension:// 前缀
+        if (ev.reason && ev.reason.stack) console.warn(ev.reason.stack);
+    } catch (e) { console.warn('Error logging unhandledrejection', e); }
+});
+window.addEventListener('error', (ev) => {
+    try {
+        console.warn('Global error captured:', ev.message, ev.filename, ev.lineno, ev.colno);
+    } catch (e) { /* ignore */ }
+});
+
 // ==================== 数学库 ====================
 const angleMath = {
     sin: d => Math.sin(d * Math.PI / 180), cos: d => Math.cos(d * Math.PI / 180), tan: d => Math.tan(d * Math.PI / 180),
@@ -316,6 +725,48 @@ const angleMath = {
     atan2: (y, x) => Math.atan2(y, x) * 180 / Math.PI, sqrt: Math.sqrt, abs: Math.abs, floor: Math.floor, ceil: Math.ceil,
     round: Math.round, pow: Math.pow, exp: Math.exp, log: Math.log, min: Math.min, max: Math.max, PI: Math.PI, E: Math.E
 };
+
+// 更新日志库
+// ==================== 更新日志数据 ====================
+// 按日期从新到旧排列，添加新条目时在数组开头插入
+const changelogData = [
+    {
+        date: "2026-07-06",
+        title: "v1.1 补丁版",
+        items: [
+            "EX fmbe模拟器 v1.1",
+            "添加了设置功能，支持修改部分UI的布局",
+            "添加了横向拉伸预设",
+            "修复灯光曝光问题",
+            "修复线框显示错误问题",
+            "修复旗帜显示错误问题"
+        ]
+    },
+    {
+        date: "2026-07-04",
+        title: "v1.0 正式版",
+        items: [
+            "🎉 正式发布 EX fmbe模拟器 v1.0",
+            "批量修改功能，支持多选方块同时调整参数",
+            "骨骼绑定功能，子方块可跟随父方块移动旋转",
+            "优化3D渲染性能，提升交互流畅度",
+            "修复材质加载在某些情况下的显示问题",
+            "新增'网站日志'功能，记录版本更新历史"
+        ]
+    },
+    {
+        date: "相关信息",
+        title: "About",
+        items: [
+            "使用deepseekAI制作",
+            "用途为查看模型或创建ex版特殊的图形",
+            "贴图来源为原版MC",
+            "鸣谢@小汉西"
+        ]
+    }
+];
+
+
 
 function evaluateExpression(expr, localVarsMap, globalVarsMap) {
     const scope = { math: angleMath };
@@ -740,17 +1191,37 @@ loadTexture(url, presetName = null, skipCreate = false) {
     }
     // 根据 v.scale 的正负切换材质的渲染面，实现负体积效果
 updateMaterialSide() {
-    const scale = this.scope.vars.get('v.scale')?.value ?? 1;
-    const targetSide = scale < 0 ? THREE.BackSide : THREE.FrontSide;
-
-    if (this.type === 'cube' && this.mesh && this.mesh.material) {
-        if (this.mesh.material.side !== targetSide) {
-            this.mesh.material.side = targetSide;
-            this.mesh.material.needsUpdate = true;
+        // 为了保证与实际世界矩阵一致，使用 mesh 的 world 矩阵行列式判断是否发生了奇数次镜像（负体积）
+        let determinant = 1;
+        try {
+            if (this.mesh && this.mesh.matrixWorld) {
+                // 确保 matrixWorld 已更新
+                this.mesh.updateMatrixWorld(true);
+                determinant = this.mesh.matrixWorld.determinant();
+            } else if (this.rootGroup && this.rootGroup.matrixWorld) {
+                this.rootGroup.updateMatrixWorld(true);
+                determinant = this.rootGroup.matrixWorld.determinant();
+            }
+        } catch (e) {
+            determinant = 1;
         }
-    } 
-    else if (this.type === 'flag') {
-        // 旗帜的所有部件（cube1, cube2, cube3）都要同步
+        // 旗帜通常为薄面几何，避免因矩阵镜像导致面不可见，始终使用 DoubleSide
+        if (this.type === 'flag') {
+            for (let i = 0; i < this.meshes.length; i++) {
+                const part = this.meshes[i];
+                if (part && part.material) {
+                    if (part.material.side !== THREE.DoubleSide) {
+                        part.material.side = THREE.DoubleSide;
+                        part.material.needsUpdate = true;
+                    }
+                }
+            }
+            return;
+        }
+
+        const targetSide = (determinant < 0) ? THREE.BackSide : THREE.FrontSide;
+
+        // 将目标 side 应用于相关网格的材质，确保所有部件一致（仅限立方体等需要翻转的类型）
         for (let i = 0; i < this.meshes.length; i++) {
             const part = this.meshes[i];
             if (part && part.material) {
@@ -760,7 +1231,6 @@ updateMaterialSide() {
                 }
             }
         }
-    }
 }
 
     refresh() {
@@ -825,6 +1295,11 @@ updateMaterialSide() {
                 geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
                 const material = new THREE.LineBasicMaterial({ color: 0xffaa00 });
                 this.selectionWireframe = new THREE.LineSegments(geometry, material);
+                // 使用与方块相同的世界矩阵，禁止自动更新以便精确匹配
+                this.selectionWireframe.matrixAutoUpdate = false;
+                // 立即复制当前 world 矩阵，保证初始位置正确
+                this.selectionWireframe.matrix.copy(this.mesh.matrixWorld);
+                this.selectionWireframe.matrixWorldNeedsUpdate = true;
                 scene.add(this.selectionWireframe); // 添加到场景，便于统一更新变换
 
             } else if (this.type === 'flag' && this.cube3Vertices) {
@@ -845,6 +1320,10 @@ updateMaterialSide() {
                 geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
                 const material = new THREE.LineBasicMaterial({ color: 0xffaa00 });
                 this.selectionWireframe = new THREE.LineSegments(geometry, material);
+                // 旗帜线框也使用 mesh 的世界矩阵以保证完全贴合
+                this.selectionWireframe.matrixAutoUpdate = false;
+                this.selectionWireframe.matrix.copy(this.rootGroup.matrixWorld || this.mesh.matrixWorld);
+                this.selectionWireframe.matrixWorldNeedsUpdate = true;
                 scene.add(this.selectionWireframe);
             }
         }
@@ -974,14 +1453,37 @@ function updateAxesVisibility() {
 
 function updateBlockLabel(block) {
     if (!block.label) {
-        const div = document.createElement('div'); div.textContent = block.id;
-        div.style.cssText = 'background:rgba(15,23,42,0.85);padding:1px 8px;font-size:1px;border-left:3px solid #06b6d4;color:#a5f3fc;font-weight:bold;transform:skewX(-8deg);border-radius:40px;backdrop-filter:blur(4px);';
+        const div = document.createElement('div');
+        div.className = 'block-label';
+        const inner = document.createElement('span');
+        inner.className = 'block-label-inner';
+        inner.textContent = block.id;
+        div.appendChild(inner);
         block.label = new CSS2DObject(div); scene.add(block.label);
     }
     block.label.visible = !hideNames;
     const pos = new THREE.Vector3(); block.mesh.matrixWorld.decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
     const scale = block.scope.vars.get('v.scale')?.value ?? 1;
-    block.label.position.copy(pos); block.label.position.y += scale * 0.5 + 0.1;
+    // 设置标签位置并根据摄像机距离动态缩放（近大远小）
+    block.label.position.copy(pos);
+    // 依据标签相对摄像机的距离调整显示缩放
+    const camPos = camera.position;
+    const labelPos = block.label.position;
+    const d = camPos.distanceTo(labelPos);
+    const ref = 6; // 参考距离，可根据需要微调
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const scaleFactor = clamp(ref / Math.max(d, 0.0001), 0.65, 1.4);
+    // 使标签位于方块上方，随缩放适当调整高度
+    block.label.position.y += 0.5 * Math.abs(scaleFactor) + 0.1;
+    const el = block.label.element;
+    if (el) {
+        const inner = el.querySelector('.block-label-inner');
+        if (inner) {
+            // 同时保留斜切并应用缩放：顺序先 skew 再 scale
+            inner.style.transform = `skewX(-8deg) scale(${scaleFactor})`;
+            inner.style.opacity = String(clamp((ref * 1.2) / Math.max(d, 0.0001), 0.5, 1));
+        }
+    }
 }
 
 function duplicateBlock(original) {
@@ -1014,10 +1516,28 @@ function deleteSelectedBlocks() {
 }
 
 function toggleFullscreen() {
-    const p = document.getElementById('dataPanel');
-    if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); p.style.display = 'none'; }
-    else { document.exitFullscreen(); p.style.display = 'flex'; }
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
 }
+
+// 全屏状态变化时自动显示/隐藏数据面板和退出按钮
+document.addEventListener('fullscreenchange', () => {
+    const p = document.getElementById('dataPanel');
+    const exitBtn = document.getElementById('fullscreenExitBtn');
+    if (document.fullscreenElement) {
+        // 进入全屏时不遮挡 3D 场景
+        if (p) p.style.display = 'none';
+        // 仅侧边模式显示退出按钮（供手机触屏使用）
+        if (exitBtn) exitBtn.style.display = (typeof isSidePanelMode !== 'undefined' && isSidePanelMode) ? 'block' : 'none';
+    } else {
+        // 退出全屏（任意方式：按键、手机手势、浏览器控件）恢复面板
+        if (p) p.style.display = '';
+        if (exitBtn) exitBtn.style.display = 'none';
+    }
+});
 
 // ========== 批量修改 ==========
 function applyBatchDelta(varName, delta) {
@@ -1289,6 +1809,8 @@ function renderVarDetails(name, def, sourceId) {
 function renderVariablesForBlock(block) {
     const cont = document.getElementById('varsContainer'), newC = document.getElementById('newVarContainer');
     if (selectedBlocksSet.size > 1) { cont.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`; newC.innerHTML = ''; attachBatchEvents(); return; }
+    // 离开批量修改面板时清理临时的 batchDeltas，已应用的变更保持不变
+    if (batchDeltas && batchDeltas.size > 0) batchDeltas.clear();
     if (!block) { cont.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; newC.innerHTML = ''; return; }
 
     const vars = block.getVarList();
@@ -1599,8 +2121,14 @@ function showBlockDropdown(btn) {
     if (activeDropdown) { activeDropdown.remove(); activeDropdown = null; }
     if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; }
     const menu = document.createElement('div'); menu.className = 'block-dropdown';
+    // header + collapsible content
+    const header = document.createElement('div'); header.className = 'block-dropdown-header';
+    header.innerHTML = ``;
+    const content = document.createElement('div'); content.className = 'block-dropdown-content';
+    menu.appendChild(header);
+
     if (blocks.length === 0) {
-        menu.innerHTML = '<div class="block-dropdown-item">暂无方块</div>';
+        content.innerHTML = '<div class="block-dropdown-item">暂无方块</div>';
     } else {
         // ----- 全选按钮-----
         const allItem = document.createElement('div');
@@ -1625,32 +2153,36 @@ function showBlockDropdown(btn) {
                 scrollListener = null;
             }
         });
-        menu.appendChild(allItem);
+        content.appendChild(allItem);
 
         // 分隔线
         const divider = document.createElement('div');
-        divider.style.height = '1px';
-        divider.style.background = '#334155';
-        divider.style.margin = '4px 0';
-        menu.appendChild(divider);
+        divider.className = 'divider';
+        content.appendChild(divider);
 
         // 原有方块列表
         blocks.forEach(b => {
             const item = document.createElement('div'); item.className = 'block-dropdown-item';
             if (selectedBlocksSet.has(b)) item.classList.add('selected');
-            item.innerHTML = `<span>${b.id} ${selectedBlocksSet.has(b) ? '✓' : ''}</span><div class="dropdown-actions"><button class="copy-block" data-id="${b.id}"> 📄 复制</button><button class="delete-block" data-id="${b.id}"> 🗑 删除</button><button class="bone-block" data-id="${b.id}" style="background:#8b5cf6;">✛</button></div>`;
+            item.innerHTML = `<span>${b.id} ${selectedBlocksSet.has(b) ? '✓' : ''}</span><div class="dropdown-actions"><button class="copy-block action-para" data-id="${b.id}"><span>📄 复制</span></button><button class="delete-block action-para" data-id="${b.id}"><span>🗑 删除</span></button><button class="bone-block action-para" data-id="${b.id}" style="background:#8b5cf6;"><span>✛</span></button></div>`;
             const boneBtn = item.querySelector('.bone-block');
-            boneBtn.addEventListener('dblclick', (e) => { e.stopPropagation(); showParentSelector(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+            if (boneBtn) {
+                const bindParent = (e) => { e.stopPropagation(); showParentSelector(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } };
+                boneBtn.addEventListener('click', bindParent);
+                boneBtn.addEventListener('dblclick', bindParent);
+            }
             const copyBtn = item.querySelector('.copy-block');
             copyBtn.addEventListener('click', (e) => { e.stopPropagation(); duplicateBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
             const deleteBtn = item.querySelector('.delete-block');
             deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); removeBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
-            item.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') return; const isCtrl = e.ctrlKey || e.metaKey; toggleBlockSelection(b, isCtrl); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+            item.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') return; const isMulti = e.ctrlKey || e.metaKey || e.shiftKey; toggleBlockSelection(b, isMulti); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
             item.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleBlockSelection(b, true); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
-            menu.appendChild(item);
+            content.appendChild(item);
         });
     }
+    menu.appendChild(content);
     document.body.appendChild(menu); activeDropdown = menu;
+    // header 本身不再包含折叠按钮；通过顶部按钮控制展示/隐藏
     const rect = btn.getBoundingClientRect();
     menu.style.left = rect.left + 'px'; menu.style.top = (rect.bottom + 5) + 'px';
     if (parseInt(menu.style.left) + menu.offsetWidth > window.innerWidth) menu.style.left = (window.innerWidth - menu.offsetWidth - 10) + 'px';
@@ -1673,7 +2205,17 @@ function showParentSelector(child) {
     menu.style.backdropFilter = 'blur(8px)';
     menu.style.border = isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid #3b82f6';
     menu.innerHTML = `<div style="padding:8px 12px;border-bottom:1px solid ${isLight?'#cbd5e1':'#334155'};color:${textColor};">请选择父级方块 (双击)</div>`;
-    candidates.forEach(p => { const opt = document.createElement('div'); opt.className = 'block-dropdown-item'; opt.style.color = textColor; opt.textContent = p.id; opt.addEventListener('dblclick', () => { bindBone(child, p); menu.remove(); }); menu.appendChild(opt); });
+    candidates.forEach(p => {
+        const opt = document.createElement('div');
+        opt.className = 'block-dropdown-item';
+        opt.style.color = textColor;
+        opt.style.cursor = 'pointer';
+        opt.textContent = p.id;
+        const doBind = (e) => { e.stopPropagation(); bindBone(child, p); menu.remove(); };
+        opt.addEventListener('click', doBind);
+        opt.addEventListener('dblclick', doBind);
+        menu.appendChild(opt);
+    });
     const cancel = document.createElement('div'); cancel.className = 'block-dropdown-item'; cancel.style.color = textColor; cancel.textContent = '取消'; cancel.addEventListener('click', ()=>menu.remove());
     menu.appendChild(cancel); document.body.appendChild(menu);
 }
@@ -2422,6 +2964,10 @@ const presetTemplates = [
     {
         description: "旗帜杆 根部为旋转中心",
         command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'方块类型：旗帜'; v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=3; v.yrot=0; v.zrot=180; v.scale=1; v.extend_scale=1; v.extend_xrot=-90; v.extend_yrot=0; v.xbasepos=-0.178575; v.ybasepos=-0.33571425; v.zbasepos=-0.5464285; '方块编号：Flag'; "旗帜`
+    },
+    {
+        description: "x/z拉伸预设ey=0/90",
+        command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'block：绿宝石块'; v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=0; v.yrot=0; v.zrot=0; v.extend_xrot=0; v.extend_yrot=180; v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.h=7.74; v.m=3.41; v.extend_scale=v.m/v.h; v.scale=v.m/v.extend_scale;'方块编号：Cube'; "`
     }
     // 添加新预设只需在此数组中增加对象即可
 ];
@@ -2492,10 +3038,437 @@ document.getElementById('resetViewBtn').addEventListener('click', () => {
     controls.target.set(0, 0, 0);
     controls.update();
 });
+// ==================== 更新日志弹窗 ====================
+function showChangelogModal() {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal changelog-modal';
+    
+    let listHtml = '';
+    if (changelogData.length === 0) {
+        listHtml = '<div class="changelog-empty">暂无更新日志</div>';
+    } else {
+        // 按日期从新到旧排序（若数据已按顺序可省略）
+        const sorted = [...changelogData].sort((a, b) => new Date(b.date) - new Date(a.date));
+        for (const entry of sorted) {
+            const id = 'cl_' + entry.date.replace(/-/g, '');
+            const itemsHtml = entry.items.map(item => `<li>${item}</li>`).join('');
+            listHtml += `
+                <div class="changelog-item" data-id="${id}">
+                    <div class="changelog-date-header" data-target="${id}">
+                        <div class="changelog-date-left">
+                            <span class="changelog-date-text">${entry.date}</span>
+                            ${entry.title ? `<span class="changelog-version-tag">${entry.title}</span>` : ''}
+                        </div>
+                        <span class="changelog-toggle-icon" data-target="${id}">▾</span>
+                    </div>
+                    <div class="changelog-body" id="${id}">
+                        <ul>${itemsHtml}</ul>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    modalDiv.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">
+                <span>📋 更新日志</span>
+                <button class="modal-close-btn" id="changelogCloseBtn">✕</button>
+            </div>
+            <div class="changelog-list">${listHtml}</div>
+            <div class="modal-footer">
+                <button class="modal-btn" id="changelogCloseFooter">关闭</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+    
+    // 关闭弹窗
+    const closeModal = () => modalDiv.remove();
+    modalDiv.querySelector('#changelogCloseBtn').onclick = closeModal;
+    modalDiv.querySelector('#changelogCloseFooter').onclick = closeModal;
+    modalDiv.addEventListener('click', (e) => {
+        if (e.target === modalDiv) closeModal();
+    });
+    
+    // 日期点击展开/收起
+    const headers = modalDiv.querySelectorAll('.changelog-date-header');
+    headers.forEach(header => {
+        header.addEventListener('click', function(e) {
+            const targetId = this.dataset.target;
+            const body = document.getElementById(targetId);
+            const icon = this.querySelector('.changelog-toggle-icon');
+            if (!body) return;
+            const isOpen = body.classList.contains('open');
+            if (isOpen) {
+                body.classList.remove('open');
+                icon.classList.remove('open');
+            } else {
+                body.classList.add('open');
+                icon.classList.add('open');
+            }
+        });
+    });
+}
+
+// 绑定网站日志按钮
+document.getElementById('changelogBtn').addEventListener('click', showChangelogModal);
 document.getElementById('blockMenuBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     showBlockDropdown(e.currentTarget);
 });
+// 绑定顶栏和侧边面板控制按钮
+['fullscreenBtn', 'fullscreenBtnSide'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', toggleFullscreen);
+});
+// 退出全屏按钮
+const fullscreenExitBtn = document.getElementById('fullscreenExitBtn');
+if (fullscreenExitBtn) fullscreenExitBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+});
+['undoBtn', 'undoBtnSide'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', () => undo());
+});
+['redoBtn', 'redoBtnSide'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', () => redo());
+});
+// 绑定左上方按钮，复用相同下拉逻辑
+document.getElementById('blockListTopBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    // 如果已经打开，就关闭；否则打开（实现切换行为）
+    if (activeDropdown) {
+        activeDropdown.remove(); activeDropdown = null; return;
+    }
+    showBlockDropdown(e.currentTarget);
+});
+
+const panel = document.getElementById('dataPanel');
+const topBar = document.querySelector('.top-bar');
+const uiSettingsBtn = document.getElementById('uiSettingsBtn');
+const uiSettingsPanel = document.getElementById('uiSettingsPanel');
+const blockListCheckbox = document.getElementById('blockListPositionCheckbox');
+const sidePanelCheckbox = document.getElementById('sidePanelCheckbox');
+const sidePanelWidthSetting = document.getElementById('sidePanelWidthSetting');
+const sidePanelWidthRange = document.getElementById('sidePanelWidthRange');
+const sidePanelWidthLabel = document.getElementById('sidePanelWidthLabel');
+let isBlockListTopLeft = true;
+let isSidePanelMode = false;
+let sidePanelWidth = 360;
+const MIN_SIDE_PANEL_WIDTH = 5;
+const MAX_SIDE_PANEL_WIDTH = 640;
+
+function applyBlockListPosition() {
+    const topBtn = document.getElementById('blockListTopBtn');
+    const panelBtn = document.getElementById('blockMenuBtn');
+    if (topBtn) topBtn.style.display = isBlockListTopLeft ? '' : 'none';
+    if (panelBtn) panelBtn.style.display = isBlockListTopLeft ? 'none' : '';
+    if (blockListCheckbox) {
+        blockListCheckbox.classList.toggle('checked', isBlockListTopLeft);
+        blockListCheckbox.setAttribute('aria-pressed', isBlockListTopLeft.toString());
+    }
+}
+
+function applySidePanelMode() {
+    if (!panel) return;
+    panel.classList.toggle('side-panel', isSidePanelMode);
+    if (isSidePanelMode) {
+        panel.style.width = `${sidePanelWidth}px`;
+        panel.style.height = '100%';
+        panel.style.left = 'auto';
+        panel.style.right = '0';
+        panel.style.top = '0';
+        panel.style.bottom = '0';
+        panel.style.minHeight = '';
+        panel.style.borderRadius = '20px 0 0 20px';
+        if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'flex';
+    } else {
+        panel.style.width = '';
+        panel.style.height = panel.style.height || '280px';
+        panel.style.left = '0';
+        panel.style.right = '0';
+        panel.style.top = 'auto';
+        panel.style.bottom = '0';
+        panel.style.minHeight = '140px';
+        panel.style.borderRadius = '20px 20px 0 0';
+        if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'none';
+    }
+    if (sidePanelCheckbox) {
+        sidePanelCheckbox.classList.toggle('checked', isSidePanelMode);
+        sidePanelCheckbox.setAttribute('aria-pressed', isSidePanelMode.toString());
+    }
+    if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
+    if (panel) {
+        panel.dataset.collapsed = isSidePanelMode && sidePanelWidth <= 10 ? 'true' : 'false';
+        panel.dataset.narrow = isSidePanelMode && sidePanelWidth < 282 ? 'true' : 'false';
+    }
+    if (topBar) topBar.style.display = isSidePanelMode ? 'none' : 'flex';
+    try { localStorage.setItem('ui_side_panel_mode', isSidePanelMode ? '1' : '0'); } catch (e) {}
+    try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
+    if (uiSettingsPanel && uiSettingsPanel.style.display === 'block') {
+        positionUISettingsPanel();
+    }
+}
+
+function toggleSidePanelMode(e) {
+    if (e) e.stopPropagation();
+    isSidePanelMode = !isSidePanelMode;
+    applySidePanelMode();
+}
+function setSidePanelWidth(value) {
+    const width = Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(MAX_SIDE_PANEL_WIDTH, Number(value) || sidePanelWidth));
+    sidePanelWidth = width;
+    if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
+    if (sidePanelWidthRange) sidePanelWidthRange.value = sidePanelWidth;
+    if (panel && isSidePanelMode) {
+        panel.style.width = `${sidePanelWidth}px`;
+        panel.dataset.collapsed = sidePanelWidth <= 10 ? 'true' : 'false';
+        panel.dataset.narrow = sidePanelWidth < 282 ? 'true' : 'false';
+    }
+    try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
+}
+
+function toggleBlockListPosition(e) {
+    if (e) e.stopPropagation();
+    isBlockListTopLeft = !isBlockListTopLeft;
+    applyBlockListPosition();
+}
+window.toggleBlockListPosition = toggleBlockListPosition;
+
+function toggleUISettingsPanel(e) {
+    if (e) e.stopPropagation();
+    if (!uiSettingsPanel) return;
+    const show = uiSettingsPanel.style.display !== 'block';
+    uiSettingsPanel.style.display = show ? 'block' : 'none';
+    if (show) {
+        // 确保面板脱离可能造成 stacking context 的父容器
+        try {
+            if (uiSettingsPanel.parentElement !== document.body) document.body.appendChild(uiSettingsPanel);
+        } catch (err) { /* ignore */ }
+        positionUISettingsPanel();
+    }
+}
+window.toggleUISettingsPanel = toggleUISettingsPanel;
+
+function positionUISettingsPanel() {
+    const panel = document.getElementById('uiSettingsPanel');
+    const btn = document.getElementById('uiSettingsBtn');
+    if (!panel || !btn) return;
+    const rect = btn.getBoundingClientRect();
+    const gap = 8;
+    panel.style.position = 'fixed';
+    panel.style.zIndex = 9999;
+    panel.style.pointerEvents = 'auto';
+    panel.style.maxWidth = '320px';
+    if (isSidePanelMode) {
+        const panelWidth = panel.offsetWidth || 320;
+        const left = Math.max(8, rect.left - panelWidth - gap);
+        panel.style.left = `${left}px`;
+        panel.style.top = `${Math.max(8, rect.top)}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.transform = 'none';
+    } else {
+        panel.style.left = '50%';
+        panel.style.transform = 'translateX(-50%) skewX(-5deg)';
+        panel.style.bottom = `${Math.max(8, window.innerHeight - rect.bottom + gap)}px`;
+        panel.style.top = 'auto';
+        panel.style.right = 'auto';
+    }
+}
+
+window.addEventListener('resize', () => { positionUISettingsPanel(); });
+
+// 主题与灰度控件行为
+let isLightMode = false;
+let lightModeBgSet = false;
+const themeCheckbox = document.getElementById('themeToggleCheckbox');
+const grayscaleRange = document.getElementById('grayscaleRange');
+const grayscaleLabel = document.getElementById('grayscaleValueLabel');
+// 隐藏原有工具栏按钮，使用设置面板内开关
+const modeBtn = document.getElementById('modeSwitchBtn');
+if (modeBtn) modeBtn.style.display = 'none';
+
+// 创建或确保 canvas 背景 overlay 与 toolbar 背景 overlay
+function ensureOverlays() {
+    const container = document.getElementById('canvas-container');
+    if (container) {
+        let cbg = document.getElementById('canvasBgOverlay');
+        if (!cbg) {
+            cbg = document.createElement('div');
+            cbg.id = 'canvasBgOverlay';
+            document.body.insertBefore(cbg, container);
+            cbg.style.position = 'fixed';
+            cbg.style.left = '0';
+            cbg.style.top = '0';
+            cbg.style.right = '0';
+            cbg.style.bottom = '0';
+            cbg.style.pointerEvents = 'none';
+            cbg.style.zIndex = '0';
+            cbg.style.backgroundRepeat = 'no-repeat';
+            cbg.style.backgroundSize = 'cover';
+            cbg.style.backgroundPosition = 'center';
+            cbg.style.backgroundImage = document.body.style.backgroundImage || '';
+            cbg.style.backgroundColor = document.body.style.backgroundColor || '#030617';
+            cbg.style.opacity = isLightMode ? '1' : '0';
+        }
+    }
+    // toolbar overlays
+    ['.toolbar-integrated', '.top-bar'].forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+            if (!el.querySelector('.toolbar-bg-overlay')) {
+                const ov = document.createElement('div');
+                ov.className = 'toolbar-bg-overlay';
+                ov.style.position = 'absolute';
+                ov.style.left = '0';
+                ov.style.top = '0';
+                ov.style.right = '0';
+                ov.style.bottom = '0';
+                ov.style.pointerEvents = 'none';
+                ov.style.zIndex = '0';
+                ov.style.background = window.getComputedStyle(el).background || '';
+                ov.style.backgroundSize = 'cover';
+                ov.style.backgroundPosition = 'center';
+                ov.style.opacity = isLightMode ? '1' : '0';
+                el.insertBefore(ov, el.firstChild);
+                el.style.position = el.style.position || 'relative';
+            }
+        });
+    });
+}
+ensureOverlays();
+
+function setGrayscale(percent) {
+    const p = Math.max(0, Math.min(100, Number(percent)||0));
+    ensureOverlays();
+    const canvasBg = document.getElementById('canvasBgOverlay');
+    const dataPanel = document.getElementById('dataPanel');
+
+    // 深色模式：滑块保持可见但禁用（显示为黑色圆点），灰度不生效
+    if (!isLightMode) {
+        if (grayscaleRange) { grayscaleRange.disabled = true; grayscaleRange.classList.add('grayscale-disabled'); }
+        if (canvasBg) canvasBg.style.filter = '';
+        if (dataPanel) {
+            const bg = document.getElementById('dataPanelBgOverlay'); if (bg) bg.style.background = '';
+        }
+        document.documentElement.style.setProperty('--modal-bg-grayscale', '#162136');
+        if (grayscaleLabel) {
+            const saved = parseInt(localStorage.getItem('ui_grayscale') || '0', 10);
+            grayscaleLabel.textContent = (isNaN(saved) ? 0 : saved) + '%';
+        }
+        return;
+    }
+
+    // 浅色模式：启用滑块
+    if (grayscaleRange) { grayscaleRange.disabled = false; grayscaleRange.classList.remove('grayscale-disabled'); }
+
+    // Canvas 背景 overlay 应用灰度（不影响 WebGL canvas 内对象）
+    if (canvasBg) canvasBg.style.filter = p ? `grayscale(${p}%)` : '';
+
+    // data panel 背景覆盖强度
+    if (dataPanel) {
+        let bg = document.getElementById('dataPanelBgOverlay');
+        if (!bg) {
+            bg = document.createElement('div'); bg.id = 'dataPanelBgOverlay'; bg.style.position = 'absolute'; bg.style.left = '0'; bg.style.top = '0'; bg.style.right = '0'; bg.style.bottom = '0'; bg.style.pointerEvents = 'none'; bg.style.zIndex = '0'; dataPanel.style.position = dataPanel.style.position || 'fixed'; dataPanel.insertBefore(bg, dataPanel.firstChild); const content = dataPanel.querySelector('.panel-content'); if (content) content.style.position = 'relative';
+        }
+        const alpha = (p/100) * 0.8;
+        bg.style.background = `rgba(128,128,128,${alpha})`;
+        bg.style.opacity = p > 0 ? '1' : '0';
+    }
+
+    // 弹窗灰度：限制为最多 20%
+    const pModal = Math.min(p, 20);
+    const grayRgb = 220 - Math.round((pModal/100) * 180);
+    document.documentElement.style.setProperty('--modal-bg-grayscale', `rgba(${grayRgb},${grayRgb},${grayRgb},0.92)`);
+
+    // 工具栏背景 overlay（允许最高 100%）
+    document.querySelectorAll('.toolbar-integrated, .top-bar').forEach(el => {
+        const ov = el.querySelector('.toolbar-bg-overlay');
+        if (ov) ov.style.filter = p ? `grayscale(${p}%)` : '';
+    });
+
+    if (grayscaleLabel) grayscaleLabel.textContent = p + '%';
+    try { localStorage.setItem('ui_grayscale', String(p)); } catch (e) {}
+}
+
+// 初始化值
+try {
+    const saved = parseInt(localStorage.getItem('ui_grayscale') || '0', 10);
+    if (grayscaleRange) { grayscaleRange.value = isNaN(saved) ? 0 : saved; }
+    setGrayscale(isNaN(saved) ? 0 : saved);
+} catch (e) {}
+
+if (grayscaleRange) {
+    grayscaleRange.addEventListener('input', (e) => { setGrayscale(e.target.value); });
+}
+
+if (themeCheckbox) {
+    themeCheckbox.setAttribute('aria-pressed', String(isLightMode));
+    themeCheckbox.classList.toggle('checked', isLightMode);
+    // 点击切换样式（使用 .checked class）
+    themeCheckbox.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const now = !document.body.classList.contains('light-mode');
+        isLightMode = now;
+        applyTheme();
+        themeCheckbox.classList.toggle('checked', now);
+        themeCheckbox.setAttribute('aria-pressed', String(now));
+        try { localStorage.setItem('ui_light_mode', now ? '1' : '0'); } catch(e){}
+    });
+}
+
+// 恢复上次主题偏好
+try {
+    const lastLight = localStorage.getItem('ui_light_mode');
+    if (lastLight !== null) {
+        isLightMode = lastLight === '1';
+        applyTheme();
+        if (themeCheckbox) {
+            themeCheckbox.classList.toggle('checked', isLightMode);
+            themeCheckbox.setAttribute('aria-pressed', String(isLightMode));
+        }
+    }
+} catch (e) {}
+
+if (uiSettingsBtn) {
+    uiSettingsBtn.addEventListener('click', toggleUISettingsPanel);
+}
+if (blockListCheckbox) {
+    blockListCheckbox.addEventListener('click', toggleBlockListPosition);
+}
+if (sidePanelCheckbox) {
+    sidePanelCheckbox.addEventListener('click', toggleSidePanelMode);
+}
+if (sidePanelWidthRange) {
+    sidePanelWidthRange.addEventListener('input', (e) => { setSidePanelWidth(e.target.value); });
+}
+if (uiSettingsPanel) {
+    uiSettingsPanel.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+document.addEventListener('click', (e) => {
+    if (!uiSettingsPanel) return;
+    const path = e.composedPath ? e.composedPath() : null;
+    if (path) {
+        if (path.some(el => el && el.id === 'uiSettingsPanel' || el && el.id === 'uiSettingsBtn')) return;
+    } else if (e.target instanceof Element && (e.target.closest('#uiSettingsPanel') || e.target.closest('#uiSettingsBtn'))) {
+        return;
+    }
+    uiSettingsPanel.style.display = 'none';
+});
+
+try {
+    const savedSideMode = localStorage.getItem('ui_side_panel_mode');
+    if (savedSideMode !== null) isSidePanelMode = savedSideMode === '1';
+    const savedPanelWidth = parseInt(localStorage.getItem('ui_side_panel_width') || '360', 10);
+    if (!isNaN(savedPanelWidth)) sidePanelWidth = Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(MAX_SIDE_PANEL_WIDTH, savedPanelWidth));
+} catch (e) {}
+applyBlockListPosition();
+applySidePanelMode();
 
 // ==================== 键盘快捷键 ====================
 window.addEventListener('keydown', (e) => {
@@ -2517,9 +3490,16 @@ scene.fog = new THREE.FogExp2(0x030617, 0.008);
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(8, 6, 10);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setClearColor(0x000000, 0); // 完全透明
+renderer.setClearColor(0x000000, 1); // 不透明背景，避免透明穿透导致空白
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true; // 如需关闭阴影可改为 false
+renderer.domElement.style.display = 'block';
+renderer.domElement.style.position = 'absolute';
+renderer.domElement.style.top = '0';
+renderer.domElement.style.left = '0';
+renderer.domElement.style.width = '100%';
+renderer.domElement.style.height = '100%';
+renderer.domElement.style.zIndex = '0';
 container.appendChild(renderer.domElement);
 const labelRenderer = new CSS2DRenderer();
 labelRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -2527,6 +3507,8 @@ labelRenderer.domElement.style.position = 'absolute';
 labelRenderer.domElement.style.top = '0px';
 labelRenderer.domElement.style.left = '0px';
 labelRenderer.domElement.style.pointerEvents = 'none';
+labelRenderer.domElement.style.background = 'transparent';
+labelRenderer.domElement.style.zIndex = '1';
 container.appendChild(labelRenderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
@@ -2569,35 +3551,27 @@ fillLight.position.set(0, -1, 0);
 fillLight.decay = 0;
 scene.add(fillLight);
 // ==================== 主题切换 ====================
-let isLightMode = false;
-// 只保留这一个标志变量
-let lightModeBgSet = false;
-
 function applyTheme() {
     const body = document.body;
     if (isLightMode) {
         body.classList.add('light-mode');
-        // 每次浅色模式都设置背景图片（浏览器缓存图片，无需担心重复加载）
         const bgUrl = 'https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/IMG_20260518_130827.jpg';
         body.style.backgroundImage = `url('${bgUrl}')`;
         body.style.backgroundSize = 'cover';
         body.style.backgroundPosition = 'center';
         body.style.backgroundRepeat = 'no-repeat';
         body.style.backgroundAttachment = 'fixed';
-        body.style.backgroundColor = '#eef2ff'; // 后备纯色
-        // Three.js 背景透明
-        scene.background = null;
-        if (scene.fog) scene.fog = null;
+        body.style.backgroundColor = '#eef2ff';
+        scene.background = new THREE.Color(0xeef2ff);
+        scene.fog = null;
         ambient.intensity = 1.0;
         mainLight.intensity = 1.0;
         fillLight.intensity = 0.6;
         document.getElementById('modeSwitchBtn').innerHTML = '<span>深色模式</span>';
     } else {
         body.classList.remove('light-mode');
-        // 清除 CSS 背景
         body.style.backgroundImage = '';
         body.style.backgroundColor = '';
-        // 恢复 Three.js 深色背景
         scene.background = new THREE.Color(0x030617);
         scene.fog = new THREE.FogExp2(0x030617, 0.008);
         ambient.intensity = 0.8;
@@ -2605,7 +3579,28 @@ function applyTheme() {
         fillLight.intensity = 0.5;
         document.getElementById('modeSwitchBtn').innerHTML = '<span>浅色模式</span>';
     }
+    if (themeCheckbox) {
+        themeCheckbox.classList.toggle('checked', isLightMode);
+        themeCheckbox.setAttribute('aria-pressed', String(isLightMode));
+    }
     updateAxesByDistance(true);
+    try {
+        const cbg = document.getElementById('canvasBgOverlay');
+        if (cbg) {
+            cbg.style.backgroundImage = body.style.backgroundImage || '';
+            cbg.style.backgroundColor = body.style.backgroundColor || (isLightMode ? '#eef2ff' : '#030617');
+            cbg.style.opacity = isLightMode ? '1' : '0';
+        }
+    } catch (e) {}
+    try {
+        const dataOv = document.getElementById('dataPanelBgOverlay');
+        if (dataOv) dataOv.style.opacity = isLightMode ? '1' : '0';
+        document.querySelectorAll('.toolbar-bg-overlay').forEach(ov => ov.style.opacity = isLightMode ? '1' : '0');
+    } catch (e) {}
+    try {
+        const saved = parseInt(localStorage.getItem('ui_grayscale') || '0', 10);
+        setGrayscale(isNaN(saved) ? 0 : saved);
+    } catch (e) {}
 }
 // 绑定主题切换按钮事件
 document.getElementById('modeSwitchBtn').addEventListener('click', () => {
@@ -2696,7 +3691,7 @@ document.getElementById('showTicksCheckbox').addEventListener('change', (e) => {
 // 射线检测与点击选择
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
-let clickTimer = null;
+let clickTimer = null; 
 function onCanvasClick(event) {
     if (event.target.closest('.data-panel') || event.target.closest('.top-bar')) return;
     const rect = renderer.domElement.getBoundingClientRect();
@@ -2716,7 +3711,7 @@ function onCanvasClick(event) {
                 clickTimer = null;
             } else {
                 clickTimer = setTimeout(() => {
-                    toggleBlockSelection(block, event.ctrlKey || event.metaKey);
+                    toggleBlockSelection(block, event.ctrlKey || event.metaKey || event.shiftKey);
                     clickTimer = null;
                 }, 200);
             }
@@ -2790,11 +3785,18 @@ function animate() {
     blocks.forEach(b => updateBlockLabel(b));
     for (let block of selectedBlocksSet) {
         if (block.selectionWireframe && block.selectionWireframe.visible) {
-            const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scale = new THREE.Vector3();
-            block.mesh.matrixWorld.decompose(pos, quat, scale);
-            block.selectionWireframe.position.copy(pos);
-            block.selectionWireframe.quaternion.copy(quat);
-            block.selectionWireframe.scale.copy(scale);
+            // 直接复制方块的世界矩阵到线框，保证完全一致（涵盖复杂变换、父矩阵、缩放符号等）
+            if (block.mesh && block.mesh.matrixWorld) {
+                block.selectionWireframe.matrix.copy(block.mesh.matrixWorld);
+                block.selectionWireframe.matrixWorldNeedsUpdate = true;
+            } else {
+                // 兜底：回退到分解方式
+                const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scale = new THREE.Vector3();
+                block.mesh.matrixWorld.decompose(pos, quat, scale);
+                block.selectionWireframe.position.copy(pos);
+                block.selectionWireframe.quaternion.copy(quat);
+                block.selectionWireframe.scale.copy(scale);
+            }
         }
     }
     renderer.render(scene, camera);
@@ -2812,25 +3814,37 @@ selectBlock(blocks[0]);
 applyTheme();
 
 // 面板拖拽调整高度
-const panel = document.getElementById('dataPanel');
 const resizeHandle = document.getElementById('resizeHandle');
-let isDraggingPanel = false, dragStartClientY = 0, dragStartHeight = 0;
+let isDraggingPanel = false, dragStartClientY = 0, dragStartHeight = 0, dragStartClientX = 0, dragStartWidth = 0;
 function onPointerDown(e) {
     e.preventDefault();
     isDraggingPanel = true;
     dragStartClientY = e.clientY;
     dragStartHeight = panel.offsetHeight;
+    dragStartClientX = e.clientX;
+    dragStartWidth = panel.offsetWidth;
     document.body.style.userSelect = 'none';
-    document.body.style.cursor = 'ns-resize';
+    document.body.style.cursor = isSidePanelMode ? 'ew-resize' : 'ns-resize';
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerUp);
 }
 function onPointerMove(e) {
     if (!isDraggingPanel) return;
-    const dy = e.clientY - dragStartClientY;
-    let newHeight = dragStartHeight - dy;
-    newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight));
-    panel.style.height = newHeight + 'px';
+    if (isSidePanelMode) {
+        const dx = e.clientX - dragStartClientX;
+        let newWidth = dragStartWidth - dx;
+        newWidth = Math.min(MAX_SIDE_PANEL_WIDTH, Math.max(MIN_SIDE_PANEL_WIDTH, newWidth));
+        panel.style.width = newWidth + 'px';
+        sidePanelWidth = newWidth;
+        if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
+        if (sidePanelWidthRange) sidePanelWidthRange.value = sidePanelWidth;
+        panel.dataset.narrow = sidePanelWidth < 282 ? 'true' : 'false';
+    } else {
+        const dy = e.clientY - dragStartClientY;
+        let newHeight = dragStartHeight - dy;
+        newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight));
+        panel.style.height = newHeight + 'px';
+    }
 }
 function onPointerUp() {
     isDraggingPanel = false;
@@ -2838,6 +3852,10 @@ function onPointerUp() {
     document.body.style.cursor = '';
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
+    if (isSidePanelMode) {
+        try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
+    }
+    try { positionUISettingsPanel(); } catch (e) { /* ignore */ }
 }
 resizeHandle.addEventListener('pointerdown', onPointerDown);
 panel.style.height = '280px';
