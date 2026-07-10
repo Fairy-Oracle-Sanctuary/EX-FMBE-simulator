@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器v.1.1</title>
+    <title>EX fmbe模拟器v.2.0</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -553,6 +553,421 @@ body.light-mode .changelog-modal .modal-footer {
     padding: 6px 24px;
     font-size: 13px;
 }
+/* ========== 新布局样式 ========== */
+.new-top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    height: 48px;
+    background: rgba(10,15,26,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #2d3a5e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    pointer-events: auto;
+}
+body.light-mode .new-top-bar {
+    background: rgba(248,250,252,0.88);
+    border-bottom-color: rgba(0,0,0,0.08);
+}
+.new-top-bar-left {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.new-top-bar-right {
+    display: flex;
+    align-items: center;
+}
+.top-dropdown-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.top-dropdown-wrapper + .top-dropdown-wrapper::before {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 18px;
+    background: rgba(100,116,139,0.35);
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+body.light-mode .top-dropdown-wrapper + .top-dropdown-wrapper::before {
+    background: rgba(0,0,0,0.12);
+}
+/* 变换模式工具栏 */
+.her-transform-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 6px;
+}
+.her-mode-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: #94a3b8;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    font-family: inherit;
+}
+.her-mode-btn:hover {
+    color: #e2e8f0;
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.2);
+}
+.her-mode-btn.active {
+    color: #60a5fa;
+    background: rgba(59,130,246,0.15);
+    border-color: rgba(59,130,246,0.35);
+}
+body.light-mode .her-mode-btn {
+    color: #64748b;
+}
+body.light-mode .her-mode-btn:hover {
+    color: #0f172a;
+    background: rgba(59,130,246,0.06);
+}
+body.light-mode .her-mode-btn.active {
+    color: #2563eb;
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.25);
+}
+.top-toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(100,116,139,0.25);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+body.light-mode .top-toolbar-divider {
+    background: rgba(0,0,0,0.08);
+}
+.top-menu-btn {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    transform: none !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    border: none !important;
+    font-weight: 500;
+}
+.top-menu-btn:hover {
+    background: rgba(59,130,246,0.1) !important;
+}
+.top-menu-btn span {
+    transform: none !important;
+}
+.top-dropdown-menu {
+    position: fixed;
+    min-width: 160px;
+    background: rgba(15,23,42,0.96);
+    backdrop-filter: blur(12px);
+    border: 1px solid #3b82f6;
+    border-radius: 12px;
+    padding: 6px 0;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+body.light-mode .top-dropdown-menu {
+    background: rgba(255,255,255,0.96);
+    border-color: #cbd5e1;
+}
+.top-dropdown-menu.open {
+    display: block;
+    animation: topDropdownFadeIn 0.15s ease-out;
+}
+@keyframes topDropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+.top-dropdown-item {
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #e2e8f0;
+    transition: background 0.1s;
+    white-space: nowrap;
+}
+body.light-mode .top-dropdown-item {
+    color: #0f172a;
+}
+.top-dropdown-item:hover {
+    background: rgba(59,130,246,0.15);
+}
+body.light-mode .top-dropdown-item:hover {
+    background: rgba(59,130,246,0.1);
+}
+.top-dropdown-divider {
+    height: 1px;
+    background: rgba(51,65,85,0.5);
+    margin: 4px 0;
+}
+body.light-mode .top-dropdown-divider {
+    background: rgba(0,0,0,0.06);
+}
+/* 方块列表可拖动边框 */
+.side-block-list {
+    resize: none;
+}
+/* 侧边显示时左侧可拖动边框 */
+.side-block-list:not(.side-list-bottom) {
+    border-left: 4px solid rgba(59,130,246,0.15);
+    border-left-width: 4px !important;
+}
+.side-block-list:not(.side-list-bottom):hover {
+    border-left-color: rgba(59,130,246,0.4);
+}
+
+/* 方块列表 - 在3D视图之上叠加渲染 */
+.side-block-list {
+    position: fixed;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    width: 200px;
+    z-index: 25;
+    background: rgba(10,15,26,0.35);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    overflow-y: auto;
+    padding: 8px;
+    pointer-events: auto;
+}
+/* 侧边显示时左侧可拖动边框（需在基类之后） */
+.side-block-list:not(.side-list-bottom) {
+    border-left: 4px solid rgba(59,130,246,0.15);
+    border-left-width: 4px !important;
+}
+.side-block-list:not(.side-list-bottom):hover {
+    border-left-color: rgba(59,130,246,0.4);
+}
+body.light-mode .side-block-list:not(.side-list-bottom) {
+    border-left-color: rgba(0,0,0,0.08) !important;
+}
+/* 底部显示时上方可拖动边框 */
+.side-block-list.side-list-bottom {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 160px;
+    border-top: 4px solid rgba(59,130,246,0.15);
+    border-top-width: 4px !important;
+}
+.side-block-list.side-list-bottom:hover {
+    border-top-color: rgba(59,130,246,0.4);
+}
+body.light-mode .side-block-list.side-list-bottom {
+    border-top-color: rgba(0,0,0,0.08) !important;
+    background: rgba(248,250,252,0.3);
+}
+body.light-mode .side-block-list {
+    background: rgba(248,250,252,0.3);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.side-block-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: #cbd5e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+}
+body.light-mode .side-block-item {
+    color: #1e293b;
+}
+.side-block-item:hover {
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.3);
+}
+.side-block-item.selected {
+    background: rgba(59,130,246,0.2);
+    border-color: #3b82f6;
+}
+body.light-mode .side-block-item.selected {
+    background: rgba(59,130,246,0.12);
+}
+.side-block-item .side-block-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.side-block-item:hover .side-block-actions {
+    opacity: 1;
+}
+.side-block-actions button {
+    background: rgba(0,0,0,0.3);
+    border: none;
+    color: #cbd5e6;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+body.light-mode .side-block-actions button {
+    background: rgba(0,0,0,0.06);
+    color: #0f172a;
+}
+.side-block-actions button:hover {
+    background: #3b82f6;
+    color: white;
+}
+.side-block-all {
+    font-weight: bold;
+    border-bottom: 1px solid rgba(59,130,246,0.3);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+}
+.side-block-list-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #60a5fa;
+    padding: 8px 12px;
+    border-bottom: 1px solid #2d3a5e;
+    margin-bottom: 8px;
+}
+body.light-mode .side-block-list-title {
+    color: #1e293b;
+    border-bottom-color: rgba(0,0,0,0.08);
+}
+/* 新建模型加号按钮 */
+.side-block-new-btn {
+    width: 40px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #60a5fa;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+    line-height: 1;
+}
+.side-block-new-btn:hover {
+    border-color: rgba(59,130,246,0.5);
+    background: rgba(59,130,246,0.08);
+}
+body.light-mode .side-block-new-btn {
+    color: #3b82f6;
+}
+body.light-mode .side-block-new-btn:hover {
+    border-color: rgba(59,130,246,0.4);
+    background: rgba(59,130,246,0.06);
+}
+/* 骨骼绑定按钮 */
+.side-block-bone-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #a78bfa;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+    line-height: 1;
+}
+.side-block-bone-btn:hover {
+    border-color: rgba(139,92,246,0.5);
+    background: rgba(139,92,246,0.08);
+}
+body.light-mode .side-block-bone-btn {
+    color: #7c3aed;
+}
+body.light-mode .side-block-bone-btn:hover {
+    border-color: rgba(124,58,237,0.4);
+    background: rgba(124,58,237,0.06);
+}
+
+/* 新布局模式下隐藏变量操作面板 */
+body.new-layout-active .data-panel {
+    display: none !important;
+}
+body.new-layout-active .top-bar {
+    display: none !important;
+}
+body.new-layout-active .top-left-bar {
+    display: none !important;
+}
+body.new-layout-active .toolbar-integrated #importBtn,
+body.new-layout-active .toolbar-integrated #exportBtn,
+body.new-layout-active .toolbar-integrated #materialPresetBtn,
+body.new-layout-active .toolbar-integrated #resetViewBtn,
+body.new-layout-active .toolbar-integrated #hideNameBtn,
+body.new-layout-active .axis-controls {
+    display: none !important;
+}
+body.new-layout-active .block-menu-btn {
+    display: block !important;
+}
+body.new-layout-active #canvas-container {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    right: auto !important;
+    bottom: auto !important;
+}
+body.new-layout-active .new-top-bar {
+    display: flex !important;
+}
+body.new-layout-active .side-block-list {
+    display: block !important;
+}
+/* 新布局模式隐藏灰度强度 */
+body.new-layout-active #grayscaleSetting {
+    display: none !important;
+}
+/* 新布局全屏时 */
+body.new-layout-active:-webkit-full-screen #canvas-container,
+body.new-layout-active:fullscreen #canvas-container {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+body.new-layout-active:-webkit-full-screen .new-top-bar,
+body.new-layout-active:fullscreen .new-top-bar,
+body.new-layout-active:-webkit-full-screen .side-block-list,
+body.new-layout-active:fullscreen .side-block-list {
+    display: none !important;
+}
+
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
     .changelog-modal .modal-content {
@@ -638,6 +1053,53 @@ body.light-mode .changelog-modal .modal-footer {
 <div class="top-left-bar">
     <button class="skew-btn" id="blockListTopBtn"><span>📦 方块列表</span></button>
 </div>
+<!-- 新布局工具栏 -->
+<div class="new-top-bar" id="newTopBar" style="display:none;">
+    <div class="new-top-bar-left">
+        <div class="top-dropdown-wrapper">
+            <button class="skew-btn top-menu-btn" id="fileMenuBtn"><span>文件</span></button>
+            <div class="top-dropdown-menu" id="fileDropdown">
+                <div class="top-dropdown-item" id="fileImportBtn"><span>导入命令</span></div>
+                <div class="top-dropdown-item" id="fileExportBtn"><span>输出命令</span></div>
+            </div>
+        </div>
+        <div class="top-dropdown-wrapper">
+            <button class="skew-btn top-menu-btn" id="viewMenuBtn"><span>视图</span></button>
+            <div class="top-dropdown-menu" id="viewDropdown">
+                <div class="top-dropdown-item" data-view-action="showAxes"><span>显示轴线</span></div>
+                <div class="top-dropdown-item" data-view-action="showGrid"><span>显示平面</span></div>
+                <div class="top-dropdown-item" data-view-action="showTicks"><span>显示刻度</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" data-view-action="material"><span>add材质</span></div>
+                <div class="top-dropdown-item" data-view-action="resetView"><span>重置视角</span></div>
+                <div class="top-dropdown-item" data-view-action="hideNames"><span>隐藏</span></div>
+            </div>
+        </div>
+        <div class="top-dropdown-wrapper">
+            <button class="skew-btn top-menu-btn" id="actionMenuBtn"><span>操作</span></button>
+            <div class="top-dropdown-menu" id="actionDropdown">
+                <div class="top-dropdown-item" data-action="settings"><span>设置</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" data-action="fullscreen"><span>⛶ 全屏</span></div>
+                <div class="top-dropdown-item" data-action="undo"><span>↩ 撤销</span></div>
+                <div class="top-dropdown-item" data-action="redo"><span>↪ 重做</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" data-action="changelog"><span>📋 网站日志</span></div>
+            </div>
+        </div>
+        <div class="top-toolbar-divider"></div>
+        <!-- 变换模式工具栏 -->
+        <div class="her-transform-toolbar" id="herTransformToolbar">
+            <button class="her-mode-btn" data-mode="origin" title="枢轴"><span>枢轴</span></button>
+            <button class="her-mode-btn" data-mode="base" title="位移"><span>位移</span></button>
+            <button class="her-mode-btn" data-mode="rotate" title="模型旋转"><span>局部旋转</span></button>
+            <button class="her-mode-btn" data-mode="centerRotate" title="局部旋转"><span>模型旋转</span></button>
+            <button class="her-mode-btn" data-mode="scale" title="缩放"><span>缩放</span></button>
+        </div>
+    </div>
+</div>
+<!-- 新布局侧面方块列表 -->
+<div class="side-block-list" id="sideBlockList" style="display:none;"></div>
 <div class="data-panel" id="dataPanel">
     <div class="resize-handle" id="resizeHandle"></div>
     <div class="panel-content" id="panelContent">
@@ -679,6 +1141,18 @@ body.light-mode .changelog-modal .modal-footer {
             <div class="ui-settings-item" id="sidePanelWidthSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>数据面板宽度</span><span id="sidePanelWidthLabel">360px</span></div>
                 <input id="sidePanelWidthRange" type="range" min="5" max="640" value="360" style="width:100%;">
+            </div>
+            <div class="ui-settings-item" id="newLayoutSetting" style="margin-top:8px;">
+                <span>启用新布局&amp;操作方案</span>
+                <button class="ui-checkbox" id="newLayoutCheckbox" type="button" aria-pressed="false"></button>
+            </div>
+            <div class="ui-settings-item" id="worldAxisDispSetting" style="margin-top:8px; display:none;">
+                <span>世界轴位移</span>
+                <button class="ui-checkbox" id="worldAxisDispCheckbox" type="button" aria-pressed="false"></button>
+            </div>
+            <div class="ui-settings-item" id="pivotLinkSetting" style="margin-top:8px; display:none;">
+                <span>枢轴联动模型</span>
+                <button class="ui-checkbox checked" id="pivotLinkCheckbox" type="button" aria-pressed="true"></button>
             </div>
             <div class="ui-settings-item" id="grayscaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;"><span>灰度强度</span><span id="grayscaleValueLabel">0%</span></div>
@@ -731,13 +1205,24 @@ const angleMath = {
 // 按日期从新到旧排列，添加新条目时在数组开头插入
 const changelogData = [
     {
+        date: "2026-07-10",
+        title: "v 2.0 正式版",
+        items: [
+            "EX fmbe模拟器 v2.0",
+            "更新新操作模式",
+            "新增枢轴模式，支持枢轴点移动和联动模型旋转",
+            "鸣谢赞助",
+            "@入窗不是疮 @小阿笙 @没事干的AWA",
+            "注：一赞助人员未留名"
+        ]
+    },
+    {
         date: "2026-07-06",
         title: "v1.1 补丁版",
         items: [
             "EX fmbe模拟器 v1.1",
             "添加了设置功能，支持修改部分UI的布局",
             "添加了横向拉伸预设",
-            "修复灯光曝光问题",
             "修复线框显示错误问题",
             "修复旗帜显示错误问题"
         ]
@@ -761,7 +1246,8 @@ const changelogData = [
             "使用deepseekAI制作",
             "用途为查看模型或创建ex版特殊的图形",
             "贴图来源为原版MC",
-            "鸣谢@小汉西"
+            "鸣谢对本工具做贡献的伙伴",
+            "@小汉西 @1maginer @baby2016 @podencoco @Blng_LIn"
         ]
     }
 ];
@@ -1402,6 +1888,7 @@ function restoreState(state) {
     if (selectedBlock) renderVariablesForBlock(selectedBlock);
     else renderVariablesForBlock(null);
     blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+    if (isNewLayoutMode) renderSideBlockList();
 }
 
 function undo() { const cur = getState(); const prev = history.undo(cur); if (prev) restoreState(prev); }
@@ -1413,6 +1900,7 @@ function addBlock(block, record = true) {
     updateBlockLabel(block);
     if (selectedBlock === null) selectBlock(block);
     if (record) recordAction();
+    if (isNewLayoutMode) renderSideBlockList();
 }
 
 function removeBlock(block) {
@@ -1421,10 +1909,15 @@ function removeBlock(block) {
     scene.remove(block.mesh);
     if (block.label) scene.remove(block.label);
     if (block.selectionWireframe) scene.remove(block.selectionWireframe);
+    // 清除当前 Gizmo 状态避免残留
+    if (activePick) { clearActiveHighlight(); activePick = null; draggingGizmo = false; pendingInputPick = null; controls.enabled = true; }
     if (selectedBlock === block) { selectedBlock = blocks[0] || null; if (selectedBlock) selectBlock(selectedBlock); else renderVariablesForBlock(null); }
     selectedBlocksSet.delete(block);
     updateAxesVisibility();
     recordAction();
+    if (blocks.length === 0) { clearHerModes(); }
+    else { requestGizmoRefresh(); updateToolbar(true); }
+    if (isNewLayoutMode) renderSideBlockList();
 }
 
 function selectBlock(block) {
@@ -1445,6 +1938,8 @@ function selectBlock(block) {
     } else renderVariablesForBlock(null);
     updateAxesVisibility();
     blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+    if (isNewLayoutMode) renderSideBlockList();
+    requestGizmoRefresh();
 }
 
 function updateAxesVisibility() {
@@ -1527,15 +2022,23 @@ function toggleFullscreen() {
 document.addEventListener('fullscreenchange', () => {
     const p = document.getElementById('dataPanel');
     const exitBtn = document.getElementById('fullscreenExitBtn');
+    const newTopBar = document.getElementById('newTopBar');
+    const sideList = document.getElementById('sideBlockList');
     if (document.fullscreenElement) {
         // 进入全屏时不遮挡 3D 场景
         if (p) p.style.display = 'none';
-        // 仅侧边模式显示退出按钮（供手机触屏使用）
-        if (exitBtn) exitBtn.style.display = (typeof isSidePanelMode !== 'undefined' && isSidePanelMode) ? 'block' : 'none';
+        if (newTopBar) newTopBar.style.display = 'none';
+        if (sideList) sideList.style.display = 'none';
+        // 显示退出按钮
+        if (exitBtn) exitBtn.style.display = 'block';
     } else {
-        // 退出全屏（任意方式：按键、手机手势、浏览器控件）恢复面板
+        // 退出全屏恢复面板
         if (p) p.style.display = '';
         if (exitBtn) exitBtn.style.display = 'none';
+        if (isNewLayoutMode) {
+            if (newTopBar) newTopBar.style.display = 'flex';
+            if (sideList) sideList.style.display = 'block';
+        }
     }
 });
 
@@ -2101,11 +2604,32 @@ function updateGlobalVarsDependingOn(block, localVarName) {
     if (changed) blocks.forEach(b=>b.refresh());
 }
 
+function updateDropdownSelection() {
+    if (!activeDropdown) return;
+    const items = activeDropdown.querySelectorAll('.block-dropdown-content > .block-dropdown-item');
+    items.forEach(item => {
+        const copyBtn = item.querySelector('.copy-block');
+        if (!copyBtn) return;
+        const blockId = copyBtn.dataset.id;
+        const block = blocks.find(b => b.id === blockId);
+        if (!block) return;
+        const isSelected = selectedBlocksSet.has(block);
+        item.classList.toggle('selected', isSelected);
+        // Update the text span to show/hide checkmark
+        const textSpan = item.querySelector('span:first-child');
+        if (textSpan) {
+            textSpan.textContent = `${block.id} ${isSelected ? '✓' : ''}`;
+        }
+    });
+}
+
 function toggleBlockSelection(block, multi) {
     if (!multi) { selectedBlocksSet.clear(); selectedBlocksSet.add(block); selectBlock(block); }
     else { if (selectedBlocksSet.has(block)) { selectedBlocksSet.delete(block); if (selectedBlocksSet.size===0) { selectedBlocksSet.add(block); selectBlock(block); } else selectBlock(Array.from(selectedBlocksSet)[0]); } else { selectedBlocksSet.add(block); selectBlock(block); } }
     if (selectedBlocksSet.size>1) { batchDeltas.clear(); ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez'].forEach(v=>batchDeltas.set(v,0)); }
     updateAxesVisibility(); renderVariablesForBlock(selectedBlock); blocks.forEach(b=>b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+    updateDropdownSelection();
+    if (isNewLayoutMode) renderSideBlockList();
 }
 
 // ========== 方块列表下拉菜单 ==========
@@ -2186,7 +2710,12 @@ function showBlockDropdown(btn) {
     const rect = btn.getBoundingClientRect();
     menu.style.left = rect.left + 'px'; menu.style.top = (rect.bottom + 5) + 'px';
     if (parseInt(menu.style.left) + menu.offsetWidth > window.innerWidth) menu.style.left = (window.innerWidth - menu.offsetWidth - 10) + 'px';
-    const closeHandler = (e) => { if (!menu.contains(e.target) && e.target !== btn) { if (menu.parentNode) menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } document.removeEventListener('click', closeHandler); } };
+    const closeHandler = (e) => {
+        // 如果点击在3D视图（canvas-container）内，不关闭方块列表
+        const canvasContainer = document.getElementById('canvas-container');
+        if (canvasContainer && canvasContainer.contains(e.target)) return;
+        if (!menu.contains(e.target) && e.target !== btn) { if (menu.parentNode) menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } document.removeEventListener('click', closeHandler); }
+    };
     setTimeout(() => { document.addEventListener('click', closeHandler); }, 10);
     scrollListener = () => updateDropdownPosition(btn);
     window.addEventListener('scroll', scrollListener);
@@ -3030,6 +3559,9 @@ document.getElementById('hideNameBtn').addEventListener('click', () => {
     hideNames = !hideNames;
     blocks.forEach(b => { if (b.label) b.label.visible = !hideNames; });
     document.getElementById('hideNameBtn').querySelector('span').textContent = hideNames ? '显示' : '隐藏';
+    // 更新新布局视图菜单项
+    const viewHideItem = document.querySelector('#viewDropdown .top-dropdown-item[data-view-action="hideNames"] span');
+    if (viewHideItem) viewHideItem.textContent = hideNames ? '显示' : '隐藏';
 });
 document.getElementById('undoBtn').addEventListener('click', () => undo());
 document.getElementById('redoBtn').addEventListener('click', () => redo());
@@ -3157,6 +3689,9 @@ const sidePanelWidthLabel = document.getElementById('sidePanelWidthLabel');
 let isBlockListTopLeft = true;
 let isSidePanelMode = false;
 let sidePanelWidth = 360;
+let isNewLayoutMode = false;
+let useWorldAxisDisplacement = false;
+let pivotLinkModel = true;   // 枢轴联动模型：true=pos直接相加，false=换算basepos保持模型位置不变
 const MIN_SIDE_PANEL_WIDTH = 5;
 const MAX_SIDE_PANEL_WIDTH = 640;
 
@@ -3183,6 +3718,7 @@ function applySidePanelMode() {
         panel.style.bottom = '0';
         panel.style.minHeight = '';
         panel.style.borderRadius = '20px 0 0 20px';
+        panel.style.willChange = 'width';
         if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'flex';
     } else {
         panel.style.width = '';
@@ -3193,6 +3729,7 @@ function applySidePanelMode() {
         panel.style.bottom = '0';
         panel.style.minHeight = '140px';
         panel.style.borderRadius = '20px 20px 0 0';
+        panel.style.willChange = '';
         if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'none';
     }
     if (sidePanelCheckbox) {
@@ -3216,6 +3753,18 @@ function toggleSidePanelMode(e) {
     if (e) e.stopPropagation();
     isSidePanelMode = !isSidePanelMode;
     applySidePanelMode();
+    if (isNewLayoutMode) {
+        // 新布局模式下同步调整方块列表位置
+        const sideList = document.getElementById('sideBlockList');
+        if (sideList) {
+            if (isSidePanelMode) {
+                sideList.classList.remove('side-list-bottom');
+            } else {
+                sideList.classList.add('side-list-bottom');
+            }
+            applySideListDimensions();
+        }
+    }
 }
 function setSidePanelWidth(value) {
     const width = Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(MAX_SIDE_PANEL_WIDTH, Number(value) || sidePanelWidth));
@@ -3236,6 +3785,434 @@ function toggleBlockListPosition(e) {
     applyBlockListPosition();
 }
 window.toggleBlockListPosition = toggleBlockListPosition;
+
+// ========== 新布局模式 ==========
+function toggleNewLayoutMode(e) {
+    if (e) e.stopPropagation();
+    isNewLayoutMode = !isNewLayoutMode;
+    applyNewLayoutMode();
+    const cb = document.getElementById('newLayoutCheckbox');
+    if (cb) {
+        cb.classList.toggle('checked', isNewLayoutMode);
+        cb.setAttribute('aria-pressed', String(isNewLayoutMode));
+    }
+    try { localStorage.setItem('ui_new_layout', isNewLayoutMode ? '1' : '0'); } catch (err) {}
+}
+
+function applyNewLayoutMode() {
+    const body = document.body;
+    const newTopBar = document.getElementById('newTopBar');
+    const sideList = document.getElementById('sideBlockList');
+    const dataPanel = document.getElementById('dataPanel');
+    
+    if (isNewLayoutMode) {
+        body.classList.add('new-layout-active');
+        if (newTopBar) newTopBar.style.display = 'flex';
+        if (sideList) {
+            sideList.style.display = 'block';
+            // 根据侧边面板模式决定方块列表位置
+            if (isSidePanelMode) {
+                sideList.classList.remove('side-list-bottom');
+            } else {
+                sideList.classList.add('side-list-bottom');
+            }
+            applySideListDimensions();
+        }
+        renderSideBlockList();
+        // 新操作模式时显示世界轴位移和枢轴联动设置
+        const worldAxisDispSetting = document.getElementById('worldAxisDispSetting');
+        if (worldAxisDispSetting) worldAxisDispSetting.style.display = 'flex';
+        const pivotLinkSetting = document.getElementById('pivotLinkSetting');
+        if (pivotLinkSetting) pivotLinkSetting.style.display = 'flex';
+    } else {
+        body.classList.remove('new-layout-active');
+        if (newTopBar) newTopBar.style.display = 'none';
+        if (sideList) {
+            sideList.style.display = 'none';
+            sideList.classList.remove('side-list-bottom');
+        }
+        // 恢复数据面板显示（移除内联 style）
+        if (dataPanel) dataPanel.style.display = '';
+        // 非新操作模式时隐藏世界轴位移和枢轴联动设置
+        const worldAxisDispSetting = document.getElementById('worldAxisDispSetting');
+        if (worldAxisDispSetting) worldAxisDispSetting.style.display = 'none';
+        const pivotLinkSetting = document.getElementById('pivotLinkSetting');
+        if (pivotLinkSetting) pivotLinkSetting.style.display = 'none';
+    }
+    // 关闭所有下拉菜单
+    closeAllTopDropdowns();
+    if (uiSettingsPanel) uiSettingsPanel.style.display = 'none';
+}
+
+function renderSideBlockList() {
+    const sideList = document.getElementById('sideBlockList');
+    if (!sideList) return;
+    
+    let html = `<div class="side-block-list-title">📦 方块列表</div>`;
+    
+    // 全选按钮
+    html += `<div class="side-block-item side-block-all" id="sideBlockAll">全部选中 (${blocks.length})</div>`;
+    // 新建模型按钮
+    html += `<div style="display:flex; align-items:center; gap:4px; padding:6px 12px;">
+        <div class="side-block-new-btn" id="sideBlockNew">New</div>
+        <div class="side-block-bone-btn" id="sideBlockBone">✛</div>
+    </div>`;
+    html += `<div style="height:1px; background:rgba(59,130,246,0.2); margin:0 8px 6px 8px;"></div>`;
+    
+    blocks.forEach(b => {
+        const isSel = selectedBlocksSet.has(b);
+        html += `<div class="side-block-item ${isSel ? 'selected' : ''}" data-block-id="${b.id}">
+            <span>❒ ${b.id}</span>
+            <div class="side-block-actions">
+                <button class="side-block-copy" data-id="${b.id}" title="复制">复制</button>
+                <button class="side-block-delete" data-id="${b.id}" title="删除">删除</button>
+            </div>
+        </div>`;
+    });
+    
+    sideList.innerHTML = html;
+    
+    // 绑定事件
+    sideList.querySelectorAll('.side-block-item[data-block-id]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.side-block-actions')) return;
+            const bid = item.dataset.blockId;
+            const block = blocks.find(b => b.id === bid);
+            if (block) {
+                const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+                toggleBlockSelection(block, isMulti);
+                renderSideBlockList();
+            }
+        });
+    });
+    
+    sideList.querySelectorAll('.side-block-copy').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const bid = btn.dataset.id;
+            const block = blocks.find(b => b.id === bid);
+            if (block) {
+                duplicateBlock(block);
+                renderSideBlockList();
+            }
+        });
+    });
+    
+    sideList.querySelectorAll('.side-block-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const bid = btn.dataset.id;
+            const block = blocks.find(b => b.id === bid);
+            if (block) {
+                removeBlock(block);
+                renderSideBlockList();
+                if (selectedBlock) renderVariablesForBlock(selectedBlock);
+            }
+        });
+    });
+    
+    const allBtn = document.getElementById('sideBlockAll');
+    if (allBtn) {
+        allBtn.addEventListener('click', () => {
+            selectedBlocksSet.clear();
+            blocks.forEach(b => selectedBlocksSet.add(b));
+            if (selectedBlock) {
+                selectedBlock.axisHelper.visible = false;
+                selectedBlock = null;
+            }
+            updateAxesVisibility();
+            renderVariablesForBlock(null);
+            blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+            renderSideBlockList();
+        });
+    }
+    
+    // 新建模型按钮
+    const newBtn = document.getElementById('sideBlockNew');
+    if (newBtn) {
+        newBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showCreateBlockMenu();
+        });
+    }
+    
+    // 骨骼绑定按钮
+    const boneBtn = document.getElementById('sideBlockBone');
+    if (boneBtn) {
+        boneBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // 对当前选中的方块（或选中集合的第一个）触发骨骼绑定
+            const target = selectedBlocksSet.size ? [...selectedBlocksSet][0] : selectedBlock;
+            if (!target || blocks.length < 2) {
+                showModal("提示", "请先选中一个方块，并确保有两个以上方块才能绑定", null, false);
+                return;
+            }
+            showParentSelector(target);
+        });
+    }
+}
+
+// ========== 方块列表边缘拖拽调整大小 ==========
+let sideListWidth = parseInt(localStorage.getItem('ui_side_list_width') || '200', 10);
+let sideListHeight = parseInt(localStorage.getItem('ui_side_list_height') || '160', 10);
+let isResizingSideList = false;
+let resizeStartClient = 0;
+let resizeStartDim = 0;
+
+function setupSideListResize() {
+    const sideList = document.getElementById('sideBlockList');
+    if (!sideList) return;
+
+    sideList.addEventListener('pointerdown', (e) => {
+        const rect = sideList.getBoundingClientRect();
+        const edgeSize = 10;
+
+        if (isSidePanelMode) {
+            // 侧边模式：点击左侧边缘
+            if (e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
+                e.preventDefault();
+                isResizingSideList = true;
+                resizeStartClient = e.clientX;
+                resizeStartDim = sideListWidth;
+                document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'ew-resize';
+                document.addEventListener('pointermove', onSideListResizeMove);
+                document.addEventListener('pointerup', onSideListResizeUp);
+            }
+        } else {
+            // 底部模式：点击上边缘
+            if (e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
+                e.preventDefault();
+                isResizingSideList = true;
+                resizeStartClient = e.clientY;
+                resizeStartDim = sideListHeight;
+                document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'ns-resize';
+                document.addEventListener('pointermove', onSideListResizeMove);
+                document.addEventListener('pointerup', onSideListResizeUp);
+            }
+        }
+    });
+
+    // 鼠标悬停时显示光标样式
+    sideList.addEventListener('pointermove', (e) => {
+        if (isResizingSideList) return;
+        const rect = sideList.getBoundingClientRect();
+        const edgeSize = 10;
+        if (isSidePanelMode && e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
+            sideList.style.cursor = 'ew-resize';
+        } else if (!isSidePanelMode && e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
+            sideList.style.cursor = 'ns-resize';
+        } else {
+            sideList.style.cursor = '';
+        }
+    });
+}
+
+function onSideListResizeMove(e) {
+    if (!isResizingSideList) return;
+    const sideList = document.getElementById('sideBlockList');
+    if (!sideList) return;
+    if (isSidePanelMode) {
+        let newWidth = resizeStartDim + (resizeStartClient - e.clientX);
+        newWidth = Math.max(100, Math.min(500, newWidth));
+        sideListWidth = newWidth;
+        sideList.style.width = newWidth + 'px';
+        try { localStorage.setItem('ui_side_list_width', String(newWidth)); } catch (err) {}
+    } else {
+        let newHeight = resizeStartDim + (resizeStartClient - e.clientY);
+        newHeight = Math.max(80, Math.min(400, newHeight));
+        sideListHeight = newHeight;
+        sideList.style.height = newHeight + 'px';
+        try { localStorage.setItem('ui_side_list_height', String(newHeight)); } catch (err) {}
+    }
+}
+
+function onSideListResizeUp() {
+    isResizingSideList = false;
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+    document.removeEventListener('pointermove', onSideListResizeMove);
+    document.removeEventListener('pointerup', onSideListResizeUp);
+}
+
+function applySideListDimensions() {
+    const sideList = document.getElementById('sideBlockList');
+    if (!sideList) return;
+    if (isSidePanelMode) {
+        sideList.style.width = sideListWidth + 'px';
+        sideList.style.height = '';
+    } else {
+        sideList.style.height = sideListHeight + 'px';
+        sideList.style.width = '';
+    }
+}
+
+// ========== 顶部下拉菜单 ==========
+let activeTopDropdown = null;
+
+function closeAllTopDropdowns() {
+    document.querySelectorAll('.top-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+    activeTopDropdown = null;
+}
+
+function toggleTopDropdown(dropdownId) {
+    const menu = document.getElementById(dropdownId);
+    if (!menu) return;
+    const isOpen = menu.classList.contains('open');
+    closeAllTopDropdowns();
+    if (!isOpen) {
+        menu.classList.add('open');
+        activeTopDropdown = dropdownId;
+        // 定位下拉菜单
+        const btn = menu.closest('.top-dropdown-wrapper')?.querySelector('.top-menu-btn');
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            menu.style.left = rect.left + 'px';
+            menu.style.top = (rect.bottom + 4) + 'px';
+        }
+        // 如果是视图菜单，更新勾选状态
+        if (dropdownId === 'viewDropdown') {
+            const axesChk = document.getElementById('showAxesCheckbox');
+            const gridChk = document.getElementById('showGridCheckbox');
+            const ticksChk = document.getElementById('showTicksCheckbox');
+            const items = {
+                'showAxes': axesChk?.checked,
+                'showGrid': gridChk?.checked,
+                'showTicks': ticksChk?.checked
+            };
+            menu.querySelectorAll('.top-dropdown-item[data-view-action]').forEach(item => {
+                const action = item.dataset.viewAction;
+                const span = item.querySelector('span');
+                if (action in items && span) {
+                    const checked = items[action];
+                    if (checked !== undefined) {
+                        span.textContent = checked ? `✓ ${item.dataset.viewAction === 'showAxes' ? '显示轴线' : item.dataset.viewAction === 'showGrid' ? '显示平面' : '显示刻度'}` : 
+                            (item.dataset.viewAction === 'showAxes' ? '显示轴线' : item.dataset.viewAction === 'showGrid' ? '显示平面' : '显示刻度');
+                    }
+                }
+                // 隐藏按钮状态
+                if (action === 'hideNames' && span) {
+                    span.textContent = hideNames ? '显示' : '隐藏';
+                }
+            });
+        }
+    }
+}
+
+function setupNewLayoutUI() {
+    // 文件菜单
+    const fileBtn = document.getElementById('fileMenuBtn');
+    if (fileBtn) {
+        fileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleTopDropdown('fileDropdown');
+        });
+    }
+    document.getElementById('fileImportBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllTopDropdowns();
+        // 触发导入命令
+        showModal("导入数据", "粘贴 playanimation 命令文本", (txt) => { if (txt) importFromCommands(txt); }, true);
+    });
+    document.getElementById('fileExportBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllTopDropdowns();
+        showCommandListModal();
+    });
+    
+    // 视图菜单
+    const viewBtn = document.getElementById('viewMenuBtn');
+    if (viewBtn) {
+        viewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleTopDropdown('viewDropdown');
+        });
+    }
+    document.querySelectorAll('#viewDropdown .top-dropdown-item[data-view-action]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeAllTopDropdowns();
+            const action = item.dataset.viewAction;
+            switch (action) {
+                case 'showAxes':
+                    document.getElementById('showAxesCheckbox').checked = !document.getElementById('showAxesCheckbox').checked;
+                    document.getElementById('showAxesCheckbox').dispatchEvent(new Event('change'));
+                    break;
+                case 'showGrid':
+                    document.getElementById('showGridCheckbox').checked = !document.getElementById('showGridCheckbox').checked;
+                    document.getElementById('showGridCheckbox').dispatchEvent(new Event('change'));
+                    break;
+                case 'showTicks':
+                    document.getElementById('showTicksCheckbox').checked = !document.getElementById('showTicksCheckbox').checked;
+                    document.getElementById('showTicksCheckbox').dispatchEvent(new Event('change'));
+                    break;
+                case 'material':
+                    document.getElementById('materialPresetBtn').click();
+                    break;
+                case 'resetView':
+                    document.getElementById('resetViewBtn').click();
+                    break;
+                case 'hideNames':
+                    document.getElementById('hideNameBtn').click();
+                    break;
+            }
+        });
+    });
+    
+    // 操作菜单
+    const actionBtn = document.getElementById('actionMenuBtn');
+    if (actionBtn) {
+        actionBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleTopDropdown('actionDropdown');
+        });
+    }
+    document.querySelectorAll('#actionDropdown .top-dropdown-item[data-action]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeAllTopDropdowns();
+            const action = item.dataset.action;
+            switch (action) {
+                case 'settings':
+                    // 打开设置面板
+                    if (uiSettingsPanel) {
+                        const show = uiSettingsPanel.style.display !== 'block';
+                        uiSettingsPanel.style.display = show ? 'block' : 'none';
+                        if (show) {
+                            try {
+                                if (uiSettingsPanel.parentElement !== document.body) document.body.appendChild(uiSettingsPanel);
+                            } catch (err) {}
+                            positionUISettingsPanel();
+                        }
+                    }
+                    break;
+                case 'fullscreen':
+                    toggleFullscreen();
+                    break;
+                case 'undo':
+                    undo();
+                    break;
+                case 'redo':
+                    redo();
+                    break;
+                case 'changelog':
+                    showChangelogModal();
+                    break;
+            }
+        });
+    });
+    
+    // 点击外部关闭下拉菜单
+    document.addEventListener('click', (e) => {
+        if (activeTopDropdown) {
+            const menu = document.getElementById(activeTopDropdown);
+            if (menu && !menu.contains(e.target) && !e.target.closest('.top-menu-btn')) {
+                closeAllTopDropdowns();
+            }
+        }
+    });
+}
 
 function toggleUISettingsPanel(e) {
     if (e) e.stopPropagation();
@@ -3262,7 +4239,22 @@ function positionUISettingsPanel() {
     panel.style.zIndex = 9999;
     panel.style.pointerEvents = 'auto';
     panel.style.maxWidth = '320px';
-    if (isSidePanelMode) {
+    if (isNewLayoutMode) {
+        // 新布局模式：设置面板从操作按钮位置弹出
+        const actionBtn = document.getElementById('actionMenuBtn');
+        if (actionBtn) {
+            const aRect = actionBtn.getBoundingClientRect();
+            panel.style.left = `${Math.max(8, aRect.left)}px`;
+            panel.style.top = `${aRect.bottom + gap}px`;
+        } else {
+            panel.style.left = '16px';
+            panel.style.top = '56px';
+        }
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.transform = 'none';
+        panel.style.width = '300px';
+    } else if (isSidePanelMode) {
         const panelWidth = panel.offsetWidth || 320;
         const left = Math.max(8, rect.left - panelWidth - gap);
         panel.style.left = `${left}px`;
@@ -3444,6 +4436,40 @@ if (sidePanelCheckbox) {
 if (sidePanelWidthRange) {
     sidePanelWidthRange.addEventListener('input', (e) => { setSidePanelWidth(e.target.value); });
 }
+// 新布局复选框
+const newLayoutCheckbox = document.getElementById('newLayoutCheckbox');
+if (newLayoutCheckbox) {
+    newLayoutCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleNewLayoutMode(e);
+    });
+}
+// 世界轴位移复选框
+const worldAxisDispCheckbox = document.getElementById('worldAxisDispCheckbox');
+if (worldAxisDispCheckbox) {
+    worldAxisDispCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        useWorldAxisDisplacement = !useWorldAxisDisplacement;
+        worldAxisDispCheckbox.classList.toggle('checked', useWorldAxisDisplacement);
+        worldAxisDispCheckbox.setAttribute('aria-pressed', String(useWorldAxisDisplacement));
+        try { localStorage.setItem('ui_world_axis_disp', useWorldAxisDisplacement ? '1' : '0'); } catch (e) {}
+        if (selectedBlock || selectedBlocksSet.size) {
+            requestGizmoRefresh();
+            updateToolbar(true);
+        }
+    });
+}
+// 枢轴联动模型复选框
+const pivotLinkCheckbox = document.getElementById('pivotLinkCheckbox');
+if (pivotLinkCheckbox) {
+    pivotLinkCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pivotLinkModel = !pivotLinkModel;
+        pivotLinkCheckbox.classList.toggle('checked', pivotLinkModel);
+        pivotLinkCheckbox.setAttribute('aria-pressed', String(pivotLinkModel));
+        try { localStorage.setItem('ui_pivot_link_model', pivotLinkModel ? '1' : '0'); } catch (e) {}
+    });
+}
 if (uiSettingsPanel) {
     uiSettingsPanel.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -3454,8 +4480,8 @@ document.addEventListener('click', (e) => {
     if (!uiSettingsPanel) return;
     const path = e.composedPath ? e.composedPath() : null;
     if (path) {
-        if (path.some(el => el && el.id === 'uiSettingsPanel' || el && el.id === 'uiSettingsBtn')) return;
-    } else if (e.target instanceof Element && (e.target.closest('#uiSettingsPanel') || e.target.closest('#uiSettingsBtn'))) {
+        if (path.some(el => el && el.id === 'uiSettingsPanel' || el && el.id === 'uiSettingsBtn' || el && el.id === 'actionMenuBtn')) return;
+    } else if (e.target instanceof Element && (e.target.closest('#uiSettingsPanel') || e.target.closest('#uiSettingsBtn') || e.target.closest('#actionMenuBtn'))) {
         return;
     }
     uiSettingsPanel.style.display = 'none';
@@ -3466,9 +4492,1234 @@ try {
     if (savedSideMode !== null) isSidePanelMode = savedSideMode === '1';
     const savedPanelWidth = parseInt(localStorage.getItem('ui_side_panel_width') || '360', 10);
     if (!isNaN(savedPanelWidth)) sidePanelWidth = Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(MAX_SIDE_PANEL_WIDTH, savedPanelWidth));
+    const savedNewLayout = localStorage.getItem('ui_new_layout');
+    if (savedNewLayout !== null) {
+        isNewLayoutMode = savedNewLayout === '1';
+        if (isNewLayoutMode && newLayoutCheckbox) {
+            newLayoutCheckbox.classList.add('checked');
+            newLayoutCheckbox.setAttribute('aria-pressed', 'true');
+        }
+    }
+    const savedWorldAxisDisp = localStorage.getItem('ui_world_axis_disp');
+    if (savedWorldAxisDisp !== null) {
+        useWorldAxisDisplacement = savedWorldAxisDisp === '1';
+        if (useWorldAxisDisplacement && worldAxisDispCheckbox) {
+            worldAxisDispCheckbox.classList.add('checked');
+            worldAxisDispCheckbox.setAttribute('aria-pressed', 'true');
+        }
+    }
+    const savedPivotLink = localStorage.getItem('ui_pivot_link_model');
+    if (savedPivotLink !== null) {
+        pivotLinkModel = savedPivotLink === '1';
+        if (!pivotLinkModel && pivotLinkCheckbox) {
+            pivotLinkCheckbox.classList.remove('checked');
+            pivotLinkCheckbox.setAttribute('aria-pressed', 'false');
+        }
+    }
 } catch (e) {}
 applyBlockListPosition();
 applySidePanelMode();
+setupNewLayoutUI();
+setupSideListResize();
+applyNewLayoutMode();
+
+// ============================================================
+// 3D Gizmo 变换控件 —— 完整实现（基于 Three.js）
+// 包含：平移箭头、旋转弧、缩放点、拾取、拖拽、同步更新
+// ============================================================
+
+// ---------- 配置常量 ----------
+const HER_DEFAULT_COLORS = { x: 0xff4444, y: 0x44ff44, z: 0x4488ff };
+
+// ---------- 全局状态 ----------
+const herModes = new Set();            // 当前激活的模式：'origin', 'base', 'rotate', 'centerRotate', 'scale'
+let gizmoRoot = null;                 // 在 scene 初始化后创建并添加到场景
+let pickables = [];                   // 所有可拾取对象（隐藏命中体）
+let activePick = null;                // 当前拖拽的控件元数据
+let pendingInputPick = null;          // 数值标签短按待弹窗
+let activeHighlight = null;           // 高亮发光体
+let lastPX = 0, lastPY = 0;           // 上一帧鼠标位置
+let gizmoArrowGroups = [];            // 箭头组（用于自适应缩放）
+let originCenterLineObj = null;       // 原点→几何中心连线
+let rotArcGroups = [];                // 旋转弧组
+let gizmoAxisLines = [];              // XYZ轴向指示线
+let draggingGizmo = false;            // 是否正在拖拽
+let dragNeedsRebuild = false;
+let lastDragRebuild = 0;
+let lastGizmoSig = '', gizmoDirty = true, lastGizmoCheck = 0;
+let activeGizmoPointerId = null;
+let activeGizmoTouchId = null;
+let lastTouchGizmoAt = 0;
+let lastPromptAt = 0;
+
+// ---------- 辅助函数（依赖外部状态） ----------
+function selected() {
+    return selectedBlocksSet.size ? [...selectedBlocksSet][0] : selectedBlock;
+}
+
+function originOfBlock(b) {
+    const M = b.scope.toM();
+    return new THREE.Vector3(M[0], M[1], M[2]);
+}
+
+function centerOfBlock(b) {
+    const M = b.scope.toM();
+    const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+    const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+    const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+    const mat = computeTransformMatrix(M, rX, rY, rZ);
+    return new THREE.Vector3().setFromMatrixPosition(mat);
+}
+
+function quatOfBlock(b) {
+    const q = new THREE.Quaternion();
+    if (b && b.mesh) {
+        b.mesh.updateMatrixWorld(true);
+        b.mesh.getWorldQuaternion(q);
+    }
+    return q;
+}
+
+// 计算包含剪切变换（extend_xrot / extend_yrot）的方块局部轴在世界空间的方向
+// 返回值始终保证线性部分行列式为正（去除镜像翻转），与 quatOfBlock 一致
+function shearedAxesOfBlock(b) {
+    const M = b.scope.toM();
+    const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+    const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+    const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+    const worldMat = computeTransformMatrix(M, rX, rY, rZ);
+    const origin = new THREE.Vector3().setFromMatrixPosition(worldMat);
+    const sx = new THREE.Vector3(1,0,0).applyMatrix4(worldMat).sub(origin);
+    const sy = new THREE.Vector3(0,1,0).applyMatrix4(worldMat).sub(origin);
+    const sz = new THREE.Vector3(0,0,1).applyMatrix4(worldMat).sub(origin);
+    // 若线性部分行列式为负（镜像/负scale），取反所有轴以匹配 quatOfBlock 的朝向
+    if (worldMat.determinant() < 0) {
+        sx.negate(); sy.negate(); sz.negate();
+    }
+    return {
+        x: sx.normalize(),
+        y: sy.normalize(),
+        z: sz.normalize()
+    };
+}
+
+function varValue(name) {
+    const b = selected();
+    const v = b?.scope?.vars?.get(name)?.value;
+    return Number.isFinite(Number(v)) ? Number(v) : 0;
+}
+
+function normRotDeg(v) {
+    v = ((v + 180) % 360 + 360) % 360 - 180;
+    return v === -180 ? 180 : v;
+}
+
+// ---------- 材质工厂 ----------
+function mat(color, opacity = 0.98) {
+    return new THREE.MeshBasicMaterial({
+        color, depthTest: false, depthWrite: false,
+        transparent: true, opacity, side: THREE.DoubleSide
+    });
+}
+
+function hitMat() {
+    return new THREE.MeshBasicMaterial({
+        color: 0xffffff, depthTest: false, depthWrite: false,
+        transparent: true, opacity: 0.001, side: THREE.DoubleSide
+    });
+}
+
+// ---------- 拾取对象注册 ----------
+function addPick(obj, meta) {
+    obj.userData.her = meta;
+    obj.userData.herPriority = meta.priority || 0;
+    pickables.push(obj);
+}
+
+// ---------- 几何体工厂 ----------
+function makeArrowShape(len = 2.15, width = 0.18, head = 0.55) {
+    const sh = new THREE.Shape();
+    const body = len - head;
+    const half = width * 0.5;
+    const headHalf = width * 0.95;
+    sh.moveTo(0, -half);
+    sh.lineTo(body, -half);
+    sh.lineTo(body, -headHalf);
+    sh.lineTo(len, 0);
+    sh.lineTo(body, headHalf);
+    sh.lineTo(body, half);
+    sh.lineTo(0, half);
+    sh.lineTo(0, -half);
+    return new THREE.ShapeGeometry(sh);
+}
+
+function makeArcBandShape(radius = 2.05, thickness = 0.05, start = 0, end = Math.PI) {
+    const sh = new THREE.Shape();
+    const steps = 40;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const a = start + (end - start) * i / steps;
+        pts.push([Math.cos(a) * (radius + thickness), Math.sin(a) * (radius + thickness)]);
+    }
+    for (let i = steps; i >= 0; i--) {
+        const a = start + (end - start) * i / steps;
+        pts.push([Math.cos(a) * (radius - thickness), Math.sin(a) * (radius - thickness)]);
+    }
+    sh.moveTo(pts[0][0], pts[0][1]);
+    pts.slice(1).forEach(p => sh.lineTo(p[0], p[1]));
+    sh.closePath();
+    return new THREE.ShapeGeometry(sh);
+}
+
+function makeDiamondShape(d = 0.22) {
+    const sh = new THREE.Shape();
+    sh.moveTo(-d, 0);
+    sh.lineTo(0, d);
+    sh.lineTo(d, 0);
+    sh.lineTo(0, -d);
+    sh.closePath();
+    return new THREE.ShapeGeometry(sh);
+}
+
+function makeArcHeadShape(size = 0.58) {
+    const sh = new THREE.Shape();
+    sh.moveTo(size, 0);
+    sh.lineTo(-size * 0.45, size * 0.58);
+    sh.lineTo(-size * 0.18, 0);
+    sh.lineTo(-size * 0.45, -size * 0.58);
+    sh.lineTo(size, 0);
+    return new THREE.ShapeGeometry(sh);
+}
+
+// ---------- 朝向工具 ----------
+function orientFlat(obj, dir, normal) {
+    const x = dir.clone().normalize();
+    let z = normal.clone().normalize();
+    if (Math.abs(x.dot(z)) > 0.95) {
+        z = camera.position.clone().sub(gizmoRoot.position).normalize();
+    }
+    const y = new THREE.Vector3().crossVectors(z, x).normalize();
+    z = new THREE.Vector3().crossVectors(x, y).normalize();
+    obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+}
+
+function orientCylinderAlong(obj, dir) {
+    obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+}
+
+function orthonormalDiscBasis(axisNormal, preferredX) {
+    const z = axisNormal.clone().normalize();
+    let x = preferredX.clone().addScaledVector(z, -preferredX.dot(z));
+    if (x.lengthSq() < 1e-5) {
+        x = new THREE.Vector3(1, 0, 0).addScaledVector(z, -new THREE.Vector3(1, 0, 0).dot(z));
+    }
+    if (x.lengthSq() < 1e-5) {
+        x = new THREE.Vector3(0, 1, 0).addScaledVector(z, -new THREE.Vector3(0, 1, 0).dot(z));
+    }
+    x.normalize();
+    const y = new THREE.Vector3().crossVectors(z, x).normalize();
+    return { x, y, z };
+}
+
+function orientDiscToBasis(group, xBasis, yBasis, axisNormal) {
+    const d = orthonormalDiscBasis(axisNormal.clone().normalize(), xBasis.clone().normalize());
+    group.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(d.x, d.y, d.z));
+}
+
+// ---------- 旋转轴计算 ----------
+function rotLocalAxesOfBlock(b) {
+    const rx = varValue('v.xrot');
+    const ry = varValue('v.yrot');
+    const grx = varValue('v.rotatex');
+    const gry = varValue('v.rotatey');
+    const grz = varValue('v.rotatez');
+    const globalRz = new THREE.Matrix4().makeRotationZ(degToRad(-grz));
+    const globalRx = new THREE.Matrix4().makeRotationX(degToRad(grx));
+    const globalRy = new THREE.Matrix4().makeRotationY(degToRad(-gry));
+    const globalRot = globalRy.clone().multiply(globalRx).multiply(globalRz);
+    const matRy = new THREE.Matrix4().makeRotationY(degToRad(-ry));
+    const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
+    return {
+        yAxis: new THREE.Vector3(0, 1, 0).applyMatrix4(globalRot).normalize(),
+        xAxis: new THREE.Vector3(1, 0, 0).applyMatrix4(matRy).applyMatrix4(globalRot).normalize(),
+        zAxis: new THREE.Vector3(0, 0, 1).applyMatrix4(matRx).applyMatrix4(matRy).applyMatrix4(globalRot).normalize()
+    };
+}
+
+function rotDiscBasisFor(b, axis) {
+    const a = rotLocalAxesOfBlock(b);
+    if (axis === 'x') return orthonormalDiscBasis(a.xAxis, a.yAxis);
+    if (axis === 'y') return orthonormalDiscBasis(a.yAxis, a.zAxis);
+    return orthonormalDiscBasis(a.zAxis, a.xAxis);
+}
+
+function rotVisualAngle(axis, varName) {
+    const v = varValue(varName);
+    return axis === 'x' ? degToRad(v) : degToRad(-v);
+}
+
+function rotGizmoCenterLocal(b, mode) {
+    return mode === 'center' ? centerOfBlock(b).sub(originOfBlock(b)) : new THREE.Vector3();
+}
+
+function rotGizmoCenterWorld(b, mode) {
+    return mode === 'center' ? centerOfBlock(b) : originOfBlock(b);
+}
+
+// ---------- 数值标签（纹理） ----------
+function makeLabelTexture(text, color = 0x111111) {
+    const cvs = document.createElement('canvas');
+    cvs.width = 512; cvs.height = 160;
+    const ctx = cvs.getContext('2d');
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    const r = 26, x = 18, y = 24, w = 476, h = 112;
+    ctx.fillStyle = 'rgba(255,255,255,.94)';
+    ctx.strokeStyle = 'rgba(0,0,0,.72)'; ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.font = 'bold 44px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.fillText(text, 256, 80);
+    const tex = new THREE.CanvasTexture(cvs);
+    tex.needsUpdate = true;
+    return tex;
+}
+
+function makeEmbeddedLabel(varName, color, size = 1) {
+    const text = `${varName.replace('v.', '')}=${varValue(varName).toFixed(4)}`;
+    const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.22 * size, 0.38 * size),
+        new THREE.MeshBasicMaterial({
+            map: makeLabelTexture(text, color),
+            transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide
+        })
+    );
+    label.userData.herLabelVar = varName;
+    label.renderOrder = 1000;
+    return label;
+}
+
+// ---------- 创建箭头 ----------
+function makeArrow(dir, planeNormal, color, varName, scale, offset = 0, opts = {}) {
+    const group = new THREE.Group();
+    const d = dir.clone().normalize();
+    const vl = opts.visualScale || 1;
+    const start = (opts.start || 0.55) + offset;
+    const shaftLen = 1.8 * vl;
+    const headLen = 0.28 * vl;
+    const shaftR = 0.025 * vl;
+    const isBase = opts.moveKind === 'base';
+    if (isBase) {
+        // 位移：分段细线（6段短圆柱 + 5个间隙）
+        const segLen = shaftLen / 11;
+        for (let i = 0; i < 6; i++) {
+            const seg = new THREE.Mesh(
+                new THREE.CylinderGeometry(shaftR, shaftR, segLen, 6),
+                mat(color, 0.85)
+            );
+            const pos = start + (i * 2 + 0.5) * segLen;
+            seg.position.copy(d.clone().multiplyScalar(pos));
+            seg.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+            group.add(seg);
+        }
+        // 圆锥头
+        const cone = new THREE.Mesh(
+            new THREE.ConeGeometry(shaftR * 3.5, headLen, 8),
+            mat(color, 0.9)
+        );
+        cone.position.copy(d.clone().multiplyScalar(start + shaftLen));
+        cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        group.add(cone);
+    } else {
+        // 枢轴：细圆柱杆 + 圆锥头
+        const shaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(shaftR, shaftR, shaftLen, 6),
+            mat(color, 0.9)
+        );
+        shaft.position.copy(d.clone().multiplyScalar(start + shaftLen * 0.5));
+        shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        group.add(shaft);
+        const cone = new THREE.Mesh(
+            new THREE.ConeGeometry(shaftR * 3.5, headLen, 8),
+            mat(color, 0.95)
+        );
+        cone.position.copy(d.clone().multiplyScalar(start + shaftLen + headLen * 0.5));
+        cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        group.add(cone);
+    }
+    // 命中体
+    const hitLen = 3.0 * vl;
+    const hitRadius = Math.max(0.45 * vl, 0.40);
+    const hit = new THREE.Mesh(
+        new THREE.CylinderGeometry(hitRadius, hitRadius, hitLen, 24, 1, true), hitMat()
+    );
+    orientCylinderAlong(hit, d);
+    hit.position.copy(d.clone().multiplyScalar(start + hitLen * 0.5));
+    const pickMeta = {
+        type: 'move', varName, scale, axis: d,
+        planeNormal: planeNormal.clone().normalize(), color,
+        visualLen: vl, start, priority: opts.priority || 0, hitLen, hitRadius,
+        axisName: opts.axisName || (varName.includes('x') ? 'x' : (varName.includes('y') ? 'y' : 'z'))
+    };
+    // 如果指定了 mode（如 'base'），添加到拾取元数据
+    if (opts.mode) pickMeta.mode = opts.mode;
+    addPick(hit, pickMeta);
+    group.add(hit);
+    group.userData.herMoveKind = opts.moveKind || 'origin';
+    group.userData.herMoveAxis = opts.axisName || (varName.includes('x') ? 'x' : (varName.includes('y') ? 'y' : 'z'));
+    return group;
+}
+
+// ---------- 创建旋转弧 ----------
+function makeArc(axis, color, varName, axisNormal, xBasis, yBasis, opts = {}) {
+    const group = new THREE.Group();
+    const plane = new THREE.Group();
+    const radius = opts.radius || 2.05;
+    const end = Math.PI; // 半圆弧
+    const rotMode = opts.rotMode || 'origin';
+    const arcGeom = makeArcBandShape(radius, 0.05, 0, end);
+    const arc = new THREE.Mesh(arcGeom, mat(color, 0.85));
+    const pgram = new THREE.Mesh(makeDiamondShape(0.22), mat(color, 0.95));
+    pgram.position.set(Math.cos(end * 0.5) * radius, Math.sin(end * 0.5) * radius, 0);
+    pgram.rotation.z = end * 0.5;
+    const d0 = orthonormalDiscBasis(axisNormal.clone().normalize(), xBasis.clone().normalize());
+    const rotMeta = {
+        type: 'rot', varName, scale: 1, axis, rotMode,
+        priority: opts.priority || 35,
+        axisNormal: d0.z.clone(), xBasis: d0.x.clone(), yBasis: d0.y.clone(),
+        radius, end
+    };
+    plane.add(arc); plane.add(pgram);
+    const hitSphereGeom = new THREE.SphereGeometry(0.34, 14, 10);
+    for (let i = 0; i <= 22; i++) {
+        const a = end * i / 22;
+        const p = new THREE.Mesh(hitSphereGeom, hitMat());
+        p.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
+        addPick(p, Object.assign({}, rotMeta));
+        plane.add(p);
+    }
+    // 平行四边形上额外命中球
+    const pgramHit = new THREE.Mesh(new THREE.SphereGeometry(0.48, 14, 10), hitMat());
+    pgramHit.position.copy(pgram.position);
+    addPick(pgramHit, Object.assign({}, rotMeta));
+    plane.add(pgramHit);
+    // 初始角度（视觉角度，updateRotGizmosLive 中会叠加摄像机朝向）
+    const curVal = varValue(varName);
+    plane.rotation.z = rotVisualAngle(axis, varName);
+    group.add(plane);
+    group.userData.herRotAxis = axis;
+    group.userData.herRotVar = varName;
+    group.userData.herRotMode = rotMode;
+    group.userData.herRotPlane = plane;
+    if (opts.offset) group.position.copy(opts.offset);
+    orientDiscToBasis(group, d0.x, d0.y, d0.z);
+    // 预先计算摄像机朝向角，后续 updateRotGizmosLive 中保持固定
+    const wc = new THREE.Vector3();
+    group.getWorldPosition(wc);
+    const cd = camera.position.clone().sub(wc).normalize();
+    group.userData.herFaceAngle = Math.atan2(cd.dot(d0.y), cd.dot(d0.x));
+    rotArcGroups.push(group);
+    return group;
+}
+
+// ---------- 原点→中心连线 ----------
+function makeOriginCenterLine(b) {
+    const geom = new THREE.CylinderGeometry(0.045, 0.045, 1, 16, 1, true);
+    const cyl = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({
+        color: 0xffffff, transparent: true, opacity: 0.9,
+        depthTest: false, depthWrite: false
+    }));
+    cyl.renderOrder = 998;
+    originCenterLineObj = cyl;
+    updateOriginCenterLineLive(b);
+    return cyl;
+}
+
+function updateOriginCenterLineLive(b = selected()) {
+    if (!originCenterLineObj || !b) return;
+    const center = centerOfBlock(b).sub(originOfBlock(b));
+    const len = center.length();
+    originCenterLineObj.visible = len >= 1e-4;
+    if (len < 1e-4) return;
+    originCenterLineObj.position.copy(center.clone().multiplyScalar(0.5));
+    originCenterLineObj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), center.clone().normalize());
+    originCenterLineObj.scale.set(1, len, 1);
+}
+
+// ---------- 缩放点 ----------
+function makeScaleDots(b) {
+    const group = new THREE.Group();
+    const pts = [[-0.5,-0.5,-0.5],[0.5,-0.5,-0.5],[0.5,0.5,-0.5],[-0.5,0.5,-0.5],
+                 [-0.5,-0.5,0.5],[0.5,-0.5,0.5],[0.5,0.5,0.5],[-0.5,0.5,0.5]];
+    const s = Math.abs(b?.scope?.vars?.get('v.scale')?.value ?? 1);
+    group.quaternion.copy(quatOfBlock(b));
+    const dotGeom = new THREE.PlaneGeometry(0.18, 0.18);
+    pts.forEach((p, i) => {
+        const dot = new THREE.Mesh(dotGeom, mat(0xfff7a8));
+        dot.position.set(p[0] * s, p[1] * s, p[2] * s);
+        dot.lookAt(camera.position);
+        group.add(dot);
+        const hit = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), hitMat());
+        hit.position.copy(dot.position);
+        addPick(hit, { type: 'scale', varName: 'v.scale', scale: 0.012 });
+        group.add(hit);
+    });
+    return group;
+}
+
+// ---------- 包装器 ----------
+function makeAt(offset, child, opts = {}) {
+    const g = new THREE.Group();
+    g.position.copy(offset);
+    g.userData.herMoveWrapper = opts.moveWrapper || '';
+    if (opts.quaternion) g.quaternion.copy(opts.quaternion);
+    g.add(child);
+    if (g.userData.herMoveWrapper) gizmoArrowGroups.push(g);
+    return g;
+}
+
+// ========== 新Gizmo系统占位 ==========
+// 完整实现将在此处替换
+// ========== 3D Gizmo 核心实现 ==========
+
+// ---------- 高亮显示 ----------
+function clearActiveHighlight() {
+    if (activeHighlight && activeHighlight.parent) {
+        activeHighlight.parent.remove(activeHighlight);
+        if (activeHighlight.geometry) activeHighlight.geometry.dispose();
+        if (activeHighlight.material) activeHighlight.material.dispose();
+    }
+    activeHighlight = null;
+}
+
+function makeActiveHighlight(meta) {
+    clearActiveHighlight();
+    if (!meta || meta.type === 'input') return;
+    const g = new THREE.Group();
+    if (meta.type === 'rot') {
+        const plane = new THREE.Group();
+        const radius = meta.radius || 2.05;
+        const end = Math.PI;
+        const halo = new THREE.Mesh(
+            makeArcBandShape(radius, 0.12, 0, end),
+            new THREE.MeshBasicMaterial({ color: 0xffff66, transparent: true, opacity: 0.56, depthTest: false, depthWrite: false, side: THREE.DoubleSide })
+        );
+        const pHalo = new THREE.Mesh(
+            makeDiamondShape(0.28),
+            new THREE.MeshBasicMaterial({ color: 0xffff66, transparent: true, opacity: 0.78, depthTest: false, depthWrite: false, side: THREE.DoubleSide })
+        );
+        pHalo.position.set(Math.cos(end * 0.5) * radius, Math.sin(end * 0.5) * radius, 0);
+        pHalo.rotation.z = end * 0.5;
+        plane.add(halo); plane.add(pHalo);
+        const b = selected(); if (b) {
+            const d = rotDiscBasisFor(b, meta.axis);
+            g.position.copy(rotGizmoCenterLocal(b, meta.rotMode));
+            orientDiscToBasis(g, d.x, d.y, d.z);
+            const worldCenter = new THREE.Vector3();
+            g.getWorldPosition(worldCenter);
+            const camDir = camera.position.clone().sub(worldCenter).normalize();
+            const faceAngle = Math.atan2(camDir.dot(d.y), camDir.dot(d.x));
+            plane.rotation.z = rotVisualAngle(meta.axis, meta.varName) + faceAngle - Math.PI * 0.5;
+        }
+        g.add(plane);
+    } else if (meta.type === 'scale') {
+        g.add(new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.045, 12, 48), new THREE.MeshBasicMaterial({ color: 0xffff66, transparent: true, opacity: 0.72, depthTest: false, depthWrite: false })));
+        g.lookAt(camera.position);
+    } else {
+        const d = (meta.axis || new THREE.Vector3(1,0,0)).clone().normalize();
+        const vl = meta.visualLen || 1;
+        const shaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.035*vl, 0.035*vl, 1.6*vl, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffff66, transparent: true, opacity: 0.56, depthTest: false, depthWrite: false })
+        );
+        shaft.position.copy(d.clone().multiplyScalar((meta.start||0.55)+0.8*vl));
+        shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        const cone = new THREE.Mesh(
+            new THREE.ConeGeometry(0.14*vl, 0.4*vl, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffff66, transparent: true, opacity: 0.78, depthTest: false, depthWrite: false })
+        );
+        cone.position.copy(d.clone().multiplyScalar((meta.start||0.55)+1.8*vl+0.2*vl));
+        cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        g.add(shaft); g.add(cone);
+        // 位移模式高亮定位到方块中心
+        if (meta.varName && meta.varName.includes('basepos')) {
+            const b = selected();
+            if (b) {
+                if (useWorldAxisDisplacement) {
+                    // 世界轴位移模式：高亮定位到视觉中心，保持世界坐标轴朝向
+                    const M = b.scope.toM();
+                    const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+                    const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+                    const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+                    const wm = computeTransformMatrix(M, rX, rY, rZ);
+                    const vc = new THREE.Vector3().setFromMatrixPosition(wm).sub(originOfBlock(b));
+                    g.position.copy(vc);
+                    g.quaternion.identity();
+                } else {
+                    // 非世界轴模式：高亮跟随剪切轴方向
+                    g.position.copy(centerOfBlock(b).sub(originOfBlock(b)));
+                    const axes = shearedAxesOfBlock(b);
+                    // 根据高亮对应的轴名称设置朝向
+                    const axisName = meta.axisName || (meta.varName && meta.varName.includes('x') ? 'x' : meta.varName && meta.varName.includes('y') ? 'y' : 'z');
+                    const wd = { x: new THREE.Vector3(1,0,0), y: new THREE.Vector3(0,1,0), z: new THREE.Vector3(0,0,1) }[axisName];
+                    const ad = { x: axes.x, y: axes.y, z: axes.z }[axisName];
+                    if (wd && ad) g.quaternion.setFromUnitVectors(wd, ad);
+                    else g.quaternion.copy(quatOfBlock(b));
+                }
+            }
+        }
+    }
+    g.userData.herMeta = Object.assign({}, meta);
+    g.renderOrder = 1200;
+    activeHighlight = g;
+    gizmoRoot.add(g);
+}
+
+function updateActiveHighlightPose() {
+    if (!activeHighlight || !activePick) return;
+    activeHighlight.userData.herMeta = Object.assign({}, activePick);
+    const b = selected();
+    if (activePick.type === 'rot') {
+        if (!b) return;
+        const d = rotDiscBasisFor(b, activePick.axis);
+        activePick.axisNormal = d.z.clone();
+        activePick.xBasis = d.x.clone();
+        activePick.yBasis = d.y.clone();
+        activeHighlight.position.copy(rotGizmoCenterLocal(b, activePick.rotMode));
+        orientDiscToBasis(activeHighlight, d.x, d.y, d.z);
+        const planeG = activeHighlight.children.find(c => c.type === 'Group');
+        if (planeG) {
+            const worldCenter = new THREE.Vector3();
+            activeHighlight.getWorldPosition(worldCenter);
+            const camDir = camera.position.clone().sub(worldCenter).normalize();
+            const faceAngle = Math.atan2(camDir.dot(d.y), camDir.dot(d.x));
+            planeG.rotation.z = rotVisualAngle(activePick.axis, activePick.varName) + faceAngle - Math.PI * 0.5;
+        }
+    } else if (activePick.type === 'move' && b) {
+        // 位移模式：高亮跟随箭头位置
+        const isBase = activePick.varName && activePick.varName.includes('basepos');
+        if (isBase) {
+            if (useWorldAxisDisplacement) {
+                // 世界轴位移模式：高亮定位到视觉中心，保持世界坐标轴朝向
+                const M = b.scope.toM();
+                const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+                const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+                const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+                const wm = computeTransformMatrix(M, rX, rY, rZ);
+                const vc = new THREE.Vector3().setFromMatrixPosition(wm).sub(originOfBlock(b));
+                activeHighlight.position.copy(vc);
+                activeHighlight.quaternion.identity();
+            } else {
+                // 非世界轴模式：高亮跟随剪切轴方向
+                activeHighlight.position.copy(centerOfBlock(b).sub(originOfBlock(b)));
+                const axes = shearedAxesOfBlock(b);
+                const axisName = activePick.axisName || (activePick.varName && activePick.varName.includes('x') ? 'x' : activePick.varName && activePick.varName.includes('y') ? 'y' : 'z');
+                const wd = { x: new THREE.Vector3(1,0,0), y: new THREE.Vector3(0,1,0), z: new THREE.Vector3(0,0,1) }[axisName];
+                const ad = { x: axes.x, y: axes.y, z: axes.z }[axisName];
+                if (wd && ad) activeHighlight.quaternion.setFromUnitVectors(wd, ad);
+                else activeHighlight.quaternion.copy(quatOfBlock(b));
+            }
+        } else {
+            activeHighlight.position.set(0, 0, 0);
+            activeHighlight.quaternion.identity();
+        }
+    }
+}
+
+// ---------- 变量更新 ----------
+function setConstVarValue(b, varName, value) {
+    let def = b.scope.vars.get(varName);
+    if (!def) {
+        const rg = getDefaultRange(varName);
+        b.scope.addVar(varName, '0', rg.min, rg.max, rg.step);
+        def = b.scope.vars.get(varName);
+    }
+    if (!def || !Number.isFinite(value)) return;
+    if (['v.xrot','v.yrot','v.zrot'].includes(varName)) value = normRotDeg(value);
+    const highPrecision = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'].includes(varName);
+    const dec = highPrecision ? 4 : ((def.step && def.step.toString().includes('.')) ? Math.max(4, def.step.toString().split('.')[1].length) : 4);
+    def.expr = String(parseFloat(value.toFixed(dec)));
+    def.value = parseFloat(value.toFixed(dec));
+}
+
+function baseposDeltaToWorldMatrix(b) {
+    const baseM = b.scope.toM().slice();
+    const rotX = Number(b.scope.vars.get('v.rotatex')?.value ?? 0);
+    const rotY = Number(b.scope.vars.get('v.rotatey')?.value ?? 0);
+    const rotZ = Number(b.scope.vars.get('v.rotatez')?.value ?? 0);
+    const pointForBase = (bx, by, bz) => {
+        const M = baseM.slice();
+        M[10] = bx; M[11] = by; M[12] = bz;
+        return new THREE.Vector3(0,0,0).applyMatrix4(computeTransformMatrix(M, rotX, rotY, rotZ));
+    };
+    const bx = Number(b.scope.vars.get('v.xbasepos')?.value ?? 0);
+    const by = Number(b.scope.vars.get('v.ybasepos')?.value ?? 0);
+    const bz = Number(b.scope.vars.get('v.zbasepos')?.value ?? 0);
+    const p0 = pointForBase(bx, by, bz);
+    return new THREE.Matrix4().makeBasis(
+        pointForBase(bx+1, by, bz).sub(p0),
+        pointForBase(bx, by+1, bz).sub(p0),
+        pointForBase(bx, by, bz+1).sub(p0)
+    );
+}
+
+function compensateBaseposForFixedCenter(b, targetCenter) {
+    b.refresh(); b.mesh.updateMatrixWorld(true);
+    const curCenter = centerOfBlock(b);
+    const fixWorld = targetCenter.clone().sub(curCenter);
+    if (fixWorld.lengthSq() < 1e-14) return;
+    const basis = baseposDeltaToWorldMatrix(b);
+    if (Math.abs(basis.determinant()) < 1e-12) return;
+    const deltaBase = fixWorld.applyMatrix4(basis.clone().invert());
+    setConstVarValue(b, 'v.xbasepos', Number(b.scope.vars.get('v.xbasepos')?.value ?? 0) + deltaBase.x);
+    setConstVarValue(b, 'v.ybasepos', Number(b.scope.vars.get('v.ybasepos')?.value ?? 0) + deltaBase.y);
+    setConstVarValue(b, 'v.zbasepos', Number(b.scope.vars.get('v.zbasepos')?.value ?? 0) + deltaBase.z);
+    b.refresh(); b.mesh.updateMatrixWorld(true);
+}
+
+function applyOriginRotateDelta(varName, delta) {
+    if (!selectedBlocksSet || !selectedBlocksSet.size || Math.abs(delta) < 1e-8) return;
+    for (const b of selectedBlocksSet) {
+        const cur = Number(b.scope.vars.get(varName)?.value ?? 0);
+        setConstVarValue(b, varName, cur + delta);
+        b.refresh(); b.mesh.updateMatrixWorld(true);
+    }
+}
+
+function applyCenterRotateDelta(varName, delta) {
+    if (!selectedBlocksSet || !selectedBlocksSet.size || Math.abs(delta) < 1e-8) return;
+    for (const b of selectedBlocksSet) {
+        const beforeCenter = centerOfBlock(b);
+        const cur = Number(b.scope.vars.get(varName)?.value ?? 0);
+        setConstVarValue(b, varName, cur + delta);
+        compensateBaseposForFixedCenter(b, beforeCenter);
+        compensateBaseposForFixedCenter(b, beforeCenter);
+    }
+}
+
+function changeVar(name, delta, refresh = true) {
+    if (!selectedBlocksSet || !selectedBlocksSet.size) return;
+    // 世界轴位移模式：将世界空间增量转换到局部 basepos 空间
+    if (activePick && activePick.mode === 'base' && activePick.Ainv) {
+        const worldDeltaVec = activePick.axis.clone().multiplyScalar(delta);
+        const baseDeltaVec = worldDeltaVec.applyMatrix3(activePick.Ainv);
+        for (const b of selectedBlocksSet) {
+            ['xbasepos','ybasepos','zbasepos'].forEach((axis, i) => {
+                const vn = 'v.' + axis;
+                let def = b.scope.vars.get(vn);
+                if (!def) {
+                    const rg = getDefaultRange(vn);
+                    b.scope.addVar(vn, '0', rg.min, rg.max, rg.step);
+                    def = b.scope.vars.get(vn);
+                }
+                if (def) {
+                    const cur = parseFloat(def.expr) || def.value;
+                    const nv = cur + baseDeltaVec.getComponent(i);
+                    const dec = (def.step.toString().includes('.') ? def.step.toString().split('.')[1].length : 0);
+                    const finalVal = parseFloat(nv.toFixed(dec));
+                    def.expr = finalVal.toString();
+                    def.value = finalVal;
+                }
+            });
+            b.refresh();
+            b.mesh.updateMatrixWorld(true);
+        }
+        recordAction();
+    // 枢轴不联动模式：更新 xpos/ypos/zpos 后换算 basepos 保持模型在世界空间中的位置不变
+    } else if (!pivotLinkModel && activePick && activePick.w0 && activePick.Ainv && herModes.has('origin') && activePick.type === 'move' && !name.includes('basepos')) {
+        for (const b of selectedBlocksSet) {
+            // 1. 先更新枢轴变量 (xpos/ypos/zpos)
+            const d = b.scope.vars.get(name);
+            if (!d) continue;
+            let nv = (parseFloat(d.expr) || d.value) + delta;
+            const dec = (d.step.toString().includes('.') ? d.step.toString().split('.')[1].length : 0);
+            nv = parseFloat(nv.toFixed(dec));
+            d.expr = nv.toString();
+            d.value = nv;
+
+            // 2. 获取更新后的位置 pos_new
+            const posNew = new THREE.Vector3(
+                Number(b.scope.vars.get('v.xpos')?.value ?? 0),
+                Number(b.scope.vars.get('v.ypos')?.value ?? 0),
+                Number(b.scope.vars.get('v.zpos')?.value ?? 0)
+            );
+
+            // 3. 核心公式：basepos_new = A⁻¹ · (w₀ - pos_new)
+            const diff = activePick.w0.clone().sub(posNew);
+            const baseNew = diff.applyMatrix3(activePick.Ainv);
+
+            // 4. 写回 xbasepos / ybasepos / zbasepos
+            ['xbasepos','ybasepos','zbasepos'].forEach((axis, i) => {
+                const bn = 'v.' + axis;
+                const bd = b.scope.vars.get(bn);
+                if (bd) {
+                    const val = baseNew.getComponent(i);
+                    bd.expr = val.toString();
+                    bd.value = val;
+                }
+            });
+
+            b.refresh();
+            b.mesh.updateMatrixWorld(true);
+        }
+        recordAction();
+    } else {
+        applyBatchDelta(name, delta);
+    }
+    updateOriginCenterLineLive(selectedBlock);
+    renderVariablesForBlock(selectedBlock);
+    if (refresh && !draggingGizmo) {
+        requestGizmoRefresh(); updateToolbar(true);
+    } else {
+        const isRotDrag = activePick && activePick.type === 'rot';
+        dragNeedsRebuild = !isRotDrag;
+        const now = performance.now();
+        if (!isRotDrag && activePick && now - lastDragRebuild > 16) {
+            lastDragRebuild = now; requestGizmoRefresh(); updateToolbar(true);
+            refreshActivePickMeta(lastPX, lastPY);
+        }
+    }
+}
+
+function setVarDirect(varName, value) {
+    if (!selectedBlocksSet || !selectedBlocksSet.size || !Number.isFinite(value)) return;
+    for (const b of selectedBlocksSet) {
+        let def = b.scope.vars.get(varName);
+        if (!def) {
+            const rg = getDefaultRange(varName);
+            b.scope.addVar(varName, '0', rg.min, rg.max, 1);
+            def = b.scope.vars.get(varName);
+        }
+        if (def) {
+            if (['v.xrot','v.yrot','v.zrot'].includes(varName)) value = normRotDeg(value);
+            def.expr = String(value); def.value = value;
+            b.refresh(); b.mesh.updateMatrixWorld(true);
+        }
+    }
+    recordAction(); renderVariablesForBlock(selectedBlock);
+    requestGizmoRefresh(); updateToolbar(true);
+}
+
+// ---------- 屏幕坐标辅助 ----------
+function screenAxis(meta) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const c = gizmoRoot.position.clone();
+    const p1 = c.clone().project(camera);
+    const p2 = c.clone().add(meta.axis.clone().normalize()).project(camera);
+    const sx = (p2.x - p1.x) * rect.width * 0.5;
+    const sy = -(p2.y - p1.y) * rect.height * 0.5;
+    const len = Math.hypot(sx, sy) || 1;
+    return { x: sx / len, y: sy / len };
+}
+
+function screenAngleFor(meta, clientX, clientY) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const center = rotGizmoCenterWorld(selected(), meta.rotMode);
+    const normal = meta.axisNormal?.clone().normalize() || new THREE.Vector3(0,0,1);
+    const viewDir = camera.position.clone().sub(center).normalize();
+    const xb = meta.xBasis?.clone().normalize() || new THREE.Vector3(1,0,0);
+    const yb = meta.yBasis?.clone().normalize() || new THREE.Vector3(0,1,0);
+    const screenFallback = () => {
+        const c = center.clone().project(camera);
+        const cx = (c.x * 0.5 + 0.5) * rect.width + rect.left;
+        const cy = (-c.y * 0.5 + 0.5) * rect.height + rect.top;
+        const px = center.clone().add(xb).project(camera);
+        const py = center.clone().add(yb).project(camera);
+        const ux = { x: (px.x - c.x) * rect.width * 0.5, y: -(px.y - c.y) * rect.height * 0.5 };
+        const uy = { x: (py.x - c.x) * rect.width * 0.5, y: -(py.y - c.y) * rect.height * 0.5 };
+        const vx = clientX - cx, vy = clientY - cy;
+        return Math.atan2(vx * uy.x + vy * uy.y, vx * ux.x + vy * ux.y);
+    };
+    if (Math.abs(normal.dot(viewDir)) < 0.18) return screenFallback();
+    const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(ndc, camera);
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, center);
+    const hit = new THREE.Vector3();
+    if (!raycaster.ray.intersectPlane(plane, hit)) return screenFallback();
+    const v = hit.sub(center);
+    if (v.lengthSq() < 1e-6) return screenFallback();
+    return Math.atan2(v.dot(yb), v.dot(xb));
+}
+
+function screenTangentDelta(meta, clientX, clientY, dx, dy) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const center = rotGizmoCenterWorld(selected(), meta.rotMode);
+    const c = center.clone().project(camera);
+    const cx = (c.x * 0.5 + 0.5) * rect.width + rect.left;
+    const cy = (-c.y * 0.5 + 0.5) * rect.height + rect.top;
+    const rx = clientX - cx, ry = clientY - cy;
+    let r = Math.hypot(rx, ry);
+    let tx, ty;
+    if (r > 8) { tx = -ry / r; ty = rx / r; }
+    else {
+        const xb = meta.xBasis?.clone().normalize() || new THREE.Vector3(1,0,0);
+        const px = center.clone().add(xb).project(camera);
+        tx = (px.x - c.x) * rect.width * 0.5;
+        ty = -(px.y - c.y) * rect.height * 0.5;
+        const tl = Math.hypot(tx, ty) || 1;
+        tx /= tl; ty /= tl; r = 90;
+    }
+    const tangentPx = dx * tx + dy * ty;
+    const xb = meta.xBasis?.clone().normalize() || new THREE.Vector3(1,0,0);
+    const yb = meta.yBasis?.clone().normalize() || new THREE.Vector3(0,1,0);
+    const radius = Number(meta.radius || 2.05);
+    const px = center.clone().addScaledVector(xb, radius).project(camera);
+    const py = center.clone().addScaledVector(yb, radius).project(camera);
+    const lx = Math.hypot((px.x - c.x) * rect.width * 0.5, (px.y - c.y) * rect.height * 0.5);
+    const ly = Math.hypot((py.x - c.x) * rect.width * 0.5, (py.y - c.y) * rect.height * 0.5);
+    const screenRadius = Math.max(48, Math.min(260, (lx + ly) * 0.5 || r || 90));
+    let da = tangentPx / screenRadius;
+    if (!Number.isFinite(da) || Math.abs(da) < 1e-6) {
+        const moved = Math.hypot(dx, dy);
+        if (moved > 0.01) da = (dx - dy) * 0.006;
+    }
+    return da;
+}
+
+// ---------- 主重建 ----------
+function clearGizmo() {
+    clearActiveHighlight();
+    rotArcGroups = [];
+    gizmoArrowGroups = [];
+    originCenterLineObj = null;
+    gizmoAxisLines = [];
+    while (gizmoRoot.children.length) {
+        const child = gizmoRoot.children[0];
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        gizmoRoot.remove(child);
+    }
+    pickables.length = 0;
+}
+function rebuildGizmo() {
+    console.log('[GIZMO] rebuildGizmo called, modes:', [...herModes], 'selected:', selected()?.id);
+    clearGizmo();
+    const b = selected();
+    if (!b || herModes.size === 0) { gizmoRoot.visible = false; return; }
+    gizmoRoot.visible = true;
+    gizmoRoot.position.copy(originOfBlock(b));
+    gizmoRoot.quaternion.identity();
+    // 新操作模式下，枢轴/位移时隐藏方块自身坐标轴，旋转/缩放时显示
+    if (isNewLayoutMode) {
+        const hideAxes = herModes.has('origin') || herModes.has('base');
+        blocks.forEach(blk => { if (blk.axisHelper) blk.axisHelper.visible = !hideAxes; });
+    }
+    gizmoRoot.add(makeOriginCenterLine(b));
+    const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
+    if (herModes.has('origin')) {
+        gizmoRoot.add(makeAt(new THREE.Vector3(), makeArrow(wx,wz,0xff3030,'v.xpos',0.012,0,{visualScale:1.05,start:0.58,priority:10,moveKind:'origin',axisName:'x'}),{moveWrapper:'origin'}));
+        gizmoRoot.add(makeAt(new THREE.Vector3(), makeArrow(wy,wz,0x25d94f,'v.ypos',0.012,0,{visualScale:1.05,start:0.58,priority:10,moveKind:'origin',axisName:'y'}),{moveWrapper:'origin'}));
+        gizmoRoot.add(makeAt(new THREE.Vector3(), makeArrow(wz,wy,0x2078ff,'v.zpos',0.012,0,{visualScale:1.05,start:0.58,priority:10,moveKind:'origin',axisName:'z'}),{moveWrapper:'origin'}));
+    }
+    if (herModes.has('base')) {
+        if (useWorldAxisDisplacement) {
+            // 世界轴位移模式：箭头沿世界坐标轴方向，不随方块旋转，定位到视觉中心
+            const co = centerOfBlock(b).sub(originOfBlock(b));
+            const baseVarMap = { x: 'v.xbasepos', y: 'v.ybasepos', z: 'v.zbasepos' };
+            const axisColors = { x: 0xffb347, y: 0xc6ff5c, z: 0x49e6ff };
+            const axisDirs = { x: wx, y: wy, z: wz };
+            const axisNormals = { x: wz, y: wz, z: wy };
+            ['x','y','z'].forEach(axis => {
+                const dir = axisDirs[axis];
+                const arrowGroup = makeArrow(dir, axisNormals[axis], axisColors[axis], baseVarMap[axis], 0.012, 0, {
+                    visualScale: 1.05, start: 0.58, priority: 90,
+                    moveKind: 'base', axisName: axis,
+                    mode: 'base'  // 标记为 base 模式，用于 drag 中的特殊处理
+                });
+                arrowGroup.userData.isBaseWorldAxis = true;
+                arrowGroup.userData.baseAxis = axis;
+                gizmoArrowGroups.push(arrowGroup);
+                gizmoRoot.add(arrowGroup);
+            });
+        } else {
+            // 原始位移模式：箭头沿世界轴创建，每帧通过 setFromUnitVectors 旋转到剪切轴方向
+            const co = centerOfBlock(b).sub(originOfBlock(b));
+            const gx = makeAt(co, makeArrow(wx,wz,0xffb347,'v.xbasepos',0.012,0,{visualScale:1.05,start:0.58,priority:25,moveKind:'base',axisName:'x'}),{moveWrapper:'base'});
+            const gy = makeAt(co, makeArrow(wy,wz,0xc6ff5c,'v.ybasepos',0.012,0,{visualScale:1.05,start:0.58,priority:25,moveKind:'base',axisName:'y'}),{moveWrapper:'base'});
+            const gz = makeAt(co, makeArrow(wz,wy,0x49e6ff,'v.zbasepos',0.012,0,{visualScale:1.05,start:0.58,priority:25,moveKind:'base',axisName:'z'}),{moveWrapper:'base'});
+            gx.userData.usesShearedAxes = true; gx.userData.herMoveAxis = 'x';
+            gy.userData.usesShearedAxes = true; gy.userData.herMoveAxis = 'y';
+            gz.userData.usesShearedAxes = true; gz.userData.herMoveAxis = 'z';
+            gizmoRoot.add(gx); gizmoRoot.add(gy); gizmoRoot.add(gz);
+        }
+    }
+    if (herModes.has('rotate')) {
+        rotArcGroups = [];
+        const bx = rotDiscBasisFor(b,'x'), by = rotDiscBasisFor(b,'y'), bz = rotDiscBasisFor(b,'z');
+        gizmoRoot.add(makeArc('x',0xff3030,'v.xrot',bx.z,bx.x,bx.y,{rotMode:'origin'}));
+        gizmoRoot.add(makeArc('y',0x25d94f,'v.yrot',by.z,by.x,by.y,{rotMode:'origin'}));
+        gizmoRoot.add(makeArc('z',0x2078ff,'v.zrot',bz.z,bz.x,bz.y,{rotMode:'origin'}));
+    }
+    if (herModes.has('centerRotate')) {
+        rotArcGroups = rotArcGroups || [];
+        const co = centerOfBlock(b).sub(originOfBlock(b));
+        const bx = rotDiscBasisFor(b,'x'), by = rotDiscBasisFor(b,'y'), bz = rotDiscBasisFor(b,'z');
+        gizmoRoot.add(makeArc('x',0xff66cc,'v.xrot',bx.z,bx.x,bx.y,{rotMode:'center',offset:co,priority:45}));
+        gizmoRoot.add(makeArc('y',0xd87cff,'v.yrot',by.z,by.x,by.y,{rotMode:'center',offset:co,priority:45}));
+        gizmoRoot.add(makeArc('z',0x66ffe8,'v.zrot',bz.z,bz.x,bz.y,{rotMode:'center',offset:co,priority:45}));
+    }
+    if (herModes.has('scale')) gizmoRoot.add(makeScaleDots(b));
+}
+function updateRotGizmosLive() {
+    const b = selected(); if (!b || !rotArcGroups.length) return;
+    gizmoRoot.updateMatrixWorld(true);
+    for (const g of rotArcGroups) {
+        // 保持群组四元数不变（rebuildGizmo 中已设置好），只更新位置和自转角度
+        g.position.copy(rotGizmoCenterLocal(b, g.userData.herRotMode));
+        const plane = g.userData.herRotPlane;
+        if (!plane) continue;
+        const visualAngle = rotVisualAngle(g.userData.herRotAxis, g.userData.herRotVar);
+        plane.rotation.z = visualAngle + g.userData.herFaceAngle - Math.PI * 0.5;
+    }
+    if (activePick && activePick.type === 'rot') updateActiveHighlightPose();
+}
+function updateMoveGizmosLive(b) {
+    b = b || selected(); if (!b || !gizmoRoot.visible) return;
+    gizmoRoot.position.copy(originOfBlock(b));
+    const co = centerOfBlock(b).sub(originOfBlock(b)), q = quatOfBlock(b);
+    // 计算世界轴位移模式的视觉中心位置
+    let visualCenter = null;
+    if (useWorldAxisDisplacement && herModes.has('base')) {
+        const M = b.scope.toM();
+        const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+        const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+        const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+        const wm = computeTransformMatrix(M, rX, rY, rZ);
+        visualCenter = new THREE.Vector3().setFromMatrixPosition(wm).sub(originOfBlock(b));
+    }
+    // 非世界轴模式下，实时计算剪切轴方向
+    let shearedChanged = false;
+    if (!useWorldAxisDisplacement && herModes.has('base')) {
+        const curAxes = shearedAxesOfBlock(b);
+        for (const g of gizmoArrowGroups) {
+            if (!g || !g.userData.usesShearedAxes) continue;
+            g.position.copy(co);
+            const axisMap = { x: curAxes.x, y: curAxes.y, z: curAxes.z };
+            const worldDirMap = { x: new THREE.Vector3(1,0,0), y: new THREE.Vector3(0,1,0), z: new THREE.Vector3(0,0,1) };
+            const ad = axisMap[g.userData.herMoveAxis];
+            const wd = worldDirMap[g.userData.herMoveAxis];
+            if (ad && wd) {
+                g.quaternion.setFromUnitVectors(wd, ad);
+            }
+            shearedChanged = true;
+        }
+    }
+    if (!shearedChanged) {
+        for (const g of gizmoArrowGroups) {
+            if (!g) continue;
+            if (g.userData.isBaseWorldAxis && visualCenter) {
+                g.position.copy(visualCenter);
+                g.quaternion.identity();
+            } else if (g.userData.herMoveWrapper === 'base') {
+                g.position.copy(co);
+                g.quaternion.copy(q);
+            } else if (g.userData.herMoveWrapper === 'origin') {
+                g.position.set(0,0,0);
+                g.quaternion.identity();
+            }
+        }
+    }
+    if (activePick && activePick.type === 'move') updateActiveHighlightPose();
+}
+function toggleHerMode(m) {
+    if (herModes.has(m)) { herModes.delete(m); }
+    else { herModes.clear(); herModes.add(m); }
+    document.querySelectorAll('.her-mode-btn').forEach(b => b.classList.toggle('active',herModes.has(b.dataset.mode)));
+    rebuildGizmo();
+}
+function clearHerModes() { herModes.clear(); document.querySelectorAll('.her-mode-btn').forEach(b=>b.classList.remove('active')); rebuildGizmo(); }
+function updateToolbar(force) {
+    const ok = !!selected();
+    const tb = document.getElementById('herTransformToolbar');
+    if (tb) tb.style.display = (ok && isNewLayoutMode) ? 'flex' : 'none';
+    if (ok && isNewLayoutMode) {
+        // 确保工具栏容器可见
+        const topBar = document.getElementById('newTopBar');
+        if (topBar && topBar.style.display === 'none') topBar.style.display = 'flex';
+    }
+    if (!ok) { clearHerModes(); return; }
+    // 非新操作模式时强制清除所有 Gizmo 模式，恢复方块自身坐标轴
+    if (!isNewLayoutMode && herModes.size > 0) {
+        herModes.clear();
+        document.querySelectorAll('.her-mode-btn').forEach(b => b.classList.remove('active'));
+        blocks.forEach(blk => { if (blk.axisHelper) blk.axisHelper.visible = (blk === selectedBlock || selectedBlocksSet.has(blk)); });
+        rebuildGizmo();
+        return;
+    }
+    if (draggingGizmo) return; // 拖拽中不触发重建，避免闪烁
+    const n = performance.now();
+    if (!force && !gizmoDirty && n - lastGizmoCheck < 220) return;
+    lastGizmoCheck = n;
+    const sig = gizmoSignature();
+    if (force || gizmoDirty || sig !== lastGizmoSig) { lastGizmoSig = sig; gizmoDirty = false; rebuildGizmo(); }
+}
+function gizmoSignature() {
+    const b = selected(); if (!b) return 'none';
+    const ns = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.xrot','v.yrot','v.zrot','v.scale'];
+    return [...herModes].sort().join('|') + '#' + b.id + '#' + (useWorldAxisDisplacement?'W':'') + '#' + ns.map(n => Number(b.scope?.vars?.get(n)?.value??0).toFixed(4)).join(',');
+}
+function requestGizmoRefresh() { gizmoDirty = true; }
+function syncGizmo() {
+    const b = selected();
+    if (b) {
+        updateMoveGizmosLive(b);
+        updateOriginCenterLineLive(b);
+        if (herModes.has('rotate') || herModes.has('centerRotate')) updateRotGizmosLive();
+        // 摄像机自适应缩放：使 Gizmo 在屏幕上投影大小恒定
+        const refDist = 14;
+        const camDist = Math.max(0.1, camera.position.distanceTo(originOfBlock(b)));
+        const s = camDist / refDist;
+        gizmoArrowGroups.forEach(g => g.scale.set(s, s, s));
+        rotArcGroups.forEach(g => g.scale.set(s, s, s));
+        gizmoAxisLines.forEach(g => g.scale.set(s, s, s));
+    }
+    updateToolbar(false);
+}
+function pickRotByScreenDistance(cx, cy) {
+    const b = selected();
+    if (!b || !(herModes.has('rotate')||herModes.has('centerRotate')) || !rotArcGroups.length) return null;
+    const rect = renderer.domElement.getBoundingClientRect();
+    const radius = 2.05, S = 0, E = Math.PI*2;
+    let best = null;
+    const dS = (px,py,ax,ay,bx,by) => { const vx=bx-ax,vy=by-ay,wx=px-ax,wy=py-ay,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,(wx*vx+wy*vy)/l2)); return Math.hypot(px-(ax+vx*t),py-(ay+vy*t)); };
+    for (const g of rotArcGroups) {
+        const axis = g.userData.herRotAxis, vn = g.userData.herRotVar, d = rotDiscBasisFor(b,axis), rm = g.userData.herRotMode||'origin', c = rotGizmoCenterWorld(b,rm), sp = rotVisualAngle(axis,vn);
+        let prev = null, md = Infinity;
+        for (let i=0;i<=64;i++) { const a=S+(E-S)*i/64+sp, wp=c.clone().addScaledVector(d.x,Math.cos(a)*radius).addScaledVector(d.y,Math.sin(a)*radius), sp2=wp.project(camera), p={x:(sp2.x*0.5+0.5)*rect.width+rect.left,y:(-sp2.y*0.5+0.5)*rect.height+rect.top}; if(prev) md=Math.min(md,dS(cx,cy,prev.x,prev.y,p.x,p.y)); prev=p; }
+        if (md<76 && (!best || md<best.distance)) best = {distance:md, object:{userData:{her:{type:'rot',varName:vn,scale:1,axis,rotMode:rm,priority:80,axisNormal:d.z.clone(),xBasis:d.x.clone(),yBasis:d.y.clone(),radius,end:Math.PI},herPriority:80}}};
+    }
+    return best;
+}
+function pickGizmo(e) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const gp = new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1, -((e.clientY-rect.top)/rect.height)*2+1);
+    const gr = new THREE.Raycaster(); gr.setFromCamera(gp, camera);
+    const hits = gr.intersectObjects(pickables, true);
+    const ranked = hits.map(h => { let o = h.object; while(o&&!o.userData?.her&&o.parent) o=o.parent; return o&&o.userData?.her ? {object:o, distance:h.distance, meta:o.userData.her, priority:o.userData.herPriority||0} : null; }).filter(Boolean);
+    const rf = pickRotByScreenDistance(e.clientX, e.clientY);
+    if (rf) ranked.push({object:rf.object, distance:rf.distance, meta:rf.object.userData.her, priority:rf.object.userData.herPriority||60});
+    const s = (a,b) => b.priority-a.priority || a.distance-b.distance;
+    const dr = ranked.filter(h => h.meta.type !== 'input');
+    return dr.length ? dr.sort(s)[0].object : (ranked.sort(s)[0]?.object || null);
+}
+function beginGizmoDrag(cx, cy, ev) {
+    if (activePick || pendingInputPick) return false;
+    if (ev?.target?.closest && ev.target.closest('#her-transform-toolbar')) return false;
+    const obj = pickGizmo({clientX:cx, clientY:cy});
+    if (!obj) return false; const meta = obj.userData.her; if (!meta) return false;
+    if (meta.type === 'input') { pendingInputPick = {varName:meta.varName, x:cx, y:cy, lastX:cx, lastY:cy, moved:false, t:performance.now()}; controls.enabled = false; if(ev) ev.preventDefault(); return true; }
+    activePick = Object.assign({}, meta, {_hitObj:obj}); lastPX = cx; lastPY = cy;
+    draggingGizmo = true; dragNeedsRebuild = false; lastDragRebuild = 0;
+    // 非世界轴位移模式的 base 箭头：将拖拽轴更新为实际的剪切轴方向，匹配视觉箭头朝向
+    if (!useWorldAxisDisplacement && herModes.has('base') && activePick.type === 'move' && activePick.varName && activePick.varName.includes('basepos')) {
+        const b = selected();
+        if (b) {
+            const axes = shearedAxesOfBlock(b);
+            const axName = activePick.axisName || (activePick.varName.includes('x') ? 'x' : activePick.varName.includes('y') ? 'y' : 'z');
+            if (axes[axName]) activePick.axis = axes[axName].clone();
+        }
+    }
+    // 世界轴位移模式：预先计算世界矩阵及其逆矩阵，用于将世界空间增量转换到局部 basepos 空间
+    if (activePick.mode === 'base') {
+        const b = selected();
+        if (b) {
+            const M = b.scope.toM();
+            const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+            const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+            const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+            const worldMat = computeTransformMatrix(M, rX, rY, rZ);
+            activePick.w0 = new THREE.Vector3().setFromMatrixPosition(worldMat);
+            const A3 = new THREE.Matrix3().setFromMatrix4(worldMat);
+            activePick.Ainv = new THREE.Matrix3().copy(A3).invert();
+        }
+    }
+    // 枢轴不联动模式：拖拽原点箭头时记录 w₀ 和 A⁻¹，用于换算 basepos 保持模型位置不变
+    if (!pivotLinkModel && herModes.has('origin') && activePick.type === 'move' && activePick.varName && !activePick.varName.includes('basepos')) {
+        const b = selected();
+        if (b) {
+            const M = b.scope.toM();
+            const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+            const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+            const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+            const worldMat = computeTransformMatrix(M, rX, rY, rZ);
+            activePick.w0 = new THREE.Vector3().setFromMatrixPosition(worldMat);
+            const A3 = new THREE.Matrix3().setFromMatrix4(worldMat);
+            activePick.Ainv = new THREE.Matrix3().copy(A3).invert();
+        }
+    }
+    makeActiveHighlight(activePick);
+    if (activePick.type === 'rot') activePick.lastAngle = screenAngleFor(activePick, cx, cy);
+    controls.enabled = false; if (ev) ev.preventDefault(); return true;
+}
+function moveGizmoDrag(cx, cy, ev) {
+    if (pendingInputPick) { pendingInputPick.lastX=cx; pendingInputPick.lastY=cy; if(Math.hypot(cx-pendingInputPick.x,cy-pendingInputPick.y)>10) pendingInputPick.moved=true; if(ev) ev.preventDefault(); return true; }
+    if (!activePick) return false;
+    const dx = cx-lastPX, dy = cy-lastPY; lastPX=cx; lastPY=cy;
+    if (activePick.type === 'rot') {
+        const na = screenAngleFor(activePick, cx, cy);
+        let da; if (activePick.axis === 'y') da = screenTangentDelta(activePick,cx,cy,dx,dy);
+        else { da = na-(Number.isFinite(activePick.lastAngle)?activePick.lastAngle:na); while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2; }
+        if (!Number.isFinite(da)||Math.abs(da)<1e-6) { if(Math.hypot(dx,dy)>0.01) da=(Math.abs(dx)>=Math.abs(dy)?dx:-dy)*0.01; }
+        activePick.lastAngle = na;
+        const sign = activePick.axis==='x'?-1:1, bd = THREE.MathUtils.radToDeg(da)*sign;
+        let dd = -bd; if (activePick.axis==='y') dd = bd;
+        if (Math.abs(dd) > 1e-5) { if (activePick.rotMode==='center') applyCenterRotateDelta(activePick.varName,dd); else applyOriginRotateDelta(activePick.varName,dd); dragNeedsRebuild = false; }
+        updateOriginCenterLineLive(selectedBlock); updateRotGizmosLive();
+    } else if (activePick.type === 'move' && activePick.mode === 'base') {
+        // 世界轴位移模式：使用射线-平面交点计算世界空间位移增量
+        const rect = renderer.domElement.getBoundingClientRect();
+        const ndc = new THREE.Vector2(
+            ((cx - rect.left) / rect.width) * 2 - 1,
+            -((cy - rect.top) / rect.height) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(ndc, camera);
+        const axisOrg = new THREE.Vector3();
+        gizmoRoot.getWorldPosition(axisOrg);
+        const planeNormal = camera.position.clone().sub(axisOrg).normalize();
+        const planeD = -planeNormal.dot(axisOrg);
+        const t = -(planeNormal.dot(raycaster.ray.origin) + planeD) / planeNormal.dot(raycaster.ray.direction);
+        if (t < 0) { if (ev) ev.preventDefault(); return true; }
+        const hitPoint = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(t));
+        const offset = hitPoint.sub(axisOrg);
+        const s = offset.dot(activePick.axis);
+        if (activePick._lastAxisS === undefined) {
+            activePick._lastAxisS = s;
+        }
+        const deltaS = s - activePick._lastAxisS;
+        activePick._lastAxisS = s;
+        changeVar(activePick.varName, deltaS, false);
+        updateActiveHighlightPose();
+    } else if (activePick.type === 'scale') { changeVar(activePick.varName, (dx-dy)*activePick.scale, false); updateActiveHighlightPose(); }
+    else { const a = screenAxis(activePick); changeVar(activePick.varName, (dx*a.x+dy*a.y)*activePick.scale, false); updateActiveHighlightPose(); }
+    if (ev) ev.preventDefault(); return true;
+}
+function endGizmoDrag(ev) {
+    if (pendingInputPick) { const p=pendingInputPick; pendingInputPick=null; controls.enabled=true; const dt=performance.now()-p.t, md=Math.hypot((p.lastX??p.x)-p.x,(p.lastY??p.y)-p.y); if(!p.moved&&md<=10&&dt<=650) promptVarInput(p.varName,ev); if(ev) ev.preventDefault(); return true; }
+    if (activePick) {
+        const wr = activePick.type==='rot';
+        clearActiveHighlight(); activePick=null; draggingGizmo=false; controls.enabled=true;
+        if (wr) { recordAction(); renderVariablesForBlock(selectedBlock); updateOriginCenterLineLive(selectedBlock); updateRotGizmosLive(); }
+        if (dragNeedsRebuild) { dragNeedsRebuild=false; requestGizmoRefresh(); updateToolbar(true); }
+        if (ev) ev.preventDefault(); return true;
+    } return false;
+}
+function promptVarInput(vn, ev) { const n=performance.now(); if(n-lastPromptAt<650) return; lastPromptAt=n; const raw=window.prompt(`输入 ${vn.replace('v.','')} 的数值`, String(varValue(vn))); if(raw===null) return; const v=Number(raw.trim()); if(Number.isFinite(v)) setVarDirect(vn,v); if(ev) ev.preventDefault(); }
+function refreshActivePickMeta(cx, cy) { cx=cx||lastPX; cy=cy||lastPY; if(!activePick) return; const fo=pickables.find(o=>{const m=o.userData.her; return m&&m.type===activePick.type&&m.varName===activePick.varName;}); const f=fo?.userData?.her; if(f){ Object.assign(activePick,f,{_hitObj:fo}); if(activePick.type==='rot') activePick.lastAngle=screenAngleFor(activePick,cx,cy); makeActiveHighlight(activePick); } }
+
+// ---------- 绑定模式按钮 ----------
+document.querySelectorAll('.her-mode-btn').forEach(b => { b.onclick = () => toggleHerMode(b.dataset.mode); });
 
 // ==================== 键盘快捷键 ====================
 window.addEventListener('keydown', (e) => {
@@ -3487,6 +5738,7 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x030617);
 scene.fog = new THREE.FogExp2(0x030617, 0.008);
+gizmoRoot = new THREE.Group(); scene.add(gizmoRoot); gizmoRoot.visible = false;
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(8, 6, 10);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -3501,7 +5753,7 @@ renderer.domElement.style.width = '100%';
 renderer.domElement.style.height = '100%';
 renderer.domElement.style.zIndex = '0';
 container.appendChild(renderer.domElement);
-const labelRenderer = new CSS2DRenderer();
+var labelRenderer = new CSS2DRenderer();
 labelRenderer.setSize(window.innerWidth, window.innerHeight);
 labelRenderer.domElement.style.position = 'absolute';
 labelRenderer.domElement.style.top = '0px';
@@ -3523,6 +5775,42 @@ controls.touchRotate = true;
 controls.touchZoom = true;
 controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
 controls.listenToKeyEvents(window);
+
+// ---------- 挂载 Gizmo 拖拽事件 ----------
+renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.data-panel') || e.target.closest('.top-bar') || e.target.closest('.new-top-bar') || e.target.closest('.side-block-list')) return;
+    if (!gizmoRoot?.visible) return;
+    const handled = beginGizmoDrag(e.clientX, e.clientY, e);
+    if (handled) e.stopPropagation();
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!draggingGizmo && !pendingInputPick) return;
+    moveGizmoDrag(e.clientX, e.clientY);
+});
+renderer.domElement.addEventListener('pointerup', (e) => {
+    if (!draggingGizmo && !pendingInputPick) return;
+    endGizmoDrag(e);
+});
+renderer.domElement.addEventListener('pointerleave', (e) => {
+    if (draggingGizmo || pendingInputPick) endGizmoDrag(e);
+});
+renderer.domElement.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.data-panel') || e.target.closest('.top-bar') || e.target.closest('.new-top-bar') || e.target.closest('.side-block-list')) return;
+    if (!gizmoRoot?.visible) return;
+    const touch = e.touches[0];
+    const handled = beginGizmoDrag(touch.clientX, touch.clientY, e);
+    if (handled) e.preventDefault();
+}, { passive: false });
+renderer.domElement.addEventListener('touchmove', (e) => {
+    if (!draggingGizmo && !pendingInputPick) return;
+    const touch = e.touches[0];
+    moveGizmoDrag(touch.clientX, touch.clientY);
+    e.preventDefault();
+}, { passive: false });
+renderer.domElement.addEventListener('touchend', (e) => {
+    if (!draggingGizmo && !pendingInputPick) return;
+    endGizmoDrag(e);
+});
 
 // 监听窗口尺寸变化，自适应屏幕
 window.addEventListener('resize', onWindowResize, false);
@@ -3693,7 +5981,8 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let clickTimer = null; 
 function onCanvasClick(event) {
-    if (event.target.closest('.data-panel') || event.target.closest('.top-bar')) return;
+    if (event.target.closest('.data-panel') || event.target.closest('.top-bar') || event.target.closest('.new-top-bar') || event.target.closest('.side-block-list')) return;
+    if (draggingGizmo || pendingInputPick) return;
     const rect = renderer.domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -3716,15 +6005,17 @@ function onCanvasClick(event) {
                 }, 200);
             }
         }
-    } else if (!event.ctrlKey) {
+    } else if (!event.ctrlKey && !isNewLayoutMode) {
         if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
         selectedBlocksSet.clear();
         selectBlock(null);
         renderVariablesForBlock(null);
+        updateDropdownSelection();
     }
 }
 renderer.domElement.addEventListener('click', onCanvasClick);
 renderer.domElement.addEventListener('touchstart', e => {
+    if (e.target.closest('.new-top-bar') || e.target.closest('.side-block-list')) return;
     let start = { x: e.touches[0].clientX, y: e.touches[0].clientY }, moved = false;
     const onMove = me => {
         if (Math.abs(me.touches[0].clientX - start.x) > 5 || Math.abs(me.touches[0].clientY - start.y) > 5) moved = true;
@@ -3732,7 +6023,7 @@ renderer.domElement.addEventListener('touchstart', e => {
     const onEnd = ee => {
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
-        if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar')) {
+        if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar') && !ee.target.closest('.new-top-bar') && !ee.target.closest('.side-block-list')) {
             const rect = renderer.domElement.getBoundingClientRect();
             pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
             pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1;
@@ -3747,6 +6038,7 @@ renderer.domElement.addEventListener('touchstart', e => {
                 selectedBlocksSet.clear();
                 selectBlock(null);
                 renderVariablesForBlock(null);
+                updateDropdownSelection();
             }
         }
     };
@@ -3782,6 +6074,7 @@ function animate() {
   
     
     updateAxesByDistance();
+    try { if (typeof syncGizmo === 'function') syncGizmo(); } catch(e) { /* ignore gizmo sync error */ }
     blocks.forEach(b => updateBlockLabel(b));
     for (let block of selectedBlocksSet) {
         if (block.selectionWireframe && block.selectionWireframe.visible) {
@@ -3813,9 +6106,20 @@ addBlock(new Block(bid, defM, null, '#aaccff', 'cube'));
 selectBlock(blocks[0]);
 applyTheme();
 
-// 面板拖拽调整高度
+// 面板拖拽调整高度（使用 rAF 节流避免卡顿）
 const resizeHandle = document.getElementById('resizeHandle');
 let isDraggingPanel = false, dragStartClientY = 0, dragStartHeight = 0, dragStartClientX = 0, dragStartWidth = 0;
+let resizeRAFId = null;
+function applyPanelWidth(newWidth) {
+    panel.style.width = newWidth + 'px';
+    sidePanelWidth = newWidth;
+    if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
+    if (sidePanelWidthRange) sidePanelWidthRange.value = sidePanelWidth;
+    panel.dataset.narrow = sidePanelWidth < 282 ? 'true' : 'false';
+}
+function applyPanelHeight(newHeight) {
+    panel.style.height = newHeight + 'px';
+}
 function onPointerDown(e) {
     e.preventDefault();
     isDraggingPanel = true;
@@ -3825,34 +6129,42 @@ function onPointerDown(e) {
     dragStartWidth = panel.offsetWidth;
     document.body.style.userSelect = 'none';
     document.body.style.cursor = isSidePanelMode ? 'ew-resize' : 'ns-resize';
+    // 侧边模式拖拽时降低 3D 渲染精度以减少卡顿
+    if (isSidePanelMode) {
+        panel.style.willChange = 'width';
+        renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * 0.5));
+    }
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerUp);
 }
 function onPointerMove(e) {
     if (!isDraggingPanel) return;
-    if (isSidePanelMode) {
-        const dx = e.clientX - dragStartClientX;
-        let newWidth = dragStartWidth - dx;
-        newWidth = Math.min(MAX_SIDE_PANEL_WIDTH, Math.max(MIN_SIDE_PANEL_WIDTH, newWidth));
-        panel.style.width = newWidth + 'px';
-        sidePanelWidth = newWidth;
-        if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
-        if (sidePanelWidthRange) sidePanelWidthRange.value = sidePanelWidth;
-        panel.dataset.narrow = sidePanelWidth < 282 ? 'true' : 'false';
-    } else {
-        const dy = e.clientY - dragStartClientY;
-        let newHeight = dragStartHeight - dy;
-        newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight));
-        panel.style.height = newHeight + 'px';
-    }
+    if (resizeRAFId) cancelAnimationFrame(resizeRAFId);
+    resizeRAFId = requestAnimationFrame(() => {
+        resizeRAFId = null;
+        if (isSidePanelMode) {
+            const dx = e.clientX - dragStartClientX;
+            let newWidth = dragStartWidth - dx;
+            newWidth = Math.min(MAX_SIDE_PANEL_WIDTH, Math.max(MIN_SIDE_PANEL_WIDTH, newWidth));
+            applyPanelWidth(newWidth);
+        } else {
+            const dy = e.clientY - dragStartClientY;
+            let newHeight = dragStartHeight - dy;
+            newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight));
+            applyPanelHeight(newHeight);
+        }
+    });
 }
 function onPointerUp() {
     isDraggingPanel = false;
+    if (resizeRAFId) { cancelAnimationFrame(resizeRAFId); resizeRAFId = null; }
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
     if (isSidePanelMode) {
+        panel.style.willChange = '';
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
     }
     try { positionUISettingsPanel(); } catch (e) { /* ignore */ }
