@@ -1050,6 +1050,7 @@ body.new-layout-active:fullscreen .side-block-list {
     overflow-y: auto;
     overflow-x: hidden;
     max-height: 160px;
+    touch-action: pan-y;
 }
 .keyframe-timeline-container::-webkit-scrollbar {
     width: 4px;
@@ -1161,10 +1162,11 @@ body.light-mode .keyframe-diamond.active {
     border-radius: 12px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.5);
     display: none;
-    min-width: 320px;
-    min-height: 200px;
+    min-width: 280px;
+    min-height: 180px;
     overflow: hidden;
     pointer-events: auto;
+    touch-action: none;
 }
 body.light-mode .keyframe-window {
     background: rgba(248,250,252,0.95);
@@ -1179,6 +1181,7 @@ body.light-mode .keyframe-window {
     border-bottom: 1px solid rgba(59,130,246,0.3);
     cursor: move;
     user-select: none;
+    touch-action: none;
 }
 body.light-mode .keyframe-window-header {
     background: rgba(59,130,246,0.08);
@@ -1239,14 +1242,29 @@ body.light-mode .keyframe-window-btn:hover {
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     cursor: nwse-resize;
+    touch-action: none;
     background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.4) 40%, rgba(59,130,246,0.4) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.4) 55%, rgba(59,130,246,0.4) 65%, transparent 65%);
     z-index: 10;
 }
 .keyframe-resize-handle:hover {
     background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%);
+}
+.keyframe-resize-handle-l {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nesw-resize;
+    touch-action: none;
+    background: linear-gradient(225deg, transparent 0%, transparent 40%, rgba(59,130,246,0.4) 40%, rgba(59,130,246,0.4) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.4) 55%, rgba(59,130,246,0.4) 65%, transparent 65%);
+    z-index: 10;
+}
+.keyframe-resize-handle-l:hover {
+    background: linear-gradient(225deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%);
 }
 .keyframe-toolbar {
     display: flex;
@@ -1354,6 +1372,9 @@ body.light-mode .keyframe-playhead {
 }
 .keyframe-duration-handle:hover {
     opacity: 1;
+}
+.keyframe-duration-handle {
+    touch-action: none;
 }
 .keyframe-timeline-controls {
     display: flex;
@@ -6995,10 +7016,12 @@ function openKeyframeWindow() {
     win.className = 'keyframe-window';
     win.id = 'keyframeWindow';
     win.style.display = 'block';
-    win.style.width = '480px';
-    win.style.height = '360px';
-    win.style.left = Math.max(20, (window.innerWidth - 480) / 2) + 'px';
-    win.style.top = Math.max(20, (window.innerHeight - 360) / 2) + 'px';
+    const initW = Math.min(420, window.innerWidth - 24);
+    const initH = Math.min(320, window.innerHeight * 0.55);
+    win.style.width = initW + 'px';
+    win.style.height = initH + 'px';
+    win.style.left = Math.max(8, (window.innerWidth - initW) / 2) + 'px';
+    win.style.top = Math.max(8, (window.innerHeight - initH) / 2) + 'px';
     
     win.innerHTML = `
         <div class="keyframe-window-header" id="kfWindowHeader">
@@ -7045,6 +7068,7 @@ function openKeyframeWindow() {
             </div>
         </div>
         <div class="keyframe-resize-handle" id="kfResizeHandle"></div>
+        <div class="keyframe-resize-handle-l" id="kfResizeHandleL"></div>
     `;
     
     document.body.appendChild(win);
@@ -7111,6 +7135,7 @@ function openKeyframeWindow() {
     
     container.addEventListener('pointerdown', (e) => {
         if (e.target.closest('.keyframe-marker-group')) return;
+        e.preventDefault();
         keyframeDragging = true;
         container.setPointerCapture(e.pointerId);
         scrubToClientX(e.clientX);
@@ -7118,6 +7143,7 @@ function openKeyframeWindow() {
     container.addEventListener('pointermove', (e) => {
         if (!keyframeDragging) return;
         if (e.target.closest('.keyframe-marker-group')) return;
+        e.preventDefault();
         scrubToClientX(e.clientX);
     });
     container.addEventListener('pointerup', (e) => {
@@ -7128,7 +7154,7 @@ function openKeyframeWindow() {
     container.addEventListener('pointercancel', (e) => {
         keyframeDragging = false;
     });
-    // 鼠标滚轮滚动时间轴
+    // 鼠标滚轮 + 触屏双指滚动时间轴
     container.addEventListener('wheel', (e) => {
         e.preventDefault();
         const vd = getViewDuration();
@@ -7137,6 +7163,31 @@ function openKeyframeWindow() {
         clampScrollOffset();
         renderKeyframeTimeline();
     }, { passive: false });
+    // 时间轴容器触屏垂直滑动也用于水平滚动
+    let touchScrollData = null;
+    container.addEventListener('touchstart', (e) => {
+        if (e.target.closest('.keyframe-marker-group') || e.target.closest('.keyframe-duration-handle')) return;
+        touchScrollData = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+    }, { passive: true });
+    container.addEventListener('touchmove', (e) => {
+        if (!touchScrollData || e.touches.length > 1) return;
+        if (e.target.closest('.keyframe-marker-group') || e.target.closest('.keyframe-duration-handle')) return;
+        const dx = touchScrollData.startX - e.touches[0].clientX;
+        const dy = Math.abs(touchScrollData.startY - e.touches[0].clientY);
+        // 水平滑动距离大于垂直滑动距离时才触发滚动
+        if (Math.abs(dx) > 5 && Math.abs(dx) > dy) {
+            e.preventDefault();
+            const vd = getViewDuration();
+            const step = vd * 0.05 * (dx > 0 ? 1 : -1);
+            keyframeScrollOffset += step;
+            clampScrollOffset();
+            renderKeyframeTimeline();
+            touchScrollData.startX = e.touches[0].clientX;
+            touchScrollData.startY = e.touches[0].clientY;
+        }
+    }, { passive: false });
+    container.addEventListener('touchend', () => { touchScrollData = null; });
+    container.addEventListener('touchcancel', () => { touchScrollData = null; });
     // 时间轴容器双击（定位+创建关键帧）
     container.addEventListener('dblclick', (e) => {
         if (e.target.closest('.keyframe-marker-group')) return;
@@ -7234,6 +7285,8 @@ function makeKeyframeDraggable(win) {
     
     header.addEventListener('pointerdown', (e) => {
         if (e.target.closest('button')) return;
+        e.preventDefault();
+        e.stopPropagation();
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -7246,6 +7299,7 @@ function makeKeyframeDraggable(win) {
     
     function onDrag(e) {
         if (!isDragging) return;
+        e.preventDefault();
         win.style.left = (startLeft + e.clientX - startX) + 'px';
         win.style.top = (startTop + e.clientY - startY) + 'px';
     }
@@ -7258,32 +7312,43 @@ function makeKeyframeDraggable(win) {
 }
 
 function makeKeyframeResizable(win) {
-    const handle = win.querySelector('#kfResizeHandle');
-    if (!handle) return;
-    let isResizing = false, startX, startY, startW, startH;
-    handle.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        isResizing = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        startW = win.offsetWidth;
-        startH = win.offsetHeight;
-        win.style.transition = 'none';
-        document.addEventListener('pointermove', onResize);
-        document.addEventListener('pointerup', onResizeEnd);
-    });
-    function onResize(e) {
-        if (!isResizing) return;
-        const newW = Math.max(300, startW + e.clientX - startX);
-        const newH = Math.max(200, startH + e.clientY - startY);
-        win.style.width = newW + 'px';
-        win.style.height = newH + 'px';
+    function setupResize(handleId, fromLeft) {
+        const handle = win.querySelector('#' + handleId);
+        if (!handle) return;
+        let isResizing = false, startX, startY, startW, startH, startL;
+        handle.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            isResizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startW = win.offsetWidth;
+            startH = win.offsetHeight;
+            startL = parseInt(win.style.left) || 0;
+            win.style.transition = 'none';
+            document.addEventListener('pointermove', onResize);
+            document.addEventListener('pointerup', onResizeEnd);
+        });
+        function onResize(e) {
+            if (!isResizing) return;
+            e.preventDefault();
+            const dx = e.clientX - startX;
+            const newW = Math.max(280, fromLeft ? startW - dx : startW + dx);
+            const newH = Math.max(180, startH + e.clientY - startY);
+            win.style.width = newW + 'px';
+            win.style.height = newH + 'px';
+            if (fromLeft) {
+                win.style.left = (startL + startW - newW) + 'px';
+            }
+        }
+        function onResizeEnd() {
+            isResizing = false;
+            document.removeEventListener('pointermove', onResize);
+            document.removeEventListener('pointerup', onResizeEnd);
+        }
     }
-    function onResizeEnd() {
-        isResizing = false;
-        document.removeEventListener('pointermove', onResize);
-        document.removeEventListener('pointerup', onResizeEnd);
-    }
+    setupResize('kfResizeHandle', false);
+    setupResize('kfResizeHandleL', true);
 }
 
 // 初始化方块的关键帧数据
