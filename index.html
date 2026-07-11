@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器v.2.0</title>
+    <title>EX fmbe模拟器v.2.5</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -1040,6 +1040,492 @@ body.new-layout-active:fullscreen .side-block-list {
     padding: clamp(3px, 0.5vw, 6px) clamp(7px, 1.2vw, 10px);
     transform: skewX(-8deg); /* 保持斜切外观，JS 缩放时会在此基础上合并 */
 }
+
+/* ========== 多轨道时间轴 ========== */
+.keyframe-timeline-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 8px;
+    cursor: pointer;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 160px;
+}
+.keyframe-timeline-container::-webkit-scrollbar {
+    width: 4px;
+}
+.keyframe-timeline-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.keyframe-timeline-container::-webkit-scrollbar-thumb {
+    background: rgba(59,130,246,0.3);
+    border-radius: 2px;
+}
+.keyframe-timeline-bg {
+    position: relative;
+    width: 100%;
+    height: 40px;
+    background: rgba(15,23,42,0.4);
+    border-radius: 6px;
+    border: 1px solid rgba(59,130,246,0.15);
+    overflow: hidden;
+}
+body.light-mode .keyframe-timeline-bg {
+    background: rgba(248,250,252,0.7);
+    border-color: rgba(0,0,0,0.08);
+}
+.keyframe-track-row {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+.keyframe-track-row-label {
+    position: absolute;
+    left: 4px;
+    font-size: 9px;
+    color: #94a3b8;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1;
+}
+body.light-mode .keyframe-track-row-label {
+    color: #64748b;
+}
+.keyframe-track-row:nth-child(odd) {
+    background: rgba(255,255,255,0.03);
+}
+body.light-mode .keyframe-track-row:nth-child(odd) {
+    background: rgba(0,0,0,0.02);
+}
+.keyframe-track-row.active-track {
+    background: rgba(59,130,246,0.08);
+}
+body.light-mode .keyframe-track-row.active-track {
+    background: rgba(59,130,246,0.06);
+}
+.keyframe-track-row:hover {
+    background: rgba(59,130,246,0.12) !important;
+}
+body.light-mode .keyframe-track-row:hover {
+    background: rgba(59,130,246,0.1) !important;
+}
+.keyframe-track-row-label:hover {
+    text-decoration: underline;
+}
+.keyframe-marker-group {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    z-index: 3;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.keyframe-diamond {
+    width: 10px;
+    height: 10px;
+    transform: rotate(45deg);
+    border: 1.5px solid rgba(255,255,255,0.8);
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-sizing: border-box;
+}
+.keyframe-diamond:hover {
+    transform: rotate(45deg) scale(1.3);
+}
+.keyframe-diamond.active {
+    border-color: #facc15;
+    box-shadow: 0 0 8px rgba(250,204,21,0.7);
+}
+body.light-mode .keyframe-diamond.active {
+    border-color: #f59e0b;
+    box-shadow: 0 0 8px rgba(245,158,11,0.5);
+}
+.keyframe-vert-line {
+    position: absolute;
+    top: 0;
+    width: 1px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ========== 关键帧动画窗口 ========== */
+.keyframe-window {
+    position: fixed;
+    z-index: 500;
+    background: rgba(10,15,26,0.92);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid #3b82f6;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    display: none;
+    min-width: 320px;
+    min-height: 200px;
+    overflow: hidden;
+    pointer-events: auto;
+}
+body.light-mode .keyframe-window {
+    background: rgba(248,250,252,0.95);
+    border-color: #cbd5e1;
+}
+.keyframe-window-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(59,130,246,0.15);
+    border-bottom: 1px solid rgba(59,130,246,0.3);
+    cursor: move;
+    user-select: none;
+}
+body.light-mode .keyframe-window-header {
+    background: rgba(59,130,246,0.08);
+    border-bottom-color: rgba(0,0,0,0.08);
+}
+.keyframe-window-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body.light-mode .keyframe-window-title {
+    color: #1e293b;
+}
+.keyframe-window-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.keyframe-window-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.3);
+    color: #cbd5e6;
+    border-radius: 6px;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+.keyframe-window-btn:hover {
+    background: rgba(59,130,246,0.3);
+}
+body.light-mode .keyframe-window-btn {
+    background: rgba(59,130,246,0.08);
+    border-color: rgba(0,0,0,0.12);
+    color: #1e293b;
+}
+body.light-mode .keyframe-window-btn:hover {
+    background: rgba(59,130,246,0.2);
+}
+.keyframe-window-close {
+    padding: 4px 8px;
+    font-size: 14px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    border-radius: 4px;
+}
+.keyframe-window-close:hover {
+    color: #f43f5e;
+    background: rgba(244,63,94,0.1);
+}
+.keyframe-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.4) 40%, rgba(59,130,246,0.4) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.4) 55%, rgba(59,130,246,0.4) 65%, transparent 65%);
+    z-index: 10;
+}
+.keyframe-resize-handle:hover {
+    background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%);
+}
+.keyframe-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(59,130,246,0.15);
+    flex-wrap: wrap;
+}
+.keyframe-block-selector {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+.keyframe-block-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.3);
+    border-radius: 4px;
+    font-size: 11px;
+    color: #cbd5e6;
+    cursor: pointer;
+}
+body.light-mode .keyframe-block-tag {
+    color: #1e293b;
+}
+.keyframe-block-tag:hover {
+    background: rgba(59,130,246,0.3);
+}
+.keyframe-block-tag .remove-tag {
+    margin-left: 2px;
+    cursor: pointer;
+    color: #f43f5e;
+    font-size: 12px;
+}
+.keyframe-block-tag.active {
+    border-color: #60a5fa;
+    background: rgba(59,130,246,0.3);
+}
+.keyframe-timeline-area {
+    padding: 8px 12px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 100px;
+}
+.keyframe-timeline-ruler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 18px;
+    pointer-events: none;
+}
+.keyframe-timeline-tick {
+    position: absolute;
+    top: 16px;
+    width: 1px;
+    height: 4px;
+    background: rgba(59,130,246,0.2);
+}
+body.light-mode .keyframe-timeline-tick {
+    background: rgba(59,130,246,0.15);
+}
+.keyframe-timeline-tick-label {
+    position: absolute;
+    top: 2px;
+    font-size: 9px;
+    color: #94a3b8;
+    transform: translateX(-50%);
+}
+body.light-mode .keyframe-timeline-tick-label {
+    color: #64748b;
+}
+.keyframe-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #f43f5e;
+    z-index: 10;
+    pointer-events: none;
+}
+body.light-mode .keyframe-playhead {
+    background: #dc2626;
+}
+/* 紫色时长拖曳条 */
+.keyframe-duration-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 6px;
+    background: #a855f7;
+    cursor: ew-resize;
+    z-index: 11;
+    pointer-events: auto;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    border-radius: 0 2px 2px 0;
+}
+.keyframe-duration-handle:hover {
+    opacity: 1;
+}
+.keyframe-timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    justify-content: center;
+}
+.keyframe-play-btn {
+    background: none;
+    border: none;
+    color: #60a5fa;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 8px;
+    font-family: inherit;
+    line-height: 1;
+}
+.keyframe-play-btn:hover {
+    color: #93c5fd;
+}
+body.light-mode .keyframe-play-btn {
+    color: #3b82f6;
+}
+body.light-mode .keyframe-play-btn:hover {
+    color: #1d4ed8;
+}
+.keyframe-fps-label {
+    font-size: 11px;
+    color: #94a3b8;
+}
+body.light-mode .keyframe-fps-label {
+    color: #64748b;
+}
+.keyframe-data-panel {
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(15,23,42,0.6);
+    border-radius: 8px;
+    border: 1px solid rgba(59,130,246,0.15);
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+body.light-mode .keyframe-data-panel {
+    background: rgba(241,245,249,0.6);
+    border-color: rgba(0,0,0,0.06);
+}
+.keyframe-data-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-family: monospace;
+    font-size: 11px;
+    color: #cbd5e6;
+}
+body.light-mode .keyframe-data-row {
+    color: #1e293b;
+}
+.keyframe-data-row input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(59,130,246,0.2);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    width: 70px;
+    font-size: 11px;
+    font-family: monospace;
+}
+body.light-mode .keyframe-data-row input {
+    background: rgba(255,255,255,0.8);
+    color: #0f172a;
+    border-color: rgba(0,0,0,0.12);
+}
+.keyframe-data-label {
+    min-width: 50px;
+    color: #60a5fa;
+}
+body.light-mode .keyframe-data-label {
+    color: #2563eb;
+}
+.keyframe-import-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.keyframe-import-content {
+    background: rgba(10,15,26,0.95);
+    border: 1px solid #3b82f6;
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+body.light-mode .keyframe-import-content {
+    background: rgba(255,255,255,0.95);
+    border-color: #cbd5e1;
+}
+.keyframe-import-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #60a5fa;
+    margin-bottom: 12px;
+}
+body.light-mode .keyframe-import-title {
+    color: #1e293b;
+}
+.keyframe-import-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(59,130,246,0.3);
+    background: rgba(15,23,42,0.8);
+    color: white;
+    font-family: monospace;
+    font-size: 12px;
+    margin-bottom: 12px;
+    resize: vertical;
+}
+body.light-mode .keyframe-import-textarea {
+    background: rgba(248,250,252,0.9);
+    color: #0f172a;
+    border-color: rgba(0,0,0,0.12);
+}
+.keyframe-import-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.keyframe-import-time-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: rgba(59,130,246,0.08);
+    border-radius: 8px;
+}
+.keyframe-import-time-input label {
+    font-size: 12px;
+    color: #cbd5e6;
+}
+body.light-mode .keyframe-import-time-input label {
+    color: #1e293b;
+}
+.keyframe-import-time-input input {
+    width: 80px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(59,130,246,0.3);
+    background: rgba(15,23,42,0.8);
+    color: white;
+    font-size: 12px;
+}
+body.light-mode .keyframe-import-time-input input {
+    background: white;
+    color: #0f172a;
+}
+.keyframe-empty-state {
+    text-align: center;
+    color: #64748b;
+    padding: 20px;
+    font-size: 12px;
+}
 </style>
 </head>
 <body>
@@ -1179,6 +1665,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // 全局错误/未处理 promise 捕获，用于定位类似扩展引起的异步响应通道错误
+let _kfSystemReady = false; // 关键帧系统是否已初始化（防止 TDZ 问题）
 window.addEventListener('unhandledrejection', (ev) => {
     try {
         console.warn('UnhandledPromiseRejection captured:', ev.reason);
@@ -1204,6 +1691,14 @@ const angleMath = {
 // ==================== 更新日志数据 ====================
 // 按日期从新到旧排列，添加新条目时在数组开头插入
 const changelogData = [
+    {
+        date: "2026-07-11",
+        title: "v.坤 小版本",
+        items: [
+            "🎉 正式发布 EX fmbe模拟器 v2.0",
+            "添加了关键帧动画功能，可对任意模型进行关键帧动画",
+        ]
+    },
     {
         date: "2026-07-10",
         title: "v 2.0 正式版",
@@ -1903,8 +2398,31 @@ function addBlock(block, record = true) {
     if (isNewLayoutMode) renderSideBlockList();
 }
 
-function removeBlock(block) {
+function removeBlock(block, silent = false) {
+    // 有关键帧时弹出确认
+    if (!silent && _kfSystemReady && keyframeData.has(block.id) && keyframeData.get(block.id).frames.size > 0) {
+        showConfirmModal(`方块 "${block.id}" 存在关键帧动画，确认删除？<br><small style="color:#94a3b8;">删除后将同时移除该方块的所有关键帧数据。</small>`, (ok) => {
+            if (ok) {
+                removeBlock(block, true);
+            }
+        });
+        return;
+    }
+    // 清理关键帧数据
+    if (_kfSystemReady && keyframeData.has(block.id)) {
+        removeKeyframeBlock(block.id);
+        // 如果没有更多关键帧方块且处于关键帧模式，自动退出
+        if (isKeyframeMode && !blocks.some(b => b !== block && _kfSystemReady && keyframeData.has(b.id))) {
+            isKeyframeMode = false;
+            if (keyframeWindowOpen && keyframeWindowEl) {
+                stopKeyframePlayback();
+                keyframeWindowEl.style.display = 'none';
+                keyframeWindowOpen = false;
+            }
+        }
+    }
     const idx = blocks.indexOf(block);
+    if (idx === -1) return;
     if (idx !== -1) blocks.splice(idx, 1);
     scene.remove(block.mesh);
     if (block.label) scene.remove(block.label);
@@ -2004,7 +2522,19 @@ function duplicateSelectedBlocks() {
 
 function deleteSelectedBlocks() {
     if (selectedBlocksSet.size === 0) return;
-    for (let b of Array.from(selectedBlocksSet)) removeBlock(b);
+    // 批量删除时检查是否有动画方块，一次确认
+    const animBlocks = Array.from(selectedBlocksSet).filter(b => _kfSystemReady && keyframeData.has(b.id) && keyframeData.get(b.id).frames.size > 0);
+    if (animBlocks.length > 0) {
+        const names = animBlocks.map(b => `"${b.id}"`).join('、');
+        showConfirmModal(`以下方块存在关键帧动画：${names}<br><small style="color:#94a3b8;">删除后将同时移除这些方块的所有关键帧数据，确认删除？</small>`, (ok) => {
+            if (ok) {
+                for (let b of Array.from(selectedBlocksSet)) removeBlock(b, true);
+                selectedBlocksSet.clear();
+            }
+        });
+        return;
+    }
+    for (let b of Array.from(selectedBlocksSet)) removeBlock(b, true);
     selectedBlocksSet.clear();
     if (blocks.length) selectBlock(blocks[0]); else selectBlock(null);
     updateAxesVisibility(); blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
@@ -2071,6 +2601,7 @@ function applyBatchDelta(varName, delta) {
             def.expr = newExpr;
             b.refresh();
             b.mesh.updateMatrixWorld(true);
+            syncKeyframeFromBlock(b);
         }
     }
     recordAction();
@@ -2457,7 +2988,7 @@ function attachVariableEvents(block) {
         const vn = inp.dataset.var, parsed = parseAssignment(inp.value);
         if (parsed && parsed.name === vn) {
             if (vn.startsWith('t.')) { const g = globalVars.get(vn.slice(2)); if(g){ g.def.expr = parsed.expr; blocks.forEach(b=>b.refresh()); recordAction(); renderVariablesForBlock(selectedBlock); } }
-            else { const card = inp.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ tb.scope.setVarExpr(vn, parsed.expr); tb.refresh(); recordAction(); updateGlobalVarsDependingOn(tb, vn); renderVariablesForBlock(selectedBlock); } }
+            else { const card = inp.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ tb.scope.setVarExpr(vn, parsed.expr); tb.refresh(); recordAction(); updateGlobalVarsDependingOn(tb, vn); syncKeyframeFromBlock(tb); renderVariablesForBlock(selectedBlock); } }
         }
     }));
 
@@ -2465,13 +2996,13 @@ function attachVariableEvents(block) {
         e.stopPropagation();
         const vn = btn.dataset.var, delta = btn.dataset.dir==='up'?1:-1, isG = vn.startsWith('t.');
         if (isG) { const g = globalVars.get(vn.slice(2)); if(g && isConstantExpr(g.def.expr)) toggleAutoInc(btn, true, null, vn.slice(2), delta * g.def.step); }
-        else { const card = btn.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ const d = tb.scope.vars.get(vn); if(d && isConstantExpr(d.expr)) toggleAutoInc(btn, false, tb, vn, delta * d.step); } }
+        else { const card = btn.closest('.var-card'), bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ const d = tb.scope.vars.get(vn); if(d && isConstantExpr(d.expr)) { toggleAutoInc(btn, false, tb, vn, delta * d.step); setTimeout(() => syncKeyframeFromBlock(tb), 50); } } }
     }));
 
     document.querySelectorAll('.var-slider').forEach(s => s.addEventListener('input', e => {
         const vn = s.dataset.var, val = parseFloat(s.value), card = s.closest('.var-card'), inp = card?.querySelector('.assignment-input');
         if (vn.startsWith('t.')) { const g = globalVars.get(vn.slice(2)); if(g){ stopAutoInc(true, vn.slice(2),0,null); g.def.expr = val.toString(); g.def.value = val; blocks.forEach(b=>b.refresh()); if(inp) inp.value = `${vn} = ${val}`; recordAction(); } }
-        else { const bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ const d = tb.scope.vars.get(vn); if(d){ stopAutoInc(false, vn,0,null); d.expr = val.toString(); d.value = val; tb.refresh(); if(inp) inp.value = `${vn} = ${val}`; recordAction(); updateGlobalVarsDependingOn(tb, vn); } } }
+        else { const bid = card?.dataset.blockId, tb = blocks.find(b=>b.id===bid); if(tb){ const d = tb.scope.vars.get(vn); if(d){ stopAutoInc(false, vn,0,null); d.expr = val.toString(); d.value = val; tb.refresh(); if(inp) inp.value = `${vn} = ${val}`; recordAction(); updateGlobalVarsDependingOn(tb, vn); syncKeyframeFromBlock(tb); } } }
     }));
 
     document.querySelectorAll('.range-min, .range-max, .range-step').forEach(inp => inp.addEventListener('change', e => {
@@ -2499,7 +3030,7 @@ function attachVariableEvents(block) {
             let cur = d.value;
             if (cur < d.rangeMin) { d.expr = d.rangeMin.toString(); d.value = d.rangeMin; }
             else if (cur > d.rangeMax) { d.expr = d.rangeMax.toString(); d.value = d.rangeMax; }
-            tb.refresh(); recordAction(); updateGlobalVarsDependingOn(tb, vn); renderVariablesForBlock(selectedBlock);
+            tb.refresh(); recordAction(); updateGlobalVarsDependingOn(tb, vn); syncKeyframeFromBlock(tb); renderVariablesForBlock(selectedBlock);
         }
     }));
 
@@ -2581,7 +3112,7 @@ function startAutoInc(blockId, isGlobal, varName, delta, btn) {
             d.expr = nv.toString(); d.value = nv; tb.refresh();
             const card = document.querySelector(`.var-card[data-var="${varName}"][data-block-id="${blockId}"]`);
             if(card){ card.querySelector('.var-slider').value = nv; card.querySelector('.assignment-input').value = `${varName} = ${nv}`; }
-            recordAction(); updateGlobalVarsDependingOn(tb, varName);
+            recordAction(); updateGlobalVarsDependingOn(tb, varName); syncKeyframeFromBlock(tb);
         }
     };
     doInc(); const int = setInterval(doInc, 1); activeAutoIncMap.set(key, int); if(btn) btn.classList.add('active');
@@ -2654,6 +3185,29 @@ function showBlockDropdown(btn) {
     if (blocks.length === 0) {
         content.innerHTML = '<div class="block-dropdown-item">暂无方块</div>';
     } else {
+        // ----- 关键帧动画入口-----
+        const kfItem = document.createElement('div');
+        kfItem.className = 'block-dropdown-item';
+        kfItem.style.borderBottom = '1px solid rgba(59,130,246,0.3)';
+        kfItem.style.marginBottom = '4px';
+        kfItem.style.paddingBottom = '8px';
+        kfItem.innerHTML = `<span style="color:#facc15;">🎬 关键帧动画</span>`;
+        kfItem.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            menu.remove();
+            activeDropdown = null;
+            if (scrollListener) {
+                window.removeEventListener('scroll', scrollListener);
+                document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                scrollListener = null;
+            }
+            openKeyframeWindow();
+        });
+        kfItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        content.appendChild(kfItem);
+
         // ----- 全选按钮-----
         const allItem = document.createElement('div');
         allItem.className = 'block-dropdown-item';
@@ -3690,6 +4244,7 @@ let isBlockListTopLeft = true;
 let isSidePanelMode = false;
 let sidePanelWidth = 360;
 let isNewLayoutMode = false;
+let isKeyframeMode = false; // 新操作模式下的关键帧编辑模式
 let useWorldAxisDisplacement = false;
 let pivotLinkModel = true;   // 枢轴联动模型：true=pos直接相加，false=换算basepos保持模型位置不变
 const MIN_SIDE_PANEL_WIDTH = 5;
@@ -3831,6 +4386,15 @@ function applyNewLayoutMode() {
             sideList.style.display = 'none';
             sideList.classList.remove('side-list-bottom');
         }
+        // 退出关键帧模式
+        if (isKeyframeMode) {
+            isKeyframeMode = false;
+            if (keyframeWindowOpen && keyframeWindowEl) {
+                stopKeyframePlayback();
+                keyframeWindowEl.style.display = 'none';
+                keyframeWindowOpen = false;
+            }
+        }
         // 恢复数据面板显示（移除内联 style）
         if (dataPanel) dataPanel.style.display = '';
         // 非新操作模式时隐藏世界轴位移和枢轴联动设置
@@ -3848,23 +4412,53 @@ function renderSideBlockList() {
     const sideList = document.getElementById('sideBlockList');
     if (!sideList) return;
     
+    const isKfMode = isNewLayoutMode && isKeyframeMode;
+    
+    const kfReady = _kfSystemReady;
+    
+    // 关键帧模式：显示已加入关键帧系统的方块；普通模式：过滤掉已加入关键帧系统的方块
+    const displayBlocks = isKfMode
+        ? blocks.filter(b => kfReady && keyframeData.has(b.id))
+        : isNewLayoutMode
+            ? blocks.filter(b => !kfReady || !keyframeData.has(b.id))
+            : blocks;
+    
     let html = `<div class="side-block-list-title">📦 方块列表</div>`;
     
-    // 全选按钮
-    html += `<div class="side-block-item side-block-all" id="sideBlockAll">全部选中 (${blocks.length})</div>`;
-    // 新建模型按钮
-    html += `<div style="display:flex; align-items:center; gap:4px; padding:6px 12px;">
-        <div class="side-block-new-btn" id="sideBlockNew">New</div>
-        <div class="side-block-bone-btn" id="sideBlockBone">✛</div>
+    // 关键帧动画入口（关键帧模式下高亮）
+    const kfActiveStyle = isKfMode
+        ? 'border-bottom:2px solid #a855f7;margin-bottom:4px;padding-bottom:8px;color:#a855f7;background:rgba(168,85,247,0.1);border-radius:6px;'
+        : 'border-bottom:1px solid rgba(59,130,246,0.3);margin-bottom:4px;padding-bottom:8px;color:#facc15;';
+    html += `<div class="side-block-item" id="sideBlockKeyframe" style="${kfActiveStyle}" title="${isKfMode ? '点击退出关键帧模式' : '点击进入关键帧模式'}">
+        <span>🎬 关键帧动画${isKfMode ? ' <span style="font-size:10px;opacity:0.7;">(编辑中)</span>' : ''}</span>
+        ${isKfMode ? '<span style="font-size:10px;color:#a855f7;">● 已激活</span>' : ''}
     </div>`;
-    html += `<div style="height:1px; background:rgba(59,130,246,0.2); margin:0 8px 6px 8px;"></div>`;
     
-    blocks.forEach(b => {
+    if (!isKfMode) {
+        // 普通模式：全选 + 新建 + 骨骼
+        html += `<div class="side-block-item side-block-all" id="sideBlockAll">全部选中 (${displayBlocks.length})</div>`;
+        html += `<div style="display:flex; align-items:center; gap:4px; padding:6px 12px;">
+            <div class="side-block-new-btn" id="sideBlockNew">New</div>
+            <div class="side-block-bone-btn" id="sideBlockBone">✛</div>
+        </div>`;
+        html += `<div style="height:1px; background:rgba(59,130,246,0.2); margin:0 8px 6px 8px;"></div>`;
+    } else {
+        // 关键帧模式：显示提示和动画方块数
+        html += `<div style="font-size:11px;color:#a855f7;padding:4px 12px 6px;">🎬 点击方块选中并编辑关键帧 (${displayBlocks.length})</div>`;
+    }
+    
+    if (displayBlocks.length === 0 && isKfMode) {
+        html += `<div class="side-block-item" style="color:#64748b;font-size:12px;justify-content:center;cursor:default;">
+            暂无动画方块，在关键帧窗口添加
+        </div>`;
+    }
+    
+    displayBlocks.forEach(b => {
         const isSel = selectedBlocksSet.has(b);
         html += `<div class="side-block-item ${isSel ? 'selected' : ''}" data-block-id="${b.id}">
             <span>❒ ${b.id}</span>
             <div class="side-block-actions">
-                <button class="side-block-copy" data-id="${b.id}" title="复制">复制</button>
+                ${!isKfMode ? `<button class="side-block-copy" data-id="${b.id}" title="复制">复制</button>` : ''}
                 <button class="side-block-delete" data-id="${b.id}" title="删除">删除</button>
             </div>
         </div>`;
@@ -3879,24 +4473,45 @@ function renderSideBlockList() {
             const bid = item.dataset.blockId;
             const block = blocks.find(b => b.id === bid);
             if (block) {
-                const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
-                toggleBlockSelection(block, isMulti);
-                renderSideBlockList();
+                if (isKfMode) {
+                    // 关键帧模式：选中方块并联动到关键帧编辑器
+                    selectedBlocksSet.clear();
+                    selectedBlocksSet.add(block);
+                    selectBlock(block);
+                    // 在关键帧编辑器中选中该方块
+                    if (!keyframeData.has(block.id)) {
+                        initKeyframeForBlock(block.id);
+                        addKeyframeBlockTag(block.id);
+                    }
+                    selectKeyframeBlock(block.id);
+                    if (!keyframeWindowOpen) {
+                        openKeyframeWindow();
+                    } else if (keyframeWindowEl) {
+                        keyframeWindowEl.style.display = 'block';
+                    }
+                    renderSideBlockList();
+                } else {
+                    const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+                    toggleBlockSelection(block, isMulti);
+                    renderSideBlockList();
+                }
             }
         });
     });
     
-    sideList.querySelectorAll('.side-block-copy').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const bid = btn.dataset.id;
-            const block = blocks.find(b => b.id === bid);
-            if (block) {
-                duplicateBlock(block);
-                renderSideBlockList();
-            }
+    if (!isKfMode) {
+        sideList.querySelectorAll('.side-block-copy').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const bid = btn.dataset.id;
+                const block = blocks.find(b => b.id === bid);
+                if (block) {
+                    duplicateBlock(block);
+                    renderSideBlockList();
+                }
+            });
         });
-    });
+    }
     
     sideList.querySelectorAll('.side-block-delete').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -3911,43 +4526,64 @@ function renderSideBlockList() {
         });
     });
     
-    const allBtn = document.getElementById('sideBlockAll');
-    if (allBtn) {
-        allBtn.addEventListener('click', () => {
-            selectedBlocksSet.clear();
-            blocks.forEach(b => selectedBlocksSet.add(b));
-            if (selectedBlock) {
-                selectedBlock.axisHelper.visible = false;
-                selectedBlock = null;
-            }
-            updateAxesVisibility();
-            renderVariablesForBlock(null);
-            blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
-            renderSideBlockList();
-        });
+    if (!isKfMode) {
+        const allBtn = document.getElementById('sideBlockAll');
+        if (allBtn) {
+            allBtn.addEventListener('click', () => {
+                selectedBlocksSet.clear();
+                displayBlocks.forEach(b => selectedBlocksSet.add(b));
+                if (selectedBlock) {
+                    selectedBlock.axisHelper.visible = false;
+                    selectedBlock = null;
+                }
+                updateAxesVisibility();
+                renderVariablesForBlock(null);
+                blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+                renderSideBlockList();
+            });
+        }
+        
+        // 新建模型按钮
+        const newBtn = document.getElementById('sideBlockNew');
+        if (newBtn) {
+            newBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showCreateBlockMenu();
+            });
+        }
+        
+        // 骨骼绑定按钮
+        const boneBtn = document.getElementById('sideBlockBone');
+        if (boneBtn) {
+            boneBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const target = selectedBlocksSet.size ? [...selectedBlocksSet][0] : selectedBlock;
+                if (!target || blocks.length < 2) {
+                    showModal("提示", "请先选中一个方块，并确保有两个以上方块才能绑定", null, false);
+                    return;
+                }
+                showParentSelector(target);
+            });
+        }
     }
     
-    // 新建模型按钮
-    const newBtn = document.getElementById('sideBlockNew');
-    if (newBtn) {
-        newBtn.addEventListener('click', (e) => {
+    // 关键帧动画按钮
+    const kfBtnSide = document.getElementById('sideBlockKeyframe');
+    if (kfBtnSide) {
+        kfBtnSide.addEventListener('click', (e) => {
             e.stopPropagation();
-            showCreateBlockMenu();
-        });
-    }
-    
-    // 骨骼绑定按钮
-    const boneBtn = document.getElementById('sideBlockBone');
-    if (boneBtn) {
-        boneBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // 对当前选中的方块（或选中集合的第一个）触发骨骼绑定
-            const target = selectedBlocksSet.size ? [...selectedBlocksSet][0] : selectedBlock;
-            if (!target || blocks.length < 2) {
-                showModal("提示", "请先选中一个方块，并确保有两个以上方块才能绑定", null, false);
-                return;
+            if (isNewLayoutMode) {
+                // 切换关键帧模式
+                if (isKeyframeMode) {
+                    exitKeyframeMode();
+                } else {
+                    enterKeyframeMode();
+                }
+            } else {
+                // 非新布局模式：直接打开关键帧窗口
+                if (!keyframeWindowOpen) openKeyframeWindow();
+                else if (keyframeWindowEl) keyframeWindowEl.style.display = 'block';
             }
-            showParentSelector(target);
         });
     }
 }
@@ -5193,6 +5829,7 @@ function applyOriginRotateDelta(varName, delta) {
         const cur = Number(b.scope.vars.get(varName)?.value ?? 0);
         setConstVarValue(b, varName, cur + delta);
         b.refresh(); b.mesh.updateMatrixWorld(true);
+        syncKeyframeFromBlock(b);
     }
 }
 
@@ -5204,6 +5841,7 @@ function applyCenterRotateDelta(varName, delta) {
         setConstVarValue(b, varName, cur + delta);
         compensateBaseposForFixedCenter(b, beforeCenter);
         compensateBaseposForFixedCenter(b, beforeCenter);
+        syncKeyframeFromBlock(b);
     }
 }
 
@@ -5278,6 +5916,10 @@ function changeVar(name, delta, refresh = true) {
     }
     updateOriginCenterLineLive(selectedBlock);
     renderVariablesForBlock(selectedBlock);
+    // 非拖拽时同步关键帧
+    if (!draggingGizmo && selectedBlock) {
+        syncKeyframeFromBlock(selectedBlock);
+    }
     if (refresh && !draggingGizmo) {
         requestGizmoRefresh(); updateToolbar(true);
     } else {
@@ -5304,6 +5946,7 @@ function setVarDirect(varName, value) {
             if (['v.xrot','v.yrot','v.zrot'].includes(varName)) value = normRotDeg(value);
             def.expr = String(value); def.value = value;
             b.refresh(); b.mesh.updateMatrixWorld(true);
+            syncKeyframeFromBlock(b);
         }
     }
     recordAction(); renderVariablesForBlock(selectedBlock);
@@ -6171,6 +6814,1478 @@ function onPointerUp() {
 }
 resizeHandle.addEventListener('pointerdown', onPointerDown);
 panel.style.height = '280px';
+
+// ====================================================================
+// 关键帧动画系统
+// ====================================================================
+
+// 关键帧数据结构: Map<blockId, { frames: Map<time, Map<varName, value>>, animId: string }>
+let keyframeData = new Map();
+let keyframeWindowOpen = false;
+let keyframeWindowEl = null;
+let selectedKeyframeBlock = null; // 当前在关键帧窗口中选中的方块
+let keyframePlayTimer = null;
+let keyframePlaying = false;
+let keyframeCurrentTime = 0;
+let keyframeAnimDuration = 10; // 默认10秒
+let keyframeFps = 20;
+let keyframeZoom = 1.0; // 时间轴缩放倍数（1 ~ 100）
+let keyframeScrollOffset = 0; // 时间轴滚动偏移（秒）
+const KEYFRAME_BASE_VIEW = 10; // 1x 缩放下显示的基准秒数
+let keyframeDragging = false; // 正在拖拽播放头
+_kfSystemReady = true; // 关键帧系统已就绪
+
+// 进入/退出关键帧编辑模式（新操作模式使用）
+function enterKeyframeMode() {
+    isKeyframeMode = true;
+    if (!keyframeWindowOpen) openKeyframeWindow();
+    else if (keyframeWindowEl) keyframeWindowEl.style.display = 'block';
+    const animBlock = blocks.find(b => _kfSystemReady && keyframeData.has(b.id));
+    if (animBlock) {
+        selectedBlocksSet.clear();
+        selectedBlocksSet.add(animBlock);
+        selectBlock(animBlock);
+        selectKeyframeBlock(animBlock.id);
+    }
+    renderSideBlockList();
+}
+function exitKeyframeMode() {
+    isKeyframeMode = false;
+    if (keyframeWindowOpen && keyframeWindowEl) {
+        stopKeyframePlayback();
+        keyframeWindowEl.style.display = 'none';
+        keyframeWindowOpen = false;
+    }
+    for (const b of Array.from(selectedBlocksSet)) {
+        if (_kfSystemReady && keyframeData.has(b.id)) selectedBlocksSet.delete(b);
+    }
+    if (selectedBlock && _kfSystemReady && keyframeData.has(selectedBlock.id)) {
+        const firstNonAnim = blocks.find(b => !_kfSystemReady || !keyframeData.has(b.id));
+        if (firstNonAnim) selectBlock(firstNonAnim);
+        else selectBlock(null);
+    }
+    renderSideBlockList();
+    requestGizmoRefresh();
+}
+
+// 获取当前可见窗口时长
+function getViewDuration() {
+    return Math.min(keyframeAnimDuration, KEYFRAME_BASE_VIEW / keyframeZoom);
+}
+// 将时间 t 转换为可见窗口内的百分比位置
+function timeToPct(t) {
+    const vd = getViewDuration();
+    if (vd <= 0) return 0;
+    return (t - keyframeScrollOffset) / vd;
+}
+
+// 获取方块的动画标识符
+function getKeyframeAnimId(blockId) {
+    return blockId + '_anim';
+}
+
+// 检查方块是否有关键帧动画
+function hasKeyframeAnimation(blockId) {
+    return keyframeData.has(blockId) && keyframeData.get(blockId).frames.size > 0;
+}
+
+// 获取关键帧时间列表（排序后）
+function getKeyframeTimes(blockId) {
+    const data = keyframeData.get(blockId);
+    if (!data) return [];
+    return Array.from(data.frames.keys()).sort((a, b) => a - b);
+}
+
+// 在两个关键帧之间插值
+function interpolateKeyframes(blockId, time) {
+    const data = keyframeData.get(blockId);
+    if (!data || data.frames.size === 0) return null;
+    const times = getKeyframeTimes(blockId);
+    if (times.length === 0) return null;
+    
+    // 精确匹配
+    if (data.frames.has(time)) {
+        const result = {};
+        for (const [k, v] of data.frames.get(time)) {
+            result[k] = v;
+        }
+        return result;
+    }
+    
+    // 边界情况
+    if (time <= times[0]) {
+        const result = {};
+        for (const [k, v] of data.frames.get(times[0])) {
+            result[k] = v;
+        }
+        return result;
+    }
+    if (time >= times[times.length - 1]) {
+        const result = {};
+        for (const [k, v] of data.frames.get(times[times.length - 1])) {
+            result[k] = v;
+        }
+        return result;
+    }
+    
+    // 找到前后关键帧
+    let prevTime = times[0], nextTime = times[times.length - 1];
+    for (let i = 0; i < times.length - 1; i++) {
+        if (time >= times[i] && time <= times[i + 1]) {
+            prevTime = times[i];
+            nextTime = times[i + 1];
+            break;
+        }
+    }
+    
+    const t = (time - prevTime) / (nextTime - prevTime);
+    const prevData = data.frames.get(prevTime);
+    const nextData = data.frames.get(nextTime);
+    
+    const result = {};
+    const allKeys = new Set([...prevData.keys(), ...nextData.keys()]);
+    for (const key of allKeys) {
+        const prevVal = prevData.has(key) ? prevData.get(key) : 0;
+        const nextVal = nextData.has(key) ? nextData.get(key) : 0;
+        result[key] = prevVal + (nextVal - prevVal) * t;
+    }
+    return result;
+}
+
+// 应用关键帧到方块
+function applyKeyframeToBlock(blockId, time) {
+    const block = blocks.find(b => b.id === blockId);
+    if (!block) return;
+    const interpolated = interpolateKeyframes(blockId, time);
+    if (!interpolated) return;
+    
+    const varNameMap = {
+        'xpos': 'v.xpos', 'ypos': 'v.ypos', 'zpos': 'v.zpos',
+        'xrot': 'v.xrot', 'yrot': 'v.yrot', 'zrot': 'v.zrot',
+        'scale': 'v.scale', 'extend_scale': 'v.extend_scale',
+        'extend_xrot': 'v.extend_xrot', 'extend_yrot': 'v.extend_yrot',
+        'xbasepos': 'v.xbasepos', 'ybasepos': 'v.ybasepos', 'zbasepos': 'v.zbasepos'
+    };
+    
+    for (const [shortName, value] of Object.entries(interpolated)) {
+        const fullName = varNameMap[shortName] || `v.${shortName}`;
+        if (block.scope.vars.has(fullName)) {
+            const d = block.scope.vars.get(fullName);
+            d.expr = value.toString();
+            d.value = value;
+        } else {
+            block.scope.addVar(fullName, value.toString(), -100, 100, 0.01);
+            const d = block.scope.vars.get(fullName);
+            if (d) d.value = value;
+        }
+    }
+    block.refresh();
+}
+
+// ==================== 关键帧窗口UI ====================
+function openKeyframeWindow() {
+    if (keyframeWindowEl) {
+        keyframeWindowEl.style.display = 'block';
+        keyframeWindowOpen = true;
+        return;
+    }
+    
+    keyframeWindowOpen = true;
+    const win = document.createElement('div');
+    win.className = 'keyframe-window';
+    win.id = 'keyframeWindow';
+    win.style.display = 'block';
+    win.style.width = '480px';
+    win.style.height = '360px';
+    win.style.left = Math.max(20, (window.innerWidth - 480) / 2) + 'px';
+    win.style.top = Math.max(20, (window.innerHeight - 360) / 2) + 'px';
+    
+    win.innerHTML = `
+        <div class="keyframe-window-header" id="kfWindowHeader">
+            <div class="keyframe-window-title">
+                <span>🎬 关键帧动画</span>
+                <button class="keyframe-window-btn" id="kfAddBlockBtn" title="添加方块到关键帧编辑">❒</button>
+            </div>
+            <div class="keyframe-window-controls">
+                <button class="keyframe-window-btn" id="kfImportBtn">导入关键帧</button>
+                <button class="keyframe-window-close" id="kfCloseBtn">✕</button>
+            </div>
+        </div>
+        <div class="keyframe-toolbar">
+            <div class="keyframe-block-selector" id="kfBlockSelector">
+                <span style="font-size:11px;color:#64748b;">方块:</span>
+            </div>
+        </div>
+        <div class="keyframe-timeline-area" id="kfTimelineArea">
+            <div class="keyframe-timeline-controls">
+                <button class="keyframe-play-btn" id="kfPlayBtn">▶</button>
+                <span class="keyframe-fps-label" id="kfTimeLabel">时间: 0.0s</span>
+                <span style="flex:1;"></span>
+                <span style="display:flex;align-items:center;gap:4px;">
+                    <button class="keyframe-window-btn" id="kfZoomOutBtn" title="缩小时间轴" style="padding:2px 6px;font-size:11px;">🔍−</button>
+                    <span class="keyframe-fps-label" id="kfZoomLabel">1.0x</span>
+                    <button class="keyframe-window-btn" id="kfZoomInBtn" title="放大时间轴" style="padding:2px 6px;font-size:11px;">🔍+</button>
+                </span>
+                <span style="display:flex;align-items:center;gap:2px;margin:0 4px;">
+                    <button class="keyframe-window-btn" id="kfScrollLeftBtn" title="向左滚动" style="padding:2px 6px;font-size:11px;">◀</button>
+                    <span class="keyframe-fps-label" id="kfScrollLabel" style="font-size:10px;">0.0s</span>
+                    <button class="keyframe-window-btn" id="kfScrollRightBtn" title="向右滚动" style="padding:2px 6px;font-size:11px;">▶</button>
+                </span>
+                <button class="keyframe-window-btn" id="kfAddKeyframeBtn" title="在当前时间添加关键帧">+关键帧</button>
+            </div>
+            <div class="keyframe-timeline-container" id="kfTimelineContainer" style="display:none;">
+                <div class="keyframe-timeline-bg" id="kfTimelineBg">
+                    <div class="keyframe-timeline-ruler" id="kfRuler"></div>
+                    <div class="keyframe-playhead" id="kfPlayhead" style="left:0px;"></div>
+                    <div class="keyframe-duration-handle" id="kfDurationHandle" title="拖拽调整动画总时长"></div>
+                </div>
+            </div>
+            <div class="keyframe-data-panel" id="kfDataPanel">
+                <div class="keyframe-empty-state">点击 ❒ 添加方块到关键帧编辑</div>
+            </div>
+        </div>
+        <div class="keyframe-resize-handle" id="kfResizeHandle"></div>
+    `;
+    
+    document.body.appendChild(win);
+    keyframeWindowEl = win;
+    
+    // 拖拽
+    makeKeyframeDraggable(win);
+    // 调整大小
+    makeKeyframeResizable(win);
+    
+    // 关闭
+    win.querySelector('#kfCloseBtn').addEventListener('click', () => {
+        stopKeyframePlayback();
+        win.style.display = 'none';
+        keyframeWindowOpen = false;
+        // 如果在关键帧模式，退出关键帧模式
+        if (isKeyframeMode) {
+            exitKeyframeMode();
+        }
+    });
+    
+    // 添加方块
+    win.querySelector('#kfAddBlockBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        showKeyframeBlockSelector();
+    });
+    
+    // 导入
+    win.querySelector('#kfImportBtn').addEventListener('click', () => {
+        showKeyframeImportDialog();
+    });
+    
+    // 播放
+    win.querySelector('#kfPlayBtn').addEventListener('click', () => {
+        toggleKeyframePlayback();
+    });
+    
+    // +关键帧按钮
+    win.querySelector('#kfAddKeyframeBtn').addEventListener('click', () => {
+        createKeyframeAtCurrentTime();
+    });
+    
+    // 时间轴容器点击+拖拽（定位时间，播放头跟随）
+    const container = win.querySelector('#kfTimelineContainer');
+    
+    function scrubToClientX(clientX) {
+        const rect = container.getBoundingClientRect();
+        const pct = (clientX - rect.left) / rect.width;
+        const vd = getViewDuration();
+        const t = Math.max(0, Math.min(keyframeAnimDuration, keyframeScrollOffset + pct * vd));
+        keyframeCurrentTime = t;
+        updateKeyframePlayhead();
+        if (selectedKeyframeBlock) {
+            applyKeyframeToBlock(selectedKeyframeBlock, keyframeCurrentTime);
+        }
+        // 自动滚动：播放头到达右侧边缘时自动往右移
+        if (keyframeCurrentTime >= keyframeScrollOffset + vd * 0.92 && keyframeScrollOffset + vd < keyframeAnimDuration - 0.01) {
+            const step = vd * 0.3;
+            keyframeScrollOffset += step;
+            clampScrollOffset();
+            renderKeyframeTimeline();
+        }
+    }
+    
+    container.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('.keyframe-marker-group')) return;
+        keyframeDragging = true;
+        container.setPointerCapture(e.pointerId);
+        scrubToClientX(e.clientX);
+    });
+    container.addEventListener('pointermove', (e) => {
+        if (!keyframeDragging) return;
+        if (e.target.closest('.keyframe-marker-group')) return;
+        scrubToClientX(e.clientX);
+    });
+    container.addEventListener('pointerup', (e) => {
+        if (!keyframeDragging) return;
+        keyframeDragging = false;
+        container.releasePointerCapture(e.pointerId);
+    });
+    container.addEventListener('pointercancel', (e) => {
+        keyframeDragging = false;
+    });
+    // 鼠标滚轮滚动时间轴
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const vd = getViewDuration();
+        const step = vd * 0.15;
+        keyframeScrollOffset += e.deltaY > 0 ? step : -step;
+        clampScrollOffset();
+        renderKeyframeTimeline();
+    }, { passive: false });
+    // 时间轴容器双击（定位+创建关键帧）
+    container.addEventListener('dblclick', (e) => {
+        if (e.target.closest('.keyframe-marker-group')) return;
+        scrubToClientX(e.clientX);
+        createKeyframeAtCurrentTime();
+    });
+    
+    // 缩放按钮
+    function clampScrollOffset() {
+        const vd = getViewDuration();
+        const maxOff = Math.max(0, keyframeAnimDuration - vd);
+        if (keyframeScrollOffset > maxOff) keyframeScrollOffset = maxOff;
+        if (keyframeScrollOffset < 0) keyframeScrollOffset = 0;
+    }
+    win.querySelector('#kfZoomInBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        keyframeZoom = Math.min(100, keyframeZoom * 2);
+        const vd = getViewDuration();
+        keyframeScrollOffset = keyframeCurrentTime - vd / 2;
+        clampScrollOffset();
+        renderKeyframeTimeline();
+    });
+    win.querySelector('#kfZoomOutBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        keyframeZoom = Math.max(1, keyframeZoom / 2);
+        clampScrollOffset();
+        renderKeyframeTimeline();
+    });
+    
+    // 紫色时长拖曳条
+    const durHandle = win.querySelector('#kfDurationHandle');
+    let durDragData = null;
+    durHandle.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        durDragData = { startX: e.clientX, startDur: keyframeAnimDuration };
+        durHandle.setPointerCapture(e.pointerId);
+        durHandle.style.opacity = '1';
+    });
+    durHandle.addEventListener('pointermove', (e) => {
+        if (!durDragData) return;
+        const dx = e.clientX - durDragData.startX;
+        // 每拖拽 3px 对应增减 1s，最小 1s，最大 300s
+        const delta = dx / 3;
+        const newDur = Math.max(1, Math.min(300, Math.round(durDragData.startDur + delta)));
+        const oldDur = keyframeAnimDuration;
+        if (newDur !== oldDur) {
+            keyframeAnimDuration = newDur;
+            if (keyframeCurrentTime > keyframeAnimDuration) keyframeCurrentTime = keyframeAnimDuration;
+            // 增加时长时让视图跟随，使新增的时间段显示出来
+            const vd = getViewDuration();
+            if (newDur > oldDur) {
+                keyframeScrollOffset = newDur - vd;
+            }
+            clampScrollOffset();
+            renderKeyframeTimeline();
+            updateKeyframePlayhead();
+        }
+    });
+    durHandle.addEventListener('pointerup', (e) => {
+        if (!durDragData) return;
+        durHandle.releasePointerCapture(e.pointerId);
+        durHandle.style.opacity = '0.6';
+        if (keyframeAnimDuration !== durDragData.startDur) recordAction();
+        durDragData = null;
+    });
+    durHandle.addEventListener('pointercancel', () => {
+        durHandle.style.opacity = '0.6';
+        durDragData = null;
+    });
+    
+    // 滚动按钮
+    function scrollTimeline(dir) {
+        const vd = getViewDuration();
+        const step = vd * 0.3; // 每次滚动可见窗口的30%
+        keyframeScrollOffset += dir * step;
+        clampScrollOffset();
+        renderKeyframeTimeline();
+    }
+    win.querySelector('#kfScrollLeftBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        scrollTimeline(-1);
+    });
+    win.querySelector('#kfScrollRightBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        scrollTimeline(1);
+    });
+    
+    renderKeyframeTimeline();
+    renderKeyframeDataPanel();
+}
+
+function makeKeyframeDraggable(win) {
+    const header = win.querySelector('#kfWindowHeader');
+    let isDragging = false, startX, startY, startLeft, startTop;
+    
+    header.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = parseInt(win.style.left);
+        startTop = parseInt(win.style.top);
+        win.style.transition = 'none';
+        document.addEventListener('pointermove', onDrag);
+        document.addEventListener('pointerup', onDragEnd);
+    });
+    
+    function onDrag(e) {
+        if (!isDragging) return;
+        win.style.left = (startLeft + e.clientX - startX) + 'px';
+        win.style.top = (startTop + e.clientY - startY) + 'px';
+    }
+    
+    function onDragEnd() {
+        isDragging = false;
+        document.removeEventListener('pointermove', onDrag);
+        document.removeEventListener('pointerup', onDragEnd);
+    }
+}
+
+function makeKeyframeResizable(win) {
+    const handle = win.querySelector('#kfResizeHandle');
+    if (!handle) return;
+    let isResizing = false, startX, startY, startW, startH;
+    handle.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        isResizing = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startW = win.offsetWidth;
+        startH = win.offsetHeight;
+        win.style.transition = 'none';
+        document.addEventListener('pointermove', onResize);
+        document.addEventListener('pointerup', onResizeEnd);
+    });
+    function onResize(e) {
+        if (!isResizing) return;
+        const newW = Math.max(300, startW + e.clientX - startX);
+        const newH = Math.max(200, startH + e.clientY - startY);
+        win.style.width = newW + 'px';
+        win.style.height = newH + 'px';
+    }
+    function onResizeEnd() {
+        isResizing = false;
+        document.removeEventListener('pointermove', onResize);
+        document.removeEventListener('pointerup', onResizeEnd);
+    }
+}
+
+// 初始化方块的关键帧数据
+function initKeyframeForBlock(blockId) {
+    if (!keyframeData.has(blockId)) {
+        keyframeData.set(blockId, { frames: new Map(), animId: getKeyframeAnimId(blockId) });
+    }
+}
+
+// 添加方块标签到选择器
+function addKeyframeBlockTag(blockId) {
+    const selector = document.getElementById('kfBlockSelector');
+    if (!selector) return;
+    // 移除旧的标签
+    const oldTag = selector.querySelector(`[data-kf-block="${blockId}"]`);
+    if (oldTag) return;
+    
+    const tag = document.createElement('span');
+    tag.className = 'keyframe-block-tag' + (selectedKeyframeBlock === blockId ? ' active' : '');
+    tag.dataset.kfBlock = blockId;
+    tag.innerHTML = `❒ ${blockId} <span class="remove-tag" data-kf-remove="${blockId}">✕</span>`;
+    tag.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-tag')) return;
+        selectKeyframeBlock(blockId);
+    });
+    tag.querySelector('.remove-tag').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeKeyframeBlock(blockId);
+    });
+    selector.appendChild(tag);
+}
+
+// 选中关键帧方块（同时联动 3D 视图中的选中）
+function selectKeyframeBlock(blockId) {
+    selectedKeyframeBlock = blockId;
+    document.querySelectorAll('.keyframe-block-tag').forEach(t => {
+        t.classList.toggle('active', t.dataset.kfBlock === blockId);
+    });
+    renderKeyframeTimeline();
+    renderKeyframeDataPanel();
+    // 联动：在 3D 视图中也选中该方块
+    const block = blocks.find(b => b.id === blockId);
+    if (block) {
+        selectedBlocksSet.clear();
+        selectedBlocksSet.add(block);
+        selectBlock(block);
+    }
+}
+
+// 移除方块的关键帧
+function removeKeyframeBlock(blockId) {
+    keyframeData.delete(blockId);
+    const tag = document.querySelector(`[data-kf-block="${blockId}"]`);
+    if (tag) tag.remove();
+    if (selectedKeyframeBlock === blockId) {
+        const remaining = document.querySelectorAll('.keyframe-block-tag');
+        if (remaining.length > 0) {
+            selectKeyframeBlock(remaining[0].dataset.kfBlock);
+        } else {
+            selectedKeyframeBlock = null;
+            renderKeyframeTimeline();
+            renderKeyframeDataPanel();
+        }
+    } else {
+        // 非选中方块被删除时也需要刷新时间轴
+        renderKeyframeTimeline();
+        renderKeyframeDataPanel();
+    }
+}
+
+// 显示方块选择器
+function showKeyframeBlockSelector() {
+    const existing = document.querySelector('.keyframe-block-picker');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'keyframe-import-modal';
+    overlay.style.zIndex = '700';
+    
+    let html = `<div class="keyframe-import-content">
+        <div class="keyframe-import-title">选择要添加的方块</div>`;
+    
+    blocks.forEach(b => {
+        const has = keyframeData.has(b.id);
+        html += `<div class="keyframe-block-tag" data-pick-block="${b.id}" style="display:inline-flex;margin:4px;${has ? 'opacity:0.5;' : ''}">
+            ${b.id} ${has ? '(已添加)' : ''}
+        </div>`;
+    });
+    
+    html += `<div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="keyframe-window-btn" id="kfPickerClose">关闭</button>
+    </div></div>`;
+    
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
+    
+    overlay.querySelectorAll('[data-pick-block]').forEach(el => {
+        el.addEventListener('click', () => {
+            const bid = el.dataset.pickBlock;
+            if (!keyframeData.has(bid)) {
+                initKeyframeForBlock(bid);
+                addKeyframeBlockTag(bid);
+                selectKeyframeBlock(bid);
+            }
+            overlay.remove();
+            // 刷新侧边方块列表（新操作模式下动画方块会移到关键帧组）
+            if (isNewLayoutMode) renderSideBlockList();
+        });
+    });
+    
+    overlay.querySelector('#kfPickerClose').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+}
+
+// ==================== 多轨道时间轴渲染 ====================
+function renderKeyframeTimeline() {
+    const container = document.getElementById('kfTimelineContainer');
+    const bg = document.getElementById('kfTimelineBg');
+    const ruler = document.getElementById('kfRuler');
+    if (!container || !bg || !ruler) return;
+    
+    // 清除旧内容（保留 ruler 和 playhead）
+    ruler.querySelectorAll('.keyframe-timeline-tick, .keyframe-timeline-tick-label').forEach(m => m.remove());
+    bg.querySelectorAll('.keyframe-track-row, .keyframe-marker-group, .keyframe-vert-line').forEach(m => m.remove());
+    
+    // 获取所有已添加关键帧的方块
+    const blockIds = [];
+    document.querySelectorAll('.keyframe-block-tag').forEach(tag => {
+        blockIds.push(tag.dataset.kfBlock);
+    });
+    
+    if (blockIds.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    
+    // ---- 可见窗口计算 ----
+    const maxTime = keyframeAnimDuration;
+    const viewDur = getViewDuration();
+    // 确保 scrollOffset 在有效范围
+    const maxScroll = Math.max(0, maxTime - viewDur);
+    if (keyframeScrollOffset > maxScroll) keyframeScrollOffset = maxScroll;
+    if (keyframeScrollOffset < 0) keyframeScrollOffset = 0;
+    const viewStart = keyframeScrollOffset;
+    const viewEnd = viewStart + viewDur;
+    
+    // ---- 标尺刻度 ----
+    // 目标显示 8~15 个刻度，根据 viewDur 选取合适的步长
+    const targetTicks = 12;
+    const rawStep = viewDur / targetTicks;
+    const niceSteps = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 60, 120];
+    let tickStep = niceSteps[0];
+    for (let i = 0; i < niceSteps.length; i++) {
+        if (rawStep <= niceSteps[i] * 1.2) { tickStep = niceSteps[i]; break; }
+    }
+    // 从 viewStart 对齐到 tickStep 的整数倍
+    let firstTick = Math.ceil(viewStart / tickStep) * tickStep;
+    // 根据步长决定刻度标签保留的小数位数
+    const tickDecimals = tickStep % 1 === 0 ? 0 : tickStep.toString().split('.')[1].length;
+    for (let t = firstTick; t <= viewEnd + 0.0001; t += tickStep) {
+        const pct = timeToPct(t);
+        if (pct < 0 || pct > 1) continue;
+        const leftPct = pct * 100;
+        const tick = document.createElement('div');
+        tick.className = 'keyframe-timeline-tick';
+        tick.style.left = leftPct + '%';
+        ruler.appendChild(tick);
+        
+        const label = document.createElement('div');
+        label.className = 'keyframe-timeline-tick-label';
+        label.style.left = leftPct + '%';
+        label.textContent = t.toFixed(tickDecimals) + 's';
+        ruler.appendChild(label);
+    }
+    
+    // 更新标签
+    const zoomLabel = document.getElementById('kfZoomLabel');
+    if (zoomLabel) zoomLabel.textContent = parseFloat(keyframeZoom.toFixed(3)) + 'x';
+    const scrollLabel = document.getElementById('kfScrollLabel');
+    if (scrollLabel) {
+        const showStart = viewStart.toFixed(1);
+        const showEnd = viewEnd.toFixed(1);
+        scrollLabel.textContent = showStart + 's - ' + showEnd + 's';
+    }
+    
+    // 每个方块使用不同颜色
+    const isLight = document.body.classList.contains('light-mode');
+    const colors = isLight
+        ? ['#dc2626', '#d97706', '#2563eb', '#7c3aed', '#059669', '#ea580c', '#db2777', '#0d9488']
+        : ['#f43f5e', '#facc15', '#60a5fa', '#a78bfa', '#34d399', '#fb923c', '#f472b6', '#2dd4bf'];
+    const TRACK_H = 20;
+    
+    blockIds.forEach((bid, idx) => {
+        if (!bid) return;
+        const kfEntry = keyframeData.get(bid);
+        const hasData = kfEntry && kfEntry.frames && kfEntry.frames.size > 0;
+        const isSelected = bid === selectedKeyframeBlock;
+        const color = colors[idx % colors.length];
+        const top = idx * TRACK_H;
+        
+        // 行背景（点击选择该方块）
+        const row = document.createElement('div');
+        row.className = 'keyframe-track-row' + (isSelected ? ' active-track' : '');
+        row.style.top = top + 'px';
+        row.style.height = TRACK_H + 'px';
+        row.style.cursor = 'pointer';
+        row.style.pointerEvents = 'auto';
+        row.title = `点击选择 ${bid}`;
+        row.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectKeyframeBlock(bid);
+            if (keyframeData.has(bid) && keyframeData.get(bid).frames.size > 0) {
+                const times = getKeyframeTimes(bid);
+                let closest = times[0];
+                for (const t of times) {
+                    if (Math.abs(t - keyframeCurrentTime) < Math.abs(closest - keyframeCurrentTime)) closest = t;
+                }
+                selectKeyframeAtTime(bid, closest);
+            }
+        });
+        
+        const label = document.createElement('div');
+        label.className = 'keyframe-track-row-label';
+        label.textContent = bid.length > 6 ? bid.slice(0, 5) + '..' : bid;
+        label.style.color = isSelected ? color : undefined;
+        label.style.cursor = 'pointer';
+        row.appendChild(label);
+        bg.appendChild(row);
+        
+        if (!hasData) return;
+        
+        for (const [time, frameData] of kfEntry.frames) {
+            const pct = timeToPct(time);
+            if (pct < -0.05 || pct > 1.05) continue; // 不在可见窗口内则跳过
+            const leftPct = Math.max(0, Math.min(100, pct * 100));
+            
+            const group = document.createElement('div');
+            group.className = 'keyframe-marker-group';
+            group.style.left = leftPct + '%';
+            group.style.top = (top + 5) + 'px';
+            group.title = `${bid} @ ${time.toFixed(2)}s`;
+            
+            const diamond = document.createElement('div');
+            diamond.className = 'keyframe-diamond' + (isSelected ? ' active' : '');
+            diamond.style.background = color;
+            group.appendChild(diamond);
+            
+            if (isSelected) {
+                const nameLabel = document.createElement('div');
+                nameLabel.style.cssText = 'position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:8px;color:' + (isLight ? '#374151' : '#94a3b8') + ';white-space:nowrap;pointer-events:none;';
+                nameLabel.textContent = bid.length > 5 ? bid.slice(0, 4) + '..' : bid;
+                group.appendChild(nameLabel);
+            }
+            
+            group.dataset.kfBlock = bid;
+            group.dataset.kfTime = time;
+            
+            group.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectKeyframeBlock(bid);
+                selectKeyframeAtTime(bid, time);
+            });
+            
+            group.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showKeyframeDeleteMenu(bid, time, e.clientX, e.clientY);
+            });
+            
+            // 拖拽移动关键帧
+            let dragData = null;
+            group.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+                dragData = { bid, time, startX: e.clientX };
+                group.setPointerCapture(e.pointerId);
+                group.style.cursor = 'ew-resize';
+                e.stopPropagation();
+            });
+            group.addEventListener('pointermove', (e) => {
+                if (!dragData) return;
+                const containerRect = bg.getBoundingClientRect();
+                const pct = (e.clientX - containerRect.left) / containerRect.width;
+                const newTime = Math.max(0, Math.min(keyframeAnimDuration, keyframeScrollOffset + pct * viewDur));
+                keyframeCurrentTime = newTime;
+                updateKeyframePlayhead();
+            });
+            group.addEventListener('pointerup', (e) => {
+                if (!dragData) return;
+                group.style.cursor = '';
+                group.releasePointerCapture(e.pointerId);
+                const containerRect = bg.getBoundingClientRect();
+                const pct = (e.clientX - containerRect.left) / containerRect.width;
+                const newTime = Math.max(0, Math.min(keyframeAnimDuration, keyframeScrollOffset + pct * viewDur));
+                const moveThreshold = Math.max(0.008, viewDur * 0.04);
+                if (Math.abs(newTime - dragData.time) > moveThreshold) {
+                    const data = keyframeData.get(dragData.bid);
+                    if (data && data.frames.has(dragData.time)) {
+                        const frameData = data.frames.get(dragData.time);
+                        data.frames.delete(dragData.time);
+                        data.frames.set(newTime, frameData);
+                        renderKeyframeTimeline();
+                        selectKeyframeAtTime(dragData.bid, newTime);
+                        recordAction();
+                    }
+                }
+                dragData = null;
+                e.stopPropagation();
+            });
+            
+            bg.appendChild(group);
+            
+            // 垂直线：从菱形向下延伸
+            const vLine = document.createElement('div');
+            vLine.className = 'keyframe-vert-line';
+            vLine.style.left = leftPct + '%';
+            vLine.style.top = (top + 15) + 'px';
+            vLine.style.height = ((blockIds.length - idx) * TRACK_H - 15) + 'px';
+            vLine.style.background = color;
+            vLine.style.opacity = '0.25';
+            bg.appendChild(vLine);
+        }
+    });
+    
+    bg.style.height = Math.max(40, blockIds.length * TRACK_H + 4) + 'px';
+    
+    updateKeyframePlayhead();
+}
+
+function updateKeyframePlayhead() {
+    const playhead = document.getElementById('kfPlayhead');
+    const container = document.getElementById('kfTimelineContainer');
+    const timeLabel = document.getElementById('kfTimeLabel');
+    if (!playhead || !container) return;
+    if (container.style.display === 'none') return;
+    
+    const pct = timeToPct(keyframeCurrentTime);
+    playhead.style.left = (pct * 100) + '%';
+    if (timeLabel) {
+        timeLabel.textContent = `时间: ${keyframeCurrentTime.toFixed(2)}s`;
+    }
+}
+
+function selectKeyframeAtTime(blockId, time) {
+    document.querySelectorAll('.keyframe-diamond').forEach(m => {
+        const group = m.closest('.keyframe-marker-group');
+        m.classList.toggle('active', group && group.dataset.kfBlock === blockId && parseFloat(group.dataset.kfTime) === time);
+    });
+    keyframeCurrentTime = time;
+    updateKeyframePlayhead();
+    applyKeyframeToBlock(blockId, time);
+    renderKeyframeDataPanel();
+}
+
+// 将方块当前变量值同步到关键帧数据（当用户在数据面板修改时调用）
+function syncKeyframeFromBlock(block) {
+    if (!block || !keyframeWindowOpen || !selectedKeyframeBlock) return;
+    if (block.id !== selectedKeyframeBlock) return;
+    if (!keyframeData.has(block.id)) return;
+    const data = keyframeData.get(block.id);
+    if (data.frames.size === 0) return;
+    // 找到最近的关键帧
+    const times = Array.from(data.frames.keys()).sort((a, b) => a - b);
+    let closest = times[0];
+    for (const t of times) {
+        if (Math.abs(t - keyframeCurrentTime) < Math.abs(closest - keyframeCurrentTime)) closest = t;
+    }
+    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+    const frameData = data.frames.get(closest);
+    for (const name of varNames) {
+        const d = block.scope.vars.get(`v.${name}`);
+        if (d) frameData.set(name, d.value);
+    }
+    // 也同步自定义变量
+    for (const [key, val] of block.scope.vars) {
+        const shortName = key.slice(2);
+        if (!varNames.includes(shortName)) {
+            frameData.set(shortName, val.value);
+        }
+    }
+    renderKeyframeDataPanel();
+}
+
+// 关键帧右键删除菜单
+let kfDeleteMenu = null;
+function showKeyframeDeleteMenu(bid, time, x, y) {
+    if (kfDeleteMenu) { kfDeleteMenu.remove(); kfDeleteMenu = null; }
+    const menu = document.createElement('div');
+    menu.style.cssText = 'position:fixed;z-index:800;background:rgba(15,23,42,0.95);border:1px solid #f43f5e;border-radius:8px;padding:4px 0;min-width:140px;backdrop-filter:blur(8px);left:'+x+'px;top:'+y+'px;';
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:8px 14px;font-size:12px;color:#fca5a5;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;';
+    item.innerHTML = '🗑 删除 ' + bid + ' @ ' + time + 's';
+    item.addEventListener('mouseenter', () => item.style.background = 'rgba(244,63,94,0.2)');
+    item.addEventListener('mouseleave', () => item.style.background = '');
+    item.addEventListener('click', () => {
+        removeKeyframeAtTime(bid, time);
+        if (kfDeleteMenu) { kfDeleteMenu.remove(); kfDeleteMenu = null; }
+    });
+    menu.appendChild(item);
+    const closeHandler = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove(); kfDeleteMenu = null;
+            document.removeEventListener('click', closeHandler);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+    document.body.appendChild(menu);
+    kfDeleteMenu = menu;
+}
+
+// 增加/减少动画总时长
+function changeAnimDuration(delta) {
+    const newDur = Math.max(1, Math.min(300, keyframeAnimDuration + delta));
+    if (newDur === keyframeAnimDuration) return;
+    keyframeAnimDuration = newDur;
+    // 如果当前时间超出新时长则回拨
+    if (keyframeCurrentTime > keyframeAnimDuration) {
+        keyframeCurrentTime = keyframeAnimDuration;
+    }
+    // 滚动偏移不能超出范围
+    const vd = getViewDuration();
+    const maxOff = Math.max(0, keyframeAnimDuration - vd);
+    if (keyframeScrollOffset > maxOff) keyframeScrollOffset = maxOff;
+    renderKeyframeTimeline();
+    updateKeyframePlayhead();
+    recordAction();
+}
+
+// 在当前播放头位置创建关键帧（插值计算）
+function createKeyframeAtCurrentTime() {
+    if (!selectedKeyframeBlock) {
+        alert('请先选择一个方块');
+        return;
+    }
+    if (!keyframeData.has(selectedKeyframeBlock)) {
+        initKeyframeForBlock(selectedKeyframeBlock);
+    }
+    
+    const data = keyframeData.get(selectedKeyframeBlock);
+    const time = keyframeCurrentTime;
+    const times = Array.from(data.frames.keys()).sort((a, b) => a - b);
+    
+    if (data.frames.has(time)) {
+        // 已存在该时间的关键帧，保留现有数据但刷新面板
+        selectKeyframeAtTime(selectedKeyframeBlock, time);
+        return;
+    }
+    
+    // 插值计算新关键帧数据
+    const newMap = new Map();
+    
+    if (times.length === 0) {
+        // 没有现有关键帧，从方块当前值创建
+        const block = blocks.find(b => b.id === selectedKeyframeBlock);
+        if (block) {
+            const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+            for (const name of varNames) {
+                const d = block.scope.vars.get(`v.${name}`);
+                if (d) newMap.set(name, d.value);
+            }
+        }
+    } else {
+        // 找到前后两个关键帧进行插值
+        let prevTime = null, nextTime = null;
+        for (const t of times) {
+            if (t <= time) prevTime = t;
+            if (t >= time && nextTime === null) nextTime = t;
+        }
+        
+        if (prevTime === null) prevTime = times[0];
+        if (nextTime === null) nextTime = times[times.length - 1];
+        
+        if (prevTime === nextTime) {
+            // 只有一个关键帧，直接复制
+            const src = data.frames.get(prevTime);
+            for (const [k, v] of src) newMap.set(k, v);
+        } else {
+            // 线性插值
+            const t = (time - prevTime) / (nextTime - prevTime);
+            const prevData = data.frames.get(prevTime);
+            const nextData = data.frames.get(nextTime);
+            const allKeys = new Set([...prevData.keys(), ...nextData.keys()]);
+            
+            // 使用缓动函数 ease-in-out 使动画更自然
+            const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            
+            for (const key of allKeys) {
+                const prevVal = prevData.has(key) ? prevData.get(key) : 0;
+                const nextVal = nextData.has(key) ? nextData.get(key) : 0;
+                newMap.set(key, prevVal + (nextVal - prevVal) * eased);
+            }
+        }
+    }
+    
+    data.frames.set(time, newMap);
+    renderKeyframeTimeline();
+    renderKeyframeDataPanel();
+    selectKeyframeAtTime(selectedKeyframeBlock, time);
+    recordAction();
+}
+
+function removeKeyframeAtTime(blockId, time) {
+    const data = keyframeData.get(blockId);
+    if (!data) return;
+    data.frames.delete(time);
+    renderKeyframeTimeline();
+    renderKeyframeDataPanel();
+    recordAction();
+}
+
+// ==================== 自定义确认弹窗 ====================
+function showConfirmModal(message, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:900;display:flex;align-items:center;justify-content:center;';
+    const box = document.createElement('div');
+    const isLight = document.body.classList.contains('light-mode');
+    box.style.cssText = 'background:' + (isLight ? '#fff' : '#162136') + ';border:1px solid ' + (isLight ? '#cbd5e1' : '#3b82f6') + ';border-radius:16px;padding:20px 24px;max-width:400px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,0.4);';
+    box.innerHTML = `<div style="margin-bottom:16px;font-size:14px;color:${isLight ? '#1e293b' : '#e2e8f0'};">${message}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button class="keyframe-window-btn" id="confirmYes" style="background:rgba(244,63,94,0.15);border-color:#f43f5e;color:${isLight ? '#dc2626' : '#fca5a5'};">确定</button>
+            <button class="keyframe-window-btn" id="confirmNo">取消</button>
+        </div>`;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    overlay.querySelector('#confirmYes').onclick = () => { overlay.remove(); onConfirm(true); };
+    overlay.querySelector('#confirmNo').onclick = () => { overlay.remove(); onConfirm(false); };
+    overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); onConfirm(false); } };
+}
+
+// ==================== 关键帧数据面板 ====================
+function renderKeyframeDataPanel() {
+    const panel = document.getElementById('kfDataPanel');
+    if (!panel) return;
+    
+    if (!selectedKeyframeBlock || !keyframeData.has(selectedKeyframeBlock)) {
+        panel.innerHTML = '<div class="keyframe-empty-state">选择或添加一个方块开始编辑关键帧</div>';
+        return;
+    }
+    
+    const data = keyframeData.get(selectedKeyframeBlock);
+    const times = getKeyframeTimes(selectedKeyframeBlock);
+    
+    if (times.length === 0) {
+        panel.innerHTML = `<div class="keyframe-empty-state">暂无关键帧，导入数据或点击时间轴添加</div>`;
+        return;
+    }
+    
+    // 找到最近的关键帧
+    let closestTime = times[0];
+    for (const t of times) {
+        if (Math.abs(t - keyframeCurrentTime) < Math.abs(closestTime - keyframeCurrentTime)) {
+            closestTime = t;
+        }
+    }
+    
+    const frameData = data.frames.get(closestTime);
+    if (!frameData) {
+        panel.innerHTML = '<div class="keyframe-empty-state">无数据</div>';
+        return;
+    }
+    
+    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+    
+    const isLight2 = document.body.classList.contains('light-mode');
+    const displayTime = closestTime.toFixed(2);
+    let html = `<div style="font-size:12px;color:${isLight2 ? '#2563eb' : '#60a5fa'};margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+        <span>关键帧 @ ${displayTime}s</span>
+        <span style="font-size:10px;color:${isLight2 ? '#dc2626' : '#fca5a5'};cursor:pointer;" id="kfDeleteCurrentBtn" title="删除当前关键帧">🗑 删除</span>
+    </div>`;
+    
+    for (const name of varNames) {
+        const val = frameData.has(name) ? frameData.get(name) : '';
+        html += `<div class="keyframe-data-row">
+            <span class="keyframe-data-label">${name}</span>
+            <input type="number" step="0.01" value="${val}" data-kf-var="${name}" data-kf-time="${closestTime}">
+        </div>`;
+    }
+    
+    // 自定义变量
+    for (const [key, val] of frameData) {
+        if (!varNames.includes(key)) {
+            html += `<div class="keyframe-data-row">
+                <span class="keyframe-data-label">${key}</span>
+                <input type="number" step="0.01" value="${val}" data-kf-var="${key}" data-kf-time="${closestTime}">
+            </div>`;
+        }
+    }
+    
+    panel.innerHTML = html;
+    
+    // 删除当前关键帧按钮
+    const delBtn = panel.querySelector('#kfDeleteCurrentBtn');
+    if (delBtn) {
+        delBtn.addEventListener('click', () => {
+            showConfirmModal(`删除 ${selectedKeyframeBlock} 在 ${displayTime}s 的关键帧？`, (ok) => {
+                if (ok) removeKeyframeAtTime(selectedKeyframeBlock, closestTime);
+            });
+        });
+    }
+    
+    // 绑定输入事件
+    panel.querySelectorAll('input[data-kf-var]').forEach(inp => {
+        inp.addEventListener('change', () => {
+            const vn = inp.dataset.kfVar;
+            const time = parseFloat(inp.dataset.kfTime);
+            const val = parseFloat(inp.value) || 0;
+            const d = keyframeData.get(selectedKeyframeBlock);
+            if (d && d.frames.has(time)) {
+                d.frames.get(time).set(vn, val);
+                applyKeyframeToBlock(selectedKeyframeBlock, time);
+                recordAction();
+            }
+        });
+    });
+}
+
+// ==================== 播放控制 ====================
+function toggleKeyframePlayback() {
+    const btn = document.getElementById('kfPlayBtn');
+    if (keyframePlaying) {
+        stopKeyframePlayback();
+    } else {
+        startKeyframePlayback();
+    }
+}
+
+function startKeyframePlayback() {
+    if (!selectedKeyframeBlock || !keyframeData.has(selectedKeyframeBlock)) return;
+    const times = getKeyframeTimes(selectedKeyframeBlock);
+    if (times.length === 0) return;
+    
+    keyframePlaying = true;
+    const btn = document.getElementById('kfPlayBtn');
+    if (btn) btn.textContent = '⏸';
+    
+    keyframeCurrentTime = 0;
+    applyKeyframeToBlock(selectedKeyframeBlock, 0);
+    updateKeyframePlayhead();
+    
+    const startTime = performance.now();
+    const duration = keyframeAnimDuration * 1000;
+    
+    keyframePlayTimer = setInterval(() => {
+        const elapsed = performance.now() - startTime;
+        const t = (elapsed % duration) / 1000;
+        keyframeCurrentTime = t;
+        updateKeyframePlayhead();
+        if (selectedKeyframeBlock) {
+            applyKeyframeToBlock(selectedKeyframeBlock, t);
+        }
+        // 播放时自动滚动：当前时间超过可见窗口右边界92%时向右滚动
+        const vd = getViewDuration();
+        if (keyframeCurrentTime >= keyframeScrollOffset + vd * 0.92 && keyframeScrollOffset + vd < keyframeAnimDuration - 0.01) {
+            const step = vd * 0.3;
+            keyframeScrollOffset += step;
+            const maxOff = Math.max(0, keyframeAnimDuration - vd);
+            if (keyframeScrollOffset > maxOff) keyframeScrollOffset = maxOff;
+            renderKeyframeTimeline();
+        }
+    }, 1000 / keyframeFps);
+}
+
+function stopKeyframePlayback() {
+    keyframePlaying = false;
+    if (keyframePlayTimer) {
+        clearInterval(keyframePlayTimer);
+        keyframePlayTimer = null;
+    }
+    const btn = document.getElementById('kfPlayBtn');
+    if (btn) btn.textContent = '▶';
+}
+
+// ==================== 导入关键帧 ====================
+function showKeyframeImportDialog() {
+    const overlay = document.createElement('div');
+    overlay.className = 'keyframe-import-modal';
+    
+    let html = `<div class="keyframe-import-content">
+        <div class="keyframe-import-title">📥 导入关键帧</div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">
+            粘贴Minecraft命令或关键帧数据。系统将解析其中的 <code>v.xxx=值;</code> 赋值语句。
+        </div>
+        <div class="keyframe-import-time-input">
+            <label>关键帧时间:</label>
+            <input type="number" id="kfImportTime" value="0" step="0.5" min="0">
+            <label style="margin-left:12px;">秒</label>
+        </div>
+        <textarea class="keyframe-import-textarea" id="kfImportText" placeholder="粘贴命令或数据..."></textarea>
+        <div class="keyframe-import-actions">
+            <button class="keyframe-window-btn" id="kfImportConfirm">导入</button>
+            <button class="keyframe-window-btn" id="kfImportCancel">取消</button>
+        </div>
+    </div>`;
+    
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
+    
+    const textarea = overlay.querySelector('#kfImportText');
+    const timeInput = overlay.querySelector('#kfImportTime');
+    
+    overlay.querySelector('#kfImportConfirm').addEventListener('click', () => {
+        const text = textarea.value.trim();
+        if (!text) { overlay.remove(); return; }
+        const time = parseFloat(timeInput.value) || 0;
+        processKeyframeImport(text, time, overlay);
+    });
+    
+    overlay.querySelector('#kfImportCancel').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+}
+
+async function processKeyframeImport(text, defaultTime, overlay) {
+    // 检查是否是完整的关键帧动画（包含'anim:xxx_anim'标识符）
+    const animMatch = text.match(/'anim:([^']+)'/);
+    
+    if (animMatch) {
+        // 完整的关键帧动画导入
+        const animId = animMatch[1];
+        // 提取方块编号
+        const idMatch = text.match(/'方块编号：([^']+)'/);
+        const blockId = idMatch ? idMatch[1] : '';
+        
+        if (!blockId && !selectedKeyframeBlock) {
+            alert('无法识别方块编号');
+            overlay.remove();
+            return;
+        }
+        
+        const targetId = blockId || selectedKeyframeBlock;
+        
+        // 解析所有关键帧
+        const framePattern = /v\.([a-zA-Z_][a-zA-Z0-9_]*)_time==(\d+(?:\.\d+)?)\?\s*\(([^)]+)\)/g;
+        let frameMatch;
+        let hasFrames = false;
+        
+        // 检查是否该方块已有关键帧
+        if (keyframeData.has(targetId) && keyframeData.get(targetId).frames.size > 0) {
+            const mergeResult = await new Promise(resolve => {
+                showConfirmModal(`方块 "${targetId}" 已有关键帧动画，是否删除现有动画？<br><small style="color:#94a3b8;">取消则合并关键帧</small>`, resolve);
+            });
+            if (mergeResult) {
+                keyframeData.get(targetId).frames.clear();
+            }
+        } else {
+            initKeyframeForBlock(targetId);
+        }
+        
+        while ((frameMatch = framePattern.exec(text)) !== null) {
+            const varName = frameMatch[1]; // Cube
+            const frameTime = parseFloat(frameMatch[2]);
+            const assignmentsStr = frameMatch[3];
+            
+            // 解析赋值语句
+            const data = keyframeData.get(targetId);
+            if (!data.frames.has(frameTime)) {
+                data.frames.set(frameTime, new Map());
+            }
+            
+            const assignPattern = /v\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g;
+            let assignMatch;
+            while ((assignMatch = assignPattern.exec(assignmentsStr)) !== null) {
+                const key = assignMatch[1];
+                const val = parseFloat(assignMatch[2]) || 0;
+                data.frames.get(frameTime).set(key, val);
+            }
+            hasFrames = true;
+        }
+        
+        if (!hasFrames) {
+            alert('未能解析到有效的关键帧数据');
+            overlay.remove();
+            return;
+        }
+        
+        // 确保方块标签存在
+        addKeyframeBlockTag(targetId);
+        selectKeyframeBlock(targetId);
+        
+        // 更新动画时长
+        const times = getKeyframeTimes(targetId);
+        if (times.length > 0) {
+            keyframeAnimDuration = Math.max(keyframeAnimDuration, Math.ceil(times[times.length - 1]) + 2);
+        }
+        
+        renderKeyframeTimeline();
+        renderKeyframeDataPanel();
+        overlay.remove();
+        return;
+    }
+    
+    // 普通命令导入 - 提取 v.xxx=值; 和 方块编号
+    const idMatch = text.match(/'方块编号：([^']+)'/);
+    let blockId = idMatch ? idMatch[1] : null;
+    
+    // 提取赋值
+    const assignPattern = /v\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g;
+    let assignMatch;
+    const frameData = new Map();
+    
+    while ((assignMatch = assignPattern.exec(text)) !== null) {
+        const key = assignMatch[1];
+        const val = parseFloat(assignMatch[2]) || 0;
+        frameData.set(key, val);
+    }
+    
+    if (frameData.size === 0) {
+        alert('未能解析到有效的变量赋值');
+        overlay.remove();
+        return;
+    }
+    
+    // 确定目标方块
+    let targetId = blockId || selectedKeyframeBlock;
+    if (!targetId) {
+        alert('未指定方块编号，请先选中一个方块');
+        overlay.remove();
+        return;
+    }
+    
+    // 检查是否存在
+    const blockExists = blocks.some(b => b.id === targetId);
+    if (!blockExists) {
+        const createResult = await new Promise(resolve => {
+            showConfirmModal(`方块 "${targetId}" 不存在，是否创建？`, resolve);
+        });
+        if (createResult) {
+            const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
+            const nb = new Block(targetId, M, null, '#aaccff', 'cube');
+            for (const [key, val] of frameData) {
+                const fullName = `v.${key}`;
+                if (nb.scope.vars.has(fullName)) {
+                    nb.scope.setVarExpr(fullName, val.toString());
+                } else {
+                    nb.scope.addVar(fullName, val.toString(), -100, 100, 0.01);
+                }
+            }
+            nb.refresh();
+            addBlock(nb);
+        } else {
+            overlay.remove();
+            return;
+        }
+    }
+    
+    initKeyframeForBlock(targetId);
+    const data = keyframeData.get(targetId);
+    if (!data.frames.has(defaultTime)) {
+        data.frames.set(defaultTime, new Map());
+    }
+    
+    for (const [key, val] of frameData) {
+        data.frames.get(defaultTime).set(key, val);
+    }
+    
+    addKeyframeBlockTag(targetId);
+    selectKeyframeBlock(targetId);
+    
+    // 更新动画时长
+    const times = getKeyframeTimes(targetId);
+    if (times.length > 0) {
+        keyframeAnimDuration = Math.max(keyframeAnimDuration, Math.ceil(times[times.length - 1]) + 2);
+    }
+    
+    renderKeyframeTimeline();
+    renderKeyframeDataPanel();
+    overlay.remove();
+}
+
+// ==================== 导出关键帧 ====================
+// 为方块生成关键帧命令文本
+function getKeyframeCommandText(blockId) {
+    if (!keyframeData.has(blockId)) return null;
+    const data = keyframeData.get(blockId);
+    const times = getKeyframeTimes(blockId);
+    if (times.length === 0) return null;
+    
+    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+    
+    let keyframeStr = '';
+    for (const time of times) {
+        const frameData = data.frames.get(time);
+        let assignments = '';
+        for (const name of varNames) {
+            if (frameData.has(name)) {
+                const val = frameData.get(name);
+                assignments += `v.${name}=${typeof val === 'number' ? parseFloat(val.toFixed(6)) : val}; `;
+            }
+        }
+        // 自定义变量
+        for (const [key, val] of frameData) {
+            if (!varNames.includes(key)) {
+                assignments += `v.${key}=${typeof val === 'number' ? parseFloat(val.toFixed(6)) : val}; `;
+            }
+        }
+        keyframeStr += `v.${blockId}_time==${parseFloat(time.toFixed(3))}?(${assignments});`;
+    }
+    
+    keyframeStr += `'anim:${getKeyframeAnimId(blockId)}';'方块编号：${blockId}';`;
+    return keyframeStr;
+}
+
+// 修改导出 - 如果方块有关键帧动画，使用关键帧格式输出
+const originalGetCommandTextForBlock = getCommandTextForBlock;
+function patchedGetCommandTextForBlock(block) {
+    if (hasKeyframeAnimation(block.id)) {
+        const kfText = getKeyframeCommandText(block.id);
+        if (kfText) {
+            // 关键帧文本已包含'方块编号'标记
+            // 从后缀中提取闭合引号（如果存在）
+            const hasOpenQuote = exportPrefix.trimEnd().endsWith('"');
+            const suffixEnd = exportSuffix.replace(/{id}/g, block.id);
+            const closeQuote = suffixEnd.includes('"') ? suffixEnd.substring(suffixEnd.lastIndexOf('"')) : '" ';
+            return (hasOpenQuote ? exportPrefix : exportPrefix + ' "') + kfText + (closeQuote.includes('"') ? closeQuote : '" ');
+        }
+    }
+    return originalGetCommandTextForBlock(block);
+}
+// 替换导出函数
+getCommandTextForBlock = patchedGetCommandTextForBlock;
+
+// ==================== 方块选择集成 ====================
+// 扩展 toggleBlockSelection 以支持关键帧约束
+const originalToggleBlockSelection = toggleBlockSelection;
+function patchedToggleBlockSelection(block, multi) {
+    // 检查是否是混合选择（动画+非动画）- 只允许同类多选
+    if (selectedBlocksSet.size > 0 && multi) {
+        const hasAnim = hasKeyframeAnimation(block.id);
+        for (const b of selectedBlocksSet) {
+            const bHasAnim = hasKeyframeAnimation(b.id);
+            if (hasAnim !== bHasAnim) {
+                // 如果尝试将动画方块与非动画方块多选，阻止并提示
+                if (hasAnim) {
+                    // 打开关键帧窗口
+                    if (!keyframeWindowOpen) openKeyframeWindow();
+                    else if (keyframeWindowEl) keyframeWindowEl.style.display = 'block';
+                    return; // 阻止选择
+                } else {
+                    // 非动画方块不能与动画方块多选
+                    return; // 阻止选择
+                }
+            }
+        }
+    }
+    
+    // 如果多选的都是动画方块，强制打开关键帧窗口时间轴
+    if (multi && selectedBlocksSet.size > 0) {
+        const allAnim = Array.from(selectedBlocksSet).every(b => hasKeyframeAnimation(b.id)) && hasKeyframeAnimation(block.id);
+        if (allAnim) {
+            if (!keyframeWindowOpen) openKeyframeWindow();
+            else if (keyframeWindowEl) keyframeWindowEl.style.display = 'block';
+        }
+    }
+    
+    return originalToggleBlockSelection(block, multi);
+}
+toggleBlockSelection = patchedToggleBlockSelection;
+
+// ==================== 关键帧模式下的新操作模式集成 ====================
+// 扩展 renderSideBlockList 以支持关键帧编辑模式
+const originalRenderSideBlockList = renderSideBlockList;
+function patchedRenderSideBlockList() {
+    if (isNewLayoutMode) {
+        if (!isKeyframeMode) {
+            // 普通模式：从选中集合中移除已加入关键帧系统的方块
+            for (const b of Array.from(selectedBlocksSet)) {
+                if (_kfSystemReady && keyframeData.has(b.id)) {
+                    selectedBlocksSet.delete(b);
+                }
+            }
+            if (selectedBlock && _kfSystemReady && keyframeData.has(selectedBlock.id)) {
+                const firstNonAnim = blocks.find(b => !_kfSystemReady || !keyframeData.has(b.id));
+                if (firstNonAnim) selectBlock(firstNonAnim);
+                else selectBlock(null);
+            }
+        }
+    }
+    // 调用原函数（在其内部会根据 isKeyframeMode 做不同渲染）
+    return originalRenderSideBlockList();
+}
+renderSideBlockList = patchedRenderSideBlockList;
+
+// ==================== 初始化 ====================
+// 初始化检查
+console.log('关键帧动画系统已加载');
+
+// 如果有关键帧窗口打开，恢复状态
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && keyframeWindowOpen && keyframeWindowEl) {
+        keyframeWindowEl.style.display = 'none';
+        keyframeWindowOpen = false;
+        stopKeyframePlayback();
+        if (isKeyframeMode) {
+            exitKeyframeMode();
+        }
+    }
+});
+
 </script>
 </body>
 </html>
