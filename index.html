@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器v.2.5</title>
+    <title>EX fmbe模拟器v.2.7</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -128,27 +128,7 @@ body.light-mode .material-menu .menu-option:hover { background: #e2e8f0; }
 body .cmd-preview { background: #0a0f1a; color: #4ade80; padding: 12px; border-radius: 16px; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border: 1px solid #2a3a5a; }
 body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px solid #cbd5e1; }
 
-/* 全屏退出按钮：只在全屏时显示 */
-.fullscreen-exit-btn {
-    position: fixed;
-    top: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    padding: 10px 24px;
-    background: rgba(15,23,42,0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid #3b82f6;
-    color: white;
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    display: none;
-    pointer-events: auto;
-}
-.fullscreen-exit-btn:hover { background: #1e293b; }
-body.light-mode .fullscreen-exit-btn { background: rgba(255,255,255,0.9); color: #0f172a; border-color: #cbd5e1; }
+
 #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
 .top-bar { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; }
 
@@ -1090,7 +1070,7 @@ body.light-mode .keyframe-timeline-bg {
     font-size: 9px;
     color: #94a3b8;
     white-space: nowrap;
-    pointer-events: none;
+    pointer-events: auto;
     z-index: 1;
 }
 body.light-mode .keyframe-track-row-label {
@@ -1550,7 +1530,7 @@ body.light-mode .keyframe-import-time-input input {
 </style>
 </head>
 <body>
-<button class="fullscreen-exit-btn" id="fullscreenExitBtn">⛶ 退出全屏</button>
+
 <div id="canvas-container"></div>
 <div class="top-bar">
     <button class="skew-btn" id="fullscreenBtn"><span>⛶ 全屏</span></button>
@@ -1647,7 +1627,7 @@ body.light-mode .keyframe-import-time-input input {
             </div>
             <div class="ui-settings-item" id="sidePanelWidthSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>数据面板宽度</span><span id="sidePanelWidthLabel">360px</span></div>
-                <input id="sidePanelWidthRange" type="range" min="5" max="640" value="360" style="width:100%;">
+                <input id="sidePanelWidthRange" type="range" min="5" max="880" value="360" style="width:100%;">
             </div>
             <div class="ui-settings-item" id="newLayoutSetting" style="margin-top:8px;">
                 <span>启用新布局&amp;操作方案</span>
@@ -1713,10 +1693,34 @@ const angleMath = {
 // 按日期从新到旧排列，添加新条目时在数组开头插入
 const changelogData = [
     {
+        date: "2026-07-14",
+        title: "v.2.7 小版本",
+        items: [
+            "优化了动画关键帧模式的交互",
+            "添加了更无脑的2D平面一键生成功能",
+            "修复了位移Gizmo控件世界轴位移模式抖动的问题",
+            "移除了遗留许久的正视方块过曝问题",
+            "提高了摄像机方向的光照防止方块不过曝",
+            "增加了rotate变量转换为rot变量的功能，便于节约变量",
+            "-------------------------------",
+            "感谢伙伴们的支持！",
+        ]
+    },
+    {
+        date: "2026-07-12",
+        title: "v.2.6 小版本",
+        items: [
+            "添加欧拉角转换功能",
+            "添加2D平面一键生成功能",
+            "修改了旧操作模式，侧边栏功能启用状态下",
+            "的变量面板现实逻辑",
+        ]
+    },
+    {
         date: "2026-07-11",
         title: "v.坤 小版本",
         items: [
-            "🎉 正式发布 EX fmbe模拟器 v2.0",
+            "优化了新操作模式",
             "添加了关键帧动画功能，可对任意模型进行关键帧动画",
         ]
     },
@@ -1728,7 +1732,7 @@ const changelogData = [
             "更新新操作模式",
             "新增枢轴模式，支持枢轴点移动和联动模型旋转",
             "鸣谢赞助",
-            "@入窗不是疮 @小阿笙 @没事干的AWA",
+            "@入窗不是疮 @小阿笙 @没事干的AWA @4m2d_  H2o",
             "注：一赞助人员未留名"
         ]
     },
@@ -1876,6 +1880,25 @@ function computeTransformMatrix(M, rotatex = 0, rotatey = 0, rotatez = 0) {
     const matP = new THREE.Matrix4().makeTranslation(px, py, pz);
     return matP.clone().multiply(globalRot).multiply(localMat);
 }
+// 全局饱和度增强倍数（>1 提高饱和度，1 不变）
+const SATURATION_BOOST = 1.6;
+function boostColorSaturation(hexColor) {
+    const c = new THREE.Color(hexColor);
+    const hsl = {};
+    c.getHSL(hsl);
+    hsl.s = Math.min(1, hsl.s * SATURATION_BOOST);
+    c.setHSL(hsl.h, hsl.s, hsl.l);
+    return c;
+}
+function makeSaturatedMaterial(color, opts = {}) {
+    return new THREE.MeshStandardMaterial({
+        color: boostColorSaturation(color),
+        roughness: opts.roughness ?? 0.4,
+        metalness: opts.metalness ?? 0.2,
+        side: opts.side || THREE.FrontSide
+    });
+}
+
 class Block {
     constructor(id, M, textureUrl = null, materialColor = '#aaccff', type = 'cube') {
         this.id = id;
@@ -1908,7 +1931,7 @@ class Block {
             if (this.materialType === 'texture' && this.textureUrl) {
                 mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.2 });
             } else {
-                mat = new THREE.MeshStandardMaterial({ color: this.materialColor, roughness: 0.4, metalness: 0.2 });
+                mat = makeSaturatedMaterial(this.materialColor);
             }
             const mesh = new THREE.Mesh(boxGeo, mat);
             mesh.castShadow = true;
@@ -2045,7 +2068,8 @@ return;
             this.rootGroup.add(cube2Mesh);
             this.meshes.push(cube2Mesh);
 
-            const cube3Mesh = createCustomCube(cube3_vertices, this.materialColor, this.materialType, this.textureUrl);
+            const saturatedColor = this.materialType === 'color' ? boostColorSaturation(this.materialColor).getHex() : this.materialColor;
+            const cube3Mesh = createCustomCube(cube3_vertices, saturatedColor, this.materialType, this.textureUrl);
             cube3Mesh.userData = { blockId: this.id, part: 'main' };
             this.rootGroup.add(cube3Mesh);
             this.meshes.push(cube3Mesh);
@@ -2107,11 +2131,12 @@ return;
 
 setSolidColor(hex) {
     if (!this.mesh) return;
+    const saturatedHex = boostColorSaturation(hex).getHex();
     if (this.type === 'flag') {
         // 旗帜：只修改主体 cube3（meshes[2]）
         const cube3 = this.meshes[2];
         const newMat = new THREE.MeshStandardMaterial({
-            color: hex,
+            color: saturatedHex,
             roughness: 0.4,
             metalness: 0.2,
             side: THREE.DoubleSide
@@ -2121,20 +2146,16 @@ setSolidColor(hex) {
         this.materialType = 'color';
         this.materialColor = hex;
         this.textureUrl = null;
-        this.materialPresetName = null;   // 清除材质名称
+        this.materialPresetName = null;
     } else {
         // 立方体：正常替换材质
-        const newMat = new THREE.MeshStandardMaterial({
-            color: hex,
-            roughness: 0.4,
-            metalness: 0.2
-        });
+        const newMat = makeSaturatedMaterial(hex);
         if (this.mesh.material) this.mesh.material.dispose();
         this.mesh.material = newMat;
         this.materialType = 'color';
         this.materialColor = hex;
         this.textureUrl = null;
-        this.materialPresetName = null;   // 清除材质名称
+        this.materialPresetName = null;
     }
 }
 // 增加材质预设名称参数，默认为 null
@@ -2569,10 +2590,9 @@ function toggleFullscreen() {
     }
 }
 
-// 全屏状态变化时自动显示/隐藏数据面板和退出按钮
+// 全屏状态变化时自动显示/隐藏面板
 document.addEventListener('fullscreenchange', () => {
     const p = document.getElementById('dataPanel');
-    const exitBtn = document.getElementById('fullscreenExitBtn');
     const newTopBar = document.getElementById('newTopBar');
     const sideList = document.getElementById('sideBlockList');
     if (document.fullscreenElement) {
@@ -2580,12 +2600,9 @@ document.addEventListener('fullscreenchange', () => {
         if (p) p.style.display = 'none';
         if (newTopBar) newTopBar.style.display = 'none';
         if (sideList) sideList.style.display = 'none';
-        // 显示退出按钮
-        if (exitBtn) exitBtn.style.display = 'block';
     } else {
         // 退出全屏恢复面板
         if (p) p.style.display = '';
-        if (exitBtn) exitBtn.style.display = 'none';
         if (isNewLayoutMode) {
             if (newTopBar) newTopBar.style.display = 'flex';
             if (sideList) sideList.style.display = 'block';
@@ -2642,11 +2659,24 @@ function syncStepToBlocks(varName, step) {
 }
 
 function renderBatchPanel() {
-    const groups = {
+    // 检测是否所有选中的方块都是动画方块（旧版操作模式）
+    const allSelectedAnim = !isNewLayoutMode && selectedBlocksSet.size > 0 &&
+        Array.from(selectedBlocksSet).every(b => hasKeyframeAnimation(b.id));
+
+    let groups = {
         '位移': ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'],
         '缩放': ['v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'],
         '旋转': ['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez']
     };
+
+    // 动画方块多选时，只显示 pos（不含 basepos）、rotate/rot、scale（不含 extend）、自定义变量
+    if (allSelectedAnim) {
+        groups = {
+            '位移': ['v.xpos','v.ypos','v.zpos'],
+            '缩放': ['v.scale'],
+            '旋转': ['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez']
+        };
+    }
 
     // 核心变量集合（与 groups 中的完全一致）
     const coreSet = new Set([
@@ -2918,7 +2948,14 @@ function renderVariablesForBlock(block) {
     let leftHtml = globalHtml + customHtml;
     if (!leftHtml) leftHtml = '<div class="empty-state">暂无全局/自定义变量</div>';
 
-    cont.innerHTML = `<div class="variables-left">${leftHtml}</div><div class="variables-right">${rightHtml}</div>`;
+    // 旧版操作模式 + 面板横向宽度不足时：直接合并为单列（手机端样式），不使用两列布局
+    const isOldModeNarrow = !document.body.classList.contains('new-layout-active') &&
+        document.querySelector('.data-panel.side-panel')?.dataset.narrow === 'true';
+    if (isOldModeNarrow) {
+        cont.innerHTML = `<div class="variables-left" style="border-right:none !important;padding-right:0 !important;width:100% !important;">${leftHtml}${rightHtml}</div>`;
+    } else {
+        cont.innerHTML = `<div class="variables-left">${leftHtml}</div><div class="variables-right">${rightHtml}</div>`;
+    }
     newC.innerHTML = `<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.变量 = 值 / t.变量 = 值 (回车)"></div>`;
     attachVariableEvents(block);
     document.querySelectorAll('.group-header').forEach(h => {
@@ -3228,6 +3265,26 @@ function showBlockDropdown(btn) {
             e.stopPropagation();
         });
         content.appendChild(kfItem);
+
+        // ----- 欧拉角转换入口-----
+        const eulerItem = document.createElement('div');
+        eulerItem.className = 'block-dropdown-item';
+        eulerItem.style.borderBottom = '1px solid rgba(59,130,246,0.3)';
+        eulerItem.style.marginBottom = '4px';
+        eulerItem.style.paddingBottom = '8px';
+        eulerItem.innerHTML = `<span style="color:#60a5fa;">🔄 欧拉角转换</span>`;
+        eulerItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.remove();
+            activeDropdown = null;
+            if (scrollListener) {
+                window.removeEventListener('scroll', scrollListener);
+                document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                scrollListener = null;
+            }
+            showEulerAngleConfirmDialog();
+        });
+        content.appendChild(eulerItem);
 
         // ----- 全选按钮-----
         const allItem = document.createElement('div');
@@ -3949,9 +4006,21 @@ document.getElementById('materialPresetBtn').addEventListener('click', (e) => {
     const btn = e.target;
     const rect = btn.getBoundingClientRect();
     materialMenuDiv.style.display = 'block';
-    materialMenuDiv.style.top = (rect.bottom + 5) + 'px';
-    materialMenuDiv.style.right = (window.innerWidth - rect.right - 5) + 'px';
-    if (window.innerWidth < 700) materialMenuDiv.style.right = '10px';
+    // 先设为默认位置（基于按钮位置）
+    let menuTop = rect.bottom + 5;
+    let menuLeft = rect.right - 270; // 右对齐按钮
+    // 确保不超出左边界
+    if (menuLeft < 8) menuLeft = 8;
+    // 确保不超出右边界
+    if (menuLeft + 270 > window.innerWidth - 8) menuLeft = window.innerWidth - 270 - 8;
+    // 确保不超出底部边界
+    const menuHeight = materialMenuDiv.offsetHeight || 320;
+    if (menuTop + menuHeight > window.innerHeight - 8) {
+        menuTop = Math.max(8, rect.top - menuHeight - 5);
+    }
+    materialMenuDiv.style.top = menuTop + 'px';
+    materialMenuDiv.style.left = menuLeft + 'px';
+    materialMenuDiv.style.right = 'auto';
     
     if (materialMenuScrollListener) {
         window.removeEventListener('scroll', materialMenuScrollListener);
@@ -3959,9 +4028,15 @@ document.getElementById('materialPresetBtn').addEventListener('click', (e) => {
     }
     materialMenuScrollListener = () => {
         const newRect = btn.getBoundingClientRect();
-        materialMenuDiv.style.top = (newRect.bottom + 5) + 'px';
-        materialMenuDiv.style.right = (window.innerWidth - newRect.right - 5) + 'px';
-        if (window.innerWidth < 700) materialMenuDiv.style.right = '10px';
+        let mt = newRect.bottom + 5;
+        let ml = newRect.right - 270;
+        if (ml < 8) ml = 8;
+        if (ml + 270 > window.innerWidth - 8) ml = window.innerWidth - 270 - 8;
+        const mh = materialMenuDiv.offsetHeight || 320;
+        if (mt + mh > window.innerHeight - 8) mt = Math.max(8, newRect.top - mh - 5);
+        materialMenuDiv.style.top = mt + 'px';
+        materialMenuDiv.style.left = ml + 'px';
+        materialMenuDiv.style.right = 'auto';
     };
     window.addEventListener('scroll', materialMenuScrollListener);
     const panelContent = document.querySelector('.panel-content');
@@ -3995,6 +4070,7 @@ function showCreateBlockMenu() {
             </div>
             <div style="margin-bottom: 16px;">
                 <div id="createCubeBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit;">❒ 方块</div>
+                <div id="createPlaneBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">▭ 平面</div>
                 <div id="createFlagBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">🏳️ 旗帜</div>
             </div>
             <div style="border-top: 1px solid #334155; margin: 12px 0;"></div>
@@ -4007,6 +4083,7 @@ function showCreateBlockMenu() {
     modalDiv.querySelector('#closeTypeMenuBtn').onclick = closeModal;
     
     const createCubeBtn = modalDiv.querySelector('#createCubeBtn');
+    const createPlaneBtn = modalDiv.querySelector('#createPlaneBtn');
     const createFlagBtn = modalDiv.querySelector('#createFlagBtn');
     const presetBtn = modalDiv.querySelector('#presetBtn');
     
@@ -4022,12 +4099,17 @@ function showCreateBlockMenu() {
         });
     };
     addHoverEffect(createCubeBtn);
+    addHoverEffect(createPlaneBtn);
     addHoverEffect(createFlagBtn);
     addHoverEffect(presetBtn);
     
     createCubeBtn.onclick = () => {
         createBlockOfType('cube');
         closeModal();
+    };
+    createPlaneBtn.onclick = () => {
+        closeModal();
+        createPlaneBlock();
     };
     createFlagBtn.onclick = () => {
         createBlockOfType('flag');
@@ -4049,6 +4131,104 @@ function createBlockOfType(type) {
     selectBlock(newBlock);
 }
 
+// ==================== 平面生成函数 ====================
+function round6(v) {
+    return Math.round(v * 1e6) / 1e6;
+}
+
+function generateRectParams(a, b) {
+    let ey, sc, l1;
+    if (a > b) {
+        ey = 0.0;
+        sc = a;
+        l1 = b / a;
+    } else if (b > a) {
+        ey = 90.0;
+        sc = b;
+        l1 = a / b;
+    } else {
+        ey = 0.0;
+        sc = a;
+        l1 = 1.0;
+    }
+    const es = 0.0001;
+    const clamped = Math.max(-1.0, Math.min(1.0, l1));
+    const ex_deg = -Math.asin(clamped) * 180 / Math.PI;
+    const xr = (90.0 - ex_deg) * Math.cos(ey * Math.PI / 180.0);
+    const zr = (90.0 + ex_deg) * Math.sin(ey * Math.PI / 180.0);
+    return {
+        extend_yrot: round6(ey),
+        scale: round6(sc),
+        l1: round6(clamped),
+        extend_scale: round6(es),
+        extend_xrot: round6(ex_deg),
+        xrot: round6(xr),
+        zrot: round6(zr)
+    };
+}
+
+function buildPlaneCommand(a, b) {
+    const p = generateRectParams(a, b);
+    return `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'block：白色羊毛'; v.xpos=0; v.ypos=0; v.zpos=0; v.yrot=0; v.scale=${p.scale}; v.extend_scale=${p.extend_scale}; v.extend_yrot=${p.extend_yrot}; v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.l1=${p.l1}; v.extend_xrot=${p.extend_xrot}; v.xrot=${p.xrot}; v.zrot=${p.zrot};'方块编号：Cube'; "`;
+}
+
+function createPlaneBlock() {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1001';
+    modalDiv.innerHTML = `
+        <div class="modal-content" style="max-width: 360px; padding: 20px 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <span style="font-size: 18px; font-weight: bold;">▭ 创建平面</span>
+                <button id="planeCloseBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: inherit;">✕</button>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 13px; margin-bottom: 6px; color: #94a3b8;">长（X轴方向）</label>
+                <input id="planeLengthInput" type="number" value="5" min="0.01" step="0.01" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #3b82f6; background: #0f172a; color: white; font-size: 14px; outline: none; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; font-size: 13px; margin-bottom: 6px; color: #94a3b8;">宽（Z轴方向）</label>
+                <input id="planeWidthInput" type="number" value="3" min="0.01" step="0.01" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #3b82f6; background: #0f172a; color: white; font-size: 14px; outline: none; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button class="modal-btn" id="planeCancelBtn">取消</button>
+                <button class="modal-btn" id="planeConfirmBtn" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">确认创建</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+
+    const closeModal = () => modalDiv.remove();
+    modalDiv.querySelector('#planeCloseBtn').onclick = closeModal;
+    modalDiv.querySelector('#planeCancelBtn').onclick = closeModal;
+
+    const lenInput = modalDiv.querySelector('#planeLengthInput');
+    const widInput = modalDiv.querySelector('#planeWidthInput');
+
+    lenInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') widInput.focus(); });
+    widInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') modalDiv.querySelector('#planeConfirmBtn').click(); });
+
+    modalDiv.querySelector('#planeConfirmBtn').onclick = () => {
+        const a = parseFloat(lenInput.value);
+        const b = parseFloat(widInput.value);
+        if (!isFinite(a) || a <= 0) {
+            lenInput.style.borderColor = '#ef4444';
+            lenInput.focus();
+            return;
+        }
+        if (!isFinite(b) || b <= 0) {
+            widInput.style.borderColor = '#ef4444';
+            widInput.focus();
+            return;
+        }
+        closeModal();
+        const cmd = buildPlaneCommand(a, b);
+        importFromCommands(cmd);
+    };
+
+    setTimeout(() => lenInput.focus(), 100);
+}
+
 // 绑定新建按钮
 document.getElementById('addBlockBtn').onclick = () => {
     showCreateBlockMenu();
@@ -4061,11 +4241,7 @@ const presetTemplates = [
         command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'block：钻石块'; v.xpos=0; v.ypos=0; v.zpos=0; v.yrot=0; v.zrot=90; v.extend_xrot=0; v.xbasepos=0.5; v.ybasepos=0; v.zbasepos=0; v.l1=2.16; v.l2=1.43; v.xita=136.43; v.rotatez=0; v.rotatey=0; v.rotatex=0; v.first=math.pow(v.l1*10,2); v.B=math.pow(v.l2*10,2); v.C=100*v.l1*v.l2*math.cos(v.xita); v.scy_or=(90 - v.xita)/math.abs(v.xita - 90); v.det=v.first*v.B-math.pow(v.C,2); v.D=math.sqrt(v.det); v.T=math.sqrt(v.first+v.B+2*v.D); v.R11=(v.first+v.D)/v.T; v.R12=v.C/v.T; v.R22=(v.B+v.D)/v.T; v.extend_yrot=0.5*math.atan2(2*v.R12,v.R11-v.R22); v.c=math.cos(v.extend_yrot); v.scale_sin=math.sin(v.extend_yrot); v.scy_y=math.sin(v.extend_yrot)*math.sin(v.extend_yrot); v.d1=v.c*v.c*v.R11+2*v.c*v.scale_sin*v.R12+v.scale_sin*v.scale_sin*v.R22; v.d2=v.scale_sin*v.scale_sin*v.R11-2*v.c*v.scale_sin*v.R12+v.c*v.c*v.R22; v.scale=v.d1/10; v.extend_scale=v.d2/v.d1; v.scy_sy=v.extend_scale*math.cos(v.extend_yrot)*math.cos(v.extend_yrot); v.scy_division=(-v.scy_sy-v.scy_y) / math.sqrt(v.scy_sy*v.extend_scale+v.scy_y); v.scy_rot=180-math.acos(v.scy_division); v.xrot=-v.scy_or * v.scy_rot;'方块编号：Cube1'; "`
     },
     {
-        description: "两边一角控制2DのCube大小",
-        command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=0; v.yrot=0; v.zrot=0; v.scale=v.S1/(1+v.k); v.extend_scale=0.0001; v.extend_xrot=math.asin(math.sqrt(math.abs(v.k))); v.extend_yrot=0.5*math.atan2(2*v.r12,v.r11-v.r22); v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.l1=10; v.l2=10; v.xita=90; v.a=math.pow(v.l1,2); v.c=math.pow(v.l2,2); v.cos=math.cos(v.xita); v.b=v.l1*v.l2*v.cos; v.detG=v.a*v.c-v.b*v.b; v.sG=math.sqrt(math.abs(v.detG)); v.tG=math.sqrt(v.a+v.c+2*v.sG); v.r11=(v.a+v.sG)/v.tG; v.r12=v.b/v.tG; v.r22=(v.c+v.sG)/v.tG; v.S1=v.r11+v.r22; v.D=v.r11*v.r22-v.r12*v.r12+0.000001; v.T=v.S1*v.S1/v.D; v.k=(v.T-2-math.sqrt(math.abs(v.T*v.T-4*v.T)))/2; '方块编号：新方块'; "
-两边一角控制平面大小（不完善）`
-    },
-    {
+
         description: "旗帜杆 根部为旋转中心",
         command: `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'方块类型：旗帜'; v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=3; v.yrot=0; v.zrot=180; v.scale=1; v.extend_scale=1; v.extend_xrot=-90; v.extend_yrot=0; v.xbasepos=-0.178575; v.ybasepos=-0.33571425; v.zbasepos=-0.5464285; '方块编号：Flag'; "旗帜`
     },
@@ -4230,10 +4406,7 @@ document.getElementById('blockMenuBtn').addEventListener('click', (e) => {
     if (btn) btn.addEventListener('click', toggleFullscreen);
 });
 // 退出全屏按钮
-const fullscreenExitBtn = document.getElementById('fullscreenExitBtn');
-if (fullscreenExitBtn) fullscreenExitBtn.addEventListener('click', () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-});
+
 ['undoBtn', 'undoBtnSide'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.addEventListener('click', () => undo());
@@ -4269,7 +4442,7 @@ let isKeyframeMode = false; // 新操作模式下的关键帧编辑模式
 let useWorldAxisDisplacement = false;
 let pivotLinkModel = true;   // 枢轴联动模型：true=pos直接相加，false=换算basepos保持模型位置不变
 const MIN_SIDE_PANEL_WIDTH = 5;
-const MAX_SIDE_PANEL_WIDTH = 640;
+const MAX_SIDE_PANEL_WIDTH = 880;
 
 function applyBlockListPosition() {
     const topBtn = document.getElementById('blockListTopBtn');
@@ -4315,7 +4488,7 @@ function applySidePanelMode() {
     if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
     if (panel) {
         panel.dataset.collapsed = isSidePanelMode && sidePanelWidth <= 10 ? 'true' : 'false';
-        panel.dataset.narrow = isSidePanelMode && sidePanelWidth < 282 ? 'true' : 'false';
+        panel.dataset.narrow = isSidePanelMode && sidePanelWidth < 400 ? 'true' : 'false';
     }
     if (topBar) topBar.style.display = isSidePanelMode ? 'none' : 'flex';
     try { localStorage.setItem('ui_side_panel_mode', isSidePanelMode ? '1' : '0'); } catch (e) {}
@@ -4350,9 +4523,11 @@ function setSidePanelWidth(value) {
     if (panel && isSidePanelMode) {
         panel.style.width = `${sidePanelWidth}px`;
         panel.dataset.collapsed = sidePanelWidth <= 10 ? 'true' : 'false';
-        panel.dataset.narrow = sidePanelWidth < 282 ? 'true' : 'false';
+        panel.dataset.narrow = sidePanelWidth < 400 ? 'true' : 'false';
     }
     try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
+    // 更新变量面板布局（旧版侧边栏单列/双列切换）
+    if (selectedBlock && !isNewLayoutMode) renderVariablesForBlock(selectedBlock);
 }
 
 function toggleBlockListPosition(e) {
@@ -4454,6 +4629,10 @@ function renderSideBlockList() {
         <span>🎬 关键帧动画${isKfMode ? ' <span style="font-size:10px;opacity:0.7;">(编辑中)</span>' : ''}</span>
         ${isKfMode ? '<span style="font-size:10px;color:#a855f7;">● 已激活</span>' : ''}
     </div>`;
+    // 欧拉角转换入口（两种模式都显示）
+    html += `<div class="side-block-item" id="sideBlockEuler" style="border-bottom:1px solid rgba(59,130,246,0.3);margin-bottom:4px;padding-bottom:8px;color:#60a5fa;" title="将 rotatex/y/z 换算为 xrot/y/zrot">
+        <span>🔄 欧拉角转换</span>
+    </div>`;
     
     if (!isKfMode) {
         // 普通模式：全选 + 新建 + 骨骼
@@ -4495,16 +4674,21 @@ function renderSideBlockList() {
             const block = blocks.find(b => b.id === bid);
             if (block) {
                 if (isKfMode) {
-                    // 关键帧模式：选中方块并联动到关键帧编辑器
-                    selectedBlocksSet.clear();
-                    selectedBlocksSet.add(block);
-                    selectBlock(block);
+                    // 关键帧模式：支持 Ctrl+点击多选
+                    const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+                    if (isMulti) {
+                        toggleBlockSelection(block, true);
+                    } else {
+                        selectedBlocksSet.clear();
+                        selectedBlocksSet.add(block);
+                        selectBlock(block);
+                    }
                     // 在关键帧编辑器中选中该方块
                     if (!keyframeData.has(block.id)) {
                         initKeyframeForBlock(block.id);
                         addKeyframeBlockTag(block.id);
                     }
-                    selectKeyframeBlock(block.id);
+                    selectKeyframeBlock(block.id, isMulti);
                     if (!keyframeWindowOpen) {
                         openKeyframeWindow();
                     } else if (keyframeWindowEl) {
@@ -4605,6 +4789,14 @@ function renderSideBlockList() {
                 if (!keyframeWindowOpen) openKeyframeWindow();
                 else if (keyframeWindowEl) keyframeWindowEl.style.display = 'block';
             }
+        });
+    }
+    // 欧拉角转换按钮
+    const eulerBtnSide = document.getElementById('sideBlockEuler');
+    if (eulerBtnSide) {
+        eulerBtnSide.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showEulerAngleConfirmDialog();
         });
     }
 }
@@ -5682,10 +5874,13 @@ function makeActiveHighlight(meta) {
             const d = rotDiscBasisFor(b, meta.axis);
             g.position.copy(rotGizmoCenterLocal(b, meta.rotMode));
             orientDiscToBasis(g, d.x, d.y, d.z);
-            const worldCenter = new THREE.Vector3();
-            g.getWorldPosition(worldCenter);
-            const camDir = camera.position.clone().sub(worldCenter).normalize();
-            const faceAngle = Math.atan2(camDir.dot(d.y), camDir.dot(d.x));
+            // 从对应的 arc 组获取一致的 faceAngle，确保高亮与弧线对齐
+            const arcGroup = rotArcGroups.find(ag =>
+                ag.userData.herRotAxis === meta.axis &&
+                ag.userData.herRotVar === meta.varName &&
+                ag.userData.herRotMode === meta.rotMode
+            );
+            const faceAngle = arcGroup ? arcGroup.userData.herFaceAngle : 0;
             plane.rotation.z = rotVisualAngle(meta.axis, meta.varName) + faceAngle - Math.PI * 0.5;
         }
         g.add(plane);
@@ -5756,10 +5951,13 @@ function updateActiveHighlightPose() {
         orientDiscToBasis(activeHighlight, d.x, d.y, d.z);
         const planeG = activeHighlight.children.find(c => c.type === 'Group');
         if (planeG) {
-            const worldCenter = new THREE.Vector3();
-            activeHighlight.getWorldPosition(worldCenter);
-            const camDir = camera.position.clone().sub(worldCenter).normalize();
-            const faceAngle = Math.atan2(camDir.dot(d.y), camDir.dot(d.x));
+            // 使用与 arc 组一致的 stored faceAngle
+            const arcGroup = rotArcGroups.find(ag =>
+                ag.userData.herRotAxis === activePick.axis &&
+                ag.userData.herRotVar === activePick.varName &&
+                ag.userData.herRotMode === activePick.rotMode
+            );
+            const faceAngle = arcGroup ? arcGroup.userData.herFaceAngle : 0;
             planeG.rotation.z = rotVisualAngle(activePick.axis, activePick.varName) + faceAngle - Math.PI * 0.5;
         }
     } else if (activePick.type === 'move' && b) {
@@ -5884,10 +6082,9 @@ function changeVar(name, delta, refresh = true) {
                 if (def) {
                     const cur = parseFloat(def.expr) || def.value;
                     const nv = cur + baseDeltaVec.getComponent(i);
-                    const dec = (def.step.toString().includes('.') ? def.step.toString().split('.')[1].length : 0);
-                    const finalVal = parseFloat(nv.toFixed(dec));
-                    def.expr = finalVal.toString();
-                    def.value = finalVal;
+                    // 拖拽时保留较高精度（6位小数），避免 toFixed(2) 丢失小增量导致大数值抖动
+                    def.expr = nv.toFixed(6);
+                    def.value = nv;
                 }
             });
             b.refresh();
@@ -6254,14 +6451,18 @@ function pickRotByScreenDistance(cx, cy) {
     const b = selected();
     if (!b || !(herModes.has('rotate')||herModes.has('centerRotate')) || !rotArcGroups.length) return null;
     const rect = renderer.domElement.getBoundingClientRect();
-    const radius = 2.05, S = 0, E = Math.PI*2;
+    const radius = 2.05, S = 0, E = Math.PI;
     let best = null;
     const dS = (px,py,ax,ay,bx,by) => { const vx=bx-ax,vy=by-ay,wx=px-ax,wy=py-ay,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,(wx*vx+wy*vy)/l2)); return Math.hypot(px-(ax+vx*t),py-(ay+vy*t)); };
     for (const g of rotArcGroups) {
         const axis = g.userData.herRotAxis, vn = g.userData.herRotVar, d = rotDiscBasisFor(b,axis), rm = g.userData.herRotMode||'origin', c = rotGizmoCenterWorld(b,rm), sp = rotVisualAngle(axis,vn);
+        // 采样偏移需与 updateRotGizmosLive 中的 plane.rotation.z 一致：
+        // plane.rotation.z = visualAngle + herFaceAngle - Math.PI/2
+        // 因此采样起始角 = sp + herFaceAngle - Math.PI/2
+        const offset = (g.userData.herFaceAngle || 0) - Math.PI * 0.5;
         let prev = null, md = Infinity;
-        for (let i=0;i<=64;i++) { const a=S+(E-S)*i/64+sp, wp=c.clone().addScaledVector(d.x,Math.cos(a)*radius).addScaledVector(d.y,Math.sin(a)*radius), sp2=wp.project(camera), p={x:(sp2.x*0.5+0.5)*rect.width+rect.left,y:(-sp2.y*0.5+0.5)*rect.height+rect.top}; if(prev) md=Math.min(md,dS(cx,cy,prev.x,prev.y,p.x,p.y)); prev=p; }
-        if (md<76 && (!best || md<best.distance)) best = {distance:md, object:{userData:{her:{type:'rot',varName:vn,scale:1,axis,rotMode:rm,priority:80,axisNormal:d.z.clone(),xBasis:d.x.clone(),yBasis:d.y.clone(),radius,end:Math.PI},herPriority:80}}};
+        for (let i=0;i<=64;i++) { const a=S+(E-S)*i/64+sp+offset, wp=c.clone().addScaledVector(d.x,Math.cos(a)*radius).addScaledVector(d.y,Math.sin(a)*radius), sp2=wp.project(camera), p={x:(sp2.x*0.5+0.5)*rect.width+rect.left,y:(-sp2.y*0.5+0.5)*rect.height+rect.top}; if(prev) md=Math.min(md,dS(cx,cy,prev.x,prev.y,p.x,p.y)); prev=p; }
+        if (md<14 && (!best || md<best.distance)) best = {distance:md, object:{userData:{her:{type:'rot',varName:vn,scale:1,axis,rotMode:rm,priority:80,axisNormal:d.z.clone(),xBasis:d.x.clone(),yBasis:d.y.clone(),radius,end:Math.PI},herPriority:80}}};
     }
     return best;
 }
@@ -6341,28 +6542,9 @@ function moveGizmoDrag(cx, cy, ev) {
         if (Math.abs(dd) > 1e-5) { if (activePick.rotMode==='center') applyCenterRotateDelta(activePick.varName,dd); else applyOriginRotateDelta(activePick.varName,dd); dragNeedsRebuild = false; }
         updateOriginCenterLineLive(selectedBlock); updateRotGizmosLive();
     } else if (activePick.type === 'move' && activePick.mode === 'base') {
-        // 世界轴位移模式：使用射线-平面交点计算世界空间位移增量
-        const rect = renderer.domElement.getBoundingClientRect();
-        const ndc = new THREE.Vector2(
-            ((cx - rect.left) / rect.width) * 2 - 1,
-            -((cy - rect.top) / rect.height) * 2 + 1
-        );
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(ndc, camera);
-        const axisOrg = new THREE.Vector3();
-        gizmoRoot.getWorldPosition(axisOrg);
-        const planeNormal = camera.position.clone().sub(axisOrg).normalize();
-        const planeD = -planeNormal.dot(axisOrg);
-        const t = -(planeNormal.dot(raycaster.ray.origin) + planeD) / planeNormal.dot(raycaster.ray.direction);
-        if (t < 0) { if (ev) ev.preventDefault(); return true; }
-        const hitPoint = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(t));
-        const offset = hitPoint.sub(axisOrg);
-        const s = offset.dot(activePick.axis);
-        if (activePick._lastAxisS === undefined) {
-            activePick._lastAxisS = s;
-        }
-        const deltaS = s - activePick._lastAxisS;
-        activePick._lastAxisS = s;
+        // 世界轴位移模式：使用与 origin 模式一致的 screenAxis 方式，提升稳定性
+        const a = screenAxis(activePick);
+        const deltaS = (dx * a.x + dy * a.y) * activePick.scale;
         changeVar(activePick.varName, deltaS, false);
         updateActiveHighlightPose();
     } else if (activePick.type === 'scale') { changeVar(activePick.varName, (dx-dy)*activePick.scale, false); updateActiveHighlightPose(); }
@@ -6409,6 +6591,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setClearColor(0x000000, 1); // 不透明背景，避免透明穿透导致空白
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true; // 如需关闭阴影可改为 false
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.domElement.style.display = 'block';
 renderer.domElement.style.position = 'absolute';
 renderer.domElement.style.top = '0';
@@ -6487,19 +6670,17 @@ function onWindowResize() {
     labelRenderer.setSize(width, height);
 }
 
-// 环境光
-const ambient = new THREE.AmbientLight(0x404060, 1);
+// 环境光（冷色，大幅降低强度减少去饱和效应，让主光主导色彩）
+const ambient = new THREE.AmbientLight(0x4466aa, 0.2);
 scene.add(ambient);
-// 主方向光（提供立体感和棱角）
-// 主方向光（提供立体感，从侧上方照射）
+// 主方向光（白色，高强度主导照明，保持亮部色彩纯净高饱和）
 const mainLight = new THREE.DirectionalLight(0xffffff, 0.9);
 mainLight.decay = 0;
 mainLight.castShadow = true;
 scene.add(mainLight);
 
-// 补光（从下方减弱暗部阴影）
-const fillLight = new THREE.DirectionalLight(0xaaccff, 0.5);
-fillLight.position.set(0, -1, 0);
+// 补光（紫冷色，高强度给阴影区域注入丰富色彩）
+const fillLight = new THREE.DirectionalLight(0xbb88ff, 0.35);
 fillLight.decay = 0;
 scene.add(fillLight);
 // ==================== 主题切换 ====================
@@ -6658,14 +6839,32 @@ function onCanvasClick(event) {
         const hit = hits[0].object;
         const block = blocks.find(b => b.getMeshes().includes(hit));
         if (block) {
-            if (clickTimer !== null) {
+            const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
+            if (isMulti) {
+                // 多选（Ctrl/Shift+点击）立即执行，跳过双击检测延迟
+                if (clickTimer !== null) {
+                    clearTimeout(clickTimer);
+                    clickTimer = null;
+                }
+                toggleBlockSelection(block, true);
+                // 多选时不改变关键帧面板选中状态
+            } else if (clickTimer !== null) {
+                // 第二次点击（双击）
                 toggleBlockSelection(block, true);
                 clearTimeout(clickTimer);
                 clickTimer = null;
+                // 同步关键帧面板
+                if (keyframeWindowOpen && keyframeData.has(block.id)) {
+                    selectKeyframeBlock(block.id);
+                }
             } else {
                 clickTimer = setTimeout(() => {
-                    toggleBlockSelection(block, event.ctrlKey || event.metaKey || event.shiftKey);
+                    toggleBlockSelection(block, false);
                     clickTimer = null;
+                    // 同步关键帧面板
+                    if (keyframeWindowOpen && keyframeData.has(block.id)) {
+                        selectKeyframeBlock(block.id);
+                    }
                 }, 200);
             }
         }
@@ -6697,7 +6896,12 @@ renderer.domElement.addEventListener('touchstart', e => {
             const hits = raycaster.intersectObjects(allMeshes);
             if (hits.length) {
                 const hitBlock = blocks.find(b => b.getMeshes().includes(hits[0].object));
-                if (hitBlock) toggleBlockSelection(hitBlock, false);
+                if (hitBlock) {
+                    toggleBlockSelection(hitBlock, false);
+                    if (keyframeWindowOpen && keyframeData.has(hitBlock.id)) {
+                        selectKeyframeBlock(hitBlock.id);
+                    }
+                }
             } else {
                 selectedBlocksSet.clear();
                 selectBlock(null);
@@ -6716,24 +6920,23 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // ---------- 灯光跟随摄像机（侧方偏移，避免正面过曝） ----------
+    // ---------- 主光跟随摄像机（提供摄像机视角方向的照明），补光固定在世界空间 ----------
     const camDir = new THREE.Vector3();
     camera.getWorldDirection(camDir);
+    // 主光从摄像机方向偏移30°侧上方照射，让摄像机看到的表面始终有光但不会直视过曝
     const camRight = new THREE.Vector3().crossVectors(camDir, camera.up).normalize();
-
-    // 光源方向：摄像机前方 + 右偏 + 上偏
-    const lightDir = camDir.clone()
-        .add(camRight.clone().multiplyScalar(0.6))
-        .add(new THREE.Vector3(0, 0.5, 0))
+    const camUp2 = new THREE.Vector3().crossVectors(camRight, camDir).normalize();
+    const lightOffset = camDir.clone().multiplyScalar(Math.cos(Math.PI / 6))
+        .add(camRight.clone().multiplyScalar(Math.sin(Math.PI / 6)))
+        .add(camUp2.clone().multiplyScalar(0.3))
         .normalize();
-
-    // 光源位置：摄像机位置 + 光源方向 * 距离
-    mainLight.position.copy(camera.position).add(lightDir.clone().multiplyScalar(8));
-    mainLight.target.position.copy(camera.position).add(camDir.clone().multiplyScalar(10));
+    mainLight.position.copy(camera.position).add(lightOffset.clone().multiplyScalar(10));
+    mainLight.target.position.copy(camera.position).add(camDir.clone().multiplyScalar(15));
     mainLight.target.updateMatrixWorld();
-
-    // 补光位置：从摄像机下方打来（也可固定，这里跟随摄像机位置偏移）
-    fillLight.position.copy(camera.position).add(new THREE.Vector3(0, -2, 0));
+    // 补光固定世界空间，从右后下方柔和填充
+    fillLight.position.set(-5, -3, -8);
+    fillLight.target.position.set(0, 0, 0);
+    fillLight.target.updateMatrixWorld();
 
   
     
@@ -6779,7 +6982,9 @@ function applyPanelWidth(newWidth) {
     sidePanelWidth = newWidth;
     if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
     if (sidePanelWidthRange) sidePanelWidthRange.value = sidePanelWidth;
-    panel.dataset.narrow = sidePanelWidth < 282 ? 'true' : 'false';
+    panel.dataset.narrow = sidePanelWidth < 400 ? 'true' : 'false';
+    // 实时更新变量面板布局（旧版侧边栏单列/双列切换）
+    if (selectedBlock && !isNewLayoutMode) renderVariablesForBlock(selectedBlock);
 }
 function applyPanelHeight(newHeight) {
     panel.style.height = newHeight + 'px';
@@ -6830,6 +7035,8 @@ function onPointerUp() {
         panel.style.willChange = '';
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
+        // 拖拽结束后更新变量面板布局（旧版侧边栏单列/双列切换）
+        if (selectedBlock && !isNewLayoutMode) renderVariablesForBlock(selectedBlock);
     }
     try { positionUISettingsPanel(); } catch (e) { /* ignore */ }
 }
@@ -6849,7 +7056,7 @@ let keyframePlayTimer = null;
 let keyframePlaying = false;
 let keyframeCurrentTime = 0;
 let keyframeAnimDuration = 10; // 默认10秒
-let keyframeFps = 20;
+let keyframeFps = 60;
 let keyframeZoom = 1.0; // 时间轴缩放倍数（1 ~ 100）
 let keyframeScrollOffset = 0; // 时间轴滚动偏移（秒）
 const KEYFRAME_BASE_VIEW = 10; // 1x 缩放下显示的基准秒数
@@ -6898,6 +7105,239 @@ function timeToPct(t) {
     const vd = getViewDuration();
     if (vd <= 0) return 0;
     return (t - keyframeScrollOffset) / vd;
+}
+
+// ==================== 欧拉角转换（rotate → rot）====================
+// 将选中方块的 rotatex/rotatey/rotatez 合并到 xrot/yrot/zrot 中并删除 rotate 变量
+function eulerAngleConvertBlock(block) {
+    const vars = block.scope.vars;
+    const hasRotate = vars.has('v.rotatex') || vars.has('v.rotatey') || vars.has('v.rotatez');
+    if (!hasRotate) return false;
+
+    const rotatex = vars.get('v.rotatex')?.value ?? 0;
+    const rotatey = vars.get('v.rotatey')?.value ?? 0;
+    const rotatez = vars.get('v.rotatez')?.value ?? 0;
+    const xrot = vars.get('v.xrot')?.value ?? 0;
+    const yrot = vars.get('v.yrot')?.value ?? 0;
+    const zrot = vars.get('v.zrot')?.value ?? 0;
+
+    const d2r = d => d * Math.PI / 180;
+    const r2d = r => r * 180 / Math.PI;
+    const Rx = r => [1,0,0, 0,Math.cos(r),-Math.sin(r), 0,Math.sin(r),Math.cos(r)];
+    const Ry = r => [Math.cos(r),0,Math.sin(r), 0,1,0, -Math.sin(r),0,Math.cos(r)];
+    const Rz = r => [Math.cos(r),-Math.sin(r),0, Math.sin(r),Math.cos(r),0, 0,0,1];
+    const mMul = (A,B) => {
+        const C = new Array(9);
+        for (let i=0;i<3;i++) for (let j=0;j<3;j++) { let s=0; for(let k=0;k<3;k++) s+=A[i*3+k]*B[k*3+j]; C[i*3+j]=s; }
+        return C;
+    };
+
+    let R = Ry(d2r(-rotatey));
+    R = mMul(R, Rx(d2r(rotatex)));
+    R = mMul(R, Rz(d2r(-rotatez)));
+    R = mMul(R, Ry(d2r(-yrot)));
+    R = mMul(R, Rx(d2r(xrot)));
+    R = mMul(R, Rz(d2r(-zrot)));
+
+    const sb = -R[1*3+2];
+    const cb = Math.sqrt(Math.max(0, 1 - sb*sb));
+    let newXrot, newYrot, newZrot;
+    if (Math.abs(cb) < 1e-12) {
+        newXrot = r2d(Math.asin(sb));
+        newYrot = 0;
+        newZrot = 0;
+    } else {
+        const b = Math.asin(sb);
+        const c = Math.atan2(R[1*3+0]/cb, R[1*3+1]/cb);
+        const a = Math.atan2(R[0*3+2]/cb, R[2*3+2]/cb);
+        newXrot = r2d(b);
+        newYrot = -r2d(a);
+        newZrot = -r2d(c);
+    }
+
+    const setVal = (name, val) => {
+        const d = vars.get(name);
+        if (d) {
+            const rounded = Math.round(val * 10000) / 10000;
+            d.expr = String(rounded);
+            d.value = rounded;
+        }
+    };
+    setVal('v.xrot', newXrot);
+    setVal('v.yrot', newYrot);
+    setVal('v.zrot', newZrot);
+
+    vars.delete('v.rotatex');
+    vars.delete('v.rotatey');
+    vars.delete('v.rotatez');
+
+    return true;
+}
+
+// 关键帧模式下：换算选中帧的方块关键帧数据的 rotate 变量
+function eulerAngleConvertKeyframe(blockId, time) {
+    if (!keyframeData.has(blockId)) return false;
+    const data = keyframeData.get(blockId);
+    if (data.frames.size === 0) return false;
+
+    const interpolated = interpolateKeyframes(blockId, time);
+    if (!interpolated) return false;
+
+    const hasRotate = ('rotatex' in interpolated) || ('rotatey' in interpolated) || ('rotatez' in interpolated);
+    if (!hasRotate) return false;
+
+    const rotatex = interpolated['rotatex'] ?? 0;
+    const rotatey = interpolated['rotatey'] ?? 0;
+    const rotatez = interpolated['rotatez'] ?? 0;
+    const xrot = interpolated['xrot'] ?? 0;
+    const yrot = interpolated['yrot'] ?? 0;
+    const zrot = interpolated['zrot'] ?? 0;
+
+    const d2r = d => d * Math.PI / 180;
+    const r2d = r => r * 180 / Math.PI;
+    const Rx = r => [1,0,0, 0,Math.cos(r),-Math.sin(r), 0,Math.sin(r),Math.cos(r)];
+    const Ry = r => [Math.cos(r),0,Math.sin(r), 0,1,0, -Math.sin(r),0,Math.cos(r)];
+    const Rz = r => [Math.cos(r),-Math.sin(r),0, Math.sin(r),Math.cos(r),0, 0,0,1];
+    const mMul = (A,B) => {
+        const C = new Array(9);
+        for (let i=0;i<3;i++) for (let j=0;j<3;j++) { let s=0; for(let k=0;k<3;k++) s+=A[i*3+k]*B[k*3+j]; C[i*3+j]=s; }
+        return C;
+    };
+
+    let R = Ry(d2r(-rotatey));
+    R = mMul(R, Rx(d2r(rotatex)));
+    R = mMul(R, Rz(d2r(-rotatez)));
+    R = mMul(R, Ry(d2r(-yrot)));
+    R = mMul(R, Rx(d2r(xrot)));
+    R = mMul(R, Rz(d2r(-zrot)));
+
+    const sb = -R[1*3+2];
+    const cb = Math.sqrt(Math.max(0, 1 - sb*sb));
+    let newXrot, newYrot, newZrot;
+    if (Math.abs(cb) < 1e-12) {
+        newXrot = r2d(Math.asin(sb));
+        newYrot = 0;
+        newZrot = 0;
+    } else {
+        const b = Math.asin(sb);
+        const c = Math.atan2(R[1*3+0]/cb, R[1*3+1]/cb);
+        const a = Math.atan2(R[0*3+2]/cb, R[2*3+2]/cb);
+        newXrot = r2d(b);
+        newYrot = -r2d(a);
+        newZrot = -r2d(c);
+    }
+
+    const round4 = v => Math.round(v * 10000) / 10000;
+
+    // 更新所有关键帧：删除 rotate 变量，更新 rot 值
+    for (const [, frameMap] of data.frames) {
+        frameMap.delete('rotatex');
+        frameMap.delete('rotatey');
+        frameMap.delete('rotatez');
+        frameMap.set('xrot', round4(newXrot));
+        frameMap.set('yrot', round4(newYrot));
+        frameMap.set('zrot', round4(newZrot));
+    }
+
+    return true;
+}
+
+// 通用欧拉角转换入口（处理选中方块）
+function applyEulerAngleConversion() {
+    const isKfActive = isNewLayoutMode && isKeyframeMode && keyframeWindowOpen && selectedKeyframeBlock;
+    let blocksToConvert = [];
+    let converted = 0, noRotate = 0;
+
+    if (isKfActive) {
+        const bid = selectedKeyframeBlock;
+        const block = blocks.find(b => b.id === bid);
+        if (!block) { showModal("提示", "未选中动画方块", null, false); return; }
+        const data = keyframeData.get(bid);
+        let hasRotInKeyframes = false;
+        if (data) {
+            for (const [, frameMap] of data.frames) {
+                if (frameMap.has('rotatex') || frameMap.has('rotatey') || frameMap.has('rotatez')) {
+                    hasRotInKeyframes = true;
+                    break;
+                }
+            }
+        }
+        if (!hasRotInKeyframes) {
+            showModal("转换结果", `方块 "${bid}" 无 rotate 变量`, null, false);
+            return;
+        }
+        const success = eulerAngleConvertKeyframe(bid, keyframeCurrentTime);
+        if (success) {
+            applyKeyframeToBlock(bid, keyframeCurrentTime);
+            block.refresh();
+            renderKeyframeDataPanel();
+            converted = 1;
+        } else {
+            noRotate = 1;
+        }
+    } else {
+        blocksToConvert = selectedBlocksSet.size ? Array.from(selectedBlocksSet) : (selectedBlock ? [selectedBlock] : []);
+        if (blocksToConvert.length === 0) {
+            showModal("提示", "请先选中一个方块", null, false);
+            return;
+        }
+        for (const block of blocksToConvert) {
+            if (eulerAngleConvertBlock(block)) {
+                block.refresh();
+                converted++;
+            } else {
+                noRotate++;
+            }
+        }
+    }
+
+    if (converted > 0) {
+        recordAction();
+        if (selectedBlock) renderVariablesForBlock(selectedBlock);
+        if (isNewLayoutMode) renderSideBlockList();
+        showModal("转换完成", `成功转换 ${converted} 个方块${noRotate > 0 ? `，${noRotate} 个方块无 rotate 变量` : ''}`, null, false);
+    } else {
+        showModal("转换结果", `选中方块无 rotate 变量${noRotate > 0 ? `（共 ${noRotate} 个）` : ''}`, null, false);
+    }
+}
+
+// 显示欧拉角转换确认弹窗
+function showEulerAngleConfirmDialog() {
+    const isKfActive = isNewLayoutMode && isKeyframeMode && keyframeWindowOpen && selectedKeyframeBlock;
+    let targetDesc = '';
+    if (isKfActive) {
+        targetDesc = `动画方块 "${selectedKeyframeBlock}" @ ${keyframeCurrentTime.toFixed(2)}s`;
+    } else {
+        const count = selectedBlocksSet.size || (selectedBlock ? 1 : 0);
+        targetDesc = `${count} 个选中方块`;
+    }
+
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1001';
+    modalDiv.innerHTML = `
+        <div class="modal-content" style="max-width: 400px; padding: 20px 24px;">
+            <div style="font-size: 18px; font-weight: bold; margin-bottom: 16px;">🔄 欧拉角转换</div>
+            <div style="font-size: 13px; color: #94a3b8; margin-bottom: 20px; line-height: 1.6;">
+                是否将选中方块的 <code style="background:rgba(59,130,246,0.15);padding:2px 6px;border-radius:4px;">rotatex/rotatey/rotatez</code> 
+                换算为等效的 <code style="background:rgba(59,130,246,0.15);padding:2px 6px;border-radius:4px;">xrot/yrot/zrot</code> 并删除 rotate 变量？
+                <br><br>
+                <span style="color: #facc15;">目标：${targetDesc}</span>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button class="modal-btn" id="eulerCancelBtn">取消</button>
+                <button class="modal-btn" id="eulerConfirmBtn" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">确认转换</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+
+    modalDiv.querySelector('#eulerCancelBtn').onclick = () => modalDiv.remove();
+    modalDiv.querySelector('#eulerConfirmBtn').onclick = () => {
+        modalDiv.remove();
+        applyEulerAngleConversion();
+    };
+    modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) modalDiv.remove(); });
 }
 
 // 获取方块的动画标识符
@@ -7135,24 +7575,29 @@ function openKeyframeWindow() {
     
     container.addEventListener('pointerdown', (e) => {
         if (e.target.closest('.keyframe-marker-group')) return;
+        // 轨道行：不阻止 click，让方块选中生效；同时标记以便 pointermove 全局拖拽
+        if (e.target.closest('.keyframe-track-row')) {
+            keyframeDragging = true;
+            scrubToClientX(e.clientX);
+            return;
+        }
         e.preventDefault();
         keyframeDragging = true;
         container.setPointerCapture(e.pointerId);
         scrubToClientX(e.clientX);
     });
-    container.addEventListener('pointermove', (e) => {
+    document.addEventListener('pointermove', (e) => {
         if (!keyframeDragging) return;
-        if (e.target.closest('.keyframe-marker-group')) return;
-        e.preventDefault();
         scrubToClientX(e.clientX);
     });
-    container.addEventListener('pointerup', (e) => {
+    document.addEventListener('pointerup', (e) => {
         if (!keyframeDragging) return;
         keyframeDragging = false;
-        container.releasePointerCapture(e.pointerId);
+        try { container.releasePointerCapture(e.pointerId); } catch (ex) {}
     });
-    container.addEventListener('pointercancel', (e) => {
+    document.addEventListener('pointercancel', (e) => {
         keyframeDragging = false;
+        try { container.releasePointerCapture(e.pointerId); } catch (ex) {}
     });
     // 鼠标滚轮 + 触屏双指滚动时间轴
     container.addEventListener('wheel', (e) => {
@@ -7372,7 +7817,22 @@ function addKeyframeBlockTag(blockId) {
     tag.innerHTML = `❒ ${blockId} <span class="remove-tag" data-kf-remove="${blockId}">✕</span>`;
     tag.addEventListener('click', (e) => {
         if (e.target.classList.contains('remove-tag')) return;
-        selectKeyframeBlock(blockId);
+        if (e.ctrlKey || e.metaKey || e.shiftKey) {
+            // Ctrl+点击：在3D视图中多选/反选该方块，关键帧面板跟随最后一个点击的方块
+            const block = blocks.find(b => b.id === blockId);
+            if (block) {
+                toggleBlockSelection(block, true);
+            }
+            selectKeyframeBlock(blockId, true);
+            // 重新同步标签高亮（因为 toggleBlockSelection 可能已移除该方块）
+            document.querySelectorAll('.keyframe-block-tag').forEach(t => {
+                const bid2 = t.dataset.kfBlock;
+                const in3d = selectedBlocksSet.size > 0 && blocks.some(b2 => b2.id === bid2 && selectedBlocksSet.has(b2));
+                t.classList.toggle('active', bid2 === blockId || in3d);
+            });
+        } else {
+            selectKeyframeBlock(blockId);
+        }
     });
     tag.querySelector('.remove-tag').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -7382,16 +7842,19 @@ function addKeyframeBlockTag(blockId) {
 }
 
 // 选中关键帧方块（同时联动 3D 视图中的选中）
-function selectKeyframeBlock(blockId) {
+function selectKeyframeBlock(blockId, keepMulti) {
     selectedKeyframeBlock = blockId;
+    // 更新标签高亮：选中项高亮 + 所有在 selectedBlocksSet 中的动画方块也高亮
     document.querySelectorAll('.keyframe-block-tag').forEach(t => {
-        t.classList.toggle('active', t.dataset.kfBlock === blockId);
+        const bid = t.dataset.kfBlock;
+        const in3dSelection = selectedBlocksSet.size > 0 && blocks.some(b => b.id === bid && selectedBlocksSet.has(b));
+        t.classList.toggle('active', bid === blockId || in3dSelection);
     });
     renderKeyframeTimeline();
     renderKeyframeDataPanel();
-    // 联动：在 3D 视图中也选中该方块
+    // 联动：在 3D 视图中也选中该方块（但不破坏已有的多选）
     const block = blocks.find(b => b.id === blockId);
-    if (block) {
+    if (block && !keepMulti) {
         selectedBlocksSet.clear();
         selectedBlocksSet.add(block);
         selectBlock(block);
@@ -7549,7 +8012,7 @@ function renderKeyframeTimeline() {
         if (!bid) return;
         const kfEntry = keyframeData.get(bid);
         const hasData = kfEntry && kfEntry.frames && kfEntry.frames.size > 0;
-        const isSelected = bid === selectedKeyframeBlock;
+        const isSelected = bid === selectedKeyframeBlock || (selectedBlocksSet.size > 0 && blocks.some(b => b.id === bid && selectedBlocksSet.has(b)));
         const color = colors[idx % colors.length];
         const top = idx * TRACK_H;
         
@@ -7563,14 +8026,12 @@ function renderKeyframeTimeline() {
         row.title = `点击选择 ${bid}`;
         row.addEventListener('click', (e) => {
             e.stopPropagation();
-            selectKeyframeBlock(bid);
-            if (keyframeData.has(bid) && keyframeData.get(bid).frames.size > 0) {
-                const times = getKeyframeTimes(bid);
-                let closest = times[0];
-                for (const t of times) {
-                    if (Math.abs(t - keyframeCurrentTime) < Math.abs(closest - keyframeCurrentTime)) closest = t;
-                }
-                selectKeyframeAtTime(bid, closest);
+            if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                const block = blocks.find(b => b.id === bid);
+                if (block) toggleBlockSelection(block, true);
+                selectKeyframeBlock(bid, true);
+            } else {
+                selectKeyframeBlock(bid);
             }
         });
         
@@ -7612,7 +8073,13 @@ function renderKeyframeTimeline() {
             
             group.addEventListener('click', (e) => {
                 e.stopPropagation();
-                selectKeyframeBlock(bid);
+                if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                    const block = blocks.find(b => b.id === bid);
+                    if (block) toggleBlockSelection(block, true);
+                    selectKeyframeBlock(bid, true);
+                } else {
+                    selectKeyframeBlock(bid);
+                }
                 selectKeyframeAtTime(bid, time);
             });
             
@@ -7708,7 +8175,38 @@ function selectKeyframeAtTime(blockId, time) {
 
 // 将方块当前变量值同步到关键帧数据（当用户在数据面板修改时调用）
 function syncKeyframeFromBlock(block) {
-    if (!block || !keyframeWindowOpen || !selectedKeyframeBlock) return;
+    if (!block || !keyframeWindowOpen) return;
+    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+    
+    // 批量模式：同步所有选中且有动画数据的方块
+    if (selectedBlocksSet.size > 1) {
+        for (const b of selectedBlocksSet) {
+            if (!keyframeData.has(b.id)) continue;
+            const data = keyframeData.get(b.id);
+            if (data.frames.size === 0) continue;
+            const times = Array.from(data.frames.keys()).sort((a, b) => a - b);
+            let closest = times[0];
+            for (const t of times) {
+                if (Math.abs(t - keyframeCurrentTime) < Math.abs(closest - keyframeCurrentTime)) closest = t;
+            }
+            const frameData = data.frames.get(closest);
+            for (const name of varNames) {
+                const d = b.scope.vars.get(`v.${name}`);
+                if (d) frameData.set(name, d.value);
+            }
+            for (const [key, val] of b.scope.vars) {
+                const shortName = key.slice(2);
+                if (!varNames.includes(shortName)) {
+                    frameData.set(shortName, val.value);
+                }
+            }
+        }
+        renderKeyframeDataPanel();
+        return;
+    }
+    
+    // 单方块模式
+    if (!selectedKeyframeBlock) return;
     if (block.id !== selectedKeyframeBlock) return;
     if (!keyframeData.has(block.id)) return;
     const data = keyframeData.get(block.id);
@@ -7719,7 +8217,6 @@ function syncKeyframeFromBlock(block) {
     for (const t of times) {
         if (Math.abs(t - keyframeCurrentTime) < Math.abs(closest - keyframeCurrentTime)) closest = t;
     }
-    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
     const frameData = data.frames.get(closest);
     for (const name of varNames) {
         const d = block.scope.vars.get(`v.${name}`);
@@ -7978,17 +8475,28 @@ function toggleKeyframePlayback() {
     }
 }
 
+function getPlaybackBlocks() {
+    // 多选模式：播放所有选中且有动画数据的方块；单方块模式：播放 selectedKeyframeBlock
+    if (selectedBlocksSet.size > 1) {
+        return Array.from(selectedBlocksSet).filter(b => keyframeData.has(b.id) && keyframeData.get(b.id).frames.size > 0);
+    }
+    if (selectedKeyframeBlock && keyframeData.has(selectedKeyframeBlock)) {
+        const b = blocks.find(b => b.id === selectedKeyframeBlock);
+        return b ? [b] : [];
+    }
+    return [];
+}
+
 function startKeyframePlayback() {
-    if (!selectedKeyframeBlock || !keyframeData.has(selectedKeyframeBlock)) return;
-    const times = getKeyframeTimes(selectedKeyframeBlock);
-    if (times.length === 0) return;
+    const initialBlocks = getPlaybackBlocks();
+    if (initialBlocks.length === 0) return;
     
     keyframePlaying = true;
     const btn = document.getElementById('kfPlayBtn');
     if (btn) btn.textContent = '⏸';
     
     keyframeCurrentTime = 0;
-    applyKeyframeToBlock(selectedKeyframeBlock, 0);
+    getPlaybackBlocks().forEach(b => applyKeyframeToBlock(b.id, 0));
     updateKeyframePlayhead();
     
     const startTime = performance.now();
@@ -7999,10 +8507,10 @@ function startKeyframePlayback() {
         const t = (elapsed % duration) / 1000;
         keyframeCurrentTime = t;
         updateKeyframePlayhead();
-        if (selectedKeyframeBlock) {
-            applyKeyframeToBlock(selectedKeyframeBlock, t);
-        }
-        // 播放时自动滚动：当前时间超过可见窗口右边界92%时向右滚动
+        // 每次刷新播放列表，支持播放中动态添加/移除方块
+        const currentBlocks = getPlaybackBlocks();
+        currentBlocks.forEach(b => applyKeyframeToBlock(b.id, t));
+        // 播放时自动滚动
         const vd = getViewDuration();
         if (keyframeCurrentTime >= keyframeScrollOffset + vd * 0.92 && keyframeScrollOffset + vd < keyframeAnimDuration - 0.01) {
             const step = vd * 0.3;
@@ -8065,77 +8573,97 @@ function showKeyframeImportDialog() {
     });
 }
 
+// 解析单条关键帧命令，返回 { blockId, frames: Map<time, Map<varName, value>> } 或 null
+function parseSingleKeyframeCommand(cmd) {
+    const idMatch = cmd.match(/'方块编号：([^']+)'/);
+    const blockId = idMatch ? idMatch[1] : null;
+    if (!blockId) return null;
+    
+    const frames = new Map();
+    const framePattern = /v\.[a-zA-Z_][a-zA-Z0-9_]*_time==(\d+(?:\.\d+)?)\?\s*\(([^)]+)\)/g;
+    let fm;
+    while ((fm = framePattern.exec(cmd)) !== null) {
+        const frameTime = parseFloat(fm[1]);
+        const assignmentsStr = fm[2];
+        const varMap = new Map();
+        const ap = /v\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g;
+        let am;
+        while ((am = ap.exec(assignmentsStr)) !== null) {
+            varMap.set(am[1], parseFloat(am[2]) || 0);
+        }
+        if (varMap.size > 0) {
+            frames.set(frameTime, varMap);
+        }
+    }
+    
+    return frames.size > 0 ? { blockId, frames } : null;
+}
+
 async function processKeyframeImport(text, defaultTime, overlay) {
     // 检查是否是完整的关键帧动画（包含'anim:xxx_anim'标识符）
-    const animMatch = text.match(/'anim:([^']+)'/);
-    
-    if (animMatch) {
-        // 完整的关键帧动画导入
-        const animId = animMatch[1];
-        // 提取方块编号
-        const idMatch = text.match(/'方块编号：([^']+)'/);
-        const blockId = idMatch ? idMatch[1] : '';
+    if (text.includes("'anim:")) {
+        // 支持同时导入多条命令：按 execute 分割
+        const commands = text.split(/(?=execute\s+)/g).filter(c => c.trim());
+        let anySuccess = false;
+        let processedBlocks = [];
         
-        if (!blockId && !selectedKeyframeBlock) {
-            alert('无法识别方块编号');
-            overlay.remove();
-            return;
-        }
-        
-        const targetId = blockId || selectedKeyframeBlock;
-        
-        // 解析所有关键帧
-        const framePattern = /v\.([a-zA-Z_][a-zA-Z0-9_]*)_time==(\d+(?:\.\d+)?)\?\s*\(([^)]+)\)/g;
-        let frameMatch;
-        let hasFrames = false;
-        
-        // 检查是否该方块已有关键帧
-        if (keyframeData.has(targetId) && keyframeData.get(targetId).frames.size > 0) {
-            const mergeResult = await new Promise(resolve => {
-                showConfirmModal(`方块 "${targetId}" 已有关键帧动画，是否删除现有动画？<br><small style="color:#94a3b8;">取消则合并关键帧</small>`, resolve);
-            });
-            if (mergeResult) {
-                keyframeData.get(targetId).frames.clear();
-            }
-        } else {
-            initKeyframeForBlock(targetId);
-        }
-        
-        while ((frameMatch = framePattern.exec(text)) !== null) {
-            const varName = frameMatch[1]; // Cube
-            const frameTime = parseFloat(frameMatch[2]);
-            const assignmentsStr = frameMatch[3];
+        for (const cmd of commands) {
+            const parsed = parseSingleKeyframeCommand(cmd);
+            if (!parsed) continue;
             
-            // 解析赋值语句
-            const data = keyframeData.get(targetId);
-            if (!data.frames.has(frameTime)) {
-                data.frames.set(frameTime, new Map());
+            const { blockId, frames } = parsed;
+            
+            // 检查方块是否存在
+            const blockExists = blocks.some(b => b.id === blockId);
+            if (!blockExists) {
+                const createResult = await new Promise(resolve => {
+                    showConfirmModal(`方块 "${blockId}" 不存在，是否创建？`, resolve);
+                });
+                if (!createResult) continue;
+                const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
+                const nb = new Block(blockId, M, null, '#aaccff', 'cube');
+                nb.refresh();
+                addBlock(nb);
             }
             
-            const assignPattern = /v\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g;
-            let assignMatch;
-            while ((assignMatch = assignPattern.exec(assignmentsStr)) !== null) {
-                const key = assignMatch[1];
-                const val = parseFloat(assignMatch[2]) || 0;
-                data.frames.get(frameTime).set(key, val);
+            // 检查是否已有关键帧
+            if (keyframeData.has(blockId) && keyframeData.get(blockId).frames.size > 0) {
+                const mergeResult = await new Promise(resolve => {
+                    showConfirmModal(`方块 "${blockId}" 已有关键帧动画，是否删除现有动画？<br><small style="color:#94a3b8;">取消则合并关键帧</small>`, resolve);
+                });
+                if (mergeResult) {
+                    keyframeData.get(blockId).frames.clear();
+                }
+            } else {
+                initKeyframeForBlock(blockId);
             }
-            hasFrames = true;
+            
+            // 写入帧数据
+            const data = keyframeData.get(blockId);
+            for (const [time, varMap] of frames) {
+                data.frames.set(time, varMap);
+            }
+            
+            addKeyframeBlockTag(blockId);
+            processedBlocks.push(blockId);
+            anySuccess = true;
+            
+            // 更新动画时长
+            const times = getKeyframeTimes(blockId);
+            if (times.length > 0) {
+                keyframeAnimDuration = Math.max(keyframeAnimDuration, Math.ceil(times[times.length - 1]) + 2);
+            }
         }
         
-        if (!hasFrames) {
+        if (!anySuccess) {
             alert('未能解析到有效的关键帧数据');
             overlay.remove();
             return;
         }
         
-        // 确保方块标签存在
-        addKeyframeBlockTag(targetId);
-        selectKeyframeBlock(targetId);
-        
-        // 更新动画时长
-        const times = getKeyframeTimes(targetId);
-        if (times.length > 0) {
-            keyframeAnimDuration = Math.max(keyframeAnimDuration, Math.ceil(times[times.length - 1]) + 2);
+        // 选中第一个处理的方块
+        if (processedBlocks.length > 0) {
+            selectKeyframeBlock(processedBlocks[0]);
         }
         
         renderKeyframeTimeline();
