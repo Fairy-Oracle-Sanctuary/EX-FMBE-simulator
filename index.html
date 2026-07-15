@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器v.2.7</title>
+    <title>EX fmbe模拟器v.2.8</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -250,7 +250,7 @@ body.light-mode .variables-left { border-right-color: rgba(100,116,139,0.4); }
 .var-card.global { background: #0f172a; border-left-color: #3b82f6; }
 .var-header { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 .assignment-input { flex: 1; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; outline: none; margin-right: 8px; border-radius: 10px; border: none; color: white; }
-.var-expand { font-size: 14px; color: #3b82f6; font-weight: bold; }
+.var-expand { font-size: var(--collapse-btn-size, 14px); color: #3b82f6; font-weight: bold; padding: 4px 6px; cursor: pointer; }
 .var-details { padding: 12px; border-top: 1px solid #2a3a5a; display: none; background: #0f172a; }
 .auto-inc-btns { display: flex; gap: 10px; margin-bottom: 12px; }
 .inc-btn { transform: skewX(-12deg); padding: 6px 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 10px; font-size: 13px; transition: 0.1s; }
@@ -316,7 +316,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .var-group { margin-bottom: 20px; border-radius: 12px; overflow: hidden; }
 .group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #0f172a; border: 1px solid #2a3a5a; border-radius: 12px; cursor: pointer; transition: 0.1s; margin-bottom: 6px; font-weight: bold; }
 .group-header .group-title { font-size: 14px; letter-spacing: 0.5px; color: #60a5fa; }
-.group-header .group-toggle { font-size: 12px; color: #3b82f6; }
+.group-header .group-toggle { font-size: var(--collapse-btn-size, 14px); color: #3b82f6; padding: 4px 6px; cursor: pointer; }
 .group-content { display: block; }
 .group-content.collapsed { display: none; }
 body.light-mode .group-header { background: #e2e8f0; border-color: #cbd5e1; color: #0f172a; }
@@ -342,7 +342,7 @@ body.light-mode .batch-var-details { background: #f8fafc; border-top-color: #e2e
     .inc-btn { padding: 8px 18px; font-size: 14px; }
     .section-title { font-size: 16px; }
     .group-header .group-title { font-size: 15px; }
-    .var-expand { font-size: 15px; }
+    .var-expand { font-size: var(--collapse-btn-size, 15px); }
     .new-var-input { padding: 10px 16px; font-size: 15px; }
     .range-item { font-size: 13px; }
     .range-item input { width: 90px; font-size: 13px; }
@@ -929,6 +929,10 @@ body.new-layout-active .side-block-list {
 }
 /* 新布局模式隐藏灰度强度 */
 body.new-layout-active #grayscaleSetting {
+    display: none !important;
+}
+/* 新布局模式隐藏折叠按钮大小设置 */
+body.new-layout-active #collapseBtnSizeSetting {
     display: none !important;
 }
 /* 新布局全屏时 */
@@ -1579,9 +1583,21 @@ body.light-mode .keyframe-import-time-input input {
         <div class="her-transform-toolbar" id="herTransformToolbar">
             <button class="her-mode-btn" data-mode="origin" title="枢轴"><span>枢轴</span></button>
             <button class="her-mode-btn" data-mode="base" title="位移"><span>位移</span></button>
-            <button class="her-mode-btn" data-mode="rotate" title="模型旋转"><span>局部旋转</span></button>
-            <button class="her-mode-btn" data-mode="centerRotate" title="局部旋转"><span>模型旋转</span></button>
             <button class="her-mode-btn" data-mode="scale" title="缩放"><span>缩放</span></button>
+            <div class="top-dropdown-wrapper" style="margin-left:6px;">
+                <button class="her-mode-btn" id="localRotMenuBtn" title="局部旋转"><span>局部旋转 ▾</span></button>
+                <div class="top-dropdown-menu" id="localRotDropdown">
+                    <div class="top-dropdown-item" data-her-mode="rotate"><span>局部旋转</span></div>
+                    <div class="top-dropdown-item" data-her-mode="centerRotate"><span>模型旋转</span></div>
+                </div>
+            </div>
+            <div class="top-dropdown-wrapper">
+                <button class="her-mode-btn" id="globalRotMenuBtn" title="全局旋转"><span>全局旋转 ▾</span></button>
+                <div class="top-dropdown-menu" id="globalRotDropdown">
+                    <div class="top-dropdown-item" data-her-mode="globalRotate"><span>全局旋转</span></div>
+                    <div class="top-dropdown-item" data-her-mode="globalCenterRotate"><span>全局模型旋转</span></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1645,6 +1661,10 @@ body.light-mode .keyframe-import-time-input input {
                 <div style="display:flex; justify-content:space-between; align-items:center;"><span>灰度强度</span><span id="grayscaleValueLabel">0%</span></div>
                 <input id="grayscaleRange" type="range" min="0" max="100" value="0" style="width:100%;">
             </div>
+            <div class="ui-settings-item" id="collapseBtnSizeSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span>折叠按钮大小</span><span id="collapseBtnSizeLabel">14px</span></div>
+                <input id="collapseBtnSizeRange" type="range" min="10" max="30" value="14" style="width:100%;">
+            </div>
         </div>
         <div id="varsContainer" class="variables-container"></div>
         <div id="newVarContainer" style="margin-top: 12px;"></div>
@@ -1680,6 +1700,76 @@ window.addEventListener('error', (ev) => {
     } catch (e) { /* ignore */ }
 });
 
+// ============================================================
+// 通用复制函数（优先使用原生接口，解决国产手机复制问题）
+// ============================================================
+function copyToClipboard(text, successMsg) {
+    successMsg = successMsg || '已复制到剪贴板';
+
+    // 1. 优先使用 Android 原生接口（最可靠）
+    if (window.Android && typeof window.Android.copyText === 'function') {
+        window.Android.copyText(text);
+        showToast(successMsg);
+        return;
+    }
+
+    // 2. 其次使用 Clipboard API（现代浏览器）
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(successMsg);
+        }).catch(() => {
+            fallbackCopy(text, successMsg);
+        });
+        return;
+    }
+
+    // 3. 否则使用 execCommand（旧方案）
+    fallbackCopy(text, successMsg);
+}
+
+function fallbackCopy(text, successMsg) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '-9999px';
+    textarea.style.pointerEvents = 'none';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        const success = document.execCommand('copy');
+        if (success) {
+            showToast(successMsg);
+        } else {
+            manualCopyFallback(text);
+        }
+    } catch (e) {
+        manualCopyFallback(text);
+    }
+    document.body.removeChild(textarea);
+}
+
+function manualCopyFallback(text) {
+    // 显示可复制文本框，让用户长按复制
+    showModal('复制内容',
+        '<textarea style="width:100%;min-height:80px;padding:8px;background:#1e293b;color:white;border:1px solid #3b82f6;border-radius:8px;font-size:14px;font-family:monospace;resize:vertical;" readonly>' +
+        escapeHtml(text) +
+        '</textarea><p style="font-size:12px;color:#94a3b8;margin-top:8px;">请长按上方文字选择复制</p>',
+        null, false);
+}
+
+function showToast(msg) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:10px 24px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity 0.3s;pointer-events:none;';
+    div.textContent = msg;
+    document.body.appendChild(div);
+    setTimeout(() => {
+        div.style.opacity = '0';
+        setTimeout(() => div.remove(), 300);
+    }, 2000);
+}
+
 // ==================== 数学库 ====================
 const angleMath = {
     sin: d => Math.sin(d * Math.PI / 180), cos: d => Math.cos(d * Math.PI / 180), tan: d => Math.tan(d * Math.PI / 180),
@@ -1692,6 +1782,23 @@ const angleMath = {
 // ==================== 更新日志数据 ====================
 // 按日期从新到旧排列，添加新条目时在数组开头插入
 const changelogData = [
+    {
+        date: "*",
+        title: "公告",
+        items: [
+            "EX模拟器APP将在联网条件下强制更新为 v.2.8 版本",
+        ]
+    },
+    {
+        date: "2026-07-15",
+        title: "v.2.8 小版本",
+        items: [
+            "添加了面板折叠按钮大小调整功能",
+            "新操作模式中新增rotate相关旋转功能",
+            "修复了关键帧编辑无法撤回和重做的问题",
+            "尝试增加对部分操作系统的适配（被下载为本地代码时）",
+        ]
+    },
     {
         date: "2026-07-14",
         title: "v.2.7 小版本",
@@ -1876,7 +1983,7 @@ function computeTransformMatrix(M, rotatex = 0, rotatey = 0, rotatez = 0) {
     const globalRz = new THREE.Matrix4().makeRotationZ(degToRad(-rotatez));
     const globalRx = new THREE.Matrix4().makeRotationX(degToRad(rotatex));
     const globalRy = new THREE.Matrix4().makeRotationY(degToRad(-rotatey));
-    const globalRot = globalRy.clone().multiply(globalRx).multiply(globalRz);
+    const globalRot = globalRy.clone().multiply(globalRz).multiply(globalRx);
     const matP = new THREE.Matrix4().makeTranslation(px, py, pz);
     return matP.clone().multiply(globalRot).multiply(localMat);
 }
@@ -2389,7 +2496,7 @@ function recordAction() {
 const history = (() => {
     let u = [], r = [];
     return {
-        record(s) { u.push(JSON.parse(JSON.stringify(s))); if (u.length > 100) u.shift(); r = []; },
+        record(s) { u.push(JSON.parse(JSON.stringify(s))); if (u.length > 500) u.shift(); r = []; },
         undo(cur) { if (!u.length) return null; r.push(JSON.parse(JSON.stringify(cur))); return u.pop(); },
         redo(cur) { if (!r.length) return null; u.push(JSON.parse(JSON.stringify(cur))); return r.pop(); }
     };
@@ -2398,15 +2505,27 @@ const history = (() => {
 function getState() {
     return {
         blocks: blocks.map(b => ({ id: b.id, type: b.type, vars: Array.from(b.scope.vars.entries()).map(([n,d]) => ({ name:n, expr:d.expr, value:d.value, rangeMin:d.rangeMin, rangeMax:d.rangeMax, step:d.step })), textureUrl: b.textureUrl, materialColor: b.materialColor, materialType: b.materialType })),
-        globalVars: Array.from(globalVars.entries()).map(([n,g]) => ({ name:n, expr:g.def.expr, value:g.def.value, rangeMin:g.def.rangeMin, rangeMax:g.def.rangeMax, step:g.def.step, sourceBlockId:g.sourceBlockId }))
+        globalVars: Array.from(globalVars.entries()).map(([n,g]) => ({ name:n, expr:g.def.expr, value:g.def.value, rangeMin:g.def.rangeMin, rangeMax:g.def.rangeMax, step:g.def.step, sourceBlockId:g.sourceBlockId })),
+        keyframes: Array.from(keyframeData.entries()).map(([blockId, data]) => ({
+            blockId,
+            animId: data.animId,
+            frames: Array.from(data.frames.entries()).map(([time, varMap]) => ({
+                time,
+                vars: Array.from(varMap.entries()).map(([name, val]) => ({ name, val }))
+            }))
+        }))
     };
 }
 
 function restoreState(state) {
     for (let [k,i] of activeAutoIncMap) clearInterval(i);
     activeAutoIncMap.clear();
+    // 保存当前选中方块的ID，用于恢复后重建选中状态
+    const prevSelectedIds = Array.from(selectedBlocksSet).map(b => b.id);
+    const prevSelectedBlockId = selectedBlock ? selectedBlock.id : null;
     blocks.forEach(b => { scene.remove(b.mesh); if(b.label) scene.remove(b.label); if(b.selectionWireframe) scene.remove(b.selectionWireframe); });
     blocks = [];
+    selectedBlocksSet.clear();
     state.blocks.forEach(s => {
         const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
         const blk = new Block(s.id, M, s.textureUrl, s.materialColor || '#aaccff', s.type || 'cube');
@@ -2420,12 +2539,48 @@ function restoreState(state) {
     });
     globalVars.clear();
     state.globalVars.forEach(g => globalVars.set(g.name, { def: new VarDef(g.expr, g.value, g.rangeMin, g.rangeMax, g.step), sourceBlockId: g.sourceBlockId }));
-    if (selectedBlock) { const nb = blocks.find(b => b.id === selectedBlock.id); if (nb) selectBlock(nb); else selectBlock(null); }
-    else renderVariablesForBlock(null);
+    // 恢复关键帧数据
+    keyframeData.clear();
+    if (state.keyframes) {
+        state.keyframes.forEach(kf => {
+            const frames = new Map();
+            kf.frames.forEach(f => {
+                const varMap = new Map();
+                f.vars.forEach(v => varMap.set(v.name, v.val));
+                frames.set(f.time, varMap);
+            });
+            keyframeData.set(kf.blockId, { frames, animId: kf.animId });
+        });
+    }
+    // 重建关键帧选择器标签
+    const selector = document.getElementById('kfBlockSelector');
+    if (selector) {
+        selector.innerHTML = '';
+        keyframeData.forEach((_, blockId) => {
+            addKeyframeBlockTag(blockId);
+        });
+    }
+    // 恢复多选状态
+    prevSelectedIds.forEach(id => {
+        const b = blocks.find(bl => bl.id === id);
+        if (b) selectedBlocksSet.add(b);
+    });
+    if (prevSelectedBlockId) {
+        const nb = blocks.find(b => b.id === prevSelectedBlockId);
+        if (nb) selectBlock(nb); else selectBlock(null);
+    } else {
+        if (selectedBlocksSet.size > 0) selectBlock(selectedBlocksSet.values().next().value);
+        else selectBlock(null);
+    }
     if (selectedBlock) renderVariablesForBlock(selectedBlock);
     else renderVariablesForBlock(null);
     blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
     if (isNewLayoutMode) renderSideBlockList();
+    // 刷新关键帧窗口
+    if (keyframeWindowOpen && keyframeWindowEl) {
+        renderKeyframeTimeline();
+        renderKeyframeDataPanel();
+    }
 }
 
 function undo() { const cur = getState(); const prev = history.undo(cur); if (prev) restoreState(prev); }
@@ -2582,11 +2737,32 @@ function deleteSelectedBlocks() {
     updateAxesVisibility(); blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
 }
 
+// 定义全屏切换函数（优先使用原生接口）
 function toggleFullscreen() {
+    if (window.Android && typeof window.Android.requestFullscreen === 'function') {
+        // 通过原生接口切换全屏
+        if (document.fullscreenElement || window._isFullscreen) {
+            if (window._isFullscreen) {
+                if (typeof window.Android.exitFullscreen === 'function') {
+                    window.Android.exitFullscreen();
+                }
+                window._isFullscreen = false;
+            } else {
+                window.Android.requestFullscreen();
+                window._isFullscreen = true;
+            }
+        } else {
+            window.Android.requestFullscreen();
+            window._isFullscreen = true;
+        }
+        return;
+    }
+
+    // 否则使用标准全屏 API
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
+        document.documentElement.requestFullscreen().catch(() => {});
     } else {
-        document.exitFullscreen();
+        document.exitFullscreen().catch(() => {});
     }
 }
 
@@ -3649,15 +3825,10 @@ function showCommandListModal() {
                 const preview = card?.querySelector('.cmd-preview');
                 if (!preview) return;
                 const cmd = preview.textContent;
-                navigator.clipboard.writeText(cmd).then(() => {
-                    const orig = btn.innerText;
-                    btn.innerText = '✅ 已复制';
-                    setTimeout(() => btn.innerText = orig, 1500);
-                }).catch(() => {
-                    const orig = btn.innerText;
-                    btn.innerText = '❌ 失败';
-                    setTimeout(() => btn.innerText = orig, 1500);
-                });
+                copyToClipboard(cmd);
+                const orig = btn.innerText;
+                btn.innerText = '✅ 已复制';
+                setTimeout(() => btn.innerText = orig, 1500);
             });
         });
 
@@ -3667,11 +3838,10 @@ function showCommandListModal() {
                 const allCmds = Array.from(listModal.querySelectorAll('.cmd-preview'))
                     .map(pre => pre.textContent)
                     .join('\n');
-                navigator.clipboard.writeText(allCmds).then(() => {
-                    const orig = copyAllBtn.innerText;
-                    copyAllBtn.innerText = '✅ 已复制全部';
-                    setTimeout(() => copyAllBtn.innerText = orig, 1500);
-                });
+                copyToClipboard(allCmds, '已复制全部命令');
+                const orig = copyAllBtn.innerText;
+                copyAllBtn.innerText = '✅ 已复制全部';
+                setTimeout(() => copyAllBtn.innerText = orig, 1500);
             });
         }
         listModal.querySelector('#closeListBtn').onclick = () => listModal.remove();
@@ -4314,8 +4484,22 @@ document.getElementById('hideNameBtn').addEventListener('click', () => {
     const viewHideItem = document.querySelector('#viewDropdown .top-dropdown-item[data-view-action="hideNames"] span');
     if (viewHideItem) viewHideItem.textContent = hideNames ? '显示' : '隐藏';
 });
-document.getElementById('undoBtn').addEventListener('click', () => undo());
-document.getElementById('redoBtn').addEventListener('click', () => redo());
+function safeUndo() {
+    if (window.Android && typeof window.Android.undo === 'function') {
+        window.Android.undo(); // 调用原生后退（或自定义撤销）
+    } else {
+        undo(); // 使用原有的 JS 撤销
+    }
+}
+
+function safeRedo() {
+    if (window.Android && typeof window.Android.redo === 'function') {
+        window.Android.redo(); // 调用原生前进
+    } else {
+        redo(); // 使用原有的 JS 重做
+    }
+}
+
 document.getElementById('resetViewBtn').addEventListener('click', () => {
     camera.position.set(8, 6, 10);
     controls.target.set(0, 0, 0);
@@ -4409,11 +4593,11 @@ document.getElementById('blockMenuBtn').addEventListener('click', (e) => {
 
 ['undoBtn', 'undoBtnSide'].forEach(id => {
     const btn = document.getElementById(id);
-    if (btn) btn.addEventListener('click', () => undo());
+    if (btn) btn.addEventListener('click', safeUndo);
 });
 ['redoBtn', 'redoBtnSide'].forEach(id => {
     const btn = document.getElementById(id);
-    if (btn) btn.addEventListener('click', () => redo());
+    if (btn) btn.addEventListener('click', safeRedo);
 });
 // 绑定左上方按钮，复用相同下拉逻辑
 document.getElementById('blockListTopBtn').addEventListener('click', (e) => {
@@ -4914,7 +5098,7 @@ function toggleTopDropdown(dropdownId) {
         menu.classList.add('open');
         activeTopDropdown = dropdownId;
         // 定位下拉菜单
-        const btn = menu.closest('.top-dropdown-wrapper')?.querySelector('.top-menu-btn');
+        const btn = menu.closest('.top-dropdown-wrapper')?.querySelector('.top-menu-btn, .her-mode-btn');
         if (btn) {
             const rect = btn.getBoundingClientRect();
             menu.style.left = rect.left + 'px';
@@ -5245,6 +5429,33 @@ if (grayscaleRange) {
     grayscaleRange.addEventListener('input', (e) => { setGrayscale(e.target.value); });
 }
 
+// ========== 折叠按钮大小设置 ==========
+let collapseBtnSize = 14;
+const collapseBtnSizeRange = document.getElementById('collapseBtnSizeRange');
+const collapseBtnSizeLabel = document.getElementById('collapseBtnSizeLabel');
+
+function applyCollapseBtnSize() {
+    document.documentElement.style.setProperty('--collapse-btn-size', collapseBtnSize + 'px');
+    if (collapseBtnSizeLabel) collapseBtnSizeLabel.textContent = collapseBtnSize + 'px';
+    if (collapseBtnSizeRange) collapseBtnSizeRange.value = collapseBtnSize;
+    try { localStorage.setItem('ui_collapse_btn_size', String(collapseBtnSize)); } catch (e) {}
+}
+
+try {
+    const saved = parseInt(localStorage.getItem('ui_collapse_btn_size') || '14', 10);
+    if (!isNaN(saved) && saved >= 10 && saved <= 30) {
+        collapseBtnSize = saved;
+    }
+} catch (e) {}
+applyCollapseBtnSize();
+
+if (collapseBtnSizeRange) {
+    collapseBtnSizeRange.addEventListener('input', (e) => {
+        collapseBtnSize = parseInt(e.target.value) || 14;
+        applyCollapseBtnSize();
+    });
+}
+
 if (themeCheckbox) {
     themeCheckbox.setAttribute('aria-pressed', String(isLightMode));
     themeCheckbox.classList.toggle('checked', isLightMode);
@@ -5326,6 +5537,14 @@ if (uiSettingsPanel) {
 }
 
 document.addEventListener('click', (e) => {
+    // 关闭所有下拉菜单
+    if (activeTopDropdown) {
+        const target = e.target;
+        const wrapper = target.closest?.('.top-dropdown-wrapper');
+        if (!wrapper || !wrapper.querySelector(`#${activeTopDropdown}`)) {
+            closeAllTopDropdowns();
+        }
+    }
     if (!uiSettingsPanel) return;
     const path = e.composedPath ? e.composedPath() : null;
     if (path) {
@@ -5585,7 +5804,7 @@ function rotLocalAxesOfBlock(b) {
     const globalRz = new THREE.Matrix4().makeRotationZ(degToRad(-grz));
     const globalRx = new THREE.Matrix4().makeRotationX(degToRad(grx));
     const globalRy = new THREE.Matrix4().makeRotationY(degToRad(-gry));
-    const globalRot = globalRy.clone().multiply(globalRx).multiply(globalRz);
+    const globalRot = globalRy.clone().multiply(globalRz).multiply(globalRx);
     const matRy = new THREE.Matrix4().makeRotationY(degToRad(-ry));
     const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
     return {
@@ -5762,9 +5981,6 @@ function makeArc(axis, color, varName, axisNormal, xBasis, yBasis, opts = {}) {
     pgramHit.position.copy(pgram.position);
     addPick(pgramHit, Object.assign({}, rotMeta));
     plane.add(pgramHit);
-    // 初始角度（视觉角度，updateRotGizmosLive 中会叠加摄像机朝向）
-    const curVal = varValue(varName);
-    plane.rotation.z = rotVisualAngle(axis, varName);
     group.add(plane);
     group.userData.herRotAxis = axis;
     group.userData.herRotVar = varName;
@@ -5777,6 +5993,8 @@ function makeArc(axis, color, varName, axisNormal, xBasis, yBasis, opts = {}) {
     group.getWorldPosition(wc);
     const cd = camera.position.clone().sub(wc).normalize();
     group.userData.herFaceAngle = Math.atan2(cd.dot(d0.y), cd.dot(d0.x));
+    // 初始角度与 updateRotGizmosLive 一致（包含 faceAngle 补偿），避免首次渲染位置偏差
+    plane.rotation.z = rotVisualAngle(axis, varName) + group.userData.herFaceAngle - Math.PI * 0.5;
     rotArcGroups.push(group);
     return group;
 }
@@ -5871,7 +6089,16 @@ function makeActiveHighlight(meta) {
         pHalo.rotation.z = end * 0.5;
         plane.add(halo); plane.add(pHalo);
         const b = selected(); if (b) {
-            const d = rotDiscBasisFor(b, meta.axis);
+            let d;
+            // 全局旋转（rotatex/y/z）使用世界坐标轴基准
+            if (meta.varName && meta.varName.startsWith('v.rotate')) {
+                const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
+                if (meta.axis === 'x') d = orthonormalDiscBasis(wx, wy);
+                else if (meta.axis === 'y') d = orthonormalDiscBasis(wy, wz);
+                else d = orthonormalDiscBasis(wz, wx);
+            } else {
+                d = rotDiscBasisFor(b, meta.axis);
+            }
             g.position.copy(rotGizmoCenterLocal(b, meta.rotMode));
             orientDiscToBasis(g, d.x, d.y, d.z);
             // 从对应的 arc 组获取一致的 faceAngle，确保高亮与弧线对齐
@@ -5943,10 +6170,18 @@ function updateActiveHighlightPose() {
     const b = selected();
     if (activePick.type === 'rot') {
         if (!b) return;
-        const d = rotDiscBasisFor(b, activePick.axis);
-        activePick.axisNormal = d.z.clone();
-        activePick.xBasis = d.x.clone();
-        activePick.yBasis = d.y.clone();
+        // 仅用于高亮显示的方向更新，不修改 activePick 基准方向
+        // （activePick 基准方向在拖拽过程中保持初始值不变，保证 screenAngleFor 角度计算一致性）
+        let d;
+        // 全局旋转（rotatex/y/z）使用世界坐标轴基准
+        if (activePick.varName && activePick.varName.startsWith('v.rotate')) {
+            const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
+            if (activePick.axis === 'x') d = orthonormalDiscBasis(wx, wy);
+            else if (activePick.axis === 'y') d = orthonormalDiscBasis(wy, wz);
+            else d = orthonormalDiscBasis(wz, wx);
+        } else {
+            d = rotDiscBasisFor(b, activePick.axis);
+        }
         activeHighlight.position.copy(rotGizmoCenterLocal(b, activePick.rotMode));
         orientDiscToBasis(activeHighlight, d.x, d.y, d.z);
         const planeG = activeHighlight.children.find(c => c.type === 'Group');
@@ -6064,6 +6299,8 @@ function applyCenterRotateDelta(varName, delta) {
     }
 }
 
+    const ns = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'];
+
 function changeVar(name, delta, refresh = true) {
     if (!selectedBlocksSet || !selectedBlocksSet.size) return;
     // 世界轴位移模式：将世界空间增量转换到局部 basepos 空间
@@ -6089,6 +6326,7 @@ function changeVar(name, delta, refresh = true) {
             });
             b.refresh();
             b.mesh.updateMatrixWorld(true);
+            syncKeyframeFromBlock(b);
         }
         recordAction();
     // 枢轴不联动模式：更新 xpos/ypos/zpos 后换算 basepos 保持模型在世界空间中的位置不变
@@ -6127,6 +6365,7 @@ function changeVar(name, delta, refresh = true) {
 
             b.refresh();
             b.mesh.updateMatrixWorld(true);
+            syncKeyframeFromBlock(b);
         }
         recordAction();
     } else {
@@ -6271,7 +6510,7 @@ function rebuildGizmo() {
     gizmoRoot.visible = true;
     gizmoRoot.position.copy(originOfBlock(b));
     gizmoRoot.quaternion.identity();
-    // 新操作模式下，枢轴/位移时隐藏方块自身坐标轴，旋转/缩放时显示
+    // 新操作模式下，枢轴/位移/全局旋转时隐藏方块自身坐标轴（全局旋转使用单独的全局坐标轴）
     if (isNewLayoutMode) {
         const hideAxes = herModes.has('origin') || herModes.has('base');
         blocks.forEach(blk => { if (blk.axisHelper) blk.axisHelper.visible = !hideAxes; });
@@ -6330,18 +6569,61 @@ function rebuildGizmo() {
         gizmoRoot.add(makeArc('y',0xd87cff,'v.yrot',by.z,by.x,by.y,{rotMode:'center',offset:co,priority:45}));
         gizmoRoot.add(makeArc('z',0x66ffe8,'v.zrot',bz.z,bz.x,bz.y,{rotMode:'center',offset:co,priority:45}));
     }
+
+    if (herModes.has('globalRotate')) {
+        const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
+        gizmoRoot.add(makeArc('x',0xff8c00,'v.rotatex',wx,wy,wz,{rotMode:'origin',priority:30}));
+        gizmoRoot.add(makeArc('y',0x00c853,'v.rotatey',wy,wz,wx,{rotMode:'origin',priority:30}));
+        gizmoRoot.add(makeArc('z',0x2979ff,'v.rotatez',wz,wx,wy,{rotMode:'origin',priority:30}));
+        rotArcGroups.slice(-3).forEach(g => { g.userData.herGlobalRot = true; });
+    }
+    if (herModes.has('globalCenterRotate')) {
+        const co = centerOfBlock(b).sub(originOfBlock(b));
+        const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
+        gizmoRoot.add(makeArc('x',0xffab40,'v.rotatex',wx,wy,wz,{rotMode:'center',offset:co,priority:40}));
+        gizmoRoot.add(makeArc('y',0x69f0ae,'v.rotatey',wy,wz,wx,{rotMode:'center',offset:co,priority:40}));
+        gizmoRoot.add(makeArc('z',0x40c4ff,'v.rotatez',wz,wx,wy,{rotMode:'center',offset:co,priority:40}));
+        rotArcGroups.slice(-3).forEach(g => { g.userData.herGlobalRot = true; });
+    }
     if (herModes.has('scale')) gizmoRoot.add(makeScaleDots(b));
 }
 function updateRotGizmosLive() {
     const b = selected(); if (!b || !rotArcGroups.length) return;
     gizmoRoot.updateMatrixWorld(true);
     for (const g of rotArcGroups) {
-        // 保持群组四元数不变（rebuildGizmo 中已设置好），只更新位置和自转角度
-        g.position.copy(rotGizmoCenterLocal(b, g.userData.herRotMode));
+        const axis = g.userData.herRotAxis;
         const plane = g.userData.herRotPlane;
-        if (!plane) continue;
-        const visualAngle = rotVisualAngle(g.userData.herRotAxis, g.userData.herRotVar);
-        plane.rotation.z = visualAngle + g.userData.herFaceAngle - Math.PI * 0.5;
+        if (g.userData.herGlobalRot) {
+            // 全局旋转：圆环法线 = 世界轴（铅垂于旋转轴），位置跟随方块
+            g.position.copy(rotGizmoCenterLocal(b, g.userData.herRotMode));
+            const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
+            let d;
+            if (axis === 'x') d = orthonormalDiscBasis(wx, wy);
+            else if (axis === 'y') d = orthonormalDiscBasis(wy, wz);
+            else d = orthonormalDiscBasis(wz, wx);
+            orientDiscToBasis(g, d.x, d.y, d.z);
+            const wc = new THREE.Vector3();
+            g.getWorldPosition(wc);
+            const cd = camera.position.clone().sub(wc).normalize();
+            g.userData.herFaceAngle = Math.atan2(cd.dot(d.y), cd.dot(d.x));
+            if (plane) {
+                const visualAngle = rotVisualAngle(g.userData.herRotAxis, g.userData.herRotVar);
+                plane.rotation.z = visualAngle + g.userData.herFaceAngle - Math.PI * 0.5;
+            }
+        } else {
+            // 局部旋转：圆环法线 = 方块局部轴
+            const d = rotDiscBasisFor(b, axis);
+            g.position.copy(rotGizmoCenterLocal(b, g.userData.herRotMode));
+            orientDiscToBasis(g, d.x, d.y, d.z);
+            const wc = new THREE.Vector3();
+            g.getWorldPosition(wc);
+            const cd = camera.position.clone().sub(wc).normalize();
+            g.userData.herFaceAngle = Math.atan2(cd.dot(d.y), cd.dot(d.x));
+            if (plane) {
+                const visualAngle = rotVisualAngle(g.userData.herRotAxis, g.userData.herRotVar);
+                plane.rotation.z = visualAngle + g.userData.herFaceAngle - Math.PI * 0.5;
+            }
+        }
     }
     if (activePick && activePick.type === 'rot') updateActiveHighlightPose();
 }
@@ -6397,9 +6679,27 @@ function toggleHerMode(m) {
     if (herModes.has(m)) { herModes.delete(m); }
     else { herModes.clear(); herModes.add(m); }
     document.querySelectorAll('.her-mode-btn').forEach(b => b.classList.toggle('active',herModes.has(b.dataset.mode)));
+    // 更新旋转模式下拉按钮的显示文字
+    const localBtn = document.getElementById('localRotMenuBtn');
+    const globalBtn = document.getElementById('globalRotMenuBtn');
+    if (localBtn && (m === 'rotate' || m === 'centerRotate')) {
+        const label = m === 'rotate' ? '局部旋转' : '模型旋转';
+        localBtn.innerHTML = `<span>${label} ▾</span>`;
+    }
+    if (globalBtn && (m === 'globalRotate' || m === 'globalCenterRotate')) {
+        const label = m === 'globalRotate' ? '全局旋转' : '全局模型旋转';
+        globalBtn.innerHTML = `<span>${label} ▾</span>`;
+    }
     rebuildGizmo();
 }
-function clearHerModes() { herModes.clear(); document.querySelectorAll('.her-mode-btn').forEach(b=>b.classList.remove('active')); rebuildGizmo(); }
+function clearHerModes() { herModes.clear(); document.querySelectorAll('.her-mode-btn').forEach(b=>b.classList.remove('active')); resetRotDropdownLabels(); rebuildGizmo(); }
+// 清空模式时重置下拉按钮显示文字
+function resetRotDropdownLabels() {
+    const localBtn = document.getElementById('localRotMenuBtn');
+    const globalBtn = document.getElementById('globalRotMenuBtn');
+    if (localBtn) localBtn.innerHTML = '<span>局部旋转 ▾</span>';
+    if (globalBtn) globalBtn.innerHTML = '<span>全局旋转 ▾</span>';
+}
 function updateToolbar(force) {
     const ok = !!selected();
     const tb = document.getElementById('herTransformToolbar');
@@ -6419,6 +6719,7 @@ function updateToolbar(force) {
         return;
     }
     if (draggingGizmo) return; // 拖拽中不触发重建，避免闪烁
+    if (keyframePlaying) return; // 播放关键帧时禁止重建，避免变量值变化导致 Gizmo 闪烁
     const n = performance.now();
     if (!force && !gizmoDirty && n - lastGizmoCheck < 220) return;
     lastGizmoCheck = n;
@@ -6437,6 +6738,9 @@ function syncGizmo() {
         updateMoveGizmosLive(b);
         updateOriginCenterLineLive(b);
         if (herModes.has('rotate') || herModes.has('centerRotate')) updateRotGizmosLive();
+        if (herModes.has('globalRotate') || herModes.has('globalCenterRotate')) {
+            updateRotGizmosLive();
+        }
         // 摄像机自适应缩放：使 Gizmo 在屏幕上投影大小恒定
         const refDist = 14;
         const camDist = Math.max(0.1, camera.position.distanceTo(originOfBlock(b)));
@@ -6444,6 +6748,7 @@ function syncGizmo() {
         gizmoArrowGroups.forEach(g => g.scale.set(s, s, s));
         rotArcGroups.forEach(g => g.scale.set(s, s, s));
         gizmoAxisLines.forEach(g => g.scale.set(s, s, s));
+
     }
     updateToolbar(false);
 }
@@ -6533,16 +6838,32 @@ function moveGizmoDrag(cx, cy, ev) {
     const dx = cx-lastPX, dy = cy-lastPY; lastPX=cx; lastPY=cy;
     if (activePick.type === 'rot') {
         const na = screenAngleFor(activePick, cx, cy);
-        let da; if (activePick.axis === 'y') da = screenTangentDelta(activePick,cx,cy,dx,dy);
-        else { da = na-(Number.isFinite(activePick.lastAngle)?activePick.lastAngle:na); while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2; }
+        let da = na-(Number.isFinite(activePick.lastAngle)?activePick.lastAngle:na); while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
         if (!Number.isFinite(da)||Math.abs(da)<1e-6) { if(Math.hypot(dx,dy)>0.01) da=(Math.abs(dx)>=Math.abs(dy)?dx:-dy)*0.01; }
         activePick.lastAngle = na;
         const sign = activePick.axis==='x'?-1:1, bd = THREE.MathUtils.radToDeg(da)*sign;
-        let dd = -bd; if (activePick.axis==='y') dd = bd;
+        let dd = -bd;
         if (Math.abs(dd) > 1e-5) { if (activePick.rotMode==='center') applyCenterRotateDelta(activePick.varName,dd); else applyOriginRotateDelta(activePick.varName,dd); dragNeedsRebuild = false; }
         updateOriginCenterLineLive(selectedBlock); updateRotGizmosLive();
     } else if (activePick.type === 'move' && activePick.mode === 'base') {
-        // 世界轴位移模式：使用与 origin 模式一致的 screenAxis 方式，提升稳定性
+        // 位移模式：每帧根据当前方块状态重新计算变换矩阵，确保 Ainv 和轴方向始终正确
+        const b = selected();
+        if (b) {
+            const M = b.scope.toM();
+            const rX = b.scope.vars.get('v.rotatex')?.value ?? 0;
+            const rY = b.scope.vars.get('v.rotatey')?.value ?? 0;
+            const rZ = b.scope.vars.get('v.rotatez')?.value ?? 0;
+            const worldMat = computeTransformMatrix(M, rX, rY, rZ);
+            activePick.w0 = new THREE.Vector3().setFromMatrixPosition(worldMat);
+            const A3 = new THREE.Matrix3().setFromMatrix4(worldMat);
+            activePick.Ainv = new THREE.Matrix3().copy(A3).invert();
+            // 非世界轴模式：更新轴方向匹配当前剪切轴
+            if (!useWorldAxisDisplacement) {
+                const axes = shearedAxesOfBlock(b);
+                const axName = activePick.axisName || (activePick.varName && activePick.varName.includes('x') ? 'x' : activePick.varName && activePick.varName.includes('y') ? 'y' : 'z');
+                if (axes[axName]) activePick.axis = axes[axName].clone();
+            }
+        }
         const a = screenAxis(activePick);
         const deltaS = (dx * a.x + dy * a.y) * activePick.scale;
         changeVar(activePick.varName, deltaS, false);
@@ -6558,6 +6879,10 @@ function endGizmoDrag(ev) {
         clearActiveHighlight(); activePick=null; draggingGizmo=false; controls.enabled=true;
         if (wr) { recordAction(); renderVariablesForBlock(selectedBlock); updateOriginCenterLineLive(selectedBlock); updateRotGizmosLive(); }
         if (dragNeedsRebuild) { dragNeedsRebuild=false; requestGizmoRefresh(); updateToolbar(true); }
+        // 拖拽结束后同步关键帧数据
+        if (selectedBlock && keyframeWindowOpen) {
+            syncKeyframeFromBlock(selectedBlock);
+        }
         if (ev) ev.preventDefault(); return true;
     } return false;
 }
@@ -6565,17 +6890,35 @@ function promptVarInput(vn, ev) { const n=performance.now(); if(n-lastPromptAt<6
 function refreshActivePickMeta(cx, cy) { cx=cx||lastPX; cy=cy||lastPY; if(!activePick) return; const fo=pickables.find(o=>{const m=o.userData.her; return m&&m.type===activePick.type&&m.varName===activePick.varName;}); const f=fo?.userData?.her; if(f){ Object.assign(activePick,f,{_hitObj:fo}); if(activePick.type==='rot') activePick.lastAngle=screenAngleFor(activePick,cx,cy); makeActiveHighlight(activePick); } }
 
 // ---------- 绑定模式按钮 ----------
-document.querySelectorAll('.her-mode-btn').forEach(b => { b.onclick = () => toggleHerMode(b.dataset.mode); });
+document.querySelectorAll('.her-mode-btn:not([id])').forEach(b => { b.onclick = () => toggleHerMode(b.dataset.mode); });
+// 绑定旋转模式下拉菜单
+document.getElementById('localRotMenuBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleTopDropdown('localRotDropdown');
+});
+document.getElementById('globalRotMenuBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleTopDropdown('globalRotDropdown');
+});
+document.querySelectorAll('#localRotDropdown .top-dropdown-item, #globalRotDropdown .top-dropdown-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllTopDropdowns();
+        const mode = item.dataset.herMode;
+        if (mode) toggleHerMode(mode);
+    });
+});
 
 // ==================== 键盘快捷键 ====================
 window.addEventListener('keydown', (e) => {
     const activeEl = document.activeElement;
     const isEditable = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable || activeEl.getAttribute('contenteditable') === 'true');
-    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); return; }
-    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); return; }
-    if (e.ctrlKey && e.key === 'd' && !isEditable) { e.preventDefault(); duplicateSelectedBlocks(); return; }
+    const key = e.key.toLowerCase();
+    if (e.ctrlKey && (key === 'z' || e.code === 'KeyZ')) { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey && (key === 'y' || e.code === 'KeyY')) { e.preventDefault(); redo(); return; }
+    if (e.ctrlKey && (key === 'd' || e.code === 'KeyD') && !isEditable) { e.preventDefault(); duplicateSelectedBlocks(); return; }
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable && !isMouseInPanel) { e.preventDefault(); deleteSelectedBlocks(); return; }
-    if (e.ctrlKey && e.shiftKey && (e.code === 'KeyE' || e.key === 'E') && !isEditable) { e.preventDefault(); showCommandListModal(); return; }
+    if (e.ctrlKey && e.shiftKey && (e.code === 'KeyE' || key === 'e') && !isEditable) { e.preventDefault(); showCommandListModal(); return; }
     if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
 });
 
@@ -7423,6 +7766,7 @@ function applyKeyframeToBlock(blockId, time) {
     const varNameMap = {
         'xpos': 'v.xpos', 'ypos': 'v.ypos', 'zpos': 'v.zpos',
         'xrot': 'v.xrot', 'yrot': 'v.yrot', 'zrot': 'v.zrot',
+        'rotatex': 'v.rotatex', 'rotatey': 'v.rotatey', 'rotatez': 'v.rotatez',
         'scale': 'v.scale', 'extend_scale': 'v.extend_scale',
         'extend_xrot': 'v.extend_xrot', 'extend_yrot': 'v.extend_yrot',
         'xbasepos': 'v.xbasepos', 'ybasepos': 'v.ybasepos', 'zbasepos': 'v.zbasepos'
@@ -8176,7 +8520,7 @@ function selectKeyframeAtTime(blockId, time) {
 // 将方块当前变量值同步到关键帧数据（当用户在数据面板修改时调用）
 function syncKeyframeFromBlock(block) {
     if (!block || !keyframeWindowOpen) return;
-    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','rotatex','rotatey','rotatez','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
     
     // 批量模式：同步所有选中且有动画数据的方块
     if (selectedBlocksSet.size > 1) {
@@ -8304,7 +8648,7 @@ function createKeyframeAtCurrentTime() {
         // 没有现有关键帧，从方块当前值创建
         const block = blocks.find(b => b.id === selectedKeyframeBlock);
         if (block) {
-            const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+            const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','rotatex','rotatey','rotatez','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
             for (const name of varNames) {
                 const d = block.scope.vars.get(`v.${name}`);
                 if (d) newMap.set(name, d.value);
@@ -8410,7 +8754,7 @@ function renderKeyframeDataPanel() {
         return;
     }
     
-    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','rotatex','rotatey','rotatez','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
     
     const isLight2 = document.body.classList.contains('light-mode');
     const displayTime = closestTime.toFixed(2);
@@ -8758,7 +9102,7 @@ function getKeyframeCommandText(blockId) {
     const times = getKeyframeTimes(blockId);
     if (times.length === 0) return null;
     
-    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
+    const varNames = ['xpos','ypos','zpos','xrot','yrot','zrot','rotatex','rotatey','rotatez','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
     
     let keyframeStr = '';
     for (const time of times) {
