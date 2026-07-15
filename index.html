@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器v.2.8</title>
+    <title>EX fmbe模拟器v.2.9</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -131,6 +131,18 @@ body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px 
 
 #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
 .top-bar { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; }
+/* 退出全屏按钮：全屏时在手机端显示 */
+#exitFullscreenBtn { display: none; }
+#exitFullscreenBtn span { font-size: 13px; }
+:-webkit-full-screen #exitFullscreenBtn,
+:fullscreen #exitFullscreenBtn { display: inline-flex; }
+@media (max-width: 480px) {
+    #exitFullscreenBtn { order: -1; }
+    :-webkit-full-screen #exitFullscreenBtn,
+    :fullscreen #exitFullscreenBtn { display: inline-flex; }
+    :-webkit-full-screen #fullscreenBtn,
+    :fullscreen #fullscreenBtn { display: none; }
+}
 
 /* 左上角方块列表按钮 */
 .top-left-bar { position: fixed; top: 16px; left: 16px; z-index: 20; display: flex; gap: 8px; pointer-events: auto; }
@@ -175,8 +187,13 @@ body.light-mode .block-dropdown .dropdown-actions button span { transform:skewX(
 /* 分隔线风格 */
 .block-dropdown .divider { height: 1px; background: rgba(51,65,85,0.6); margin: 6px 0; }
 body.light-mode .block-dropdown .divider { background: rgba(0,0,0,0.06); }
-.skew-btn { padding: 8px 20px; font-size: 14px; cursor: pointer; transform: skewX(-12deg); border-radius: 12px; transition: all 0.2s ease; font-weight: bold; }
+.skew-btn { padding: 8px 20px; font-size: 14px; cursor: pointer; transform: skewX(-12deg); border-radius: 12px; transition: all 0.15s ease; font-weight: bold; }
 .skew-btn span { display: inline-block; transform: skewX(12deg); }
+/* 暗色模式悬停 */
+.skew-btn:hover { background: linear-gradient(135deg, #2a3f6a, #1a2a4a) !important; border-color: #5a9afe !important; transform: skewX(-12deg) translateY(-1px); box-shadow: 0 4px 14px rgba(59,130,246,0.25); }
+.skew-btn:active { transform: skewX(-12deg) translateY(1px) scale(0.96); box-shadow: 0 1px 4px rgba(59,130,246,0.15); transition: all 0.05s ease; }
+/* 浅色模式 active */
+body.light-mode .skew-btn:active { transform: skewX(-12deg) translateY(1px) scale(0.96); }
 
 /* 底部面板 */
 .data-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.3); transition: height 0.05s linear, width 0.05s linear; }
@@ -1538,6 +1555,7 @@ body.light-mode .keyframe-import-time-input input {
 <div id="canvas-container"></div>
 <div class="top-bar">
     <button class="skew-btn" id="fullscreenBtn"><span>⛶ 全屏</span></button>
+    <button class="skew-btn" id="exitFullscreenBtn" style="display:none;"><span>✕ 退出全屏</span></button>
     <button class="skew-btn" id="undoBtn"><span>↩ 撤销</span></button>
     <button class="skew-btn" id="redoBtn"><span>↪ 重做</span></button>
 </div>
@@ -1786,7 +1804,14 @@ const changelogData = [
         date: "*",
         title: "公告",
         items: [
-            "EX模拟器APP将在联网条件下强制更新为 v.2.8 版本",
+            "EX模拟器APP将在联网条件下强制更新为 v.2.9 版本",
+        ]
+    },
+    {
+        date: "2026-07-16",
+        title: "v.2.9 小版本",
+        items: [
+            "发包测试app是否能及时更新",
         ]
     },
     {
@@ -1797,6 +1822,7 @@ const changelogData = [
             "新操作模式中新增rotate相关旋转功能",
             "修复了关键帧编辑无法撤回和重做的问题",
             "尝试增加对部分操作系统的适配（被下载为本地代码时）",
+            
         ]
     },
     {
@@ -2482,6 +2508,7 @@ let currentOpenGroup = null;
 let expandedVars = new Set();
 let batchDeltas = new Map();
 let isMouseInPanel = false;
+let keyframeData = new Map(); // 提前声明，供 getState/recordAction 使用
 
 const panelEl = document.getElementById('dataPanel');
 panelEl.addEventListener('mouseenter', () => isMouseInPanel = true);
@@ -2497,7 +2524,7 @@ const history = (() => {
     let u = [], r = [];
     return {
         record(s) { u.push(JSON.parse(JSON.stringify(s))); if (u.length > 500) u.shift(); r = []; },
-        undo(cur) { if (!u.length) return null; r.push(JSON.parse(JSON.stringify(cur))); return u.pop(); },
+        undo(cur) { if (u.length < 2) return null; r.push(JSON.parse(JSON.stringify(cur))); u.pop(); return u[u.length - 1]; },
         redo(cur) { if (!r.length) return null; u.push(JSON.parse(JSON.stringify(cur))); return r.pop(); }
     };
 })();
@@ -2755,6 +2782,16 @@ function toggleFullscreen() {
             window.Android.requestFullscreen();
             window._isFullscreen = true;
         }
+        // 手动切换退出全屏按钮的显示
+        const exitBtn = document.getElementById('exitFullscreenBtn');
+        const fullBtn = document.getElementById('fullscreenBtn');
+        if (window._isFullscreen) {
+            if (exitBtn) exitBtn.style.display = 'inline-flex';
+            if (fullBtn) fullBtn.style.display = 'none';
+        } else {
+            if (exitBtn) exitBtn.style.display = 'none';
+            if (fullBtn) fullBtn.style.display = '';
+        }
         return;
     }
 
@@ -2771,7 +2808,8 @@ document.addEventListener('fullscreenchange', () => {
     const p = document.getElementById('dataPanel');
     const newTopBar = document.getElementById('newTopBar');
     const sideList = document.getElementById('sideBlockList');
-    if (document.fullscreenElement) {
+    const isFs = !!(document.fullscreenElement || window._isFullscreen);
+    if (isFs) {
         // 进入全屏时不遮挡 3D 场景
         if (p) p.style.display = 'none';
         if (newTopBar) newTopBar.style.display = 'none';
@@ -4485,19 +4523,21 @@ document.getElementById('hideNameBtn').addEventListener('click', () => {
     if (viewHideItem) viewHideItem.textContent = hideNames ? '显示' : '隐藏';
 });
 function safeUndo() {
+    // 优先调用原生接口（仅 APK 中有效）
     if (window.Android && typeof window.Android.undo === 'function') {
-        window.Android.undo(); // 调用原生后退（或自定义撤销）
-    } else {
-        undo(); // 使用原有的 JS 撤销
+        window.Android.undo();
+        return;
     }
+    // 否则使用 JS 实现（网站环境）
+    undo();
 }
 
 function safeRedo() {
     if (window.Android && typeof window.Android.redo === 'function') {
-        window.Android.redo(); // 调用原生前进
-    } else {
-        redo(); // 使用原有的 JS 重做
+        window.Android.redo();
+        return;
     }
+    redo();
 }
 
 document.getElementById('resetViewBtn').addEventListener('click', () => {
@@ -4589,6 +4629,22 @@ document.getElementById('blockMenuBtn').addEventListener('click', (e) => {
     const btn = document.getElementById(id);
     if (btn) btn.addEventListener('click', toggleFullscreen);
 });
+// 退出全屏按钮（手机端旧版模式专用）
+const exitFsBtn = document.getElementById('exitFullscreenBtn');
+if (exitFsBtn) {
+    exitFsBtn.addEventListener('click', () => {
+        if (window.Android && typeof window.Android.exitFullscreen === 'function') {
+            window.Android.exitFullscreen();
+            window._isFullscreen = false;
+        } else {
+            document.exitFullscreen().catch(() => {});
+        }
+        // 恢复按钮显示状态
+        const fullBtn = document.getElementById('fullscreenBtn');
+        if (fullBtn) fullBtn.style.display = '';
+        exitFsBtn.style.display = 'none';
+    });
+}
 // 退出全屏按钮
 
 ['undoBtn', 'undoBtnSide'].forEach(id => {
@@ -5224,10 +5280,10 @@ function setupNewLayoutUI() {
                     toggleFullscreen();
                     break;
                 case 'undo':
-                    undo();
+                    safeUndo();
                     break;
                 case 'redo':
-                    redo();
+                    safeRedo();
                     break;
                 case 'changelog':
                     showChangelogModal();
@@ -6914,8 +6970,8 @@ window.addEventListener('keydown', (e) => {
     const activeEl = document.activeElement;
     const isEditable = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable || activeEl.getAttribute('contenteditable') === 'true');
     const key = e.key.toLowerCase();
-    if (e.ctrlKey && (key === 'z' || e.code === 'KeyZ')) { e.preventDefault(); undo(); return; }
-    if (e.ctrlKey && (key === 'y' || e.code === 'KeyY')) { e.preventDefault(); redo(); return; }
+    if (e.ctrlKey && (key === 'z' || e.code === 'KeyZ')) { e.preventDefault(); safeUndo(); return; }
+    if (e.ctrlKey && (key === 'y' || e.code === 'KeyY')) { e.preventDefault(); safeRedo(); return; }
     if (e.ctrlKey && (key === 'd' || e.code === 'KeyD') && !isEditable) { e.preventDefault(); duplicateSelectedBlocks(); return; }
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable && !isMouseInPanel) { e.preventDefault(); deleteSelectedBlocks(); return; }
     if (e.ctrlKey && e.shiftKey && (e.code === 'KeyE' || key === 'e') && !isEditable) { e.preventDefault(); showCommandListModal(); return; }
@@ -7391,7 +7447,7 @@ panel.style.height = '280px';
 // ====================================================================
 
 // 关键帧数据结构: Map<blockId, { frames: Map<time, Map<varName, value>>, animId: string }>
-let keyframeData = new Map();
+// keyframeData 已在上方提前声明
 let keyframeWindowOpen = false;
 let keyframeWindowEl = null;
 let selectedKeyframeBlock = null; // 当前在关键帧窗口中选中的方块
