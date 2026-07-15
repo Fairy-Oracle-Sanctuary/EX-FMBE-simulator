@@ -2612,6 +2612,9 @@ function restoreState(state) {
 
 function undo() { const cur = getState(); const prev = history.undo(cur); if (prev) restoreState(prev); }
 function redo() { const cur = getState(); const nxt = history.redo(cur); if (nxt) restoreState(nxt); }
+// 暴露到 window 供 Android 原生接口调用
+window.undo = undo;
+window.redo = redo;
 
 function addBlock(block, record = true) {
     blocks.push(block);
