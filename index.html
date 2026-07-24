@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器v.2.9</title>
+    <title>EX fmbe模拟器v.3.0</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -66,7 +66,7 @@ body .panel-content { background: transparent; }
 body .var-card { background: #162136; border: 1px solid #2a3a5a; }
 body .var-header { background: #0f172a; }
 body .info-note { background: #0f172a; color: #cbd5e6; }
-body .tool-btn, body .skew-btn, body .inc-btn, body .block-menu-btn, body .modal-btn { background: linear-gradient(135deg, #1e2a4a, #0f172a); border: 1px solid #3b82f6; color: #cbd5e6; }
+body .tool-btn, body .skew-btn, body .inc-btn, body .block-menu-btn { background: linear-gradient(135deg, #1e2a4a, #0f172a); border: 1px solid #3b82f6; color: #cbd5e6; }
 body .block-dropdown-item:hover { background: #3b82f6; color: #0f172a; }
 body .assignment-input.constant-input { background: linear-gradient(135deg, #1e3a8a, #3b82f6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; }
 body .assignment-input.non-constant-input { background: linear-gradient(135deg, #5b21b6, #8b5cf6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; }
@@ -79,7 +79,9 @@ body.light-mode .panel-content { background: transparent; }
 body.light-mode .var-card { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(0,0,0,0.08); }
 body.light-mode .var-header { background: rgba(248, 250, 252, 0.8); }
 body.light-mode .info-note { background: rgba(241, 245, 249, 0.8); color: #1e293b; }
-body.light-mode .tool-btn, body.light-mode .skew-btn, body.light-mode .inc-btn, body.light-mode .block-menu-btn, body.light-mode .modal-btn { background: linear-gradient(135deg, #f9fafb, #eef2f6); border: 1px solid #b9c7da; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+body.light-mode .tool-btn, body.light-mode .skew-btn, body.light-mode .inc-btn, body.light-mode .block-menu-btn { background: linear-gradient(135deg, #f9fafb, #eef2f6); border: 1px solid #b9c7da; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+body.light-mode .modal-btn { background: transparent; border: none; color: #64748b; }
+body.light-mode .modal-btn:hover { color: #1e293b; }
 body.light-mode .tool-btn:hover, body.light-mode .skew-btn:hover, body.light-mode .inc-btn:hover, body.light-mode .block-menu-btn:hover { background: linear-gradient(135deg, #ffffff, #e2e8f0); transform: skewX(-12deg) translateY(-1px); }
 body.light-mode .axis-controls { background: #e9eef3; border: 1px solid #cbd5e1; }
 body.light-mode .control-item { background: #d9e2ef; color: #0f172a; }
@@ -149,7 +151,7 @@ body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px 
 .top-left-bar .skew-btn { padding: 8px 14px; font-size: 13px; }
 
 /* 下拉折叠头部 */
-.block-dropdown { position: fixed; background: #162136; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; transform: skewX(-5deg); max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
+.block-dropdown { position: fixed; background: #162136; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
 .block-dropdown-header { padding: 8px 12px; font-weight: bold; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
 .block-dropdown-content { max-height: 260px; overflow-y: auto; }
 
@@ -170,19 +172,18 @@ body.light-mode .cmd-preview { background: #f1f5f9; color: #16a34a; border: 1px 
     color: white;
     font-size: 12px;
     padding: 6px 10px;
-    border-radius: 0;
+    border-radius: 4px;
     cursor: pointer;
-    transform: skewX(-3deg);
 }
-.block-dropdown .dropdown-actions button span { display:inline-block; transform:skewX(3deg); font-family: Inter, 'PingFang SC','Microsoft YaHei', Arial, sans-serif; }
+.block-dropdown .dropdown-actions button span { font-family: Inter, 'PingFang SC','Microsoft YaHei', Arial, sans-serif; }
 .block-dropdown .dropdown-actions .action-para { box-shadow: none; }
 .block-dropdown .dropdown-actions button:hover { opacity: 0.95; }
 
 body.light-mode .block-dropdown { background: #ffffff; border: 1px solid #cbd5e1; color: #0f172a; }
 body.light-mode .block-dropdown .block-dropdown-item { color: #0f172a; }
 body.light-mode .block-dropdown .block-dropdown-item:hover { background: rgba(59,130,246,0.12); }
-body.light-mode .block-dropdown .dropdown-actions button { background: rgba(0,0,0,0.06); color: #0f172a; border: 1px solid #e2e8f0; border-radius: 0; transform: skewX(-3deg); }
-body.light-mode .block-dropdown .dropdown-actions button span { transform:skewX(3deg); font-family: Inter, 'PingFang SC','Microsoft YaHei', Arial, sans-serif; }
+body.light-mode .block-dropdown .dropdown-actions button { background: rgba(0,0,0,0.06); color: #0f172a; border: 1px solid #e2e8f0; border-radius: 4px; }
+body.light-mode .block-dropdown .dropdown-actions button span { font-family: Inter, 'PingFang SC','Microsoft YaHei', Arial, sans-serif; }
 
 /* 分隔线风格 */
 .block-dropdown .divider { height: 1px; background: rgba(51,65,85,0.6); margin: 6px 0; }
@@ -245,7 +246,7 @@ body.light-mode .skew-btn:active { transform: skewX(-12deg) translateY(1px) scal
 .block-menu-btn { transform: skewX(-12deg); padding: 6px 18px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-size: 13px; margin-bottom: 12px; transition: 0.2s; }
 
 /* 下拉菜单 */
-.block-dropdown { position: fixed; background: #162136; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; transform: skewX(-5deg); max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
+.block-dropdown { position: fixed; background: #162136; border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; max-height: 300px; overflow-y: auto; border: 1px solid #3b82f6; backdrop-filter: blur(4px); }
 .block-dropdown-item { padding: 8px 16px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: 0.1s; color: #e2e8f0; }
 .block-dropdown-item.selected { background: #3b82f6; color: #0f172a; border-radius: 0; }
 .dropdown-actions { display: flex; gap: 8px; }
@@ -321,8 +322,12 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .color-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 10px 0; }
 .color-swatch { width: 32px; height: 32px; border-radius: 12px; cursor: pointer; border: 2px solid #334155; transition: 0.1s; }
 .empty-state { text-align: center; color: #64748b; padding: 24px; font-size: 13px; }
-.modal-input-text { width: 100%; padding: 10px; border-radius: 16px; border: 1px solid #3b82f6; background: #1e293b; color: white; margin-bottom: 12px; transform: skewX(-4deg); font-size: 14px; }
-.modal-btn { padding: 8px 20px; transform: skewX(-10deg); border-radius: 40px; cursor: pointer; margin: 0 6px; font-size: 13px; }
+.modal-input-text { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #3b82f6; background: #1e293b; color: white; margin-bottom: 12px; transform: skewX(-5deg); font-size: 14px; }
+.modal-input-text::placeholder { color: #64748b; }
+body.light-mode .modal-input-text::placeholder { color: #94a3b8; }
+.modal-btn { padding: 8px 16px; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 13px; outline: none; }
+.modal-btn:hover { color: #fff; }
+.modal-btn:focus { outline: none; }
 
 /* 滚动条 */
 ::-webkit-scrollbar { width: 5px; }
@@ -494,6 +499,43 @@ body.light-mode .changelog-date-text {
 body.light-mode .changelog-version-tag {
     background: #3b82f6;
     color: white;
+}
+.changelog-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.changelog-detail-btn {
+    font-size: 12px;
+    color: #60a5fa;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.changelog-detail-btn:hover {
+    background: rgba(96,165,250,0.15);
+}
+body.light-mode .changelog-detail-btn {
+    color: #2563eb;
+}
+body.light-mode .changelog-detail-btn:hover {
+    background: rgba(37,99,235,0.1);
+}
+.changelog-details {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(59,130,246,0.05);
+    border-radius: 10px;
+    border-left: 3px solid #3b82f6;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #cbd5e1;
+}
+body.light-mode .changelog-details {
+    background: rgba(37,99,235,0.06);
+    color: #334155;
 }
 .changelog-toggle-icon {
     font-size: 14px;
@@ -793,6 +835,7 @@ body.light-mode .side-block-list {
     align-items: center;
     transition: background 0.1s;
     border: 1px solid transparent;
+    position: relative;
 }
 body.light-mode .side-block-item {
     color: #1e293b;
@@ -907,6 +950,142 @@ body.light-mode .side-block-bone-btn {
 body.light-mode .side-block-bone-btn:hover {
     border-color: rgba(124,58,237,0.4);
     background: rgba(124,58,237,0.06);
+}
+
+/* 组标题 */
+.side-block-group-header {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+}
+.side-block-group-header:hover {
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.3);
+}
+body.light-mode .side-block-group-header {
+    color: #64748b;
+}
+.side-block-group-icon {
+    font-size: 10px;
+    margin-right: 6px;
+    color: #3b82f6;
+}
+.side-block-group-name {
+    flex: 1;
+}
+.side-block-group-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.side-block-group-header:hover .side-block-group-actions {
+    opacity: 1;
+}
+.side-block-group-actions button {
+    background: rgba(0,0,0,0.3);
+    border: none;
+    color: #cbd5e6;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+body.light-mode .side-block-group-actions button {
+    background: rgba(0,0,0,0.06);
+    color: #0f172a;
+}
+.side-block-group-actions button:hover {
+    background: #3b82f6;
+    color: white;
+}
+.side-block-group-actions .side-block-group-delete:hover {
+    background: #f43f5e;
+}
+/* 组内容 */
+.side-block-group-content {
+    display: block;
+    transition: display 0.1s;
+}
+.side-block-group-content.collapsed {
+    display: none;
+}
+
+/* 组内方块缩进 */
+.side-block-group-item {
+    padding-left: 20px !important;
+    position: relative;
+}
+.side-block-group-item::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: #3b82f6;
+    opacity: 0.5;
+}
+body.light-mode .side-block-group-item::before {
+    background: #60a5fa;
+    opacity: 0.6;
+}
+@media (max-width: 480px) {
+    .side-block-group-item {
+        padding-left: 14px !important;
+    }
+    .side-block-group-item::before {
+        left: 7px;
+    }
+}
+@media (max-width: 320px) {
+    .side-block-group-item {
+        padding-left: 10px !important;
+    }
+    .side-block-group-item::before {
+        left: 5px;
+    }
+}
+.side-block-group-empty {
+    padding: 8px 24px;
+    color: #64748b;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* 关键帧模式下禁用状态的方块（未加入关键帧系统） */
+.side-block-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.side-block-disabled span {
+    color: #64748b !important;
+}
+body.light-mode .side-block-disabled span {
+    color: #9ca3af !important;
+}
+
+/* 关键帧方块标识 - 紫色小三角形 */
+.side-block-kf-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-left: 8px solid #a855f7;
+    border-bottom: 8px solid transparent;
+}
+.side-block-group-item .side-block-kf-badge {
+    left: 12px;
 }
 
 /* 新布局模式下隐藏变量操作面板 */
@@ -1675,6 +1854,10 @@ body.light-mode .keyframe-import-time-input input {
                 <span>枢轴联动模型</span>
                 <button class="ui-checkbox checked" id="pivotLinkCheckbox" type="button" aria-pressed="true"></button>
             </div>
+            <div class="ui-settings-item" id="localAxesSetting" style="margin-top:8px;">
+                <span>渲染局部坐标系</span>
+                <button class="ui-checkbox checked" id="localAxesCheckbox" type="button" aria-pressed="true"></button>
+            </div>
             <div class="ui-settings-item" id="grayscaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;"><span>灰度强度</span><span id="grayscaleValueLabel">0%</span></div>
                 <input id="grayscaleRange" type="range" min="0" max="100" value="0" style="width:100%;">
@@ -1803,71 +1986,54 @@ const changelogData = [
     {
         date: "*",
         title: "公告",
-        items: [
-            "EX模拟器APP将在联网条件下强制更新为 v.2.9 版本",
-        ]
+        items: ["EX模拟器APP将在联网条件下强制更新为 v.3.0 版本"],
+        details: "本次更新为强制更新，所有植入了更新程序的客户端，都将在联网条件下将自动升级至最新版本。更新内容包括全新的文件夹管理系统、命令压缩导出功能等重大改进。",
+        actions: []
+    },
+    {
+        date: "2026-07-24",
+        title: "v.3.0 正式版",
+        items: ["更新了文件夹管理系统","测试命令压缩导出的平面坐标压缩方法","新增了文件夹管理功能"],
+        details: "【文件夹管理系统】\n- 支持创建组并将方块归类到组中\n- 组内方块支持缩进显示和竖线标识\n- 长按组或Ctrl+点击组可选中整组方块\n- 组内最后一个方块显示分隔横线\n\n【命令压缩导出】\n- 实现平面坐标压缩算法\n- 支持网格画布选择方块坐标\n- 自动检测前后缀格式是否符合标准\n- 使用简写变量名减少命令长度\n- 不同组的方块显示不同颜色\n- 双指缩放和Ctrl+滚轮缩放画布\n\n【UI优化】\n- 导入面板支持浅色/深色主题适配\n- 按钮样式统一为平行四边形设计\n- 确认弹窗使用自定义样式替代浏览器弹窗 \n\n 【帮助鸣谢】 \n-@baby2016  @可爱滴繁星酱",
+        actions: []
     },
     {
         date: "2026-07-16",
         title: "v.2.9 小版本",
-        items: [
-            "发包测试app是否能及时更新",
-        ]
+        items: ["发包测试app是否能及时更新"],
+        details: "测试APP自动更新机制，确保用户能及时获取最新版本。",
+        actions: []
     },
     {
         date: "2026-07-15",
         title: "v.2.8 小版本",
-        items: [
-            "添加了面板折叠按钮大小调整功能",
-            "新操作模式中新增rotate相关旋转功能",
-            "修复了关键帧编辑无法撤回和重做的问题",
-            "尝试增加对部分操作系统的适配（被下载为本地代码时）",
-            
-        ]
+        items: ["添加了面板折叠按钮大小调整功能","新操作模式中新增rotate相关旋转功能","修复了关键帧编辑无法撤回和重做的问题","尝试增加对部分操作系统的适配"],
+        
     },
     {
         date: "2026-07-14",
         title: "v.2.7 小版本",
-        items: [
-            "优化了动画关键帧模式的交互",
-            "添加了更无脑的2D平面一键生成功能",
-            "修复了位移Gizmo控件世界轴位移模式抖动的问题",
-            "移除了遗留许久的正视方块过曝问题",
-            "提高了摄像机方向的光照防止方块不过曝",
-            "增加了rotate变量转换为rot变量的功能，便于节约变量",
-            "-------------------------------",
-            "感谢伙伴们的支持！",
-        ]
+        items: ["优化了动画关键帧模式的交互","添加了更无脑的2D平面一键生成功能","修复了位移Gizmo控件世界轴位移模式抖动的问题","移除了遗留许久的正视方块过曝问题","提高了摄像机方向的光照防止方块不过曝","增加了rotate变量转换为rot变量的功能"],
+        
     },
     {
         date: "2026-07-12",
         title: "v.2.6 小版本",
-        items: [
-            "添加欧拉角转换功能",
-            "添加2D平面一键生成功能",
-            "修改了旧操作模式，侧边栏功能启用状态下",
-            "的变量面板现实逻辑",
-        ]
+        items: ["添加欧拉角转换功能","添加2D平面一键生成功能","修改了旧操作模式的变量面板显示逻辑"],
+        
     },
     {
         date: "2026-07-11",
         title: "v.坤 小版本",
-        items: [
-            "优化了新操作模式",
-            "添加了关键帧动画功能，可对任意模型进行关键帧动画",
-        ]
+        items: ["优化了新操作模式","添加了关键帧动画功能"],
+        
     },
     {
         date: "2026-07-10",
         title: "v 2.0 正式版",
-        items: [
-            "EX fmbe模拟器 v2.0",
-            "更新新操作模式",
-            "新增枢轴模式，支持枢轴点移动和联动模型旋转",
-            "鸣谢赞助",
-            "@入窗不是疮 @小阿笙 @没事干的AWA @4m2d_  H2o",
-            "注：一赞助人员未留名"
-        ]
+        items: ["更新新操作模式","新增枢轴模式","鸣谢赞助"],
+        details: "【鸣谢赞助】\n- @入窗不是疮\n- @小阿笙\n- @没事干的AWA\n- @4m2d_\n- H2o\n- 注：一赞助人员未留名",
+        actions: []
     },
     {
         date: "2026-07-06",
@@ -2009,7 +2175,7 @@ function computeTransformMatrix(M, rotatex = 0, rotatey = 0, rotatez = 0) {
     const globalRz = new THREE.Matrix4().makeRotationZ(degToRad(-rotatez));
     const globalRx = new THREE.Matrix4().makeRotationX(degToRad(rotatex));
     const globalRy = new THREE.Matrix4().makeRotationY(degToRad(-rotatey));
-    const globalRot = globalRy.clone().multiply(globalRz).multiply(globalRx);
+    const globalRot = globalRy.clone().multiply(globalRx).multiply(globalRz);
     const matP = new THREE.Matrix4().makeTranslation(px, py, pz);
     return matP.clone().multiply(globalRot).multiply(localMat);
 }
@@ -2032,10 +2198,35 @@ function makeSaturatedMaterial(color, opts = {}) {
     });
 }
 
+// 创建简单的细线坐标轴（替代 ArrowHelper）
+function makeLineAxes(len = 2) {
+    const group = new THREE.Group();
+    const colors = [0xff6666, 0x66ff66, 0x66aaff];
+    const dirs = [new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)];
+    dirs.forEach((dir, i) => {
+        const pts = [new THREE.Vector3(0,0,0), dir.clone().multiplyScalar(len)];
+        const geom = new THREE.BufferGeometry().setFromPoints(pts);
+        const mat = new THREE.LineBasicMaterial({ color: colors[i], depthTest: false, transparent: true, opacity: 0.9 });
+        group.add(new THREE.Line(geom, mat));
+    });
+    return group;
+}
+// 创建 Gizmo 旋转轴细线：沿 dir 方向从 -len 到 +len，穿过中心
+function makeGizmoAxisLine(dir, color, len = 2.5) {
+    const d = dir.clone().normalize();
+    const pts = [d.clone().multiplyScalar(-len), d.clone().multiplyScalar(len)];
+    const geom = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true, opacity: 0.85 });
+    const line = new THREE.Line(geom, mat);
+    line.renderOrder = 999;
+    return line;
+}
+
 class Block {
-    constructor(id, M, textureUrl = null, materialColor = '#aaccff', type = 'cube') {
+    constructor(id, M, textureUrl = null, materialColor = '#aaccff', type = 'cube', groupName = null) {
         this.id = id;
         this.type = type;
+        this.group = groupName;
         this.scope = new VariableScope(id);
         this.scope.initFromM(M);
         this.scope.recompute();
@@ -2084,7 +2275,7 @@ class Block {
 this.updateTransform();
 this.updateMaterialSide();   // 新增
 return;
-            
+
         } 
         else if (this.type === 'flag') {
             const createCustomCube = (vertices, color, materialType, textureUrl) => {
@@ -2213,11 +2404,11 @@ return;
 
             this.mesh = this.rootGroup;
 
-            const axisGroup = new THREE.Group();
-            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0xff6666, 0.3, 0.2));
-            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, 0x66ff66, 0.3, 0.2));
-            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0x66aaff, 0.3, 0.2));
-            this.axisHelper = axisGroup;
+            const axisGroup2 = new THREE.Group();
+            axisGroup2.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0xff6666, 0.3, 0.2));
+            axisGroup2.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, 0x66ff66, 0.3, 0.2));
+            axisGroup2.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0x66aaff, 0.3, 0.2));
+            this.axisHelper = axisGroup2;
             this.rootGroup.add(this.axisHelper);
             this.axisHelper.visible = false;
 this.rootGroup.frustumCulled = false;
@@ -2227,11 +2418,11 @@ return;
         }
 
         // 其他类型（理论上不会执行到这里）
-        const axisGroup = new THREE.Group();
-        axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0xff6666, 0.3, 0.2));
-        axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, 0x66ff66, 0.3, 0.2));
-        axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0x66aaff, 0.3, 0.2));
-        this.axisHelper = axisGroup;
+        const axisGroup3 = new THREE.Group();
+        axisGroup3.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0xff6666, 0.3, 0.2));
+        axisGroup3.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, 0x66ff66, 0.3, 0.2));
+        axisGroup3.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0x66aaff, 0.3, 0.2));
+        this.axisHelper = axisGroup3;
         this.rootGroup.add(this.axisHelper);
         this.axisHelper.visible = false;
         this.rootGroup.frustumCulled = false;
@@ -2501,6 +2692,8 @@ updateMaterialSide() {
 let globalVars = new Map();
 let activeAutoIncMap = new Map();
 let blocks = [];
+let blockGroups = [];
+window.blockGroups = blockGroups;
 let selectedBlock = null;
 let hideNames = false;
 let selectedBlocksSet = new Set();
@@ -2531,7 +2724,7 @@ const history = (() => {
 
 function getState() {
     return {
-        blocks: blocks.map(b => ({ id: b.id, type: b.type, vars: Array.from(b.scope.vars.entries()).map(([n,d]) => ({ name:n, expr:d.expr, value:d.value, rangeMin:d.rangeMin, rangeMax:d.rangeMax, step:d.step })), textureUrl: b.textureUrl, materialColor: b.materialColor, materialType: b.materialType })),
+        blocks: blocks.map(b => ({ id: b.id, type: b.type, vars: Array.from(b.scope.vars.entries()).map(([n,d]) => ({ name:n, expr:d.expr, value:d.value, rangeMin:d.rangeMin, rangeMax:d.rangeMax, step:d.step })), textureUrl: b.textureUrl, materialColor: b.materialColor, materialType: b.materialType, group: b.group })),
         globalVars: Array.from(globalVars.entries()).map(([n,g]) => ({ name:n, expr:g.def.expr, value:g.def.value, rangeMin:g.def.rangeMin, rangeMax:g.def.rangeMax, step:g.def.step, sourceBlockId:g.sourceBlockId })),
         keyframes: Array.from(keyframeData.entries()).map(([blockId, data]) => ({
             blockId,
@@ -2540,7 +2733,8 @@ function getState() {
                 time,
                 vars: Array.from(varMap.entries()).map(([name, val]) => ({ name, val }))
             }))
-        }))
+        })),
+        blockGroups: blockGroups
     };
 }
 
@@ -2555,7 +2749,7 @@ function restoreState(state) {
     selectedBlocksSet.clear();
     state.blocks.forEach(s => {
         const M = [0,0,0,0,0,0,1,1,0,0,0,0,0];
-        const blk = new Block(s.id, M, s.textureUrl, s.materialColor || '#aaccff', s.type || 'cube');
+        const blk = new Block(s.id, M, s.textureUrl, s.materialColor || '#aaccff', s.type || 'cube', s.group);
         blk.materialType = s.materialType || 'color';
         blk.scope.vars.clear();
         s.vars.forEach(v => blk.scope.vars.set(v.name, new VarDef(v.expr, v.value, v.rangeMin, v.rangeMax, v.step)));
@@ -2564,6 +2758,14 @@ function restoreState(state) {
         else if (blk.materialType === 'texture' && blk.textureUrl) blk.loadTexture(blk.textureUrl);
         addBlock(blk, false);
     });
+    // 恢复组信息
+    if (state.blockGroups) {
+        blockGroups = JSON.parse(JSON.stringify(state.blockGroups));
+        window.blockGroups = blockGroups;
+    } else {
+        blockGroups = [];
+        window.blockGroups = blockGroups;
+    }
     globalVars.clear();
     state.globalVars.forEach(g => globalVars.set(g.name, { def: new VarDef(g.expr, g.value, g.rangeMin, g.rangeMax, g.step), sourceBlockId: g.sourceBlockId }));
     // 恢复关键帧数据
@@ -2669,7 +2871,7 @@ function selectBlock(block) {
     if (selectedBlock && selectedBlock.axisHelper) selectedBlock.axisHelper.visible = false;
     selectedBlock = block;
     if (block) {
-        block.axisHelper.visible = true;
+        block.axisHelper.visible = showLocalAxes;
         blocks.forEach(b => {
             if (b.type === 'cube' && b.mesh.material) {
                 b.mesh.material.emissiveIntensity = (b === block) ? 0.2 : 0;
@@ -2688,7 +2890,11 @@ function selectBlock(block) {
 }
 
 function updateAxesVisibility() {
-    blocks.forEach(block => { if (selectedBlocksSet.size > 1) block.axisHelper.visible = selectedBlocksSet.has(block); else block.axisHelper.visible = (block === selectedBlock); });
+    blocks.forEach(block => {
+        if (!showLocalAxes) { block.axisHelper.visible = false; return; }
+        if (selectedBlocksSet.size > 1) block.axisHelper.visible = selectedBlocksSet.has(block);
+        else block.axisHelper.visible = (block === selectedBlock);
+    });
 }
 
 function updateBlockLabel(block) {
@@ -3533,25 +3739,337 @@ function showBlockDropdown(btn) {
         divider.className = 'divider';
         content.appendChild(divider);
 
-        // 原有方块列表
+        // 获取全局组数据
+        const globalBlockGroups = window.blockGroups || [];
+        
+        // 关键帧模式状态：新操作模式下的关键帧模式，或旧操作模式下打开了关键帧编辑窗口
+        const isKfMode = (isNewLayoutMode && isKeyframeMode) || (!isNewLayoutMode && keyframeWindowOpen);
+        const kfReady = _kfSystemReady;
+        
+        // 按组分组方块
+        const groupedBlocks = {};
+        const ungroupedBlocks = [];
         blocks.forEach(b => {
-            const item = document.createElement('div'); item.className = 'block-dropdown-item';
-            if (selectedBlocksSet.has(b)) item.classList.add('selected');
-            item.innerHTML = `<span>${b.id} ${selectedBlocksSet.has(b) ? '✓' : ''}</span><div class="dropdown-actions"><button class="copy-block action-para" data-id="${b.id}"><span>📄 复制</span></button><button class="delete-block action-para" data-id="${b.id}"><span>🗑 删除</span></button><button class="bone-block action-para" data-id="${b.id}" style="background:#8b5cf6;"><span>✛</span></button></div>`;
-            const boneBtn = item.querySelector('.bone-block');
-            if (boneBtn) {
-                const bindParent = (e) => { e.stopPropagation(); showParentSelector(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } };
-                boneBtn.addEventListener('click', bindParent);
-                boneBtn.addEventListener('dblclick', bindParent);
+            if (b.group && globalBlockGroups.find(g => g.name === b.group)) {
+                if (!groupedBlocks[b.group]) groupedBlocks[b.group] = [];
+                groupedBlocks[b.group].push(b);
+            } else {
+                ungroupedBlocks.push(b);
             }
-            const copyBtn = item.querySelector('.copy-block');
-            copyBtn.addEventListener('click', (e) => { e.stopPropagation(); duplicateBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
-            const deleteBtn = item.querySelector('.delete-block');
-            deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); removeBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
-            item.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') return; const isMulti = e.ctrlKey || e.metaKey || e.shiftKey; toggleBlockSelection(b, isMulti); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
-            item.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleBlockSelection(b, true); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
-            content.appendChild(item);
         });
+        
+        // 显示所有组（包括空组）
+        globalBlockGroups.forEach(group => {
+            const groupName = group.name;
+            const groupBlocks = groupedBlocks[groupName] || [];
+            const isExpanded = group.expanded !== false;
+            
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'block-dropdown-item';
+            groupHeader.style.fontWeight = 'bold';
+            groupHeader.style.color = '#60a5fa';
+            groupHeader.style.cursor = 'pointer';
+            groupHeader.style.display = 'flex';
+            groupHeader.style.justifyContent = 'space-between';
+            groupHeader.style.alignItems = 'center';
+            groupHeader.innerHTML = `<span><span style="font-size:10px;margin-right:4px;color:#3b82f6;">${isExpanded ? '▼' : '▶'}</span>📁 ${groupName}</span><div style="display:flex; gap:4px;">
+                <button class="action-para" style="background:rgba(59,130,246,0.3);border:none;color:white;font-size:11px;padding:2px 6px;border-radius:4px;cursor:pointer;" data-group-manage="${groupName}" title="管理">管理</button>
+                <button class="action-para" style="background:rgba(244,63,94,0.3);border:none;color:white;font-size:11px;padding:2px 6px;border-radius:4px;cursor:pointer;" data-group-delete="${groupName}" title="删除">×</button>
+            </div>`;
+            
+            // 组标题点击事件（折叠/展开）
+            let longPressTimer = null;
+            let isLongPress = false;
+            
+            groupHeader.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                if (isLongPress) {
+                    isLongPress = false;
+                    return;
+                }
+                
+                const isMulti = e.ctrlKey || e.metaKey;
+                if (isMulti) {
+                    e.preventDefault();
+                    groupBlocks.forEach(b => {
+                        selectedBlocksSet.add(b);
+                    });
+                    updateAxesVisibility();
+                    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+                    menu.remove();
+                    activeDropdown = null;
+                    if (scrollListener) {
+                        window.removeEventListener('scroll', scrollListener);
+                        document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                        scrollListener = null;
+                    }
+                    if (groupBlocks.length > 0) {
+                        selectBlock(groupBlocks[0]);
+                    }
+                    return;
+                }
+                
+                group.expanded = !group.expanded;
+                menu.remove();
+                activeDropdown = null;
+                if (scrollListener) {
+                    window.removeEventListener('scroll', scrollListener);
+                    document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                    scrollListener = null;
+                }
+                showBlockDropdown(btn);
+            });
+            
+            groupHeader.addEventListener('mousedown', () => {
+                longPressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    groupBlocks.forEach(b => {
+                        selectedBlocksSet.add(b);
+                    });
+                    updateAxesVisibility();
+                    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+                    menu.remove();
+                    activeDropdown = null;
+                    if (scrollListener) {
+                        window.removeEventListener('scroll', scrollListener);
+                        document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                        scrollListener = null;
+                    }
+                    if (groupBlocks.length > 0) {
+                        selectBlock(groupBlocks[0]);
+                    }
+                }, 500);
+            });
+            
+            groupHeader.addEventListener('mouseup', () => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            });
+            
+            groupHeader.addEventListener('mouseleave', () => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            });
+            
+            groupHeader.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                longPressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    groupBlocks.forEach(b => {
+                        selectedBlocksSet.add(b);
+                    });
+                    updateAxesVisibility();
+                    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+                    menu.remove();
+                    activeDropdown = null;
+                    if (scrollListener) {
+                        window.removeEventListener('scroll', scrollListener);
+                        document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                        scrollListener = null;
+                    }
+                    if (groupBlocks.length > 0) {
+                        selectBlock(groupBlocks[0]);
+                    }
+                }, 500);
+            });
+            
+            groupHeader.addEventListener('touchend', () => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            });
+            
+            // 管理按钮事件
+            const manageBtn = groupHeader.querySelector('[data-group-manage]');
+            manageBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showGroupManageModal(groupName);
+                menu.remove();
+                activeDropdown = null;
+                if (scrollListener) {
+                    window.removeEventListener('scroll', scrollListener);
+                    document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                    scrollListener = null;
+                }
+            });
+            
+            // 删除按钮事件
+            const deleteBtn = groupHeader.querySelector('[data-group-delete]');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`确定要删除组 "${groupName}" 吗？组内方块将变为未分组状态。`)) {
+                    removeGroup(groupName);
+                    menu.remove();
+                    activeDropdown = null;
+                    if (scrollListener) {
+                        window.removeEventListener('scroll', scrollListener);
+                        document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                        scrollListener = null;
+                    }
+                }
+            });
+            
+            // 右键编辑组名（电脑端）
+            groupHeader.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                editGroupName(groupName);
+                menu.remove();
+                activeDropdown = null;
+                if (scrollListener) {
+                    window.removeEventListener('scroll', scrollListener);
+                    document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                    scrollListener = null;
+                }
+            });
+            
+            content.appendChild(groupHeader);
+            
+            // 组内容容器
+            if (isExpanded) {
+                if (groupBlocks.length === 0) {
+                    const emptyItem = document.createElement('div');
+                    emptyItem.className = 'block-dropdown-item';
+                    emptyItem.style.paddingLeft = '20px';
+                    emptyItem.style.color = '#64748b';
+                    emptyItem.style.fontSize = '12px';
+                    emptyItem.textContent = '暂无方块';
+                    content.appendChild(emptyItem);
+                } else {
+                    groupBlocks.forEach((b, index) => {
+                        const isKfBlock = kfReady && keyframeData.has(b.id);
+                        const isDisabled = (isKfMode && !isKfBlock) || (!isKfMode && isKfBlock);
+                        
+                        const item = document.createElement('div'); item.className = 'block-dropdown-item';
+                        item.style.paddingLeft = '20px';
+                        item.style.position = 'relative';
+                        item.innerHTML += `<span style="position:absolute;left:12px;top:6px;bottom:6px;width:2px;background:#3b82f6;opacity:0.5;"></span>`;
+                        
+                        // 紫色小三角形标识动画方块
+                        if (isKfBlock) {
+                            item.innerHTML += `<span style="position:absolute;top:0;left:12px;width:0;height:0;border-left:8px solid #a855f7;border-bottom:8px solid transparent;"></span>`;
+                        }
+                        
+                        if (selectedBlocksSet.has(b)) item.classList.add('selected');
+                        if (isDisabled) {
+                            item.style.opacity = '0.55';
+                            item.style.cursor = 'not-allowed';
+                        }
+                        
+                        item.innerHTML += `<span>${b.id} ${selectedBlocksSet.has(b) ? '✓' : ''}</span><div class="dropdown-actions"><button class="copy-block action-para" data-id="${b.id}"><span>📄 复制</span></button><button class="delete-block action-para" data-id="${b.id}"><span>🗑 删除</span></button><button class="bone-block action-para" data-id="${b.id}" style="background:#8b5cf6;"><span>✛</span></button></div>`;
+                        const boneBtn = item.querySelector('.bone-block');
+                        if (boneBtn) {
+                            const bindParent = (e) => { e.stopPropagation(); showParentSelector(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } };
+                            boneBtn.addEventListener('click', bindParent);
+                            boneBtn.addEventListener('dblclick', bindParent);
+                        }
+                        const copyBtn = item.querySelector('.copy-block');
+                        copyBtn.addEventListener('click', (e) => { e.stopPropagation(); duplicateBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+                        const deleteBtn = item.querySelector('.delete-block');
+                        deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); removeBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+                        item.addEventListener('click', (e) => {
+                            if (e.target.tagName === 'BUTTON') return;
+                            if (isDisabled) return;
+                            const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+                            toggleBlockSelection(b, isMulti);
+                            menu.remove();
+                            activeDropdown = null;
+                            if (scrollListener) {
+                                window.removeEventListener('scroll', scrollListener);
+                                document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                                scrollListener = null;
+                            }
+                        });
+                        item.addEventListener('contextmenu', (e) => {
+                            e.preventDefault();
+                            if (isDisabled) return;
+                            toggleBlockSelection(b, true);
+                            menu.remove();
+                            activeDropdown = null;
+                            if (scrollListener) {
+                                window.removeEventListener('scroll', scrollListener);
+                                document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                                scrollListener = null;
+                            }
+                        });
+                        content.appendChild(item);
+                        
+                        // 在组内最后一个方块后面添加横线
+                        if (index === groupBlocks.length - 1) {
+                            const divider = document.createElement('div');
+                            divider.style.height = '1px';
+                            divider.style.background = 'rgba(59,130,246,0.3)';
+                            divider.style.margin = '4px 8px';
+                            content.appendChild(divider);
+                        }
+                    });
+                }
+            }
+        });
+        
+        // 显示未分组的方块
+        if (ungroupedBlocks.length > 0) {
+            ungroupedBlocks.forEach(b => {
+                const isKfBlock = kfReady && keyframeData.has(b.id);
+                const isDisabled = (isKfMode && !isKfBlock) || (!isKfMode && isKfBlock);
+                
+                const item = document.createElement('div'); item.className = 'block-dropdown-item';
+                item.style.position = 'relative';
+                
+                if (selectedBlocksSet.has(b)) item.classList.add('selected');
+                if (isDisabled) {
+                    item.style.opacity = '0.55';
+                    item.style.cursor = 'not-allowed';
+                }
+                
+                // 紫色小三角形标识动画方块
+                if (isKfBlock) {
+                    item.innerHTML += `<span style="position:absolute;top:0;left:0;width:0;height:0;border-left:8px solid #a855f7;border-bottom:8px solid transparent;"></span>`;
+                }
+                
+                item.innerHTML += `<span>${b.id} ${selectedBlocksSet.has(b) ? '✓' : ''}</span><div class="dropdown-actions"><button class="copy-block action-para" data-id="${b.id}"><span>📄 复制</span></button><button class="delete-block action-para" data-id="${b.id}"><span>🗑 删除</span></button><button class="bone-block action-para" data-id="${b.id}" style="background:#8b5cf6;"><span>✛</span></button></div>`;
+                const boneBtn = item.querySelector('.bone-block');
+                if (boneBtn) {
+                    const bindParent = (e) => { e.stopPropagation(); showParentSelector(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } };
+                    boneBtn.addEventListener('click', bindParent);
+                    boneBtn.addEventListener('dblclick', bindParent);
+                }
+                const copyBtn = item.querySelector('.copy-block');
+                copyBtn.addEventListener('click', (e) => { e.stopPropagation(); duplicateBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+                const deleteBtn = item.querySelector('.delete-block');
+                deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); removeBlock(b); menu.remove(); activeDropdown = null; if (scrollListener) { window.removeEventListener('scroll', scrollListener); document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener); scrollListener = null; } });
+                item.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') return;
+                    if (isDisabled) return;
+                    const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
+                    toggleBlockSelection(b, isMulti);
+                    menu.remove();
+                    activeDropdown = null;
+                    if (scrollListener) {
+                        window.removeEventListener('scroll', scrollListener);
+                        document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                        scrollListener = null;
+                    }
+                });
+                item.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (isDisabled) return;
+                    toggleBlockSelection(b, true);
+                    menu.remove();
+                    activeDropdown = null;
+                    if (scrollListener) {
+                        window.removeEventListener('scroll', scrollListener);
+                        document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                        scrollListener = null;
+                    }
+                });
+                content.appendChild(item);
+            });
+        }
     }
     menu.appendChild(content);
     document.body.appendChild(menu); activeDropdown = menu;
@@ -3642,7 +4160,7 @@ function ensureGlobalVar(key, expr, sourceBlockId) {
 }
     else { const g = globalVars.get(key); g.def.expr = expr; g.sourceBlockId = sourceBlockId; }
 }
-function escapeHtml(str) { return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+function escapeHtml(str) { return str.replace(/[&<>"]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : '&quot;'); }
 function showModal(title, content, onConfirm = null, isTextarea = true) {
     const modalDiv = document.createElement('div'); modalDiv.className = 'modal';
     let innerHtml = `<div class="modal-content"><h3 style="color:#38bdf8;">${title}</h3>`;
@@ -3768,16 +4286,46 @@ function topologicalSortVariables(variables) {
 }
 
 // 为单个方块生成排序后的赋值语句字符串（不包括额外标记）
-function getOrderedAssignmentsString(block) {
+const shortVarNames = {
+    'v.xpos': 'v.xp', 'v.ypos': 'v.yp', 'v.zpos': 'v.zp',
+    'v.xbasepos': 'v.xb', 'v.ybasepos': 'v.yb', 'v.zbasepos': 'v.zb',
+    'v.extend_scale': 'v.es', 'v.extend_xrot': 'v.ex', 'v.extend_yrot': 'v.ey',
+    'v.xrot': 'v.xr', 'v.yrot': 'v.yr', 'v.zrot': 'v.zr',
+    'v.rotatex': 'v.rx', 'v.rotatey': 'v.ry', 'v.rotatez': 'v.rz',
+    'v.scale': 'v.s'
+};
+
+const reverseShortVarNames = Object.fromEntries(Object.entries(shortVarNames).map(([k, v]) => [v, k]));
+
+function getOrderedAssignmentsString(block, useShortNames = false) {
     const variables = getExportableVariables(block);
     if (variables.length === 0) return '';
     const sorted = topologicalSortVariables(variables);
     const statements = [];
     for (const v of sorted) {
-        // 注意：表达式中可能包含特殊字符，但无需转义，直接原样输出
-        statements.push(`${v.name}=${v.def.expr};`);
+        let varName = v.name;
+        if (useShortNames && shortVarNames[v.name]) {
+            varName = shortVarNames[v.name];
+        }
+        let expr = v.def.expr;
+        if (useShortNames) {
+            Object.keys(shortVarNames).forEach(longName => {
+                const shortName = shortVarNames[longName];
+                const regex = new RegExp('\\b' + longName + '\\b', 'g');
+                expr = expr.replace(regex, shortName);
+            });
+        }
+        statements.push(`${varName}=${expr};`);
     }
     return statements.join(' ');
+}
+
+function getShortNameRestoreString() {
+    const restore = [];
+    Object.entries(shortVarNames).forEach(([longName, shortName]) => {
+        restore.push(`${longName}=${shortName};`);
+    });
+    return restore.join(' ');
 }
 
 // 获取单个方块的完整命令文本（包括前缀、后缀、旗帜标记）
@@ -3788,26 +4336,35 @@ function getCommandTextForBlock(block) {
     if (block.type === 'cube' && block.materialPresetName) {
         blockIdPrefix = `'block：${block.materialPresetName}'; `;
     }
+    // 处理分组前缀
+    let groupPrefix = '';
+    if (block.group) {
+        groupPrefix = `'group:${block.group}'; `;
+    }
     // 旗帜类型强制在最前面添加 '方块类型：旗帜'
     if (block.type === 'flag') {
         varsStr = `'方块类型：旗帜'; ` + varsStr;
     }
     const suffix = exportSuffix.replace(/{id}/g, block.id);
-    return exportPrefix + blockIdPrefix + varsStr + suffix;
+    return exportPrefix + blockIdPrefix + groupPrefix + varsStr + suffix;
 }
 
 // 覆盖原有的 showCommandListModal 函数，使用依赖排序
 function showCommandListModal() {
     const modalDiv = document.createElement('div');
     modalDiv.className = 'modal';
-    let html = `<div class="modal-content"><h3>✏️ 自定义命令前后缀</h3>
+    let html = `<div class="modal-content"><h3>📤 导出</h3>
         <div class="label-hint">前缀（可包含命令和固定文本）</div>
         <input type="text" id="prefixInput" class="modal-input-text" value="${escapeHtml(exportPrefix)}">
         <div class="label-hint">后缀（使用 {id} 作为方块ID占位符）</div>
         <input type="text" id="suffixInput" class="modal-input-text" value="${escapeHtml(exportSuffix)}">
         <div class="modal-buttons">
             <button class="modal-btn" id="resetDefaultBtn">重置默认</button>
+            <span style="color:#3b82f6;">|</span>
             <button class="modal-btn" id="confirmExportBtn">生成命令列表</button>
+            <span style="color:#3b82f6;">|</span>
+            <button class="modal-btn" id="compressExportBtn" style="color:#f7971e;">📦 压缩导出</button>
+            <span style="color:#3b82f6;">|</span>
             <button class="modal-btn" id="cancelModalBtn">取消</button>
         </div></div>`;
     modalDiv.innerHTML = html;
@@ -3816,6 +4373,7 @@ function showCommandListModal() {
     const prefixInp = modalDiv.querySelector('#prefixInput');
     const suffixInp = modalDiv.querySelector('#suffixInput');
     const confirmBtn = modalDiv.querySelector('#confirmExportBtn');
+    const compressBtn = modalDiv.querySelector('#compressExportBtn');
     const cancelBtn = modalDiv.querySelector('#cancelModalBtn');
     const resetBtn = modalDiv.querySelector('#resetDefaultBtn');
     const closeModal = () => modalDiv.remove();
@@ -3887,11 +4445,932 @@ function showCommandListModal() {
         }
         listModal.querySelector('#closeListBtn').onclick = () => listModal.remove();
     };
+
+    compressBtn.onclick = () => {
+        exportPrefix = prefixInp.value.trim();
+        exportSuffix = suffixInp.value.trim();
+        savePrefixSuffix();
+        closeModal();
+        showCompressExportModal(true);
+    };
+
     cancelBtn.onclick = closeModal;
 }
 
 // 重新绑定导出按钮事件（确保使用新的函数）
 document.getElementById('exportBtn').onclick = showCommandListModal;
+
+// ==================== 场景状态保存与恢复 ====================
+let savedSceneState = null;
+
+function saveSceneState() {
+    savedSceneState = {
+        blocks: blocks.map(b => ({
+            meshVisible: b.mesh?.visible ?? true,
+            labelVisible: b.label?.visible ?? true,
+            selectionWireframeVisible: b.selectionWireframe?.visible ?? true
+        })),
+        gizmoVisible: gizmoRoot?.visible ?? false
+    };
+
+    blocks.forEach(b => {
+        if (b.mesh) b.mesh.visible = false;
+        if (b.label) b.label.visible = false;
+        if (b.selectionWireframe) b.selectionWireframe.visible = false;
+    });
+    if (gizmoRoot) gizmoRoot.visible = false;
+}
+
+function restoreSceneState() {
+    if (!savedSceneState) return;
+
+    blocks.forEach((b, i) => {
+        const state = savedSceneState.blocks[i];
+        if (state) {
+            if (b.mesh) b.mesh.visible = state.meshVisible;
+            if (b.label) b.label.visible = state.labelVisible;
+            if (b.selectionWireframe) b.selectionWireframe.visible = state.selectionWireframeVisible;
+        }
+    });
+    if (gizmoRoot) gizmoRoot.visible = savedSceneState.gizmoVisible;
+
+    savedSceneState = null;
+}
+
+// ==================== 压缩导出功能 ====================
+let compressGridGroup = null;
+let compressLabelGroup = null;
+let compressCellMeshes = [];
+let compressCellData = [];
+let compressGrid = [];
+let compressLitSlots = [];
+let compressLitCount = 0;
+let compressParamsList = [];
+
+function showCompressExportModal(returnToList = false) {
+    if (blocks.length === 0) {
+        showModal('⚠️ 暂无方块', '请先创建方块');
+        return;
+    }
+
+    compressParamsList = [];
+    for (let b of blocks) {
+        let varsStr = '';
+        try { varsStr = getOrderedAssignmentsString(b, true); } catch(e) { varsStr = ''; }
+        
+        let blockIdPrefix = '';
+        if (b.type === 'cube' && b.materialPresetName) {
+            blockIdPrefix = `'block：${b.materialPresetName}'; `;
+        }
+        let groupPrefix = '';
+        if (b.group) {
+            groupPrefix = `'group:${b.group}'; `;
+        }
+        if (b.type === 'flag') {
+            varsStr = `'方块类型：旗帜'; ` + varsStr;
+        }
+        
+        const xposVar = b.scope && b.scope.vars ? b.scope.vars.get('v.xpos') : null;
+        const zposVar = b.scope && b.scope.vars ? b.scope.vars.get('v.zpos') : null;
+        
+        compressParamsList.push({
+            id: b.id,
+            rawParams: blockIdPrefix + groupPrefix + varsStr,
+            xpos: xposVar ? xposVar.value : 0,
+            zpos: zposVar ? zposVar.value : 0,
+            group: b.group || ''
+        });
+    }
+
+    const win = document.createElement('div');
+    win.style.position = 'fixed';
+    win.style.left = '100px';
+    win.style.top = '100px';
+    win.style.width = '720px';
+    win.style.height = '400px';
+    win.style.zIndex = '501';
+    win.style.background = '#1e293b';
+    win.style.border = '1px solid #3b82f6';
+    win.style.borderRadius = '8px';
+    win.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
+    win.style.display = 'flex';
+    win.style.flexDirection = 'column';
+
+    const header = document.createElement('div');
+    header.style.height = '36px';
+    header.style.background = '#1a2332';
+    header.style.borderBottom = '1px solid #3b82f6';
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.padding = '0 12px';
+    header.style.cursor = 'move';
+
+    const title = document.createElement('span');
+    title.textContent = '📦 压缩导出 - 设置坐标';
+    title.style.color = '#fff';
+    title.style.fontSize = '13px';
+    title.style.fontWeight = 'bold';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = '#94a3b8';
+    closeBtn.style.fontSize = '14px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.padding = '4px 8px';
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    win.appendChild(header);
+
+    const body = document.createElement('div');
+    body.style.flex = '1';
+    body.style.padding = '12px';
+    body.style.display = 'flex';
+    body.style.flexDirection = 'column';
+    body.style.alignItems = 'center';
+    body.style.justifyContent = 'center';
+    body.id = 'compressBody';
+    body.style.overflow = 'hidden';
+
+    body.innerHTML = `
+        <div style="text-align:center;margin-bottom:12px;">
+            <span style="font-size:14px;color:#94a3b8;">请设置画布起始和终止坐标</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;width:100%;">
+            <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 X</label>
+                <input id="cpSX" type="number" value="0" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+            </div>
+            <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 Z</label>
+                <input id="cpSZ" type="number" value="0" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;width:100%;">
+            <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 X</label>
+                <input id="cpEX" type="number" value="11" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+            </div>
+            <div style="flex:1;">
+                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 Z</label>
+                <input id="cpEZ" type="number" value="7" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;width:100%;">
+            <button id="cpCancel" style="flex:1;padding:6px;border:none;border-radius:4px;background:#374151;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">取消</button>
+            <button id="cpConfirmCoords" style="flex:1;padding:6px;border:none;border-radius:4px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:12px;font-weight:bold;cursor:pointer;transform:skewX(-5deg);">确认坐标</button>
+        </div>
+    `;
+
+    win.appendChild(body);
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.style.position = 'absolute';
+    resizeHandle.style.right = '0';
+    resizeHandle.style.bottom = '0';
+    resizeHandle.style.width = '12px';
+    resizeHandle.style.height = '12px';
+    resizeHandle.style.cursor = 'nwse-resize';
+    resizeHandle.style.background = '#3b82f6';
+    resizeHandle.style.borderRadius = '0 0 8px 0';
+    win.appendChild(resizeHandle);
+
+    document.body.appendChild(win);
+
+    let sxInput = win.querySelector('#cpSX');
+    let szInput = win.querySelector('#cpSZ');
+    let exInput = win.querySelector('#cpEX');
+    let ezInput = win.querySelector('#cpEZ');
+
+    let compressGrid = [];
+    let compressLitSlots = [];
+    let compressW = 0, compressH = 0, compressSx = 0, compressSz = 0, compressStepX = 1, compressStepZ = 1;
+    let canvas = null;
+    let canvasScale = 1;
+    let isMouseDown = false;
+    let drawMode = 'toggle'; // 'light' | 'dark' | 'toggle'
+
+    function closeWin() {
+        win.remove();
+        document.removeEventListener('mousemove', onDrag);
+        document.removeEventListener('mouseup', onDragEnd);
+        document.removeEventListener('mousemove', onResize);
+        document.removeEventListener('mouseup', onResizeEnd);
+        
+        if (returnToList) {
+            showCommandListModal();
+        }
+    }
+
+    function getLitEntries() {
+        const arr = [];
+        for (let i = 0; i < compressParamsList.length; i++) {
+            if (compressLitSlots[i]) arr.push({ x: compressLitSlots[i].x, z: compressLitSlots[i].z, idx: i });
+        }
+        return arr;
+    }
+
+    function nextFreeIdx() {
+        for (let i = 0; i < compressParamsList.length; i++) {
+            if (!compressLitSlots[i]) return i;
+        }
+        return -1;
+    }
+
+    function toggleCell(x, z) {
+        if (!compressGrid[x]) compressGrid[x] = [];
+        
+        const isLit = compressGrid[x][z] >= 0;
+        
+        if (drawMode === 'toggle') {
+            if (isLit) {
+                const oldIdx = compressGrid[x][z];
+                compressGrid[x][z] = -1;
+                if (oldIdx >= 0) compressLitSlots[oldIdx] = undefined;
+            } else {
+                const idx = nextFreeIdx();
+                if (idx >= 0) {
+                    compressGrid[x][z] = idx;
+                    compressLitSlots[idx] = { x, z };
+                } else {
+                    showModal('⚠️ 达到上限', `已达到参数上限 ${compressParamsList.length} 个`);
+                }
+            }
+        } else if (drawMode === 'light') {
+            if (!isLit) {
+                const idx = nextFreeIdx();
+                if (idx >= 0) {
+                    compressGrid[x][z] = idx;
+                    compressLitSlots[idx] = { x, z };
+                }
+            }
+        } else if (drawMode === 'dark') {
+            if (isLit) {
+                const oldIdx = compressGrid[x][z];
+                compressGrid[x][z] = -1;
+                if (oldIdx >= 0) compressLitSlots[oldIdx] = undefined;
+            }
+        }
+        renderGrid();
+    }
+
+    function renderGrid() {
+        if (!canvas) return;
+
+        const sx = parseInt(sxInput.value) || 0;
+        const sz = parseInt(szInput.value) || 0;
+        const ex = parseInt(exInput.value) || 0;
+        const ez = parseInt(ezInput.value) || 0;
+
+        const minX = Math.min(sx, ex);
+        const maxX = Math.max(sx, ex);
+        const minZ = Math.min(sz, ez);
+        const maxZ = Math.max(sz, ez);
+
+        const W = maxX - minX + 1;
+        const H = maxZ - minZ + 1;
+        const stepX = ex >= sx ? 1 : -1;
+        const stepZ = ez >= sz ? 1 : -1;
+
+        compressW = W;
+        compressH = H;
+        compressSx = sx;
+        compressSz = sz;
+        compressStepX = stepX;
+        compressStepZ = stepZ;
+
+        if (compressGrid.length !== W || (compressGrid.length > 0 && compressGrid[0].length !== H)) {
+            const newGrid = Array.from({ length: W }, () => Array(H).fill(-1));
+            for (let x = 0; x < Math.min(W, compressGrid.length); x++) {
+                for (let z = 0; z < Math.min(H, compressGrid[x] ? compressGrid[x].length : 0); z++) {
+                    newGrid[x][z] = compressGrid[x][z];
+                }
+            }
+            compressGrid = newGrid;
+        }
+
+        const containerW = canvas.clientWidth || 600;
+        const containerH = canvas.clientHeight || 400;
+        const baseCellSize = Math.floor(Math.min(36, Math.max(16, Math.min(containerW / W, containerH / H))));
+        const cellSize = Math.floor(baseCellSize * canvasScale);
+
+        const groupColors = {
+            '': { bg: '#2a3a5e', border: '#4a6a9e', text: '#ffd200' },
+            '一': { bg: '#2a5e3a', border: '#4a9e6a', text: '#4ade80' },
+            '二': { bg: '#5e3a2a', border: '#9e6a4a', text: '#fb923c' },
+            '三': { bg: '#5e2a5e', border: '#9e4a9e', text: '#f472b6' },
+            '四': { bg: '#2a3a5e', border: '#4a6a9e', text: '#60a5fa' },
+            '五': { bg: '#5e5e2a', border: '#9e9e4a', text: '#facc15' },
+            '六': { bg: '#2a5e5e', border: '#4a9e9e', text: '#22d3ee' },
+            '七': { bg: '#5e2a3a', border: '#9e4a6a', text: '#f87171' },
+        };
+
+        const usedGroups = new Set();
+        compressParamsList.forEach(p => { if (p.group) usedGroups.add(p.group); });
+
+        let groupIndex = 0;
+        const customGroupColors = {};
+        usedGroups.forEach(g => {
+            if (!groupColors[g]) {
+                const colors = ['#2a5e3a,#4a9e6a,#4ade80', '#5e3a2a,#9e6a4a,#fb923c', '#5e2a5e,#9e4a9e,#f472b6', '#5e5e2a,#9e9e4a,#facc15', '#2a5e5e,#4a9e9e,#22d3ee', '#5e2a3a,#9e4a6a,#f87171'];
+                const [bg, border, text] = colors[groupIndex % colors.length].split(',');
+                customGroupColors[g] = { bg, border, text };
+                groupIndex++;
+            }
+        });
+
+        const getGroupColor = (groupName) => {
+            if (groupColors[groupName]) return groupColors[groupName];
+            if (customGroupColors[groupName]) return customGroupColors[groupName];
+            return groupColors[''];
+        };
+
+        const grid = document.createElement('div');
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = `repeat(${W}, ${cellSize}px)`;
+        grid.style.gridTemplateRows = `repeat(${H}, ${cellSize}px)`;
+        grid.style.gap = '1px';
+        grid.style.padding = '4px';
+        grid.style.margin = 'auto';
+        grid.style.transformOrigin = 'center center';
+
+        const lit = getLitEntries();
+        const assigned = new Map();
+        for (const { x, z, idx } of lit) {
+            assigned.set(`${x},${z}`, idx + 1);
+        }
+
+        for (let zi = 0; zi < H; zi++) {
+            for (let xi = 0; xi < W; xi++) {
+                const wx = sx + xi * stepX;
+                const wz = sz + (H - 1 - zi) * stepZ;
+                const isLit = compressGrid[xi] && compressGrid[xi][zi] >= 0;
+                const num = assigned.get(`${xi},${zi}`);
+                const idx = isLit && compressGrid[xi] ? compressGrid[xi][zi] : -1;
+                const blockData = idx >= 0 ? compressParamsList[idx] : null;
+                const groupName = blockData ? blockData.group : '';
+                const colors = getGroupColor(groupName);
+
+                const cell = document.createElement('div');
+                cell.style.width = `${cellSize}px`;
+                cell.style.height = `${cellSize}px`;
+                cell.style.display = 'flex';
+                cell.style.flexDirection = 'column';
+                cell.style.alignItems = 'center';
+                cell.style.justifyContent = 'center';
+                cell.style.cursor = 'pointer';
+                cell.style.borderRadius = '2px';
+                cell.style.overflow = 'hidden';
+
+                const fontSize = Math.max(10, Math.floor(cellSize * 0.35));
+
+                if (isLit && num) {
+                    cell.style.background = colors.bg;
+                    cell.style.border = `1px solid ${colors.border}`;
+                    let content = `<span style="color:${colors.text};font-size:${fontSize}px;font-weight:bold;line-height:1.2;">${num}</span>`;
+                    if (groupName) {
+                        content += `<span style="color:${colors.text};font-size:${Math.max(8, fontSize * 0.5)}px;line-height:1.1;opacity:0.8;">${groupName}</span>`;
+                    }
+                    content += `<span style="color:#6a8aaa;font-size:${Math.max(8, fontSize * 0.5)}px;line-height:1.1;">(${wx},${wz})</span>`;
+                    cell.innerHTML = content;
+                } else {
+                    cell.style.background = '#111a2e';
+                    cell.style.border = '1px solid #1a2a4a';
+                    cell.innerHTML = `<span style="color:#4a6a8a;font-size:${fontSize}px;font-weight:bold;line-height:1.2;">(${wx},${wz})</span>`;
+                }
+
+                cell.onmousedown = (e) => {
+                    e.preventDefault();
+                    isMouseDown = true;
+                    const isLit = compressGrid[xi] && compressGrid[xi][zi] >= 0;
+                    if (isLit) {
+                        drawMode = 'dark';
+                    } else {
+                        drawMode = 'light';
+                    }
+                    toggleCell(xi, zi);
+                };
+                cell.onmouseenter = () => {
+                    if (isMouseDown) {
+                        toggleCell(xi, zi);
+                    }
+                };
+                cell.onmouseup = () => {
+                    isMouseDown = false;
+                    drawMode = 'toggle';
+                };
+                grid.appendChild(cell);
+            }
+        }
+
+        canvas.innerHTML = '';
+
+        const legend = document.createElement('div');
+        legend.style.display = 'flex';
+        legend.style.flexWrap = 'wrap';
+        legend.style.gap = '12px';
+        legend.style.padding = '8px';
+        legend.style.background = '#0b1122';
+        legend.style.borderBottom = '1px solid #3b82f6';
+        legend.style.borderRadius = '4px 4px 0 0';
+
+        const noGroupItem = document.createElement('div');
+        noGroupItem.style.display = 'flex';
+        noGroupItem.style.alignItems = 'center';
+        noGroupItem.style.gap = '6px';
+        noGroupItem.style.fontSize = '12px';
+
+        const noGroupDot = document.createElement('div');
+        noGroupDot.style.width = '12px';
+        noGroupDot.style.height = '12px';
+        noGroupDot.style.borderRadius = '50%';
+        noGroupDot.style.background = '#374151';
+        noGroupDot.style.border = '1px solid #4b5563';
+
+        const noGroupLabel = document.createElement('span');
+        noGroupLabel.style.color = '#9ca3af';
+        noGroupLabel.textContent = '无组';
+
+        noGroupItem.appendChild(noGroupDot);
+        noGroupItem.appendChild(noGroupLabel);
+        legend.appendChild(noGroupItem);
+
+        usedGroups.forEach(g => {
+            const colors = getGroupColor(g);
+            const item = document.createElement('div');
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.gap = '6px';
+            item.style.fontSize = '12px';
+
+            const dot = document.createElement('div');
+            dot.style.width = '12px';
+            dot.style.height = '12px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = colors.bg;
+            dot.style.border = `1px solid ${colors.border}`;
+
+            const label = document.createElement('span');
+            label.style.color = colors.text;
+            label.textContent = g;
+
+            item.appendChild(dot);
+            item.appendChild(label);
+            legend.appendChild(item);
+        });
+
+        canvas.appendChild(legend);
+        canvas.appendChild(grid);
+    }
+
+    function showCoordsMode() {
+        title.textContent = '📦 压缩导出 - 设置坐标';
+        win.style.height = '400px';
+        
+        body.innerHTML = `
+            <div style="width:100%;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div style="text-align:center;margin-bottom:12px;">
+                    <span style="font-size:14px;color:#94a3b8;">请设置画布起始和终止坐标</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;width:100%;">
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 X</label>
+                        <input id="cpSX" type="number" value="${sxInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 Z</label>
+                        <input id="cpSZ" type="number" value="${szInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:12px;width:100%;">
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 X</label>
+                        <input id="cpEX" type="number" value="${exInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 Z</label>
+                        <input id="cpEZ" type="number" value="${ezInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:center;width:100%;">
+                    <button id="cpCancel" style="flex:1;padding:6px;border:none;border-radius:4px;background:#374151;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">取消</button>
+                    <button id="cpConfirmCoords" style="flex:1;padding:6px;border:none;border-radius:4px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:12px;font-weight:bold;cursor:pointer;transform:skewX(-5deg);">确认坐标</button>
+                </div>
+            </div>
+        `;
+
+        win.querySelector('#cpCancel').onclick = closeWin;
+        win.querySelector('#cpConfirmCoords').onclick = showCanvasMode;
+    }
+
+    function showCanvasMode() {
+        sxInput = win.querySelector('#cpSX');
+        szInput = win.querySelector('#cpSZ');
+        exInput = win.querySelector('#cpEX');
+        ezInput = win.querySelector('#cpEZ');
+
+        title.textContent = '📦 压缩导出';
+        win.style.height = '550px';
+        
+        const sx = parseInt(sxInput.value) || 0;
+        const sz = parseInt(szInput.value) || 0;
+        const ex = parseInt(exInput.value) || 0;
+        const ez = parseInt(ezInput.value) || 0;
+
+        const W = Math.abs(ex - sx) + 1;
+        const H = Math.abs(ez - sz) + 1;
+        compressGrid = Array.from({ length: W }, () => Array(H).fill(-1));
+        compressLitSlots = [];
+        compressW = W;
+        compressH = H;
+        compressSx = sx;
+        compressSz = sz;
+        compressStepX = ex >= sx ? 1 : -1;
+        compressStepZ = ez >= sz ? 1 : -1;
+
+        body.innerHTML = `
+            <div style="width:100%;height:100%;display:flex;flex-direction:column;">
+                <div id="cpCanvas" style="flex:1;border:1px solid #3b82f6;border-radius:4px;background:#0b1122;overflow:auto;margin-bottom:8px;"></div>
+                <div style="display:flex;gap:8px;">
+                    <button id="cpBack" style="flex:1;padding:8px;border:none;border-radius:4px;background:#374151;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">返回修改坐标</button>
+                    <button id="cpReset" style="flex:1;padding:8px;border:none;border-radius:4px;background:#2a3a6e;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">重置网格</button>
+                    <button id="cpExport" style="flex:2;padding:8px;border:none;border-radius:4px;background:linear-gradient(135deg,#f7971e,#ffa82e);color:#0f172a;font-size:12px;font-weight:bold;cursor:pointer;transform:skewX(-5deg);">确认压缩导出</button>
+                </div>
+            </div>
+        `;
+
+        canvas = body.querySelector('#cpCanvas');
+
+        function handleWheel(e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                canvasScale = Math.max(0.5, Math.min(3, canvasScale + delta));
+                renderGrid();
+            }
+        }
+
+        function handleKeyDown(e) {
+            if (e.ctrlKey) {
+                if (e.key === '+') {
+                    e.preventDefault();
+                    canvasScale = Math.min(3, canvasScale + 0.1);
+                    renderGrid();
+                } else if (e.key === '-') {
+                    e.preventDefault();
+                    canvasScale = Math.max(0.5, canvasScale - 0.1);
+                    renderGrid();
+                }
+            }
+        }
+
+        let touchStartDist = 0;
+        let touchStartScale = 1;
+
+        function handleTouchStart(e) {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                touchStartDist = Math.sqrt(dx * dx + dy * dy);
+                touchStartScale = canvasScale;
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (e.touches.length === 2 && touchStartDist > 0) {
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const scale = touchStartScale * (dist / touchStartDist);
+                canvasScale = Math.max(0.5, Math.min(3, scale));
+                renderGrid();
+            }
+        }
+
+        canvas.addEventListener('wheel', handleWheel, { passive: false });
+        document.addEventListener('keydown', handleKeyDown);
+        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+        function handleMouseUp() {
+            isMouseDown = false;
+            drawMode = 'toggle';
+        }
+        document.addEventListener('mouseup', handleMouseUp);
+
+        const closeWithScale = closeWin;
+        closeWin = function() {
+            canvas.removeEventListener('wheel', handleWheel);
+            document.removeEventListener('keydown', handleKeyDown);
+            canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            canvasScale = 1;
+            isMouseDown = false;
+            closeWithScale();
+        };
+
+        body.querySelector('#cpBack').onclick = () => {
+            canvas.removeEventListener('wheel', handleWheel);
+            document.removeEventListener('keydown', handleKeyDown);
+            canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvasScale = 1;
+            showCoordsMode();
+        };
+
+        body.querySelector('#cpReset').onclick = () => {
+            compressGrid = Array.from({ length: compressW }, () => Array(compressH).fill(-1));
+            compressLitSlots = [];
+            renderGrid();
+        };
+
+        body.querySelector('#cpExport').onclick = () => {
+            const lit = getLitEntries();
+            if (lit.length === 0) {
+                showModal('⚠️ 请先点亮', '请点击网格点亮至少一个方块');
+                return;
+            }
+
+            const expectedPrefix = 'playanimation @e[type=fox] animation.player.attack.positions _ 0 "';
+            const expectedSuffix = 'return 1;"';
+            
+            if (exportPrefix.trim() !== expectedPrefix.trim() || exportSuffix.trim() !== expectedSuffix.trim()) {
+                const warnMsg = '当前前后缀格式与压缩导出的标准格式不符，是否自动更新为标准格式？<br><br>标准前缀：<br>' + escapeHtml(expectedPrefix) + '<br><br>标准后缀：<br>' + escapeHtml(expectedSuffix);
+                showConfirmModal(warnMsg, (confirmed) => {
+                    if (confirmed) {
+                        exportPrefix = expectedPrefix;
+                        exportSuffix = expectedSuffix;
+                        savePrefixSuffix();
+                    }
+                    doCompressExport(lit);
+                });
+            } else {
+                doCompressExport(lit);
+            }
+        };
+        
+        function doCompressExport(lit) {
+            const items = [];
+            for (const { x, z, idx } of lit) {
+                const block = compressParamsList[idx];
+                const wx = compressSx + x * compressStepX;
+                const wz = compressSz + z * compressStepZ;
+                items.push({ cond: `(v.x==${wx}&&v.z==${wz})`, param: block.rawParams });
+            }
+
+            const MAX_LEN = 30000;
+            const prefix = exportPrefix;
+            const suffix = exportSuffix.replace(/{id}/g, '');
+            const restoreStr = getShortNameRestoreString();
+            const compressedBlocks = items.map(item => `${item.cond}?(${item.param})`);
+            const cmds = [];
+            let currentGroup = [];
+            let currentLen = prefix.length + restoreStr.length + suffix.length;
+
+            for (const block of compressedBlocks) {
+                const blkLen = block.length + 1;
+                if (currentLen + blkLen <= MAX_LEN) {
+                    currentGroup.push(block);
+                    currentLen += blkLen;
+                } else {
+                    if (currentGroup.length) cmds.push(prefix + currentGroup.join(';') + ';' + restoreStr + suffix);
+                    currentGroup = [block];
+                    currentLen = prefix.length + restoreStr.length + suffix.length + blkLen;
+                }
+            }
+            if (currentGroup.length) cmds.push(prefix + currentGroup.join(';') + ';' + restoreStr + suffix);
+
+            showCompressedResultModal(cmds);
+            closeWin();
+        };
+
+        setTimeout(() => {
+            renderGrid();
+        }, 50);
+    }
+
+    closeBtn.onclick = closeWin;
+    win.querySelector('#cpCancel').onclick = closeWin;
+
+    const confirmBtn = win.querySelector('#cpConfirmCoords');
+    console.log('confirmBtn:', confirmBtn);
+    if (confirmBtn) {
+        confirmBtn.onclick = function() {
+            console.log('确认坐标按钮被点击');
+            try {
+                showCanvasMode();
+            } catch(e) {
+                console.error('showCanvasMode error:', e);
+                alert('错误: ' + e.message);
+            }
+        };
+    } else {
+        console.error('cpConfirmCoords button not found');
+    }
+
+    let isDragging = false, dragSX = 0, dragSY = 0, winX = 0, winY = 0;
+    let isResizing = false, resizeSX = 0, resizeSY = 0, winW = 0, winH = 0;
+
+    function onDrag(e) {
+        if (!isDragging) return;
+        win.style.left = `${winX + e.clientX - dragSX}px`;
+        win.style.top = `${winY + e.clientY - dragSY}px`;
+    }
+
+    function onDragEnd() { isDragging = false; }
+
+    function onResize(e) {
+        if (!isResizing) return;
+        const newW = Math.max(500, winW + e.clientX - resizeSX);
+        const newH = Math.max(300, winH + e.clientY - resizeSY);
+        win.style.width = `${newW}px`;
+        win.style.height = `${newH}px`;
+        if (canvas) renderGrid();
+    }
+
+    function onResizeEnd() { isResizing = false; }
+
+    header.onmousedown = (e) => {
+        isDragging = true;
+        dragSX = e.clientX;
+        dragSY = e.clientY;
+        winX = win.offsetLeft;
+        winY = win.offsetTop;
+        e.preventDefault();
+    };
+
+    resizeHandle.onmousedown = (e) => {
+        isResizing = true;
+        resizeSX = e.clientX;
+        resizeSY = e.clientY;
+        winW = win.offsetWidth;
+        winH = win.offsetHeight;
+        e.preventDefault();
+    };
+
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', onDragEnd);
+    document.addEventListener('mousemove', onResize);
+    document.addEventListener('mouseup', onResizeEnd);
+}
+
+function generateCompressedCommands(sx, sz, ex, ez) {
+    const W = Math.abs(ex - sx) + 1;
+    const H = Math.abs(ez - sz) + 1;
+    const stepX = ex >= sx ? 1 : -1;
+    const stepZ = ez >= sz ? 1 : -1;
+
+    const items = [];
+    for (let b of blocks) {
+        let varsStr = getOrderedAssignmentsString(b);
+        let blockIdPrefix = '';
+        if (b.type === 'cube' && b.materialPresetName) {
+            blockIdPrefix = `'block：${b.materialPresetName}'; `;
+        }
+        let groupPrefix = '';
+        if (b.group) {
+            groupPrefix = `'group:${b.group}'; `;
+        }
+        if (b.type === 'flag') {
+            varsStr = `'方块类型：旗帜'; ` + varsStr;
+        }
+        
+        const xposMatch = varsStr.match(/v\.xpos=([^;]+)/);
+        const zposMatch = varsStr.match(/v\.zpos=([^;]+)/);
+        let wx = 0, wz = 0;
+        if (xposMatch) wx = Math.round(parseFloat(xposMatch[1]));
+        if (zposMatch) wz = Math.round(parseFloat(zposMatch[1]));
+        
+        items.push({ wx, wz, params: blockIdPrefix + groupPrefix + varsStr });
+    }
+
+    const MAX_LEN = 30000;
+    const prefix = exportPrefix;
+    const suffix = exportSuffix.replace(/{id}/g, '');
+    const suffixWithId = exportSuffix;
+
+    const compressedBlocks = items.map(item => `(v.x==${item.wx}&&v.z==${item.wz})?(${item.params})`);
+    const cmds = [];
+    let currentGroup = [];
+    let currentLen = prefix.length + suffix.length;
+    
+    for (const block of compressedBlocks) {
+        const blkLen = block.length + 1;
+        if (currentLen + blkLen <= MAX_LEN) {
+            currentGroup.push(block);
+            currentLen += blkLen;
+        } else {
+            if (currentGroup.length) {
+                cmds.push(prefix + currentGroup.join(';') + ';' + suffix);
+            }
+            currentGroup = [block];
+            currentLen = prefix.length + suffix.length + blkLen;
+        }
+    }
+    if (currentGroup.length) {
+        cmds.push(prefix + currentGroup.join(';') + ';' + suffix);
+    }
+
+    return cmds;
+}
+
+function showCompressedResultModal(cmds) {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1002';
+    
+    let totalChars = 0;
+    for (const c of cmds) totalChars += c.length;
+
+    let html = `
+        <div class="modal-content" style="max-width: 600px; padding: 20px 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <span style="font-size: 18px; font-weight: bold;">📦 压缩结果</span>
+                <button id="compressResultCloseBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: inherit;">✕</button>
+            </div>
+            <div class="stat-grid" style="margin-bottom: 16px; padding: 10px 14px;">
+                <span class="label">命令条数</span>
+                <span class="value" style="color: ${cmds.length > 1 ? '#f7971e' : '#4caf50'}">${cmds.length} ${cmds.length > 1 ? '条（已分割）' : '条'}
+</span>
+                <span class="label">总字符数</span>
+                <span class="value">${totalChars}</span>
+                <span class="label">方块数</span>
+                <span class="value">${blocks.length}</span>
+            </div>
+            <div style="max-height: 50vh; overflow-y: auto; margin-bottom: 16px;">
+    `;
+
+    for (let i = 0; i < cmds.length; i++) {
+        html += `
+            <div style="background: #0f172a; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; border: 1px solid #2a3a5e;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 13px; font-weight: bold; color: #f7971e;">命令 ${i + 1}</span>
+                    <button class="modal-btn" id="copyCmd${i}" style="padding: 4px 12px; font-size: 12px;">📋 复制</button>
+                </div>
+                <pre style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: #c8d8f0; margin: 0;">${escapeHtml(cmds[i])}</pre>
+            </div>
+        `;
+    }
+
+    html += `
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn" id="copyAllCompressedBtn">📋 复制全部</button>
+                <button class="modal-btn" id="downloadCompressedBtn" style="background: linear-gradient(135deg, #1e9b6e, #28b87e);">⬇ 导出TXT</button>
+                <button class="modal-btn" id="closeCompressedBtn">关闭</button>
+            </div>
+        </div>
+    `;
+
+    modalDiv.innerHTML = html;
+    document.body.appendChild(modalDiv);
+
+    const closeModal = () => modalDiv.remove();
+    modalDiv.querySelector('#compressResultCloseBtn').onclick = closeModal;
+    modalDiv.querySelector('#closeCompressedBtn').onclick = closeModal;
+
+    for (let i = 0; i < cmds.length; i++) {
+        modalDiv.querySelector(`#copyCmd${i}`).addEventListener('click', () => {
+            copyToClipboard(cmds[i]);
+            const btn = modalDiv.querySelector(`#copyCmd${i}`);
+            const orig = btn.innerText;
+            btn.innerText = '✅ 已复制';
+            setTimeout(() => btn.innerText = orig, 1500);
+        });
+    }
+
+    modalDiv.querySelector('#copyAllCompressedBtn').addEventListener('click', () => {
+        const allCmds = cmds.join('\n\n');
+        copyToClipboard(allCmds);
+        const btn = modalDiv.querySelector('#copyAllCompressedBtn');
+        const orig = btn.innerText;
+        btn.innerText = '✅ 已复制全部';
+        setTimeout(() => btn.innerText = orig, 1500);
+    });
+
+    modalDiv.querySelector('#downloadCompressedBtn').addEventListener('click', () => {
+        const text = cmds.join('\n\n');
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compressed_commands_${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        const btn = modalDiv.querySelector('#downloadCompressedBtn');
+        const orig = btn.innerText;
+        btn.innerText = '✅ 已下载';
+        setTimeout(() => btn.innerText = orig, 1500);
+    });
+}
+
 // ==================== 导入命令（自动识别旗帜标识） ====================
 function importFromCommands(text) {
     const lines = text.split(/\r?\n/);
@@ -3944,6 +5423,13 @@ function importFromCommands(text) {
             blockMaterialName = blockMatch[1].trim();
         }
         
+        // 提取分组名称 'group:xxx'
+        let groupName = null;
+        const groupMatch = content.match(/['"]group:([^'"]+)['"]/);
+        if (groupMatch) {
+            groupName = groupMatch[1].trim();
+        }
+        
         const assignments = [];
         const reg = /([vt])\.([a-zA-Z_][a-zA-Z0-9_]*)=([^;]+);/g;
         let m;
@@ -3966,7 +5452,15 @@ function importFromCommands(text) {
         });
         
         // 创建方块
-        const newBlock = new Block(finalId, M, null, '#aaccff', isFlag ? 'flag' : 'cube');
+        const newBlock = new Block(finalId, M, null, '#aaccff', isFlag ? 'flag' : 'cube', groupName);
+        
+        // 如果存在分组名称，自动创建组
+        if (groupName) {
+            if (!blockGroups.find(g => g.name === groupName)) {
+                blockGroups.push({ name: groupName, expanded: false });
+            }
+        }
+        
         assignments.forEach(a => {
             const full = `${a.type}.${a.name}`;
             if (a.type === 'v') {
@@ -4021,7 +5515,119 @@ function importFromCommands(text) {
         showModal("导入完成", `成功导入 ${successCount} 个方块`, null, false);
     }
 }
-document.getElementById('importBtn').onclick = () => showModal("导入数据", "粘贴 playanimation 命令文本", (txt) => { if (txt) importFromCommands(txt); }, true);
+
+function showImportModal() {
+    const isLight = document.body.classList.contains('light-mode');
+    const textareaBg = isLight ? '#f1f5f9' : '#0f172a';
+    const textareaColor = isLight ? '#0f172a' : 'white';
+    const borderColor = isLight ? '#cbd5e1' : '#3b82f6';
+    const labelColor = isLight ? '#64748b' : '#94a3b8';
+    const cancelColor = isLight ? '#64748b' : '#94a3b8';
+    const fileColor = isLight ? '#3b82f6' : '#60a5fa';
+    const confirmColor = isLight ? '#16a34a' : '#22c55e';
+    const lineColor = isLight ? '#cbd5e1' : '#3b82f6';
+    
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1001';
+    modalDiv.innerHTML = `
+        <div class="modal-content" style="max-width: 500px; padding: 16px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span style="font-size: 16px; font-weight: bold;">📥 导入命令</span>
+                <button id="importCloseBtn" style="background: none; border: none; font-size: 18px; cursor: pointer; color: inherit;">✕</button>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; margin-bottom: 6px; color: ${labelColor};">命令内容</label>
+                <div style="border-radius: 10px; border: 1px solid ${borderColor}; overflow: hidden; transform: skewX(-5deg);">
+                    <textarea id="importTextarea" rows="6" placeholder="粘贴 playanimation 命令文本..." style="width: 100%; padding: 12px; border: none; background: ${textareaBg}; color: ${textareaColor}; font-family: monospace; font-size: 12px; outline: none; box-sizing: border-box; resize: vertical; transform: skewX(5deg);"></textarea>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:center;gap:8px;">
+                <button id="importCancelBtn" style="padding:6px 16px;background:transparent;border:none;color:${cancelColor};cursor:pointer;font-size:13px;">取消</button>
+                <span style="color:${lineColor};">|</span>
+                <button id="importFileBtn" style="padding:6px 16px;background:transparent;border:none;color:${fileColor};cursor:pointer;font-size:13px;">📁 选择文件</button>
+                <span style="color:${lineColor};">|</span>
+                <button id="importConfirmBtn" style="padding:6px 16px;background:transparent;border:none;color:${confirmColor};cursor:pointer;font-size:13px;font-weight:bold;">确认导入</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+
+    const closeModal = () => modalDiv.remove();
+    modalDiv.querySelector('#importCloseBtn').onclick = closeModal;
+    modalDiv.querySelector('#importCancelBtn').onclick = closeModal;
+
+    const textarea = modalDiv.querySelector('#importTextarea');
+    const fileBtn = modalDiv.querySelector('#importFileBtn');
+    let selectedFile = null;
+    let isFileLoaded = false;
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt,.mcfunction';
+    fileInput.style.display = 'none';
+    modalDiv.appendChild(fileInput);
+
+    fileBtn.onclick = () => fileInput.click();
+
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            selectedFile = file;
+            isFileLoaded = true;
+            textarea.value = `已载入文件：${file.name}`;
+            textarea.style.color = '#4caf50';
+            textarea.style.fontSize = '16px';
+            textarea.style.textAlign = 'center';
+            textarea.style.fontWeight = 'bold';
+            textarea.readOnly = true;
+        } else {
+            selectedFile = null;
+            isFileLoaded = false;
+            textarea.value = '';
+            textarea.style.color = textareaColor;
+            textarea.style.fontSize = '12px';
+            textarea.style.textAlign = 'left';
+            textarea.style.fontWeight = 'normal';
+            textarea.readOnly = false;
+        }
+    });
+
+    textarea.addEventListener('input', () => {
+        if (textarea.value.trim() && !isFileLoaded) {
+            selectedFile = null;
+            fileInput.value = '';
+        } else if (isFileLoaded && textarea.value !== `已载入文件：${selectedFile.name}`) {
+            isFileLoaded = false;
+            textarea.style.color = 'white';
+            textarea.readOnly = false;
+        }
+    });
+
+    modalDiv.querySelector('#importConfirmBtn').onclick = async () => {
+        let text = '';
+
+        if (isFileLoaded && selectedFile) {
+            try {
+                text = await selectedFile.text();
+            } catch (err) {
+                showModal('❌ 读取失败', '无法读取文件内容', null, false);
+                return;
+            }
+        } else {
+            text = textarea.value.trim();
+        }
+
+        if (!text) {
+            showModal('⚠️ 输入为空', '请粘贴命令文本或选择文件', null, false);
+            return;
+        }
+
+        closeModal();
+        importFromCommands(text);
+    };
+}
+document.getElementById('importBtn').onclick = showImportModal;
 
 // ==================== 材质菜单（支持多选批量） ====================
 const materialMenuDiv = document.createElement('div');
@@ -4285,6 +5891,7 @@ function showCreateBlockMenu() {
                 <div id="createFlagBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">🏳️ 旗帜</div>
             </div>
             <div style="border-top: 1px solid #334155; margin: 12px 0;"></div>
+            <div id="createGroupBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-bottom: 8px;">📂 新建组</div>
             <div id="presetBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; font-style: italic; color: inherit;">📁 预设</div>
         </div>
     `;
@@ -4296,6 +5903,7 @@ function showCreateBlockMenu() {
     const createCubeBtn = modalDiv.querySelector('#createCubeBtn');
     const createPlaneBtn = modalDiv.querySelector('#createPlaneBtn');
     const createFlagBtn = modalDiv.querySelector('#createFlagBtn');
+    const createGroupBtn = modalDiv.querySelector('#createGroupBtn');
     const presetBtn = modalDiv.querySelector('#presetBtn');
     
     // 悬停效果（与预设菜单一致）
@@ -4312,6 +5920,7 @@ function showCreateBlockMenu() {
     addHoverEffect(createCubeBtn);
     addHoverEffect(createPlaneBtn);
     addHoverEffect(createFlagBtn);
+    addHoverEffect(createGroupBtn);
     addHoverEffect(presetBtn);
     
     createCubeBtn.onclick = () => {
@@ -4325,6 +5934,10 @@ function showCreateBlockMenu() {
     createFlagBtn.onclick = () => {
         createBlockOfType('flag');
         closeModal();
+    };
+    createGroupBtn.onclick = () => {
+        closeModal();
+        showCreateGroupModal();
     };
     presetBtn.onclick = () => {
         closeModal();
@@ -4340,6 +5953,205 @@ function createBlockOfType(type) {
     const newBlock = new Block(id, defaultM, null, '#aaccff', type);
     addBlock(newBlock);
     selectBlock(newBlock);
+}
+
+// ==================== 组管理函数 ====================
+function showCreateGroupModal() {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1001';
+    modalDiv.innerHTML = `
+        <div class="modal-content" style="max-width: 320px; padding: 16px 20px; text-align: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <span style="font-size: 18px; font-weight: bold;">新建组</span>
+                <button id="closeGroupModalBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: inherit;">✕</button>
+            </div>
+            <input type="text" id="groupNameInput" class="modal-input-text" placeholder="请输入组名称" style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: center; gap: 10px;">
+                <button class="modal-btn" id="cancelGroupBtn">取消</button>
+                <button class="modal-btn" id="confirmGroupBtn">创建</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+    
+    const closeModal = () => modalDiv.remove();
+    const input = modalDiv.querySelector('#groupNameInput');
+    const confirmBtn = modalDiv.querySelector('#confirmGroupBtn');
+    const cancelBtn = modalDiv.querySelector('#cancelGroupBtn');
+    const closeBtn = modalDiv.querySelector('#closeGroupModalBtn');
+    
+    closeBtn.onclick = closeModal;
+    cancelBtn.onclick = closeModal;
+    
+    const createGroup = () => {
+        const name = input.value.trim();
+        if (!name) {
+            showModal("提示", "请输入有效的组名称", null, false);
+            return;
+        }
+        if (blockGroups.find(g => g.name === name)) {
+            showModal("提示", "组名称已存在", null, false);
+            return;
+        }
+        blockGroups.push({ name: name, expanded: false });
+        renderSideBlockList();
+        closeModal();
+    };
+    
+    confirmBtn.onclick = createGroup;
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            createGroup();
+        }
+    });
+    
+    input.focus();
+}
+
+function showGroupManageModal(groupName) {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.style.zIndex = '1001';
+    
+    const groupBlocks = blocks.filter(b => b.group === groupName);
+    const otherBlocks = blocks.filter(b => !b.group || b.group !== groupName);
+    
+    const selectedIds = Array.from(selectedBlocksSet).map(b => b.id);
+    const hasSelected = selectedIds.length > 0;
+    
+    let html = `
+        <div class="modal-content" style="max-width: 500px; max-height: 70vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <span style="font-size: 18px; font-weight: bold;">管理组: ${escapeHtml(groupName)}</span>
+                <button id="closeGroupManageBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: inherit;">✕</button>
+            </div>
+            ${hasSelected ? `
+            <div style="margin-bottom: 16px;">
+                <button id="moveSelectedBtn" style="width: 100%; padding: 8px; border: none; border-radius: 4px; background: linear-gradient(135deg, #f7971e, #ffa82e); color: #0f172a; font-size: 13px; font-weight: bold; cursor: pointer; transform: skewX(-5deg);">
+                    📦 移动选中方块至本组 (${selectedIds.length})
+                </button>
+            </div>` : ''}
+            <div style="margin-bottom: 16px; font-size: 12px; color: #94a3b8;">
+                选择方块添加到组中，或从组中移除
+            </div>
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #60a5fa;">组内方块</div>
+                <div id="groupBlocksList" style="max-height: 200px; overflow-y: auto; border: 1px solid #3b82f6; border-radius: 8px; padding: 4px;">
+    `;
+    
+    if (groupBlocks.length === 0) {
+        html += `<div style="padding: 8px; color: #64748b; text-align: center;">暂无方块</div>`;
+    } else {
+        groupBlocks.forEach(b => {
+            html += `<div class="group-manage-item" data-block-id="${b.id}" data-action="remove" style="padding: 6px 10px; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <span>❒ ${b.id}</span>
+                <span style="color: #f43f5e; font-size: 12px;">移除</span>
+            </div>`;
+        });
+    }
+    
+    html += `</div></div>`;
+    
+    html += `
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #60a5fa;">可添加方块</div>
+                <div id="otherBlocksList" style="max-height: 200px; overflow-y: auto; border: 1px solid #334155; border-radius: 8px; padding: 4px;">
+    `;
+    
+    if (otherBlocks.length === 0) {
+        html += `<div style="padding: 8px; color: #64748b; text-align: center;">暂无可用方块</div>`;
+    } else {
+        otherBlocks.forEach(b => {
+            html += `<div class="group-manage-item" data-block-id="${b.id}" data-action="add" style="padding: 6px 10px; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <span>❒ ${b.id}</span>
+                <span style="color: #3b82f6; font-size: 12px;">添加</span>
+            </div>`;
+        });
+    }
+    
+    html += `</div></div>`;
+    
+    html += `<div style="text-align: center;">
+        <button id="confirmGroupManageBtn" class="modal-btn">完成</button>
+    </div></div>`;
+    
+    modalDiv.innerHTML = html;
+    document.body.appendChild(modalDiv);
+    
+    const closeModal = () => modalDiv.remove();
+    modalDiv.querySelector('#closeGroupManageBtn').onclick = closeModal;
+    modalDiv.querySelector('#confirmGroupManageBtn').onclick = closeModal;
+    
+    if (hasSelected) {
+        modalDiv.querySelector('#moveSelectedBtn').onclick = () => {
+            selectedBlocksSet.forEach(block => {
+                block.group = groupName;
+            });
+            renderSideBlockList();
+            showGroupManageModal(groupName);
+            closeModal();
+        };
+    }
+    
+    modalDiv.querySelectorAll('.group-manage-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const blockId = item.dataset.blockId;
+            const action = item.dataset.action;
+            const block = blocks.find(b => b.id === blockId);
+            if (block) {
+                if (action === 'add') {
+                    block.group = groupName;
+                } else {
+                    block.group = null;
+                }
+                renderSideBlockList();
+                showGroupManageModal(groupName);
+                closeModal();
+            }
+        });
+        
+        item.addEventListener('mouseenter', () => {
+            item.style.background = 'rgba(59,130,246,0.1)';
+        });
+        item.addEventListener('mouseleave', () => {
+            item.style.background = '';
+        });
+    });
+}
+
+function removeGroup(groupName) {
+    blocks.forEach(b => {
+        if (b.group === groupName) {
+            b.group = null;
+        }
+    });
+    blockGroups = blockGroups.filter(g => g.name !== groupName);
+    window.blockGroups = blockGroups;
+}
+
+function editGroupName(oldName) {
+    showModal("编辑组名", `当前名称: ${escapeHtml(oldName)}`, (newName) => {
+        if (!newName || !newName.trim()) {
+            showModal("提示", "请输入有效的组名称", null, false);
+            return;
+        }
+        const trimmedName = newName.trim();
+        if (blockGroups.find(g => g.name === trimmedName && g.name !== oldName)) {
+            showModal("提示", "组名称已存在", null, false);
+            return;
+        }
+        const group = blockGroups.find(g => g.name === oldName);
+        if (group) {
+            group.name = trimmedName;
+        }
+        blocks.forEach(b => {
+            if (b.group === oldName) {
+                b.group = trimmedName;
+            }
+        });
+        renderSideBlockList();
+    }, true);
 }
 
 // ==================== 平面生成函数 ====================
@@ -4380,7 +6192,7 @@ function generateRectParams(a, b) {
 
 function buildPlaneCommand(a, b) {
     const p = generateRectParams(a, b);
-    return `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'block：白色羊毛'; v.xpos=0; v.ypos=0; v.zpos=0; v.yrot=0; v.scale=${p.scale}; v.extend_scale=${p.extend_scale}; v.extend_yrot=${p.extend_yrot}; v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.l1=${p.l1}; v.extend_xrot=${p.extend_xrot}; v.xrot=${p.xrot}; v.zrot=${p.zrot};'方块编号：Cube'; "`;
+    return `execute  positioned ~-1.5~~-0.5 run playanimation @e[x=~,z=~,y=~,dx=1,dy=0,dz=0] animation.player.attack.positions _ 0 "'block：白色羊毛'; v.xpos=0; v.ypos=0; v.zpos=0; v.yrot=0; v.scale=${p.scale}; v.extend_scale=${p.extend_scale}; v.extend_yrot=${p.extend_yrot}; v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.l1=${p.l1}; v.extend_xrot=${p.extend_xrot}; v.xrot=${p.xrot}; v.zrot=${p.zrot};'方块编号：plane'; "`;
 }
 
 function createPlaneBlock() {
@@ -4562,6 +6374,9 @@ function showChangelogModal() {
         for (const entry of sorted) {
             const id = 'cl_' + entry.date.replace(/-/g, '');
             const itemsHtml = entry.items.map(item => `<li>${item}</li>`).join('');
+            const hasDetails = entry.details && entry.details.trim();
+            const detailsHtml = hasDetails ? `<div class="changelog-details" id="${id}_details" style="display:none;">${entry.details.replace(/\n/g, '<br>')}</div>` : '';
+            const detailBtn = hasDetails ? `<span class="changelog-detail-btn" data-target="${id}" data-details="${id}_details">查看详情</span>` : '';
             listHtml += `
                 <div class="changelog-item" data-id="${id}">
                     <div class="changelog-date-header" data-target="${id}">
@@ -4569,10 +6384,14 @@ function showChangelogModal() {
                             <span class="changelog-date-text">${entry.date}</span>
                             ${entry.title ? `<span class="changelog-version-tag">${entry.title}</span>` : ''}
                         </div>
-                        <span class="changelog-toggle-icon" data-target="${id}">▾</span>
+                        <div class="changelog-header-right">
+                            ${detailBtn}
+                            <span class="changelog-toggle-icon" data-target="${id}">▾</span>
+                        </div>
                     </div>
                     <div class="changelog-body" id="${id}">
                         <ul>${itemsHtml}</ul>
+                        ${detailsHtml}
                     </div>
                 </div>
             `;
@@ -4605,6 +6424,7 @@ function showChangelogModal() {
     const headers = modalDiv.querySelectorAll('.changelog-date-header');
     headers.forEach(header => {
         header.addEventListener('click', function(e) {
+            if (e.target.classList.contains('changelog-detail-btn')) return;
             const targetId = this.dataset.target;
             const body = document.getElementById(targetId);
             const icon = this.querySelector('.changelog-toggle-icon');
@@ -4619,12 +6439,35 @@ function showChangelogModal() {
             }
         });
     });
+    
+    // 查看详情按钮点击
+    const detailBtns = modalDiv.querySelectorAll('.changelog-detail-btn');
+    detailBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const detailsId = this.dataset.details;
+            const detailsEl = document.getElementById(detailsId);
+            if (!detailsEl) return;
+            
+            const isVisible = detailsEl.style.display !== 'none';
+            if (isVisible) {
+                detailsEl.style.display = 'none';
+                this.textContent = '查看详情';
+            } else {
+                detailsEl.style.display = 'block';
+                this.textContent = '收起详情';
+            }
+        });
+    });
 }
 
 // 绑定网站日志按钮
 document.getElementById('changelogBtn').addEventListener('click', showChangelogModal);
 document.getElementById('blockMenuBtn').addEventListener('click', (e) => {
     e.stopPropagation();
+    if (activeDropdown) {
+        activeDropdown.remove(); activeDropdown = null; return;
+    }
     showBlockDropdown(e.currentTarget);
 });
 // 绑定顶栏和侧边面板控制按钮
@@ -4684,6 +6527,7 @@ let isNewLayoutMode = false;
 let isKeyframeMode = false; // 新操作模式下的关键帧编辑模式
 let useWorldAxisDisplacement = false;
 let pivotLinkModel = true;   // 枢轴联动模型：true=pos直接相加，false=换算basepos保持模型位置不变
+let showLocalAxes = true;    // 渲染局部坐标系：false时所有方块不显示自身坐标轴
 const MIN_SIDE_PANEL_WIDTH = 5;
 const MAX_SIDE_PANEL_WIDTH = 880;
 
@@ -4763,14 +6607,23 @@ function setSidePanelWidth(value) {
     sidePanelWidth = width;
     if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${sidePanelWidth}px`;
     if (sidePanelWidthRange) sidePanelWidthRange.value = sidePanelWidth;
-    if (panel && isSidePanelMode) {
-        panel.style.width = `${sidePanelWidth}px`;
-        panel.dataset.collapsed = sidePanelWidth <= 10 ? 'true' : 'false';
-        panel.dataset.narrow = sidePanelWidth < 400 ? 'true' : 'false';
+    if (panel) {
+        if (isSidePanelMode || isNewLayoutMode) {
+            panel.style.width = `${sidePanelWidth}px`;
+            panel.dataset.collapsed = sidePanelWidth <= 10 ? 'true' : 'false';
+            panel.dataset.narrow = sidePanelWidth < 400 ? 'true' : 'false';
+        }
+    }
+    if (isNewLayoutMode) {
+        const sideList = document.getElementById('sideBlockList');
+        if (sideList) {
+            sideList.style.width = `${sidePanelWidth}px`;
+            sideListWidth = sidePanelWidth;
+            try { localStorage.setItem('ui_side_list_width', String(sidePanelWidth)); } catch (err) {}
+        }
     }
     try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
-    // 更新变量面板布局（旧版侧边栏单列/双列切换）
-    if (selectedBlock && !isNewLayoutMode) renderVariablesForBlock(selectedBlock);
+    if (selectedBlock) renderVariablesForBlock(selectedBlock);
 }
 
 function toggleBlockListPosition(e) {
@@ -4813,11 +6666,14 @@ function applyNewLayoutMode() {
             applySideListDimensions();
         }
         renderSideBlockList();
-        // 新操作模式时显示世界轴位移和枢轴联动设置
+        // 新操作模式时显示世界轴位移、枢轴联动和数据面板宽度设置，隐藏方块列表位置设置
         const worldAxisDispSetting = document.getElementById('worldAxisDispSetting');
         if (worldAxisDispSetting) worldAxisDispSetting.style.display = 'flex';
         const pivotLinkSetting = document.getElementById('pivotLinkSetting');
         if (pivotLinkSetting) pivotLinkSetting.style.display = 'flex';
+        if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'flex';
+        const blockListTopLeftSetting = document.getElementById('blockListTopLeftSetting');
+        if (blockListTopLeftSetting) blockListTopLeftSetting.style.display = 'none';
     } else {
         body.classList.remove('new-layout-active');
         if (newTopBar) newTopBar.style.display = 'none';
@@ -4836,11 +6692,13 @@ function applyNewLayoutMode() {
         }
         // 恢复数据面板显示（移除内联 style）
         if (dataPanel) dataPanel.style.display = '';
-        // 非新操作模式时隐藏世界轴位移和枢轴联动设置
+        // 非新操作模式时隐藏世界轴位移和枢轴联动设置，恢复方块列表位置设置
         const worldAxisDispSetting = document.getElementById('worldAxisDispSetting');
         if (worldAxisDispSetting) worldAxisDispSetting.style.display = 'none';
         const pivotLinkSetting = document.getElementById('pivotLinkSetting');
         if (pivotLinkSetting) pivotLinkSetting.style.display = 'none';
+        const blockListTopLeftSetting = document.getElementById('blockListTopLeftSetting');
+        if (blockListTopLeftSetting) blockListTopLeftSetting.style.display = 'flex';
     }
     // 关闭所有下拉菜单
     closeAllTopDropdowns();
@@ -4855,12 +6713,8 @@ function renderSideBlockList() {
     
     const kfReady = _kfSystemReady;
     
-    // 关键帧模式：显示已加入关键帧系统的方块；普通模式：过滤掉已加入关键帧系统的方块
-    const displayBlocks = isKfMode
-        ? blocks.filter(b => kfReady && keyframeData.has(b.id))
-        : isNewLayoutMode
-            ? blocks.filter(b => !kfReady || !keyframeData.has(b.id))
-            : blocks;
+    // 关键帧模式：显示所有方块（未加入关键帧系统的显示为不可选中状态）；普通模式：显示所有方块
+    const displayBlocks = blocks;
     
     let html = `<div class="side-block-list-title">📦 方块列表</div>`;
     
@@ -4896,9 +6750,73 @@ function renderSideBlockList() {
         </div>`;
     }
     
+    // 按组分组方块
+    const groupedBlocks = {};
+    const ungroupedBlocks = [];
+    
     displayBlocks.forEach(b => {
+        if (b.group && blockGroups.find(g => g.name === b.group)) {
+            if (!groupedBlocks[b.group]) groupedBlocks[b.group] = [];
+            groupedBlocks[b.group].push(b);
+        } else {
+            ungroupedBlocks.push(b);
+        }
+    });
+    
+    // 显示所有组
+    blockGroups.forEach(group => {
+        const groupBlocks = groupedBlocks[group.name] || [];
+        
+        const expandedClass = group.expanded ? '' : 'collapsed';
+        html += `<div class="side-block-group-header" data-group-name="${escapeHtml(group.name)}">
+            <span class="side-block-group-icon">${group.expanded ? '▼' : '▶'}</span>
+            <span class="side-block-group-name">📁 ${group.name}</span>
+            <div class="side-block-group-actions">
+                <button class="side-block-group-manage" data-group="${escapeHtml(group.name)}" title="管理">管理</button>
+                <button class="side-block-group-delete" data-group="${escapeHtml(group.name)}" title="删除组">×</button>
+            </div>
+        </div>`;
+        
+        html += `<div class="side-block-group-content ${expandedClass}" data-group-name="${escapeHtml(group.name)}">`;
+        
+        if (groupBlocks.length === 0) {
+            html += `<div class="side-block-group-empty" data-group-name="${escapeHtml(group.name)}">暂无方块</div>`;
+        } else {
+            groupBlocks.forEach((b, index) => {
+                const isSel = selectedBlocksSet.has(b);
+                const isKfBlock = kfReady && keyframeData.has(b.id);
+                // 动画模式：普通方块禁用；非动画模式：动画方块禁用
+                const disabledClass = (isKfMode && !isKfBlock) || (!isKfMode && isKfBlock) ? 'side-block-disabled' : '';
+                // 只要是动画方块就显示紫色小三角形
+                const kfBadge = isKfBlock ? '<span class="side-block-kf-badge"></span>' : '';
+                html += `<div class="side-block-item side-block-group-item ${isSel ? 'selected' : ''} ${disabledClass}" data-block-id="${b.id}">
+                    ${kfBadge}
+                    <span>❒ ${b.id}</span>
+                    <div class="side-block-actions">
+                        ${!isKfMode ? `<button class="side-block-copy" data-id="${b.id}" title="复制">复制</button>` : ''}
+                        <button class="side-block-delete" data-id="${b.id}" title="删除">删除</button>
+                    </div>
+                </div>`;
+                // 在组内最后一个方块后面添加横线
+                if (index === groupBlocks.length - 1) {
+                    html += `<div style="height:1px; background:rgba(59,130,246,0.3); margin:4px 8px;"></div>`;
+                }
+            });
+        }
+        
+        html += `</div>`;
+    });
+    
+    // 显示未分组的方块
+    ungroupedBlocks.forEach(b => {
         const isSel = selectedBlocksSet.has(b);
-        html += `<div class="side-block-item ${isSel ? 'selected' : ''}" data-block-id="${b.id}">
+        const isKfBlock = kfReady && keyframeData.has(b.id);
+        // 动画模式：普通方块禁用；非动画模式：动画方块禁用
+        const disabledClass = (isKfMode && !isKfBlock) || (!isKfMode && isKfBlock) ? 'side-block-disabled' : '';
+        // 只要是动画方块就显示紫色小三角形
+        const kfBadge = isKfBlock ? '<span class="side-block-kf-badge"></span>' : '';
+        html += `<div class="side-block-item ${isSel ? 'selected' : ''} ${disabledClass}" data-block-id="${b.id}">
+            ${kfBadge}
             <span>❒ ${b.id}</span>
             <div class="side-block-actions">
                 ${!isKfMode ? `<button class="side-block-copy" data-id="${b.id}" title="复制">复制</button>` : ''}
@@ -4916,6 +6834,14 @@ function renderSideBlockList() {
             const bid = item.dataset.blockId;
             const block = blocks.find(b => b.id === bid);
             if (block) {
+                // 关键帧模式下，未加入关键帧系统的方块不可选中
+                if (isKfMode && kfReady && !keyframeData.has(block.id)) {
+                    return;
+                }
+                // 非关键帧模式下，已加入关键帧系统的方块不可选中
+                if (!isKfMode && kfReady && keyframeData.has(block.id)) {
+                    return;
+                }
                 if (isKfMode) {
                     // 关键帧模式：支持 Ctrl+点击多选
                     const isMulti = e.ctrlKey || e.metaKey || e.shiftKey;
@@ -5015,6 +6941,149 @@ function renderSideBlockList() {
         }
     }
     
+    // 组折叠/展开按钮
+    sideList.querySelectorAll('.side-block-group-header').forEach(header => {
+        let longPressTimer = null;
+        let isLongPress = false;
+        
+        const groupName = header.dataset.groupName;
+        const groupBlocks = blocks.filter(b => b.group === groupName);
+        
+        header.addEventListener('click', (e) => {
+            if (e.target.closest('.side-block-group-actions')) return;
+            if (isLongPress) {
+                isLongPress = false;
+                return;
+            }
+            
+            const isMulti = e.ctrlKey || e.metaKey;
+            if (isMulti) {
+                e.preventDefault();
+                groupBlocks.forEach(b => {
+                    selectedBlocksSet.add(b);
+                });
+                updateAxesVisibility();
+                blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+                renderSideBlockList();
+                if (groupBlocks.length > 0) {
+                    selectBlock(groupBlocks[0]);
+                }
+                return;
+            }
+            
+            const group = blockGroups.find(g => g.name === groupName);
+            if (group) {
+                group.expanded = !group.expanded;
+                renderSideBlockList();
+            }
+        });
+        
+        header.addEventListener('mousedown', () => {
+            longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                groupBlocks.forEach(b => {
+                    selectedBlocksSet.add(b);
+                });
+                updateAxesVisibility();
+                blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+                renderSideBlockList();
+                if (groupBlocks.length > 0) {
+                    selectBlock(groupBlocks[0]);
+                }
+            }, 500);
+        });
+        
+        header.addEventListener('mouseup', () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+        
+        header.addEventListener('mouseleave', () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+        
+        header.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                groupBlocks.forEach(b => {
+                    selectedBlocksSet.add(b);
+                });
+                updateAxesVisibility();
+                blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+                renderSideBlockList();
+                if (groupBlocks.length > 0) {
+                    selectBlock(groupBlocks[0]);
+                }
+            }, 500);
+        });
+        
+        header.addEventListener('touchend', () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+    });
+    
+    // 组管理按钮
+    sideList.querySelectorAll('.side-block-group-manage').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const groupName = btn.dataset.group;
+            showGroupManageModal(groupName);
+        });
+    });
+    
+    // 组删除按钮
+    sideList.querySelectorAll('.side-block-group-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const groupName = btn.dataset.group;
+            if (confirm(`确定要删除组 "${groupName}" 吗？组内方块将变为未分组状态。`)) {
+                removeGroup(groupName);
+                renderSideBlockList();
+            }
+        });
+    });
+    
+    // 组名右键编辑（电脑端）
+    sideList.querySelectorAll('.side-block-group-name').forEach(nameEl => {
+        nameEl.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const groupName = nameEl.closest('.side-block-group-header').dataset.groupName;
+            editGroupName(groupName);
+        });
+    });
+    
+    // 组名长按编辑（手机端）
+    let longPressTimer = null;
+    sideList.querySelectorAll('.side-block-group-name').forEach(nameEl => {
+        nameEl.addEventListener('touchstart', (e) => {
+            longPressTimer = setTimeout(() => {
+                const groupName = nameEl.closest('.side-block-group-header').dataset.groupName;
+                editGroupName(groupName);
+            }, 500);
+        });
+        nameEl.addEventListener('touchend', () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+        nameEl.addEventListener('touchmove', () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+    });
+    
     // 关键帧动画按钮
     const kfBtnSide = document.getElementById('sideBlockKeyframe');
     if (kfBtnSide) {
@@ -5059,8 +7128,8 @@ function setupSideListResize() {
         const rect = sideList.getBoundingClientRect();
         const edgeSize = 10;
 
-        if (isSidePanelMode) {
-            // 侧边模式：点击左侧边缘
+        if (isSidePanelMode || isNewLayoutMode) {
+            // 侧边模式或新布局模式：点击左侧边缘
             if (e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
                 e.preventDefault();
                 isResizingSideList = true;
@@ -5091,9 +7160,9 @@ function setupSideListResize() {
         if (isResizingSideList) return;
         const rect = sideList.getBoundingClientRect();
         const edgeSize = 10;
-        if (isSidePanelMode && e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
+        if ((isSidePanelMode || isNewLayoutMode) && e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
             sideList.style.cursor = 'ew-resize';
-        } else if (!isSidePanelMode && e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
+        } else if (!(isSidePanelMode || isNewLayoutMode) && e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
             sideList.style.cursor = 'ns-resize';
         } else {
             sideList.style.cursor = '';
@@ -5105,12 +7174,16 @@ function onSideListResizeMove(e) {
     if (!isResizingSideList) return;
     const sideList = document.getElementById('sideBlockList');
     if (!sideList) return;
-    if (isSidePanelMode) {
+    if (isSidePanelMode || isNewLayoutMode) {
         let newWidth = resizeStartDim + (resizeStartClient - e.clientX);
-        newWidth = Math.max(100, Math.min(500, newWidth));
+        newWidth = Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(MAX_SIDE_PANEL_WIDTH, newWidth));
         sideListWidth = newWidth;
+        sidePanelWidth = newWidth;
         sideList.style.width = newWidth + 'px';
+        if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${newWidth}px`;
+        if (sidePanelWidthRange) sidePanelWidthRange.value = newWidth;
         try { localStorage.setItem('ui_side_list_width', String(newWidth)); } catch (err) {}
+        try { localStorage.setItem('ui_side_panel_width', String(newWidth)); } catch (err) {}
     } else {
         let newHeight = resizeStartDim + (resizeStartClient - e.clientY);
         newHeight = Math.max(80, Math.min(400, newHeight));
@@ -5131,9 +7204,10 @@ function onSideListResizeUp() {
 function applySideListDimensions() {
     const sideList = document.getElementById('sideBlockList');
     if (!sideList) return;
-    if (isSidePanelMode) {
-        sideList.style.width = sideListWidth + 'px';
+    if (isSidePanelMode || isNewLayoutMode) {
+        sideList.style.width = sidePanelWidth + 'px';
         sideList.style.height = '';
+        sideListWidth = sidePanelWidth;
     } else {
         sideList.style.height = sideListHeight + 'px';
         sideList.style.width = '';
@@ -5204,8 +7278,7 @@ function setupNewLayoutUI() {
     document.getElementById('fileImportBtn')?.addEventListener('click', (e) => {
         e.stopPropagation();
         closeAllTopDropdowns();
-        // 触发导入命令
-        showModal("导入数据", "粘贴 playanimation 命令文本", (txt) => { if (txt) importFromCommands(txt); }, true);
+        showImportModal();
     });
     document.getElementById('fileExportBtn')?.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -5589,6 +7662,23 @@ if (pivotLinkCheckbox) {
         try { localStorage.setItem('ui_pivot_link_model', pivotLinkModel ? '1' : '0'); } catch (e) {}
     });
 }
+// 渲染局部坐标系复选框
+const localAxesCheckbox = document.getElementById('localAxesCheckbox');
+if (localAxesCheckbox) {
+    localAxesCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showLocalAxes = !showLocalAxes;
+        localAxesCheckbox.classList.toggle('checked', showLocalAxes);
+        localAxesCheckbox.setAttribute('aria-pressed', String(showLocalAxes));
+        try { localStorage.setItem('ui_show_local_axes', showLocalAxes ? '1' : '0'); } catch (e) {}
+        // 立即更新所有方块的坐标轴可见性
+        updateAxesVisibility();
+        if (selectedBlock || selectedBlocksSet.size) {
+            requestGizmoRefresh();
+            updateToolbar(true);
+        }
+    });
+}
 if (uiSettingsPanel) {
     uiSettingsPanel.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -5641,6 +7731,14 @@ try {
         if (!pivotLinkModel && pivotLinkCheckbox) {
             pivotLinkCheckbox.classList.remove('checked');
             pivotLinkCheckbox.setAttribute('aria-pressed', 'false');
+        }
+    }
+    const savedLocalAxes = localStorage.getItem('ui_show_local_axes');
+    if (savedLocalAxes !== null) {
+        showLocalAxes = savedLocalAxes === '1';
+        if (!showLocalAxes && localAxesCheckbox) {
+            localAxesCheckbox.classList.remove('checked');
+            localAxesCheckbox.setAttribute('aria-pressed', 'false');
         }
     }
 } catch (e) {}
@@ -5863,7 +7961,7 @@ function rotLocalAxesOfBlock(b) {
     const globalRz = new THREE.Matrix4().makeRotationZ(degToRad(-grz));
     const globalRx = new THREE.Matrix4().makeRotationX(degToRad(grx));
     const globalRy = new THREE.Matrix4().makeRotationY(degToRad(-gry));
-    const globalRot = globalRy.clone().multiply(globalRz).multiply(globalRx);
+    const globalRot = globalRy.clone().multiply(globalRx).multiply(globalRz);
     const matRy = new THREE.Matrix4().makeRotationY(degToRad(-ry));
     const matRx = new THREE.Matrix4().makeRotationX(degToRad(rx));
     return {
@@ -5871,6 +7969,32 @@ function rotLocalAxesOfBlock(b) {
         xAxis: new THREE.Vector3(1, 0, 0).applyMatrix4(matRy).applyMatrix4(globalRot).normalize(),
         zAxis: new THREE.Vector3(0, 0, 1).applyMatrix4(matRx).applyMatrix4(matRy).applyMatrix4(globalRot).normalize()
     };
+}
+
+// 全局旋转（rotatex/y/z）圆环法线基准
+// globalRot = Ry(-rotatey) * Rx(rotatex) * Rz(-rotatez)，矩阵右→左依次应用：Rz→Rx→Ry
+// 旋转轴 = 最外层左乘的逆推：改变 rotatey 整体左乘 Ry, 改变 rotatex 整体左乘 Ry·Rx·Ry⁻¹, 改变 rotatez 整体左乘 Ry·Rx·Rz·Rx⁻¹·Ry⁻¹
+// 因此各环法线：
+//   y 环 = (0,1,0) ………… Ry 在最外层，绕世界 Y
+//   x 环 = Ry(-gry) * (1,0,0) ………… 受 rotatey 影响
+//   z 环 = Ry(-gry) * Rx(grx) * (0,0,1) ………… 受 rotatey 和 rotatex 影响
+function globalRotBasisFor(axis) {
+    const gry = varValue('v.rotatey');
+    const grx = varValue('v.rotatex');
+    const Ry = new THREE.Matrix4().makeRotationY(degToRad(-gry));
+    const Rx = new THREE.Matrix4().makeRotationX(degToRad(grx));
+    if (axis === 'x') {
+        // rotatex 旋转轴 = Ry(-gry) * (1,0,0)
+        const n = new THREE.Vector3(1, 0, 0).applyMatrix4(Ry).normalize();
+        return orthonormalDiscBasis(n, new THREE.Vector3(0, 1, 0));
+    } else if (axis === 'y') {
+        // rotatey 旋转轴 = (0,1,0)：世界 Y（Ry 最后应用在最外层）
+        return orthonormalDiscBasis(new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0));
+    } else {
+        // rotatez 旋转轴 = Ry(-gry) * Rx(grx) * (0,0,1)：受 rotatey 和 rotatex 影响
+        const n = new THREE.Vector3(0, 0, 1).applyMatrix4(Rx).applyMatrix4(Ry).normalize();
+        return orthonormalDiscBasis(n, new THREE.Vector3(1, 0, 0));
+    }
 }
 
 function rotDiscBasisFor(b, axis) {
@@ -6149,12 +8273,9 @@ function makeActiveHighlight(meta) {
         plane.add(halo); plane.add(pHalo);
         const b = selected(); if (b) {
             let d;
-            // 全局旋转（rotatex/y/z）使用世界坐标轴基准
+            // 全局旋转（rotatex/y/z）按 Ry(-rotatey)*Rx(rotatex)*Rz(-rotatez) 顺序计算旋转轴方向
             if (meta.varName && meta.varName.startsWith('v.rotate')) {
-                const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
-                if (meta.axis === 'x') d = orthonormalDiscBasis(wx, wy);
-                else if (meta.axis === 'y') d = orthonormalDiscBasis(wy, wz);
-                else d = orthonormalDiscBasis(wz, wx);
+                d = globalRotBasisFor(meta.axis);
             } else {
                 d = rotDiscBasisFor(b, meta.axis);
             }
@@ -6232,12 +8353,9 @@ function updateActiveHighlightPose() {
         // 仅用于高亮显示的方向更新，不修改 activePick 基准方向
         // （activePick 基准方向在拖拽过程中保持初始值不变，保证 screenAngleFor 角度计算一致性）
         let d;
-        // 全局旋转（rotatex/y/z）使用世界坐标轴基准
+        // 全局旋转（rotatex/y/z）按 Ry(-rotatey)*Rx(rotatex)*Rz(-rotatez) 顺序计算旋转轴方向
         if (activePick.varName && activePick.varName.startsWith('v.rotate')) {
-            const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
-            if (activePick.axis === 'x') d = orthonormalDiscBasis(wx, wy);
-            else if (activePick.axis === 'y') d = orthonormalDiscBasis(wy, wz);
-            else d = orthonormalDiscBasis(wz, wx);
+            d = globalRotBasisFor(activePick.axis);
         } else {
             d = rotDiscBasisFor(b, activePick.axis);
         }
@@ -6569,10 +8687,16 @@ function rebuildGizmo() {
     gizmoRoot.visible = true;
     gizmoRoot.position.copy(originOfBlock(b));
     gizmoRoot.quaternion.identity();
-    // 新操作模式下，枢轴/位移/全局旋转时隐藏方块自身坐标轴（全局旋转使用单独的全局坐标轴）
+    // 新操作模式下，枢轴/位移时隐藏方块自身坐标轴（使用 gizmo 代替）
+    // 旋转模式使用 gizmo 旋转轴细线，也隐藏旧 axisHelper 避免双重渲染
     if (isNewLayoutMode) {
-        const hideAxes = herModes.has('origin') || herModes.has('base');
-        blocks.forEach(blk => { if (blk.axisHelper) blk.axisHelper.visible = !hideAxes; });
+        const isRot = herModes.has('rotate') || herModes.has('centerRotate') || herModes.has('globalRotate') || herModes.has('globalCenterRotate');
+        const hideAxes = !showLocalAxes || herModes.has('origin') || herModes.has('base') || isRot;
+        blocks.forEach(blk => {
+            if (blk.axisHelper) {
+                blk.axisHelper.visible = hideAxes ? false : (blk === selectedBlock || selectedBlocksSet.has(blk));
+            }
+        });
     }
     gizmoRoot.add(makeOriginCenterLine(b));
     const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
@@ -6630,22 +8754,89 @@ function rebuildGizmo() {
     }
 
     if (herModes.has('globalRotate')) {
-        const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
-        gizmoRoot.add(makeArc('x',0xff8c00,'v.rotatex',wx,wy,wz,{rotMode:'origin',priority:30}));
-        gizmoRoot.add(makeArc('y',0x00c853,'v.rotatey',wy,wz,wx,{rotMode:'origin',priority:30}));
-        gizmoRoot.add(makeArc('z',0x2979ff,'v.rotatez',wz,wx,wy,{rotMode:'origin',priority:30}));
+        const bx = globalRotBasisFor('x'), by = globalRotBasisFor('y'), bz = globalRotBasisFor('z');
+        gizmoRoot.add(makeArc('x',0xff8c00,'v.rotatex',bx.z,bx.x,bx.y,{rotMode:'origin',priority:30}));
+        gizmoRoot.add(makeArc('y',0x00c853,'v.rotatey',by.z,by.x,by.y,{rotMode:'origin',priority:30}));
+        gizmoRoot.add(makeArc('z',0x2979ff,'v.rotatez',bz.z,bz.x,bz.y,{rotMode:'origin',priority:30}));
         rotArcGroups.slice(-3).forEach(g => { g.userData.herGlobalRot = true; });
     }
     if (herModes.has('globalCenterRotate')) {
         const co = centerOfBlock(b).sub(originOfBlock(b));
-        const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
-        gizmoRoot.add(makeArc('x',0xffab40,'v.rotatex',wx,wy,wz,{rotMode:'center',offset:co,priority:40}));
-        gizmoRoot.add(makeArc('y',0x69f0ae,'v.rotatey',wy,wz,wx,{rotMode:'center',offset:co,priority:40}));
-        gizmoRoot.add(makeArc('z',0x40c4ff,'v.rotatez',wz,wx,wy,{rotMode:'center',offset:co,priority:40}));
+        const bx = globalRotBasisFor('x'), by = globalRotBasisFor('y'), bz = globalRotBasisFor('z');
+        gizmoRoot.add(makeArc('x',0xffab40,'v.rotatex',bx.z,bx.x,bx.y,{rotMode:'center',offset:co,priority:40}));
+        gizmoRoot.add(makeArc('y',0x69f0ae,'v.rotatey',by.z,by.x,by.y,{rotMode:'center',offset:co,priority:40}));
+        gizmoRoot.add(makeArc('z',0x40c4ff,'v.rotatez',bz.z,bz.x,bz.y,{rotMode:'center',offset:co,priority:40}));
         rotArcGroups.slice(-3).forEach(g => { g.userData.herGlobalRot = true; });
+    }
+    // 旋转模式下添加穿过旋转中心的旋转轴细线（userData 记录类型，供动态更新用）
+    const isAnyRot = herModes.has('rotate') || herModes.has('centerRotate') || herModes.has('globalRotate') || herModes.has('globalCenterRotate');
+    if (isAnyRot) {
+        const axisColors = { x: 0xff6666, y: 0x66ff66, z: 0x66aaff };
+        const isCenter = herModes.has('centerRotate') || herModes.has('globalCenterRotate');
+        const centerOffset = isCenter ? centerOfBlock(b).sub(originOfBlock(b)) : new THREE.Vector3();
+        const hasLocal = herModes.has('rotate') || herModes.has('centerRotate');
+        const hasGlobal = herModes.has('globalRotate') || herModes.has('globalCenterRotate');
+        // 局部旋转轴 = 方块局部坐标轴方向
+        if (hasLocal) {
+            const la = rotLocalAxesOfBlock(b);
+            const laDirs = { x: la.xAxis, y: la.yAxis, z: la.zAxis };
+            ['x','y','z'].forEach(axis => {
+                const line = makeGizmoAxisLine(laDirs[axis], axisColors[axis], 2.5);
+                line.position.copy(centerOffset);
+                line.userData.axisType = 'local';
+                line.userData.axisName = axis;
+                gizmoRoot.add(line);
+                gizmoAxisLines.push(line);
+            });
+        }
+        // 全局旋转轴 = 按 Ry*Rx*Rz 顺序计算的旋转轴方向
+        if (hasGlobal) {
+            ['x','y','z'].forEach(axis => {
+                const basis = globalRotBasisFor(axis);
+                const line = makeGizmoAxisLine(basis.z, axisColors[axis], 2.5);
+                line.position.copy(centerOffset);
+                line.userData.axisType = 'global';
+                line.userData.axisName = axis;
+                gizmoRoot.add(line);
+                gizmoAxisLines.push(line);
+            });
+        }
     }
     if (herModes.has('scale')) gizmoRoot.add(makeScaleDots(b));
 }
+// 动态更新 Gizmo 旋转轴细线方向，跟随当前旋转值
+function updateGizmoAxisLines(b) {
+    const isCenter = herModes.has('centerRotate') || herModes.has('globalCenterRotate');
+    const centerOffset = isCenter ? centerOfBlock(b).sub(originOfBlock(b)) : new THREE.Vector3();
+    const hasLocal = herModes.has('rotate') || herModes.has('centerRotate');
+    const hasGlobal = herModes.has('globalRotate') || herModes.has('globalCenterRotate');
+    for (const line of gizmoAxisLines) {
+        const axis = line.userData.axisName;
+        if (!axis) continue;
+        let dir;
+        if (line.userData.axisType === 'local' && hasLocal) {
+            const la = rotLocalAxesOfBlock(b);
+            const dirs = { x: la.xAxis, y: la.yAxis, z: la.zAxis };
+            dir = dirs[axis];
+        } else if (line.userData.axisType === 'global' && hasGlobal) {
+            const basis = globalRotBasisFor(axis);
+            dir = basis.z;
+        } else {
+            continue;
+        }
+        // 更新线几何体顶点
+        const d = dir.clone().normalize();
+        const len = 2.5;
+        const positions = new Float32Array([
+            -d.x * len, -d.y * len, -d.z * len,
+             d.x * len,  d.y * len,  d.z * len
+        ]);
+        line.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        line.geometry.attributes.position.needsUpdate = true;
+        line.position.copy(centerOffset);
+    }
+}
+
 function updateRotGizmosLive() {
     const b = selected(); if (!b || !rotArcGroups.length) return;
     gizmoRoot.updateMatrixWorld(true);
@@ -6653,13 +8844,9 @@ function updateRotGizmosLive() {
         const axis = g.userData.herRotAxis;
         const plane = g.userData.herRotPlane;
         if (g.userData.herGlobalRot) {
-            // 全局旋转：圆环法线 = 世界轴（铅垂于旋转轴），位置跟随方块
+            // 全局旋转：圆环法线 = 按 Ry(-rotatey)*Rx(rotatex)*Rz(-rotatez) 顺序计算的旋转轴方向
             g.position.copy(rotGizmoCenterLocal(b, g.userData.herRotMode));
-            const wx = new THREE.Vector3(1,0,0), wy = new THREE.Vector3(0,1,0), wz = new THREE.Vector3(0,0,1);
-            let d;
-            if (axis === 'x') d = orthonormalDiscBasis(wx, wy);
-            else if (axis === 'y') d = orthonormalDiscBasis(wy, wz);
-            else d = orthonormalDiscBasis(wz, wx);
+            const d = globalRotBasisFor(axis);
             orientDiscToBasis(g, d.x, d.y, d.z);
             const wc = new THREE.Vector3();
             g.getWorldPosition(wc);
@@ -6773,7 +8960,7 @@ function updateToolbar(force) {
     if (!isNewLayoutMode && herModes.size > 0) {
         herModes.clear();
         document.querySelectorAll('.her-mode-btn').forEach(b => b.classList.remove('active'));
-        blocks.forEach(blk => { if (blk.axisHelper) blk.axisHelper.visible = (blk === selectedBlock || selectedBlocksSet.has(blk)); });
+        blocks.forEach(blk => { if (blk.axisHelper) blk.axisHelper.visible = showLocalAxes && (blk === selectedBlock || selectedBlocksSet.has(blk)); });
         rebuildGizmo();
         return;
     }
@@ -6807,6 +8994,10 @@ function syncGizmo() {
         gizmoArrowGroups.forEach(g => g.scale.set(s, s, s));
         rotArcGroups.forEach(g => g.scale.set(s, s, s));
         gizmoAxisLines.forEach(g => g.scale.set(s, s, s));
+        // 动态更新旋转轴方向，使其跟随圆环变化
+        if (herModes.has('rotate') || herModes.has('centerRotate') || herModes.has('globalRotate') || herModes.has('globalCenterRotate')) {
+            updateGizmoAxisLines(b);
+        }
 
     }
     updateToolbar(false);
@@ -6847,7 +9038,9 @@ function beginGizmoDrag(cx, cy, ev) {
     if (ev?.target?.closest && ev.target.closest('#her-transform-toolbar')) return false;
     const obj = pickGizmo({clientX:cx, clientY:cy});
     if (!obj) return false; const meta = obj.userData.her; if (!meta) return false;
-    if (meta.type === 'input') { pendingInputPick = {varName:meta.varName, x:cx, y:cy, lastX:cx, lastY:cy, moved:false, t:performance.now()}; controls.enabled = false; if(ev) ev.preventDefault(); return true; }
+    // 立即禁用 OrbitControls，防止其响应此次点击导致摄像机漂移
+    controls.enabled = false; if(ev) ev.preventDefault();
+    if (meta.type === 'input') { pendingInputPick = {varName:meta.varName, x:cx, y:cy, lastX:cx, lastY:cy, moved:false, t:performance.now()}; return true; }
     activePick = Object.assign({}, meta, {_hitObj:obj}); lastPX = cx; lastPY = cy;
     draggingGizmo = true; dragNeedsRebuild = false; lastDragRebuild = 0;
     // 非世界轴位移模式的 base 箭头：将拖拽轴更新为实际的剪切轴方向，匹配视觉箭头朝向
@@ -6889,7 +9082,7 @@ function beginGizmoDrag(cx, cy, ev) {
     }
     makeActiveHighlight(activePick);
     if (activePick.type === 'rot') activePick.lastAngle = screenAngleFor(activePick, cx, cy);
-    controls.enabled = false; if (ev) ev.preventDefault(); return true;
+    return true;
 }
 function moveGizmoDrag(cx, cy, ev) {
     if (pendingInputPick) { pendingInputPick.lastX=cx; pendingInputPick.lastY=cy; if(Math.hypot(cx-pendingInputPick.x,cy-pendingInputPick.y)>10) pendingInputPick.moved=true; if(ev) ev.preventDefault(); return true; }
@@ -6985,11 +9178,10 @@ window.addEventListener('keydown', (e) => {
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x030617);
-scene.fog = new THREE.FogExp2(0x030617, 0.008);
 gizmoRoot = new THREE.Group(); scene.add(gizmoRoot); gizmoRoot.visible = false;
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 20000);
 camera.position.set(8, 6, 10);
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
 renderer.setClearColor(0x000000, 1); // 不透明背景，避免透明穿透导致空白
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true; // 如需关闭阴影可改为 false
@@ -7098,7 +9290,6 @@ function applyTheme() {
         body.style.backgroundAttachment = 'fixed';
         body.style.backgroundColor = '#eef2ff';
         scene.background = new THREE.Color(0xeef2ff);
-        scene.fog = null;
         ambient.intensity = 1.0;
         mainLight.intensity = 1.0;
         fillLight.intensity = 0.6;
@@ -7108,7 +9299,6 @@ function applyTheme() {
         body.style.backgroundImage = '';
         body.style.backgroundColor = '';
         scene.background = new THREE.Color(0x030617);
-        scene.fog = new THREE.FogExp2(0x030617, 0.008);
         ambient.intensity = 0.8;
         mainLight.intensity = 0.85;
         fillLight.intensity = 0.5;
@@ -7399,9 +9589,9 @@ function onPointerDown(e) {
     dragStartClientX = e.clientX;
     dragStartWidth = panel.offsetWidth;
     document.body.style.userSelect = 'none';
-    document.body.style.cursor = isSidePanelMode ? 'ew-resize' : 'ns-resize';
-    // 侧边模式拖拽时降低 3D 渲染精度以减少卡顿
-    if (isSidePanelMode) {
+    document.body.style.cursor = isSidePanelMode || isNewLayoutMode ? 'ew-resize' : 'ns-resize';
+    // 侧边模式或新布局模式拖拽时降低 3D 渲染精度以减少卡顿
+    if (isSidePanelMode || isNewLayoutMode) {
         panel.style.willChange = 'width';
         renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * 0.5));
     }
@@ -7413,11 +9603,18 @@ function onPointerMove(e) {
     if (resizeRAFId) cancelAnimationFrame(resizeRAFId);
     resizeRAFId = requestAnimationFrame(() => {
         resizeRAFId = null;
-        if (isSidePanelMode) {
+        if (isSidePanelMode || isNewLayoutMode) {
             const dx = e.clientX - dragStartClientX;
             let newWidth = dragStartWidth - dx;
             newWidth = Math.min(MAX_SIDE_PANEL_WIDTH, Math.max(MIN_SIDE_PANEL_WIDTH, newWidth));
             applyPanelWidth(newWidth);
+            if (isNewLayoutMode) {
+                const sideList = document.getElementById('sideBlockList');
+                if (sideList) {
+                    sideList.style.width = `${newWidth}px`;
+                    sideListWidth = newWidth;
+                }
+            }
         } else {
             const dy = e.clientY - dragStartClientY;
             let newHeight = dragStartHeight - dy;
@@ -7433,12 +9630,14 @@ function onPointerUp() {
     document.body.style.cursor = '';
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
-    if (isSidePanelMode) {
+    if (isSidePanelMode || isNewLayoutMode) {
         panel.style.willChange = '';
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         try { localStorage.setItem('ui_side_panel_width', String(sidePanelWidth)); } catch (e) {}
-        // 拖拽结束后更新变量面板布局（旧版侧边栏单列/双列切换）
-        if (selectedBlock && !isNewLayoutMode) renderVariablesForBlock(selectedBlock);
+        if (isNewLayoutMode) {
+            try { localStorage.setItem('ui_side_list_width', String(sidePanelWidth)); } catch (err) {}
+        }
+        if (selectedBlock) renderVariablesForBlock(selectedBlock);
     }
     try { positionUISettingsPanel(); } catch (e) { /* ignore */ }
 }
