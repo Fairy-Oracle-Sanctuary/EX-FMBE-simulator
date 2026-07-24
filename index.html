@@ -3782,6 +3782,10 @@ function showBlockDropdown(btn) {
             let isLongPress = false;
             
             groupHeader.addEventListener('click', (e) => {
+                if (touchMoved) {
+                    touchMoved = false;
+                    return;
+                }
                 if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
                 if (isLongPress) {
                     isLongPress = false;
@@ -3855,8 +3859,9 @@ function showBlockDropdown(btn) {
                 }
             });
             
-            groupHeader.addEventListener('touchstart', (e) => {
-                e.preventDefault();
+            let touchMoved = false;
+            groupHeader.addEventListener('touchstart', () => {
+                touchMoved = false;
                 longPressTimer = setTimeout(() => {
                     isLongPress = true;
                     groupBlocks.forEach(b => {
@@ -3884,6 +3889,14 @@ function showBlockDropdown(btn) {
                 }
             });
             
+            groupHeader.addEventListener('touchmove', () => {
+                touchMoved = true;
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            });
+            
             // 管理按钮事件
             const manageBtn = groupHeader.querySelector('[data-group-manage]');
             manageBtn.addEventListener('click', (e) => {
@@ -3902,16 +3915,18 @@ function showBlockDropdown(btn) {
             const deleteBtn = groupHeader.querySelector('[data-group-delete]');
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (confirm(`确定要删除组 "${groupName}" 吗？组内方块将变为未分组状态。`)) {
-                    removeGroup(groupName);
-                    menu.remove();
-                    activeDropdown = null;
-                    if (scrollListener) {
-                        window.removeEventListener('scroll', scrollListener);
-                        document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
-                        scrollListener = null;
+                showConfirmModal(`确定要删除组 "${groupName}" 吗？<br><small style="color:#94a3b8;">组内方块将变为未分组状态。</small>`, (confirmed) => {
+                    if (confirmed) {
+                        removeGroup(groupName);
+                        menu.remove();
+                        activeDropdown = null;
+                        if (scrollListener) {
+                            window.removeEventListener('scroll', scrollListener);
+                            document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
+                            scrollListener = null;
+                        }
                     }
-                }
+                });
             });
             
             // 右键编辑组名（电脑端）
@@ -6950,6 +6965,10 @@ function renderSideBlockList() {
         const groupBlocks = blocks.filter(b => b.group === groupName);
         
         header.addEventListener('click', (e) => {
+            if (touchMoved) {
+                touchMoved = false;
+                return;
+            }
             if (e.target.closest('.side-block-group-actions')) return;
             if (isLongPress) {
                 isLongPress = false;
@@ -7007,8 +7026,9 @@ function renderSideBlockList() {
             }
         });
         
-        header.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        let touchMoved = false;
+        header.addEventListener('touchstart', () => {
+            touchMoved = false;
             longPressTimer = setTimeout(() => {
                 isLongPress = true;
                 groupBlocks.forEach(b => {
@@ -7024,6 +7044,14 @@ function renderSideBlockList() {
         });
         
         header.addEventListener('touchend', () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+        
+        header.addEventListener('touchmove', () => {
+            touchMoved = true;
             if (longPressTimer) {
                 clearTimeout(longPressTimer);
                 longPressTimer = null;
