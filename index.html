@@ -1732,6 +1732,7 @@ body.light-mode .keyframe-import-time-input input {
 <body>
 
 <div id="canvas-container"></div>
+<div id="uiScaleTarget">
 <div class="top-bar">
     <button class="skew-btn" id="fullscreenBtn"><span>⛶ 全屏</span></button>
     <button class="skew-btn" id="exitFullscreenBtn" style="display:none;"><span>✕ 退出全屏</span></button>
@@ -1866,11 +1867,20 @@ body.light-mode .keyframe-import-time-input input {
                 <div style="display:flex; justify-content:space-between; align-items:center;"><span>折叠按钮大小</span><span id="collapseBtnSizeLabel">14px</span></div>
                 <input id="collapseBtnSizeRange" type="range" min="10" max="30" value="14" style="width:100%;">
             </div>
+            <div class="ui-settings-item" id="uiScaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span>UI缩放</span><span id="uiScaleLabel">100%</span></div>
+                <input id="uiScaleRange" type="range" min="50" max="150" value="100" style="width:100%;">
+                <div id="uiScaleRevert" style="display:none; justify-content:flex-end; align-items:center; gap:6px;">
+                    <span id="uiScaleRevertTimer" style="font-size:11px; color:#f87171;"></span>
+                    <button id="uiScaleRevertBtn" style="padding:3px 10px; border:none; border-radius:4px; background:#ef4444; color:#fff; font-size:11px; cursor:pointer;">↩ 撤销缩放</button>
+                </div>
+            </div>
         </div>
         <div id="varsContainer" class="variables-container"></div>
         <div id="newVarContainer" style="margin-top: 12px;"></div>
         <div class="info-note">✨ 反馈: 3155929574@qq.com<br></div>
     </div>
+</div>
 </div>
 
 <script type="importmap">
@@ -4557,12 +4567,18 @@ function showCompressExportModal(returnToList = false) {
         });
     }
 
+    const isMobile = window.innerWidth < 768;
+    const winWidth = isMobile ? '90%' : '720px';
+    const winHeight = isMobile ? '80vh' : '400px';
+    const winLeft = isMobile ? '5%' : '100px';
+    const winTop = isMobile ? '10vh' : '100px';
+    
     const win = document.createElement('div');
     win.style.position = 'fixed';
-    win.style.left = '100px';
-    win.style.top = '100px';
-    win.style.width = '720px';
-    win.style.height = '400px';
+    win.style.left = winLeft;
+    win.style.top = winTop;
+    win.style.width = winWidth;
+    win.style.height = winHeight;
     win.style.zIndex = '501';
     win.style.background = '#1e293b';
     win.style.border = '1px solid #3b82f6';
@@ -4830,6 +4846,8 @@ function showCompressExportModal(returnToList = false) {
                 const colors = getGroupColor(groupName);
 
                 const cell = document.createElement('div');
+                cell.dataset.xi = xi;
+                cell.dataset.zi = zi;
                 cell.style.width = `${cellSize}px`;
                 cell.style.height = `${cellSize}px`;
                 cell.style.display = 'flex';
@@ -4868,6 +4886,18 @@ function showCompressExportModal(returnToList = false) {
                     }
                     toggleCell(xi, zi);
                 };
+                
+                cell.addEventListener('touchend', (e) => {
+                    if (!isTouchDragging) {
+                        const isLit = compressGrid[xi] && compressGrid[xi][zi] >= 0;
+                        if (isLit) {
+                            drawMode = 'dark';
+                        } else {
+                            drawMode = 'light';
+                        }
+                        toggleCell(xi, zi);
+                    }
+                });
                 cell.onmouseenter = () => {
                     if (isMouseDown) {
                         toggleCell(xi, zi);
@@ -4988,7 +5018,7 @@ function showCompressExportModal(returnToList = false) {
         ezInput = win.querySelector('#cpEZ');
 
         title.textContent = '📦 压缩导出';
-        win.style.height = '550px';
+        win.style.height = isMobile ? '85vh' : '550px';
         
         const sx = parseInt(sxInput.value) || 0;
         const sz = parseInt(szInput.value) || 0;
@@ -5044,6 +5074,8 @@ function showCompressExportModal(returnToList = false) {
 
         let touchStartDist = 0;
         let touchStartScale = 1;
+        let touchStartX = 0, touchStartY = 0;
+        let isTouchDragging = false;
 
         function handleTouchStart(e) {
             if (e.touches.length === 2) {
@@ -5051,6 +5083,10 @@ function showCompressExportModal(returnToList = false) {
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 touchStartDist = Math.sqrt(dx * dx + dy * dy);
                 touchStartScale = canvasScale;
+            } else if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                isTouchDragging = false;
             }
         }
 
@@ -5063,6 +5099,21 @@ function showCompressExportModal(returnToList = false) {
                 const scale = touchStartScale * (dist / touchStartDist);
                 canvasScale = Math.max(0.5, Math.min(3, scale));
                 renderGrid();
+            } else if (e.touches.length === 1) {
+                const dx = e.touches[0].clientX - touchStartX;
+                const dy = e.touches[0].clientY - touchStartY;
+                if (Math.sqrt(dx * dx + dy * dy) > 5) {
+                    isTouchDragging = true;
+                }
+                if (isTouchDragging) {
+                    e.preventDefault();
+                    const target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+                    if (target && target.dataset && target.dataset.xi !== undefined) {
+                        const xi = parseInt(target.dataset.xi);
+                        const zi = parseInt(target.dataset.zi);
+                        toggleCell(xi, zi);
+                    }
+                }
             }
         }
 
@@ -5201,8 +5252,10 @@ function showCompressExportModal(returnToList = false) {
 
     function onResize(e) {
         if (!isResizing) return;
-        const newW = Math.max(500, winW + e.clientX - resizeSX);
-        const newH = Math.max(300, winH + e.clientY - resizeSY);
+        const minW = isMobile ? 280 : 500;
+        const minH = isMobile ? 200 : 300;
+        const newW = Math.max(minW, winW + e.clientX - resizeSX);
+        const newH = Math.max(minH, winH + e.clientY - resizeSY);
         win.style.width = `${newW}px`;
         win.style.height = `${newH}px`;
         if (canvas) renderGrid();
@@ -6629,7 +6682,7 @@ function setSidePanelWidth(value) {
             panel.dataset.narrow = sidePanelWidth < 400 ? 'true' : 'false';
         }
     }
-    if (isNewLayoutMode) {
+    if (isNewLayoutMode && isSidePanelMode) {
         const sideList = document.getElementById('sideBlockList');
         if (sideList) {
             sideList.style.width = `${sidePanelWidth}px`;
@@ -7156,8 +7209,8 @@ function setupSideListResize() {
         const rect = sideList.getBoundingClientRect();
         const edgeSize = 10;
 
-        if (isSidePanelMode || isNewLayoutMode) {
-            // 侧边模式或新布局模式：点击左侧边缘
+        if (isSidePanelMode) {
+            // 侧边模式：点击左侧边缘
             if (e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
                 e.preventDefault();
                 isResizingSideList = true;
@@ -7188,9 +7241,9 @@ function setupSideListResize() {
         if (isResizingSideList) return;
         const rect = sideList.getBoundingClientRect();
         const edgeSize = 10;
-        if ((isSidePanelMode || isNewLayoutMode) && e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
+        if (isSidePanelMode && e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
             sideList.style.cursor = 'ew-resize';
-        } else if (!(isSidePanelMode || isNewLayoutMode) && e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
+        } else if (!isSidePanelMode && e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
             sideList.style.cursor = 'ns-resize';
         } else {
             sideList.style.cursor = '';
@@ -7202,7 +7255,7 @@ function onSideListResizeMove(e) {
     if (!isResizingSideList) return;
     const sideList = document.getElementById('sideBlockList');
     if (!sideList) return;
-    if (isSidePanelMode || isNewLayoutMode) {
+    if (isSidePanelMode) {
         let newWidth = resizeStartDim + (resizeStartClient - e.clientX);
         newWidth = Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(MAX_SIDE_PANEL_WIDTH, newWidth));
         sideListWidth = newWidth;
@@ -7232,7 +7285,7 @@ function onSideListResizeUp() {
 function applySideListDimensions() {
     const sideList = document.getElementById('sideBlockList');
     if (!sideList) return;
-    if (isSidePanelMode || isNewLayoutMode) {
+    if (isSidePanelMode) {
         sideList.style.width = sidePanelWidth + 'px';
         sideList.style.height = '';
         sideListWidth = sidePanelWidth;
@@ -7613,6 +7666,97 @@ if (collapseBtnSizeRange) {
     collapseBtnSizeRange.addEventListener('input', (e) => {
         collapseBtnSize = parseInt(e.target.value) || 14;
         applyCollapseBtnSize();
+    });
+}
+
+// ========== UI缩放设置 ==========
+let uiScale = 100;
+let uiScaleBeforeChange = 100;
+let uiScaleRevertTimer = null;
+let uiScaleRevertCountdown = 10;
+let uiScaleRafId = null;
+const uiScaleRange = document.getElementById('uiScaleRange');
+const uiScaleLabel = document.getElementById('uiScaleLabel');
+const uiScaleRevert = document.getElementById('uiScaleRevert');
+const uiScaleRevertTimerEl = document.getElementById('uiScaleRevertTimer');
+const uiScaleRevertBtn = document.getElementById('uiScaleRevertBtn');
+
+function applyUIScale() {
+    const target = document.getElementById('uiScaleTarget');
+    if (target) target.style.zoom = (uiScale / 100);
+    if (uiScaleLabel) uiScaleLabel.textContent = uiScale + '%';
+    if (uiScaleRange) uiScaleRange.value = uiScale;
+    try { localStorage.setItem('ui_scale', String(uiScale)); } catch (e) {}
+}
+
+function startUIScaleRevert() {
+    if (uiScaleRevertTimer) clearInterval(uiScaleRevertTimer);
+    uiScaleRevertCountdown = 10;
+    if (uiScaleRevert) uiScaleRevert.style.display = 'flex';
+    if (uiScaleRevertTimerEl) uiScaleRevertTimerEl.textContent = '(' + uiScaleRevertCountdown + 's)';
+    uiScaleRevertTimer = setInterval(() => {
+        uiScaleRevertCountdown--;
+        if (uiScaleRevertCountdown <= 0) {
+            clearInterval(uiScaleRevertTimer);
+            uiScaleRevertTimer = null;
+            if (uiScaleRevert) uiScaleRevert.style.display = 'none';
+        }
+        if (uiScaleRevertTimerEl) uiScaleRevertTimerEl.textContent = uiScaleRevertCountdown > 0 ? '(' + uiScaleRevertCountdown + 's)' : '';
+    }, 1000);
+}
+
+function doUIScaleRevert() {
+    uiScale = uiScaleBeforeChange;
+    applyUIScale();
+    if (uiScaleRevertTimer) { clearInterval(uiScaleRevertTimer); uiScaleRevertTimer = null; }
+    if (uiScaleRevert) uiScaleRevert.style.display = 'none';
+}
+
+// Ctrl+Shift+0 全局快捷键恢复 100%
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === '0') {
+        e.preventDefault();
+        uiScale = 100;
+        uiScaleBeforeChange = 100;
+        applyUIScale();
+        if (uiScaleRevertTimer) { clearInterval(uiScaleRevertTimer); uiScaleRevertTimer = null; }
+        if (uiScaleRevert) uiScaleRevert.style.display = 'none';
+    }
+});
+
+if (uiScaleRevertBtn) {
+    uiScaleRevertBtn.addEventListener('click', doUIScaleRevert);
+}
+
+try {
+    const saved = parseInt(localStorage.getItem('ui_scale') || '100', 10);
+    if (!isNaN(saved) && saved >= 50 && saved <= 150) {
+        uiScale = saved;
+        uiScaleBeforeChange = saved;
+    }
+} catch (e) {}
+applyUIScale();
+
+if (uiScaleRange) {
+    // 拖动时实时预览（rAF 节流，画布不受影响无闪烁）
+    uiScaleRange.addEventListener('input', (e) => {
+        uiScale = parseInt(e.target.value) || 100;
+        if (uiScaleLabel) uiScaleLabel.textContent = uiScale + '%';
+        if (!uiScaleRafId) {
+            uiScaleRafId = requestAnimationFrame(() => {
+                uiScaleRafId = null;
+                const target = document.getElementById('uiScaleTarget');
+                if (target) target.style.zoom = (uiScale / 100);
+            });
+        }
+    });
+    // 松手时保存并弹出撤销
+    uiScaleRange.addEventListener('change', (e) => {
+        const newVal = parseInt(e.target.value) || 100;
+        if (newVal === uiScaleBeforeChange) return;
+        uiScaleBeforeChange = newVal;
+        try { localStorage.setItem('ui_scale', String(uiScale)); } catch (e) {}
+        startUIScaleRevert();
     });
 }
 
