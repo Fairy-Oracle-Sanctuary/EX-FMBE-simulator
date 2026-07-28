@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX fmbe模拟器v.3.0</title>
+    <title>EX fmbe模拟器</title>
 <style>
 /* ========== 批量修改三列布局 ========== */
 .batch-three-columns { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
@@ -690,6 +690,35 @@ body.light-mode .her-mode-btn.active {
 body.light-mode .top-toolbar-divider {
     background: rgba(0,0,0,0.08);
 }
+/* 画笔模式：画笔长度滑动条（显示在"操作"按钮右侧） */
+.brush-length-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid rgba(100,116,139,0.25);
+}
+.brush-length-label {
+    font-size: 12px;
+    color: #cbd5e1;
+    white-space: nowrap;
+}
+.brush-length-range {
+    width: 120px;
+    accent-color: #3b82f6;
+    cursor: pointer;
+}
+.brush-length-value {
+    font-size: 12px;
+    min-width: 28px;
+    text-align: right;
+    font-family: monospace;
+    color: #60a5fa;
+}
+body.light-mode .brush-length-toolbar { border-left-color: rgba(0,0,0,0.08); }
+body.light-mode .brush-length-label { color: #334155; }
+body.light-mode .brush-length-value { color: #2563eb; }
 .top-menu-btn {
     padding: 6px 10px !important;
     font-size: 13px !important;
@@ -807,9 +836,9 @@ body.light-mode .side-block-list:not(.side-list-bottom) {
     right: 0;
     width: auto;
     height: 160px;
-    border-top: 4px solid rgba(59,130,246,0.15);
-    border-top-width: 4px !important;
+    border-top: none !important;
 }
+
 .side-block-list.side-list-bottom:hover {
     border-top-color: rgba(59,130,246,0.4);
 }
@@ -1776,6 +1805,11 @@ body.light-mode .keyframe-import-time-input input {
                 <div class="top-dropdown-item" data-action="changelog"><span>📋 网站日志</span></div>
             </div>
         </div>
+        <div class="brush-length-toolbar" id="brushLengthToolbar" style="display:none; align-items:center; gap:8px; margin-left:10px; padding-left:10px; border-left:1px solid rgba(100,116,139,0.25);">
+            <span class="brush-length-label">画笔长度(米)</span>
+            <input class="brush-length-range" id="brushLengthRange" type="range" min="0.1" max="5" step="0.1" value="1.0">
+            <span class="brush-length-value" id="brushLengthLabel">1.0</span>
+        </div>
         <div class="top-toolbar-divider"></div>
         <!-- 变换模式工具栏 -->
         <div class="her-transform-toolbar" id="herTransformToolbar">
@@ -1801,6 +1835,7 @@ body.light-mode .keyframe-import-time-input input {
 </div>
 <!-- 新布局侧面方块列表 -->
 <div class="side-block-list" id="sideBlockList" style="display:none;"></div>
+<div id="sideListResizeHandle" style="display:none;position:fixed;left:0;right:0;height:12px;z-index:26;background:linear-gradient(135deg,#1e4a76,#3b82f6);cursor:ns-resize;touch-action:none;"></div>
 <div class="data-panel" id="dataPanel">
     <div class="resize-handle" id="resizeHandle"></div>
     <div class="panel-content" id="panelContent">
@@ -1850,6 +1885,14 @@ body.light-mode .keyframe-import-time-input input {
             <div class="ui-settings-item" id="worldAxisDispSetting" style="margin-top:8px; display:none;">
                 <span>世界轴位移</span>
                 <button class="ui-checkbox" id="worldAxisDispCheckbox" type="button" aria-pressed="false"></button>
+            </div>
+            <div class="ui-settings-item" id="brushModeSetting" style="margin-top:8px; display:none;">
+                <span>画笔模式</span>
+                <button class="ui-checkbox" id="brushModeCheckbox" type="button" aria-pressed="false"></button>
+            </div>
+            <div class="ui-settings-item" id="brushThicknessSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>画笔粗细(米)</span><span id="brushThicknessLabel">1.0</span></div>
+                <input id="brushThicknessRange" type="range" min="0.1" max="5" step="0.1" value="1.0" style="width:100%;">
             </div>
             <div class="ui-settings-item" id="pivotLinkSetting" style="margin-top:8px; display:none;">
                 <span>枢轴联动模型</span>
@@ -1996,8 +2039,15 @@ const changelogData = [
     {
         date: "*",
         title: "公告",
-        items: ["EX模拟器APP将在联网条件下强制更新为 v.3.0 版本"],
+        items: ["EX模拟器APP将在联网条件下强制更新为 v.3.5 版本"],
         details: "本次更新为强制更新，所有植入了更新程序的客户端，都将在联网条件下将自动升级至最新版本。更新内容包括全新的文件夹管理系统、命令压缩导出功能等重大改进。",
+        actions: []
+    },
+    {
+        date: "2026-07-24",
+        title: "v.3.5 正式版",
+        items: ["更新了半砖与台阶","完善了缩放的交互","新增画笔模式（测试）"],
+        
         actions: []
     },
     {
@@ -2256,6 +2306,10 @@ class Block {
         if (this.rootGroup) {
             if (this.rootGroup.parent) this.rootGroup.parent.remove(this.rootGroup);
             this.rootGroup.traverse(obj => { if (obj.isMesh && obj.material) obj.material.dispose(); });
+            this.rootGroup = null;
+        }
+        if (this.mesh && this.mesh !== this.rootGroup && this.mesh.parent) {
+            this.mesh.parent.remove(this.mesh);
         }
         this.rootGroup = new THREE.Group();
         this.meshes = [];
@@ -2287,6 +2341,146 @@ this.updateMaterialSide();   // 新增
 return;
 
         } 
+        else if (this.type === 'halfbrick') {
+            const mat = (this.materialType === 'texture' && this.textureUrl)
+                ? new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide })
+                : makeSaturatedMaterial(this.materialColor, { side: THREE.DoubleSide });
+            
+            const boxGeo = new THREE.BoxGeometry(1, 0.5, 1);
+            boxGeo.translate(0, -0.25, 0);
+            
+            const positions = boxGeo.attributes.position.array;
+            const normals = boxGeo.attributes.normal.array;
+            const uvs = new Float32Array(positions.length * 2 / 3);
+            
+            for (let i = 0; i < positions.length; i += 3) {
+                const nx = normals[i];
+                const ny = normals[i + 1];
+                const nz = normals[i + 2];
+                const x = positions[i];
+                const y = positions[i + 1];
+                const z = positions[i + 2];
+                
+                const uvIdx = (i / 3) * 2;
+                if (Math.abs(ny) > 0.5) {
+                    uvs[uvIdx] = x + 0.5;
+                    uvs[uvIdx + 1] = z + 0.5;
+                } else if (Math.abs(nx) > 0.5) {
+                    uvs[uvIdx] = z + 0.5;
+                    uvs[uvIdx + 1] = y + 0.5;
+                } else {
+                    uvs[uvIdx] = x + 0.5;
+                    uvs[uvIdx + 1] = y + 0.5;
+                }
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions.slice(), 3));
+            geometry.setAttribute('normal', new THREE.BufferAttribute(normals.slice(), 3));
+            geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+            geometry.setIndex(new THREE.BufferAttribute(boxGeo.index.array.slice(), 1));
+            
+            const mesh = new THREE.Mesh(geometry, mat);
+            mesh.castShadow = true;
+            mesh.userData = { blockId: this.id, part: 'main' };
+            this.meshes.push(mesh);
+            this.mesh = mesh;
+            
+            if (this.materialType === 'texture' && this.textureUrl) this.loadTexture(this.textureUrl, true);
+            
+            const axisGroup = new THREE.Group();
+            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0xff6666, 0.3, 0.2));
+            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, 0x66ff66, 0.3, 0.2));
+            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0x66aaff, 0.3, 0.2));
+            this.axisHelper = axisGroup;
+            this.mesh.add(this.axisHelper);
+            this.axisHelper.visible = false;
+            
+            this.updateTransform();
+            this.updateMaterialSide();
+            return;
+            
+        }
+        else if (this.type === 'stair') {
+            const mat = (this.materialType === 'texture' && this.textureUrl)
+                ? new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide })
+                : makeSaturatedMaterial(this.materialColor, { side: THREE.DoubleSide });
+            
+            const box1 = new THREE.BoxGeometry(1, 0.5, 1);
+            box1.translate(0, -0.25, 0);
+            const box2 = new THREE.BoxGeometry(0.5, 0.5, 1);
+            box2.translate(0.25, 0.25, 0);
+            
+            const pos1 = box1.attributes.position.array;
+            const nor1 = box1.attributes.normal.array;
+            const idx1 = box1.index ? box1.index.array : Array.from({length: pos1.length / 3}, (_, i) => i);
+            
+            const pos2 = box2.attributes.position.array;
+            const nor2 = box2.attributes.normal.array;
+            const idx2 = box2.index.array.map(i => i + pos1.length / 3);
+            
+            const positions = new Float32Array(pos1.length + pos2.length);
+            const normals = new Float32Array(nor1.length + nor2.length);
+            const indices = new Uint32Array(idx1.length + idx2.length);
+            const uvs = new Float32Array((pos1.length + pos2.length) * 2 / 3);
+            
+            positions.set(pos1, 0);
+            positions.set(pos2, pos1.length);
+            normals.set(nor1, 0);
+            normals.set(nor2, nor1.length);
+            indices.set(idx1, 0);
+            indices.set(idx2, idx1.length);
+            
+            for (let i = 0; i < positions.length; i += 3) {
+                const nx = normals[i];
+                const ny = normals[i + 1];
+                const nz = normals[i + 2];
+                const x = positions[i];
+                const y = positions[i + 1];
+                const z = positions[i + 2];
+                
+                const uvIdx = (i / 3) * 2;
+                if (Math.abs(ny) > 0.5) {
+                    uvs[uvIdx] = x + 0.5;
+                    uvs[uvIdx + 1] = z + 0.5;
+                } else if (Math.abs(nx) > 0.5) {
+                    uvs[uvIdx] = z + 0.5;
+                    uvs[uvIdx + 1] = y + 0.5;
+                } else {
+                    uvs[uvIdx] = x + 0.5;
+                    uvs[uvIdx + 1] = y + 0.5;
+                }
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+            geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+            geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+            
+            const mesh = new THREE.Mesh(geometry, mat);
+            mesh.castShadow = true;
+            mesh.userData = { blockId: this.id, part: 'main' };
+            this.meshes.push(mesh);
+            this.rootGroup.add(mesh);
+            this.mesh = this.rootGroup;
+            
+            if (this.materialType === 'texture' && this.textureUrl) this.loadTexture(this.textureUrl, true);
+            
+            const axisGroup = new THREE.Group();
+            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0xff6666, 0.3, 0.2));
+            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, 0x66ff66, 0.3, 0.2));
+            axisGroup.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0x66aaff, 0.3, 0.2));
+            this.axisHelper = axisGroup;
+            this.rootGroup.add(this.axisHelper);
+            this.axisHelper.visible = false;
+            
+            this.rootGroup.frustumCulled = false;
+            this.updateTransform();
+            this.updateMaterialSide();
+            return;
+            
+        }
         else if (this.type === 'flag') {
             const createCustomCube = (vertices, color, materialType, textureUrl) => {
     const faces = [
@@ -2481,6 +2675,17 @@ setSolidColor(hex) {
         this.materialColor = hex;
         this.textureUrl = null;
         this.materialPresetName = null;
+    } else if (this.type === 'stair' || this.type === 'halfbrick') {
+        // 楼梯和半砖：更新所有子 mesh
+        this.meshes.forEach(mesh => {
+            const newMat = makeSaturatedMaterial(hex);
+            if (mesh.material) mesh.material.dispose();
+            mesh.material = newMat;
+        });
+        this.materialType = 'color';
+        this.materialColor = hex;
+        this.textureUrl = null;
+        this.materialPresetName = null;
     } else {
         // 立方体：正常替换材质
         const newMat = makeSaturatedMaterial(hex);
@@ -2505,8 +2710,27 @@ loadTexture(url, presetName = null, skipCreate = false) {
     tex.minFilter = THREE.LinearMipmapLinearFilter;
     tex.magFilter = THREE.LinearFilter;
     
-    if (this.mesh) {
-        const isGlass = url.includes('glass') || url.includes('stained_glass');
+    const isGlass = url.includes('glass') || url.includes('stained_glass');
+    
+    if (this.type === 'stair' || this.type === 'halfbrick') {
+        this.meshes.forEach(mesh => {
+            if (mesh.material) {
+                mesh.material.map = tex;
+                mesh.material.color.setHex(0xffffff);
+                mesh.material.needsUpdate = true;
+                mesh.material.transparent = isGlass;
+                mesh.material.side = isGlass ? THREE.DoubleSide : THREE.DoubleSide;
+            } else {
+                mesh.material = new THREE.MeshStandardMaterial({
+                    map: tex,
+                    roughness: 0.4,
+                    metalness: 0.2,
+                    transparent: isGlass,
+                    side: THREE.DoubleSide
+                });
+            }
+        });
+    } else if (this.mesh) {
         if (this.mesh.material) {
             this.mesh.material.map = tex;
             this.mesh.material.color.setHex(0xffffff);
@@ -2678,6 +2902,80 @@ updateMaterialSide() {
                 const material = new THREE.LineBasicMaterial({ color: 0xffaa00 });
                 this.selectionWireframe = new THREE.LineSegments(geometry, material);
                 // 旗帜线框也使用 mesh 的世界矩阵以保证完全贴合
+                this.selectionWireframe.matrixAutoUpdate = false;
+                this.selectionWireframe.matrix.copy(this.rootGroup.matrixWorld || this.mesh.matrixWorld);
+                this.selectionWireframe.matrixWorldNeedsUpdate = true;
+                scene.add(this.selectionWireframe);
+
+            } else if (this.type === 'halfbrick') {
+                const corners = [
+                    new THREE.Vector3(-0.5, -0.5, -0.5),
+                    new THREE.Vector3( 0.5, -0.5, -0.5),
+                    new THREE.Vector3( 0.5, -0.5,  0.5),
+                    new THREE.Vector3(-0.5, -0.5,  0.5),
+                    new THREE.Vector3(-0.5,  0, -0.5),
+                    new THREE.Vector3( 0.5,  0, -0.5),
+                    new THREE.Vector3( 0.5,  0,  0.5),
+                    new THREE.Vector3(-0.5,  0,  0.5)
+                ];
+                const edges = [
+                    [0,1], [1,2], [2,3], [3,0],
+                    [4,5], [5,6], [6,7], [7,4],
+                    [0,4], [1,5], [2,6], [3,7]
+                ];
+                const positions = [];
+                edges.forEach(pair => {
+                    const v1 = corners[pair[0]];
+                    const v2 = corners[pair[1]];
+                    positions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
+                });
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+                const material = new THREE.LineBasicMaterial({ color: 0xffaa00 });
+                this.selectionWireframe = new THREE.LineSegments(geometry, material);
+                this.selectionWireframe.matrixAutoUpdate = false;
+                this.selectionWireframe.matrix.copy(this.mesh.matrixWorld);
+                this.selectionWireframe.matrixWorldNeedsUpdate = true;
+                scene.add(this.selectionWireframe);
+
+            } else if (this.type === 'stair') {
+                const corners = [
+                    new THREE.Vector3(-0.5, -0.5, -0.5),
+                    new THREE.Vector3( 0.5, -0.5, -0.5),
+                    new THREE.Vector3( 0.5, -0.5,  0.5),
+                    new THREE.Vector3(-0.5, -0.5,  0.5),
+                    new THREE.Vector3(-0.5,  0, -0.5),
+                    new THREE.Vector3( 0.5,  0, -0.5),
+                    new THREE.Vector3( 0.5,  0,  0.5),
+                    new THREE.Vector3(-0.5,  0,  0.5),
+                    new THREE.Vector3(0,  0, -0.5),
+                    new THREE.Vector3( 0.5,  0, -0.5),
+                    new THREE.Vector3( 0.5,  0.5, -0.5),
+                    new THREE.Vector3(0,  0.5, -0.5),
+                    new THREE.Vector3(0,  0,  0.5),
+                    new THREE.Vector3( 0.5,  0,  0.5),
+                    new THREE.Vector3( 0.5,  0.5,  0.5),
+                    new THREE.Vector3(0,  0.5,  0.5)
+                ];
+                const edges = [
+                    [0,1], [1,2], [2,3], [3,0],
+                    [4,5], [5,6], [6,7], [7,4],
+                    [0,4], [1,5], [2,6], [3,7],
+                    [8,9], [9,10], [10,11], [11,8],
+                    [12,13], [13,14], [14,15], [15,12],
+                    [8,12], [9,13], [10,14], [11,15],
+                    [5,9], [6,13]
+                ];
+                const positions = [];
+                edges.forEach(pair => {
+                    const v1 = corners[pair[0]];
+                    const v2 = corners[pair[1]];
+                    positions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
+                });
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+                const material = new THREE.LineBasicMaterial({ color: 0xffaa00 });
+                this.selectionWireframe = new THREE.LineSegments(geometry, material);
                 this.selectionWireframe.matrixAutoUpdate = false;
                 this.selectionWireframe.matrix.copy(this.rootGroup.matrixWorld || this.mesh.matrixWorld);
                 this.selectionWireframe.matrixWorldNeedsUpdate = true;
@@ -2875,6 +3173,7 @@ function removeBlock(block, silent = false) {
     if (blocks.length === 0) { clearHerModes(); }
     else { requestGizmoRefresh(); updateToolbar(true); }
     if (isNewLayoutMode) renderSideBlockList();
+    clearBrushVertexMarkers();
 }
 
 function selectBlock(block) {
@@ -2889,6 +3188,10 @@ function selectBlock(block) {
                 if (b.meshes[2] && b.meshes[2].material) {
                     b.meshes[2].material.emissiveIntensity = (b === block) ? 0.2 : 0;
                 }
+            } else if (b.type === 'halfbrick' || b.type === 'stair') {
+                b.meshes.forEach(m => {
+                    if (m.material) m.material.emissiveIntensity = (b === block) ? 0.2 : 0;
+                });
             }
         });
         renderVariablesForBlock(block);
@@ -2917,7 +3220,17 @@ function updateBlockLabel(block) {
         div.appendChild(inner);
         block.label = new CSS2DObject(div); scene.add(block.label);
     }
-    block.label.visible = !hideNames;
+    const hidden = isBlockInHiddenGroup(block);
+    const shouldShow = !hideNames && !hidden;
+    block.label.visible = shouldShow;
+    if (block.label.element) {
+        if (shouldShow) {
+            block.label.element.style.removeProperty('display');
+        } else {
+            block.label.element.style.setProperty('display', 'none', 'important');
+        }
+    }
+    if (!shouldShow) return;
     const pos = new THREE.Vector3(); block.mesh.matrixWorld.decompose(pos, new THREE.Quaternion(), new THREE.Vector3());
     const scale = block.scope.vars.get('v.scale')?.value ?? 1;
     // 设置标签位置并根据摄像机距离动态缩放（近大远小）
@@ -3329,7 +3642,32 @@ function renderVariablesForBlock(block) {
     if (selectedBlocksSet.size > 1) { cont.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`; newC.innerHTML = ''; attachBatchEvents(); return; }
     // 离开批量修改面板时清理临时的 batchDeltas，已应用的变更保持不变
     if (batchDeltas && batchDeltas.size > 0) batchDeltas.clear();
-    if (!block) { cont.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; newC.innerHTML = ''; return; }
+    if (!block) { 
+        if (isBrushMode) {
+            cont.innerHTML = `<div class="brush-thickness-panel" style="padding:16px; text-align:center;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <span style="font-weight:bold;">画笔粗细(米)</span>
+                    <span id="brushThicknessLabelPopup" style="font-family:monospace;">${brushThickness.toFixed(1)}</span>
+                </div>
+                <input id="brushThicknessRangePopup" type="range" min="0.1" max="5" step="0.1" value="${brushThickness}" style="width:100%;">
+                <div style="margin-top:8px; font-size:12px; color:#64748b;">点击平面选中，再点击顶点绘制</div>
+            </div>`;
+            newC.innerHTML = '';
+            const range = document.getElementById('brushThicknessRangePopup');
+            const label = document.getElementById('brushThicknessLabelPopup');
+            if (range) {
+                range.addEventListener('input', (e) => {
+                    brushThickness = parseFloat(e.target.value);
+                    if (label) label.textContent = brushThickness.toFixed(1);
+                    syncBrushThicknessUI();
+                });
+            }
+            return;
+        }
+        cont.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; 
+        newC.innerHTML = ''; 
+        return; 
+    }
 
     const vars = block.getVarList();
     const localGrouped = {位移:[],缩放:[],旋转:[],自定义:[]};
@@ -3646,10 +3984,31 @@ function updateDropdownSelection() {
 }
 
 function toggleBlockSelection(block, multi) {
-    if (!multi) { selectedBlocksSet.clear(); selectedBlocksSet.add(block); selectBlock(block); }
-    else { if (selectedBlocksSet.has(block)) { selectedBlocksSet.delete(block); if (selectedBlocksSet.size===0) { selectedBlocksSet.add(block); selectBlock(block); } else selectBlock(Array.from(selectedBlocksSet)[0]); } else { selectedBlocksSet.add(block); selectBlock(block); } }
-    if (selectedBlocksSet.size>1) { batchDeltas.clear(); ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez'].forEach(v=>batchDeltas.set(v,0)); }
-    updateAxesVisibility(); renderVariablesForBlock(selectedBlock); blocks.forEach(b=>b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+    if (!multi) { 
+        selectedBlocksSet.clear(); 
+        selectedBlocksSet.add(block); 
+        selectBlock(block); 
+    } else { 
+        if (selectedBlocksSet.has(block)) { 
+            selectedBlocksSet.delete(block); 
+            if (selectedBlocksSet.size === 0) { 
+                selectedBlocksSet.add(block); 
+                selectBlock(block); 
+            } else {
+                selectBlock(Array.from(selectedBlocksSet)[0]); 
+            }
+        } else { 
+            selectedBlocksSet.add(block); 
+            selectBlock(block); 
+        } 
+    }
+    if (selectedBlocksSet.size > 1) { 
+        batchDeltas.clear(); 
+        ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot','v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez'].forEach(v=>batchDeltas.set(v,0)); 
+    }
+    updateAxesVisibility(); 
+    renderVariablesForBlock(selectedBlock); 
+    blocks.forEach(b=>b.updateSelectionHighlight(selectedBlocksSet.has(b)));
     updateDropdownSelection();
     if (isNewLayoutMode) renderSideBlockList();
 }
@@ -3773,6 +4132,10 @@ function showBlockDropdown(btn) {
             const groupName = group.name;
             const groupBlocks = groupedBlocks[groupName] || [];
             const isExpanded = group.expanded !== false;
+            const getSelectableGroupBlocks = () => {
+                if (isKfMode) return groupBlocks.filter(b => hasKeyframeAnimation(b.id));
+                return groupBlocks;
+            };
             
             const groupHeader = document.createElement('div');
             groupHeader.className = 'block-dropdown-item';
@@ -3805,7 +4168,8 @@ function showBlockDropdown(btn) {
                 const isMulti = e.ctrlKey || e.metaKey;
                 if (isMulti) {
                     e.preventDefault();
-                    groupBlocks.forEach(b => {
+                    const selectable = getSelectableGroupBlocks();
+                    selectable.forEach(b => {
                         selectedBlocksSet.add(b);
                     });
                     updateAxesVisibility();
@@ -3817,8 +4181,8 @@ function showBlockDropdown(btn) {
                         document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
                         scrollListener = null;
                     }
-                    if (groupBlocks.length > 0) {
-                        selectBlock(groupBlocks[0]);
+                    if (selectable.length > 0) {
+                        selectBlock(selectable[0]);
                     }
                     return;
                 }
@@ -3837,7 +4201,8 @@ function showBlockDropdown(btn) {
             groupHeader.addEventListener('mousedown', () => {
                 longPressTimer = setTimeout(() => {
                     isLongPress = true;
-                    groupBlocks.forEach(b => {
+                    const selectable = getSelectableGroupBlocks();
+                    selectable.forEach(b => {
                         selectedBlocksSet.add(b);
                     });
                     updateAxesVisibility();
@@ -3849,8 +4214,8 @@ function showBlockDropdown(btn) {
                         document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
                         scrollListener = null;
                     }
-                    if (groupBlocks.length > 0) {
-                        selectBlock(groupBlocks[0]);
+                    if (selectable.length > 0) {
+                        selectBlock(selectable[0]);
                     }
                 }, 500);
             });
@@ -3874,7 +4239,8 @@ function showBlockDropdown(btn) {
                 touchMoved = false;
                 longPressTimer = setTimeout(() => {
                     isLongPress = true;
-                    groupBlocks.forEach(b => {
+                    const selectable = getSelectableGroupBlocks();
+                    selectable.forEach(b => {
                         selectedBlocksSet.add(b);
                     });
                     updateAxesVisibility();
@@ -3886,8 +4252,8 @@ function showBlockDropdown(btn) {
                         document.querySelector('.panel-content')?.removeEventListener('scroll', scrollListener);
                         scrollListener = null;
                     }
-                    if (groupBlocks.length > 0) {
-                        selectBlock(groupBlocks[0]);
+                    if (selectable.length > 0) {
+                        selectBlock(selectable[0]);
                     }
                 }, 500);
             });
@@ -4356,19 +4722,20 @@ function getShortNameRestoreString() {
 // 获取单个方块的完整命令文本（包括前缀、后缀、旗帜标记）
 function getCommandTextForBlock(block) {
     let varsStr = getOrderedAssignmentsString(block);
-    // 处理材质名称前缀（仅立方体有效）
     let blockIdPrefix = '';
     if (block.type === 'cube' && block.materialPresetName) {
         blockIdPrefix = `'block：${block.materialPresetName}'; `;
     }
-    // 处理分组前缀
     let groupPrefix = '';
     if (block.group) {
         groupPrefix = `'group:${block.group}'; `;
     }
-    // 旗帜类型强制在最前面添加 '方块类型：旗帜'
     if (block.type === 'flag') {
         varsStr = `'方块类型：旗帜'; ` + varsStr;
+    } else if (block.type === 'halfbrick') {
+        varsStr = `'方块类型：半砖'; ` + varsStr;
+    } else if (block.type === 'stair') {
+        varsStr = `'方块类型：楼梯'; ` + varsStr;
     }
     const suffix = exportSuffix.replace(/{id}/g, block.id);
     return exportPrefix + blockIdPrefix + groupPrefix + varsStr + suffix;
@@ -4425,7 +4792,7 @@ function showCommandListModal() {
                 const cmdText = getCommandTextForBlock(b);
                 listHtml += `<div class="command-card">
                     <div class="command-header">
-                        <span class="block-id-badge">📦 ${escapeHtml(b.id)} (${b.type === 'flag' ? '旗帜' : '立方体'})</span>
+                        <span class="block-id-badge">📦 ${escapeHtml(b.id)} (${b.type === 'flag' ? '旗帜' : b.type === 'halfbrick' ? '半砖' : b.type === 'stair' ? '楼梯' : '立方体'})</span>
                         <button class="copy-cmd-btn" data-block-id="${b.id}">📋 复制</button>
                     </div>
                     <pre class="cmd-preview">${escapeHtml(cmdText)}</pre>
@@ -4538,6 +4905,9 @@ function showCompressExportModal(returnToList = false) {
         return;
     }
 
+    // 隐藏主场景对象，避免两个3D场景干扰
+    saveSceneState();
+
     compressParamsList = [];
     for (let b of blocks) {
         let varsStr = '';
@@ -4568,10 +4938,57 @@ function showCompressExportModal(returnToList = false) {
     }
 
     const isMobile = window.innerWidth < 768;
+    const isLightMode = document.body.classList.contains('light-mode');
     const winWidth = isMobile ? '90%' : '720px';
     const winHeight = isMobile ? '80vh' : '400px';
     const winLeft = isMobile ? '5%' : '100px';
     const winTop = isMobile ? '10vh' : '100px';
+
+    const colors = isLightMode ? {
+        winBg: '#f8fafc',
+        winBorder: '#cbd5e1',
+        headerBg: '#e2e8f0',
+        headerBorder: '#cbd5e1',
+        titleColor: '#1e293b',
+        textColor: '#475569',
+        inputBg: '#ffffff',
+        inputBorder: '#cbd5e1',
+        inputText: '#0f172a',
+        canvasBg: '#f1f5f9',
+        canvasBorder: '#cbd5e1',
+        gridBg: '#f8fafc',
+        gridCellBg: '#fff',
+        gridCellBorder: '#e2e8f0',
+        gridCellText: '#94a3b8',
+        legendBg: '#f1f5f9',
+        legendBorder: '#cbd5e1',
+        closeBtnColor: '#64748b',
+        cancelBtnBg: '#e2e8f0',
+        cancelBtnColor: '#1e293b',
+        confirmBtnColor: '#fff'
+    } : {
+        winBg: '#1e293b',
+        winBorder: '#3b82f6',
+        headerBg: '#1a2332',
+        headerBorder: '#3b82f6',
+        titleColor: '#fff',
+        textColor: '#94a3b8',
+        inputBg: '#0f172a',
+        inputBorder: '#3b82f6',
+        inputText: '#fff',
+        canvasBg: '#0b1122',
+        canvasBorder: '#3b82f6',
+        gridBg: '#0b1122',
+        gridCellBg: '#111a2e',
+        gridCellBorder: '#1a2a4a',
+        gridCellText: '#4a6a8a',
+        legendBg: '#0b1122',
+        legendBorder: '#3b82f6',
+        closeBtnColor: '#94a3b8',
+        cancelBtnBg: '#374151',
+        cancelBtnColor: '#fff',
+        confirmBtnColor: '#fff'
+    };
     
     const win = document.createElement('div');
     win.style.position = 'fixed';
@@ -4580,17 +4997,17 @@ function showCompressExportModal(returnToList = false) {
     win.style.width = winWidth;
     win.style.height = winHeight;
     win.style.zIndex = '501';
-    win.style.background = '#1e293b';
-    win.style.border = '1px solid #3b82f6';
+    win.style.background = colors.winBg;
+    win.style.border = `1px solid ${colors.winBorder}`;
     win.style.borderRadius = '8px';
-    win.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
+    win.style.boxShadow = isLightMode ? '0 10px 40px rgba(0,0,0,0.1)' : '0 10px 40px rgba(0,0,0,0.5)';
     win.style.display = 'flex';
     win.style.flexDirection = 'column';
 
     const header = document.createElement('div');
     header.style.height = '36px';
-    header.style.background = '#1a2332';
-    header.style.borderBottom = '1px solid #3b82f6';
+    header.style.background = colors.headerBg;
+    header.style.borderBottom = `1px solid ${colors.headerBorder}`;
     header.style.display = 'flex';
     header.style.alignItems = 'center';
     header.style.justifyContent = 'space-between';
@@ -4599,7 +5016,7 @@ function showCompressExportModal(returnToList = false) {
 
     const title = document.createElement('span');
     title.textContent = '📦 压缩导出 - 设置坐标';
-    title.style.color = '#fff';
+    title.style.color = colors.titleColor;
     title.style.fontSize = '13px';
     title.style.fontWeight = 'bold';
 
@@ -4607,13 +5024,62 @@ function showCompressExportModal(returnToList = false) {
     closeBtn.textContent = '✕';
     closeBtn.style.background = 'transparent';
     closeBtn.style.border = 'none';
-    closeBtn.style.color = '#94a3b8';
+    closeBtn.style.color = colors.closeBtnColor;
     closeBtn.style.fontSize = '14px';
     closeBtn.style.cursor = 'pointer';
     closeBtn.style.padding = '4px 8px';
 
+    const headerRight = document.createElement('div');
+    headerRight.style.display = 'flex';
+    headerRight.style.gap = '6px';
+    headerRight.style.alignItems = 'center';
+
+    const exportSchemeBtn = document.createElement('button');
+    exportSchemeBtn.id = 'cpExportScheme';
+    exportSchemeBtn.textContent = '导出方案';
+    exportSchemeBtn.style.background = '#7c3aed';
+    exportSchemeBtn.style.border = 'none';
+    exportSchemeBtn.style.borderRadius = '4px';
+    exportSchemeBtn.style.color = '#ddd6fe';
+    exportSchemeBtn.style.fontSize = '11px';
+    exportSchemeBtn.style.cursor = 'pointer';
+    exportSchemeBtn.style.padding = '3px 8px';
+    exportSchemeBtn.style.transform = 'skewX(-5deg)';
+    exportSchemeBtn.style.display = 'none';
+
+    const importSchemeBtn = document.createElement('button');
+    importSchemeBtn.id = 'cpImportScheme';
+    importSchemeBtn.textContent = '导入方案';
+    importSchemeBtn.style.background = '#0d9488';
+    importSchemeBtn.style.border = 'none';
+    importSchemeBtn.style.borderRadius = '4px';
+    importSchemeBtn.style.color = '#6ee7b7';
+    importSchemeBtn.style.fontSize = '11px';
+    importSchemeBtn.style.cursor = 'pointer';
+    importSchemeBtn.style.padding = '3px 8px';
+    importSchemeBtn.style.transform = 'skewX(-5deg)';
+    importSchemeBtn.style.display = 'none';
+
+    const patternBtn = document.createElement('button');
+    patternBtn.id = 'cpPattern';
+    patternBtn.textContent = '设为图案并清空选中';
+    patternBtn.style.background = '#166534';
+    patternBtn.style.border = 'none';
+    patternBtn.style.borderRadius = '4px';
+    patternBtn.style.color = '#a7f3d0';
+    patternBtn.style.fontSize = '11px';
+    patternBtn.style.cursor = 'pointer';
+    patternBtn.style.padding = '3px 8px';
+    patternBtn.style.transform = 'skewX(-5deg)';
+    patternBtn.style.display = 'none';
+
+    headerRight.appendChild(exportSchemeBtn);
+    headerRight.appendChild(patternBtn);
+    headerRight.appendChild(importSchemeBtn);
+    headerRight.appendChild(closeBtn);
+
     header.appendChild(title);
-    header.appendChild(closeBtn);
+    header.appendChild(headerRight);
     win.appendChild(header);
 
     const body = document.createElement('div');
@@ -4628,30 +5094,30 @@ function showCompressExportModal(returnToList = false) {
 
     body.innerHTML = `
         <div style="text-align:center;margin-bottom:12px;">
-            <span style="font-size:14px;color:#94a3b8;">请设置画布起始和终止坐标</span>
+            <span style="font-size:14px;color:${colors.textColor};">请设置画布起始和终止坐标</span>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:8px;width:100%;">
             <div style="flex:1;">
-                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 X</label>
-                <input id="cpSX" type="number" value="0" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">起始 X</label>
+                <input id="cpSX" type="number" value="0" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
             </div>
             <div style="flex:1;">
-                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 Z</label>
-                <input id="cpSZ" type="number" value="0" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">起始 Z</label>
+                <input id="cpSZ" type="number" value="0" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
             </div>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:12px;width:100%;">
             <div style="flex:1;">
-                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 X</label>
-                <input id="cpEX" type="number" value="11" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">终止 X</label>
+                <input id="cpEX" type="number" value="11" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
             </div>
             <div style="flex:1;">
-                <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 Z</label>
-                <input id="cpEZ" type="number" value="7" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">终止 Z</label>
+                <input id="cpEZ" type="number" value="7" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
             </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:center;width:100%;">
-            <button id="cpCancel" style="flex:1;padding:6px;border:none;border-radius:4px;background:#374151;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">取消</button>
+            <button id="cpCancel" style="flex:1;padding:6px;border:none;border-radius:4px;background:${colors.cancelBtnBg};color:${colors.cancelBtnColor};font-size:12px;cursor:pointer;transform:skewX(-5deg);">取消</button>
             <button id="cpConfirmCoords" style="flex:1;padding:6px;border:none;border-radius:4px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:12px;font-weight:bold;cursor:pointer;transform:skewX(-5deg);">确认坐标</button>
         </div>
     `;
@@ -4678,18 +5144,66 @@ function showCompressExportModal(returnToList = false) {
 
     let compressGrid = [];
     let compressLitSlots = [];
+    let compressPatternSlots = [];
     let compressW = 0, compressH = 0, compressSx = 0, compressSz = 0, compressStepX = 1, compressStepZ = 1;
     let canvas = null;
     let canvasScale = 1;
     let isMouseDown = false;
     let drawMode = 'toggle'; // 'light' | 'dark' | 'toggle'
+    let canvasRotation = 0;
+    let zoomFactor = 1;
+    let baseCameraDist = 0;
+
+    function showLimitToast(msg) {
+        const existing = win.querySelector('.cp-limit-toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = 'cp-limit-toast';
+        toast.textContent = msg;
+        toast.style.cssText = `
+            position:absolute; left:50%; top:50%;
+            transform:translate(-50%,-50%) scale(0.5);
+            background:rgba(0,0,0,0.75); color:#fca5a5; padding:10px 22px;
+            border-radius:10px; font-size:14px; font-weight:600;
+            pointer-events:none; z-index:999; white-space:nowrap;
+            border:1px solid rgba(239,68,68,0.4);
+            opacity:0; transition:none;
+        `;
+        win.appendChild(toast);
+        win.style.position = 'relative';
+        requestAnimationFrame(() => {
+            toast.style.transition = 'opacity 0.2s ease, transform 0.35s cubic-bezier(0.34,1.56,0.64,1)';
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%,-50%) scale(1)';
+        });
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%,-50%) scale(0.7)';
+            setTimeout(() => toast.remove(), 250);
+        }, 1600);
+    }
 
     function closeWin() {
+        if (canvas) {
+            if (canvas._cleanupEvents) canvas._cleanupEvents();
+            if (canvas._resizeHandler) {
+                window.removeEventListener('resize', canvas._resizeHandler);
+                canvas._resizeHandler = null;
+            }
+        }
         win.remove();
         document.removeEventListener('mousemove', onDrag);
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('mousemove', onResize);
         document.removeEventListener('mouseup', onResizeEnd);
+        
+        // 恢复主场景渲染
+        restoreSceneState();
+        // 强制主场景重新渲染（防止 WebGL 上下文状态异常）
+        if (typeof renderer !== 'undefined' && typeof scene !== 'undefined' && typeof camera !== 'undefined') {
+            renderer.render(scene, camera);
+        }
         
         if (returnToList) {
             showCommandListModal();
@@ -4727,7 +5241,7 @@ function showCompressExportModal(returnToList = false) {
                     compressGrid[x][z] = idx;
                     compressLitSlots[idx] = { x, z };
                 } else {
-                    showModal('⚠️ 达到上限', `已达到参数上限 ${compressParamsList.length} 个`);
+                    showLimitToast(`已达到参数上限 ${compressParamsList.length} 个`);
                 }
             }
         } else if (drawMode === 'light') {
@@ -4751,27 +5265,24 @@ function showCompressExportModal(returnToList = false) {
     function renderGrid() {
         if (!canvas) return;
 
-        const sx = parseInt(sxInput.value) || 0;
-        const sz = parseInt(szInput.value) || 0;
-        const ex = parseInt(exInput.value) || 0;
-        const ez = parseInt(ezInput.value) || 0;
+        const minX = compressSx;
+        const maxX = compressSx + compressW - 1;
+        const minZ = compressSz;
+        const maxZ = compressSz + compressH - 1;
 
-        const minX = Math.min(sx, ex);
-        const maxX = Math.max(sx, ex);
-        const minZ = Math.min(sz, ez);
-        const maxZ = Math.max(sz, ez);
-
-        const W = maxX - minX + 1;
-        const H = maxZ - minZ + 1;
-        const stepX = ex >= sx ? 1 : -1;
-        const stepZ = ez >= sz ? 1 : -1;
+        const W = compressW;
+        const H = compressH;
 
         compressW = W;
         compressH = H;
-        compressSx = sx;
-        compressSz = sz;
-        compressStepX = stepX;
-        compressStepZ = stepZ;
+        compressSx = minX;
+        compressSz = minZ;
+        compressStepX = 1;
+        compressStepZ = 1;
+
+        // 持久化引用，确保后续 renderGrid 调用时 refreshCellAppearance 可访问
+        let cellData = canvas._cellData || [];
+        let cellMeshes = canvas._cellMeshes || [];
 
         if (compressGrid.length !== W || (compressGrid.length > 0 && compressGrid[0].length !== H)) {
             const newGrid = Array.from({ length: W }, () => Array(H).fill(-1));
@@ -4783,10 +5294,14 @@ function showCompressExportModal(returnToList = false) {
             compressGrid = newGrid;
         }
 
-        const containerW = canvas.clientWidth || 600;
-        const containerH = canvas.clientHeight || 400;
-        const baseCellSize = Math.floor(Math.min(36, Math.max(16, Math.min(containerW / W, containerH / H))));
-        const cellSize = Math.floor(baseCellSize * canvasScale);
+        // ---- 如果 3D 场景已初始化，只需更新格子颜色和文字（不重建渲染器） ----
+        if (canvas._sceneReady) {
+            refreshCellAppearance();
+            return;
+        }
+
+        // ---- 首次初始化 3D 场景（仅执行一次） ----
+        canvas._sceneReady = true;
 
         const groupColors = {
             '': { bg: '#2a3a5e', border: '#4a6a9e', text: '#ffd200' },
@@ -4812,115 +5327,26 @@ function showCompressExportModal(returnToList = false) {
                 groupIndex++;
             }
         });
-
         const getGroupColor = (groupName) => {
             if (groupColors[groupName]) return groupColors[groupName];
             if (customGroupColors[groupName]) return customGroupColors[groupName];
             return groupColors[''];
         };
 
-        const grid = document.createElement('div');
-        grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = `repeat(${W}, ${cellSize}px)`;
-        grid.style.gridTemplateRows = `repeat(${H}, ${cellSize}px)`;
-        grid.style.gap = '1px';
-        grid.style.padding = '4px';
-        grid.style.margin = 'auto';
-        grid.style.transformOrigin = 'center center';
-
-        const lit = getLitEntries();
-        const assigned = new Map();
-        for (const { x, z, idx } of lit) {
-            assigned.set(`${x},${z}`, idx + 1);
-        }
-
-        for (let zi = 0; zi < H; zi++) {
-            for (let xi = 0; xi < W; xi++) {
-                const wx = sx + xi * stepX;
-                const wz = sz + (H - 1 - zi) * stepZ;
-                const isLit = compressGrid[xi] && compressGrid[xi][zi] >= 0;
-                const num = assigned.get(`${xi},${zi}`);
-                const idx = isLit && compressGrid[xi] ? compressGrid[xi][zi] : -1;
-                const blockData = idx >= 0 ? compressParamsList[idx] : null;
-                const groupName = blockData ? blockData.group : '';
-                const colors = getGroupColor(groupName);
-
-                const cell = document.createElement('div');
-                cell.dataset.xi = xi;
-                cell.dataset.zi = zi;
-                cell.style.width = `${cellSize}px`;
-                cell.style.height = `${cellSize}px`;
-                cell.style.display = 'flex';
-                cell.style.flexDirection = 'column';
-                cell.style.alignItems = 'center';
-                cell.style.justifyContent = 'center';
-                cell.style.cursor = 'pointer';
-                cell.style.borderRadius = '2px';
-                cell.style.overflow = 'hidden';
-
-                const fontSize = Math.max(10, Math.floor(cellSize * 0.35));
-
-                if (isLit && num) {
-                    cell.style.background = colors.bg;
-                    cell.style.border = `1px solid ${colors.border}`;
-                    let content = `<span style="color:${colors.text};font-size:${fontSize}px;font-weight:bold;line-height:1.2;">${num}</span>`;
-                    if (groupName) {
-                        content += `<span style="color:${colors.text};font-size:${Math.max(8, fontSize * 0.5)}px;line-height:1.1;opacity:0.8;">${groupName}</span>`;
-                    }
-                    content += `<span style="color:#6a8aaa;font-size:${Math.max(8, fontSize * 0.5)}px;line-height:1.1;">(${wx},${wz})</span>`;
-                    cell.innerHTML = content;
-                } else {
-                    cell.style.background = '#111a2e';
-                    cell.style.border = '1px solid #1a2a4a';
-                    cell.innerHTML = `<span style="color:#4a6a8a;font-size:${fontSize}px;font-weight:bold;line-height:1.2;">(${wx},${wz})</span>`;
-                }
-
-                cell.onmousedown = (e) => {
-                    e.preventDefault();
-                    isMouseDown = true;
-                    const isLit = compressGrid[xi] && compressGrid[xi][zi] >= 0;
-                    if (isLit) {
-                        drawMode = 'dark';
-                    } else {
-                        drawMode = 'light';
-                    }
-                    toggleCell(xi, zi);
-                };
-                
-                cell.addEventListener('touchend', (e) => {
-                    if (!isTouchDragging) {
-                        const isLit = compressGrid[xi] && compressGrid[xi][zi] >= 0;
-                        if (isLit) {
-                            drawMode = 'dark';
-                        } else {
-                            drawMode = 'light';
-                        }
-                        toggleCell(xi, zi);
-                    }
-                });
-                cell.onmouseenter = () => {
-                    if (isMouseDown) {
-                        toggleCell(xi, zi);
-                    }
-                };
-                cell.onmouseup = () => {
-                    isMouseDown = false;
-                    drawMode = 'toggle';
-                };
-                grid.appendChild(cell);
-            }
-        }
-
         canvas.innerHTML = '';
+        canvas.style.display = 'flex';
+        canvas.style.flexDirection = 'column';
+        canvas.style.overflow = 'hidden';
 
         const legend = document.createElement('div');
         legend.style.display = 'flex';
         legend.style.flexWrap = 'wrap';
         legend.style.gap = '12px';
         legend.style.padding = '8px';
-        legend.style.background = '#0b1122';
-        legend.style.borderBottom = '1px solid #3b82f6';
+        legend.style.background = colors.legendBg;
+        legend.style.borderBottom = `1px solid ${colors.legendBorder}`;
         legend.style.borderRadius = '4px 4px 0 0';
+        legend.style.flexShrink = '0';
 
         const noGroupItem = document.createElement('div');
         noGroupItem.style.display = 'flex';
@@ -4936,7 +5362,7 @@ function showCompressExportModal(returnToList = false) {
         noGroupDot.style.border = '1px solid #4b5563';
 
         const noGroupLabel = document.createElement('span');
-        noGroupLabel.style.color = '#9ca3af';
+        noGroupLabel.style.color = colors.textColor;
         noGroupLabel.textContent = '无组';
 
         noGroupItem.appendChild(noGroupDot);
@@ -4944,7 +5370,7 @@ function showCompressExportModal(returnToList = false) {
         legend.appendChild(noGroupItem);
 
         usedGroups.forEach(g => {
-            const colors = getGroupColor(g);
+            const gColor = getGroupColor(g);
             const item = document.createElement('div');
             item.style.display = 'flex';
             item.style.alignItems = 'center';
@@ -4955,11 +5381,11 @@ function showCompressExportModal(returnToList = false) {
             dot.style.width = '12px';
             dot.style.height = '12px';
             dot.style.borderRadius = '50%';
-            dot.style.background = colors.bg;
-            dot.style.border = `1px solid ${colors.border}`;
+            dot.style.background = gColor.bg;
+            dot.style.border = `1px solid ${gColor.border}`;
 
             const label = document.createElement('span');
-            label.style.color = colors.text;
+            label.style.color = gColor.text;
             label.textContent = g;
 
             item.appendChild(dot);
@@ -4968,7 +5394,498 @@ function showCompressExportModal(returnToList = false) {
         });
 
         canvas.appendChild(legend);
-        canvas.appendChild(grid);
+
+        const threeContainer = document.createElement('div');
+        threeContainer.style.width = '100%';
+        threeContainer.style.flex = '1';
+        threeContainer.style.minHeight = '0';
+        threeContainer.style.position = 'relative';
+        threeContainer.style.touchAction = 'none';
+        threeContainer.style.webkitUserDrag = 'none';
+        threeContainer.style.userSelect = 'none';
+        threeContainer.style.cursor = 'crosshair';
+        canvas.appendChild(threeContainer);
+
+        const containerRect = threeContainer.getBoundingClientRect();
+        const cw = containerRect.width || 100;
+        const ch = containerRect.height || 100;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(colors.canvasBg);
+
+        const camera = new THREE.PerspectiveCamera(40, cw / ch, 0.1, 500);
+        camera.position.set(0, 18, 14);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(cw, ch);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setClearColor(colors.canvasBg);
+        threeContainer.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(cw, ch);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0';
+        labelRenderer.domElement.style.left = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        threeContainer.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.12;
+        controls.minDistance = 5;
+        controls.maxDistance = 60;
+        controls.maxPolarAngle = Math.PI / 2.1;
+        controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: null };
+        // 单指触控交由我们自己处理（涂抹选中格子），双指缩放+旋转
+        controls.touches = { ONE: -1, TWO: THREE.TOUCH.DOLLY_ROTATE };
+        controls.update();
+
+        let isRightButtonDown = false;
+        
+        const canvasEl = renderer.domElement;
+        const threeContainerEl = threeContainer;
+        
+        const stopRightEvent = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        };
+        
+        canvasEl.addEventListener('contextmenu', stopRightEvent, { capture: true });
+        threeContainerEl.addEventListener('contextmenu', stopRightEvent, { capture: true });
+        
+        const onMouseDown = (e) => {
+            if (e.button === 2) {
+                isRightButtonDown = true;
+                stopRightEvent(e);
+            }
+        };
+        
+        const onMouseMove = (e) => {
+            if (isRightButtonDown || (e.buttons && e.buttons === 2)) {
+                stopRightEvent(e);
+            }
+        };
+        
+        const onMouseUp = (e) => {
+            if (e.button === 2) {
+                isRightButtonDown = false;
+                stopRightEvent(e);
+            }
+        };
+        
+        const onMouseLeave = () => {
+            isRightButtonDown = false;
+        };
+        
+        canvasEl.addEventListener('mousedown', onMouseDown, { capture: true, passive: false });
+        canvasEl.addEventListener('mousemove', onMouseMove, { capture: true, passive: false });
+        canvasEl.addEventListener('mouseup', onMouseUp, { capture: true, passive: false });
+        canvasEl.addEventListener('mouseleave', onMouseLeave, { capture: true });
+        
+        threeContainerEl.addEventListener('mousedown', onMouseDown, { capture: true, passive: false });
+        threeContainerEl.addEventListener('mousemove', onMouseMove, { capture: true, passive: false });
+        threeContainerEl.addEventListener('mouseup', onMouseUp, { capture: true, passive: false });
+        threeContainerEl.addEventListener('mouseleave', onMouseLeave, { capture: true });
+        
+        canvasEl.addEventListener('pointerdown', onMouseDown, { capture: true, passive: false });
+        canvasEl.addEventListener('pointermove', onMouseMove, { capture: true, passive: false });
+        canvasEl.addEventListener('pointerup', onMouseUp, { capture: true, passive: false });
+        canvasEl.addEventListener('pointerleave', onMouseLeave, { capture: true });
+        canvasEl.addEventListener('pointercancel', onMouseLeave, { capture: true });
+        
+        threeContainerEl.addEventListener('pointerdown', onMouseDown, { capture: true, passive: false });
+        threeContainerEl.addEventListener('pointermove', onMouseMove, { capture: true, passive: false });
+        threeContainerEl.addEventListener('pointerup', onMouseUp, { capture: true, passive: false });
+        threeContainerEl.addEventListener('pointerleave', onMouseLeave, { capture: true });
+        threeContainerEl.addEventListener('pointercancel', onMouseLeave, { capture: true });
+        
+        canvasEl.addEventListener('auxclick', stopRightEvent, { capture: true });
+        threeContainerEl.addEventListener('auxclick', stopRightEvent, { capture: true });
+        
+        canvasEl.addEventListener('dragstart', stopRightEvent, { capture: true });
+        threeContainerEl.addEventListener('dragstart', stopRightEvent, { capture: true });
+
+        const ambientLight = new THREE.AmbientLight(0x40406a, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        dirLight.position.set(10, 25, 15);
+        scene.add(dirLight);
+        const fillLight = new THREE.DirectionalLight(0x4488ff, 0.4);
+        fillLight.position.set(-10, 10, -10);
+        scene.add(fillLight);
+
+        const cellGroup = new THREE.Group();
+        scene.add(cellGroup);
+        const labelGroup = new THREE.Group();
+        scene.add(labelGroup);
+
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+
+        const matUnlit = new THREE.MeshStandardMaterial({
+            color: 0x111a2e, roughness: 0.9, metalness: 0.1,
+            side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1
+        });
+        const matLit = new THREE.MeshStandardMaterial({
+            color: 0x2a3a5e, roughness: 0.7, metalness: 0.3,
+            side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1
+        });
+        const matBorderBase = new THREE.MeshStandardMaterial({
+            color: 0x1a2a4a, roughness: 1, metalness: 0,
+            side: THREE.DoubleSide
+        });
+        const matBorderLitBase = new THREE.MeshStandardMaterial({
+            color: 0x4a6a9e, roughness: 1, metalness: 0,
+            side: THREE.DoubleSide
+        });
+
+        const maxDim = Math.max(W, H);
+        const cellSize3D = Math.min(12 / maxDim, 1.8);
+        const cellSizeFinal = Math.max(cellSize3D, 0.3);
+
+        const centerX = (W - 1) / 2;
+        const centerZ = (H - 1) / 2;
+        const gap = cellSizeFinal * 0.15;
+
+        // 边框底面（全尺寸，渲染在下方形成视觉边框）
+        const borderGeo = new THREE.PlaneGeometry(cellSizeFinal, cellSizeFinal);
+        // 格子面（缩小，渲染在边框上方，漏出边框底色）
+        const geo = new THREE.PlaneGeometry(cellSizeFinal - gap, cellSizeFinal - gap);
+
+        // 重置之前可能遗留的数组
+        cellMeshes = [];
+        cellData = [];
+
+        for (let z = 0; z < H; z++) {
+            for (let x = 0; x < W; x++) {
+                const px = (x - centerX) * cellSizeFinal;
+                const pz = (z - centerZ) * cellSizeFinal;
+
+                // 边框底面（略大，渲染在格子下方，形成可视边框）
+                const borderPlane = new THREE.Mesh(borderGeo, matBorderBase.clone());
+                borderPlane.position.set(px, -0.002, pz);
+                borderPlane.rotation.x = -Math.PI / 2;
+                borderPlane.userData = { gx: x, gz: z };
+                cellGroup.add(borderPlane);
+                cellMeshes.push(borderPlane);
+
+                // 格子面（全尺寸，渲染在边框上方）
+                const mesh = new THREE.Mesh(geo, matUnlit.clone());
+                mesh.position.set(px, 0, pz);
+                mesh.rotation.x = -Math.PI / 2;
+                mesh.userData = { gx: x, gz: z };
+                cellGroup.add(mesh);
+                cellMeshes.push(mesh);
+
+                const div = document.createElement('div');
+                div.style.color = isLightMode ? '#475569' : '#cbd5e6';
+                div.style.fontSize = '13px';
+                div.style.fontFamily = 'monospace';
+                div.style.textAlign = 'center';
+                div.style.lineHeight = '1.2';
+                div.style.textShadow = '0 0 4px #0b1122';
+                div.style.userSelect = 'none';
+                div.style.pointerEvents = 'none';
+                const label = new CSS2DObject(div);
+                label.position.set(px, 0.05, pz);
+                labelGroup.add(label);
+
+                cellData.push({ mesh, border: borderPlane, labelDiv: div, label, x, z });
+            }
+        }
+
+        canvas._cellData = cellData;
+        canvas._cellMeshes = cellMeshes;
+        canvas._getGroupColor = getGroupColor;
+        canvas._minX = minX;
+        canvas._minZ = minZ;
+        canvas._cellSizeFinal = cellSizeFinal;
+
+        const originDiv = document.createElement('div');
+        originDiv.textContent = `◀ 原点 (${minX},${minZ})`;
+        originDiv.style.color = '#ff6b6b';
+        originDiv.style.fontSize = '12px';
+        originDiv.style.fontWeight = 'bold';
+        originDiv.style.fontFamily = 'sans-serif';
+        originDiv.style.textShadow = '0 0 6px #0b1122';
+        originDiv.style.userSelect = 'none';
+        const gridOriginLabel = new CSS2DObject(originDiv);
+        const ox = (0 - centerX) * cellSizeFinal;
+        const oz = (0 - centerZ) * cellSizeFinal;
+        gridOriginLabel.position.set(ox, 0.05, oz);
+        scene.add(gridOriginLabel);
+
+        refreshCellAppearance();
+
+        function updateCameraPosition() {
+            const maxDim = Math.max(W, H);
+            baseCameraDist = maxDim * 3.5 + 6;
+            zoomFactor = 1;
+            const angle = Math.atan2(0.6, 0.7);
+            camera.position.set(0, baseCameraDist * Math.cos(angle), baseCameraDist * Math.sin(angle));
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        updateCameraPosition();
+
+        function getHitCell(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(cellMeshes);
+            if (intersects.length > 0) {
+                const hit = intersects[0].object;
+                return { x: hit.userData.gx, z: hit.userData.gz };
+            }
+            return null;
+        }
+
+        let _isPainting = false;
+        let _clickCell = null;
+
+        renderer.domElement.addEventListener('pointerdown', function(e) {
+            if (e.button === 2) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return;
+            }
+            if (e.button !== 0) return;
+            const pos = getHitCell(e);
+            if (!pos) return;
+            _isPainting = true;
+            _clickCell = `${pos.x},${pos.z}`;
+            renderer.domElement._lastPainted = _clickCell;
+            const x = pos.x, z = pos.z;
+            if (!compressGrid[x]) compressGrid[x] = [];
+            // 直接 toggle，无论是否已选中——单击已选中的格子立即熄灭，无需等 pointerup
+            toggleCell(x, z);
+        });
+
+        renderer.domElement.addEventListener('pointermove', function(e) {
+            if (e.button === 2) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+            if (!_isPainting) return;
+            const pos = getHitCell(e);
+            if (!pos) return;
+            const key = `${pos.x},${pos.z}`;
+            if (key === renderer.domElement._lastPainted) return;
+            _clickCell = null;
+            renderer.domElement._lastPainted = key;
+
+            if (!compressGrid[pos.x]) compressGrid[pos.x] = [];
+            if (compressGrid[pos.x][pos.z] < 0) {
+                toggleCell(pos.x, pos.z);
+            }
+        });
+
+        renderer.domElement.addEventListener('pointerup', function(e) {
+            if (e.button === 2) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return;
+            }
+            if (e.button !== 0) return;
+            _isPainting = false;
+            _clickCell = null;
+        });
+
+        renderer.domElement.addEventListener('pointerleave', function() {
+            _isPainting = false;
+            _clickCell = null;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+
+        canvas.cpRenderer = renderer;
+        canvas.cpControls = controls;
+        canvas.cpCamera = camera;
+
+        // 移除旧 resize 监听器避免累积
+        if (canvas._resizeHandler) {
+            window.removeEventListener('resize', canvas._resizeHandler);
+        }
+        canvas._resizeHandler = () => {
+            const rect = threeContainer.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+            camera.aspect = rect.width / rect.height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(rect.width, rect.height);
+            labelRenderer.setSize(rect.width, rect.height);
+        };
+        window.addEventListener('resize', canvas._resizeHandler);
+
+        // ----- 缩放（直接调整相机位置，不重建场景） -----
+        const _handleWheel = (e) => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            zoomFactor = Math.max(0.3, Math.min(3, zoomFactor + (e.deltaY > 0 ? -0.1 : 0.1) * zoomFactor));
+            const dist = baseCameraDist * zoomFactor;
+            const clampedDist = Math.max(baseCameraDist * 0.3, Math.min(baseCameraDist * 3, dist));
+            zoomFactor = clampedDist / baseCameraDist;
+            const angle = Math.atan2(0.6, 0.7);
+            camera.position.set(0, clampedDist * Math.cos(angle), clampedDist * Math.sin(angle));
+            controls.target.set(0, 0, 0);
+            controls.update();
+        };
+
+        const _handleKeyDown = (e) => {
+            if (!e.ctrlKey) return;
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                zoomFactor = Math.min(3, zoomFactor * 1.15);
+            } else if (e.key === '-') {
+                e.preventDefault();
+                zoomFactor = Math.max(0.3, zoomFactor / 1.15);
+            } else return;
+            const dist = baseCameraDist * zoomFactor;
+            const clampedDist = Math.max(baseCameraDist * 0.3, Math.min(baseCameraDist * 3, dist));
+            zoomFactor = clampedDist / baseCameraDist;
+            const angle = Math.atan2(0.6, 0.7);
+            camera.position.set(0, clampedDist * Math.cos(angle), clampedDist * Math.sin(angle));
+            controls.target.set(0, 0, 0);
+            controls.update();
+        };
+
+        // ----- 触控：单指轻触切换格子 / 滑动涂抹点亮 -----
+        let _touchPos = null;
+        let _touchMoved = false;
+        let _lastPaintedTouch = null;
+        let _touchStartTime = 0;
+        const _onTouchStart = (e) => {
+            if (e.touches.length === 1) {
+                _touchPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                _touchMoved = false;
+                _lastPaintedTouch = null;
+                _touchStartTime = Date.now();
+            } else {
+                _touchPos = null;
+            }
+        };
+        const _onTouchMove = (e) => {
+            if (e.touches.length === 1 && _touchPos) {
+                const dx = e.touches[0].clientX - _touchPos.x;
+                const dy = e.touches[0].clientY - _touchPos.y;
+                if (dx * dx + dy * dy > 64) _touchMoved = true;
+                // 滑动经过格子时点亮未选中的
+                const pos = getHitCell({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+                if (pos) {
+                    const key = `${pos.x},${pos.z}`;
+                    if (key !== _lastPaintedTouch) {
+                        _lastPaintedTouch = key;
+                        if (!compressGrid[pos.x]) compressGrid[pos.x] = [];
+                        if (compressGrid[pos.x][pos.z] < 0) {
+                            toggleCell(pos.x, pos.z);
+                        }
+                    }
+                }
+            }
+        };
+        const _onTouchEnd = (e) => {
+            if (_touchPos && e.changedTouches.length === 1) {
+                const touch = e.changedTouches[0];
+                const elapsed = Date.now() - _touchStartTime;
+                // 短促轻触（<250ms）→ 切换（点亮/熄灭）；长滑由 _onTouchMove 处理
+                if (elapsed < 250) {
+                    const pos = getHitCell({ clientX: touch.clientX, clientY: touch.clientY });
+                    if (pos) {
+                        const x = pos.x, z = pos.z;
+                        if (!compressGrid[x]) compressGrid[x] = [];
+                        toggleCell(x, z);
+                    }
+                }
+            }
+            _touchPos = null;
+        };
+
+        const _onPointerUp = () => { isMouseDown = false; drawMode = 'toggle'; };
+
+        // 保存清理函数，供 closeWin 使用
+        canvas._cleanupEvents = () => {
+            renderer.domElement.removeEventListener('wheel', _handleWheel);
+            renderer.domElement.removeEventListener('touchstart', _onTouchStart);
+            renderer.domElement.removeEventListener('touchmove', _onTouchMove);
+            renderer.domElement.removeEventListener('touchend', _onTouchEnd);
+            document.removeEventListener('keydown', _handleKeyDown);
+            document.removeEventListener('pointerup', _onPointerUp);
+        };
+
+        document.addEventListener('keydown', _handleKeyDown);
+        renderer.domElement.addEventListener('wheel', _handleWheel, { passive: false });
+        renderer.domElement.addEventListener('touchstart', _onTouchStart, { passive: true });
+        renderer.domElement.addEventListener('touchmove', _onTouchMove, { passive: true });
+        renderer.domElement.addEventListener('touchend', _onTouchEnd);
+        document.addEventListener('pointerup', _onPointerUp);
+
+        // ---- 更新格子外观（首次和后续都调用此函数） ----
+        function refreshCellAppearance() {
+            const cd = canvas._cellData || cellData || [];
+            const cm = canvas._cellMeshes || cellMeshes || [];
+            const gGc = canvas._getGroupColor || getGroupColor;
+            const cx = canvas._minX !== undefined ? canvas._minX : minX;
+            const cz = canvas._minZ !== undefined ? canvas._minZ : minZ;
+            const csf = canvas._cellSizeFinal || cellSizeFinal;
+            const litEntries = getLitEntries();
+            const assigned = new Map();
+            for (const { x, z, idx } of litEntries) {
+                assigned.set(`${x},${z}`, { id: idx + 1, paramIdx: idx });
+            }
+            for (const d of cd) {
+                const key = `${d.x},${d.z}`;
+                const isLit = compressGrid[d.x] && compressGrid[d.x][d.z] >= 0;
+                const isPattern = (canvas._patternSlots || compressPatternSlots || []).some(p => p.x === d.x && p.z === d.z);
+                const assign = assigned.get(key);
+                const wx = cx + d.x;
+                const wz = cz + d.z;
+
+                const isLightMode = document.body.classList.contains('light-mode');
+                const patternColor = isLightMode ? '#3b82f6' : '#1e40af';
+
+                if (isLit && assign) {
+                    const blockData = compressParamsList[assign.paramIdx];
+                    const groupName = blockData ? blockData.group : '';
+                    const groupColor = gGc(groupName);
+                    
+                    const hexColor = parseInt(groupColor.bg.replace('#', ''), 16);
+                    d.mesh.material.color.setHex(hexColor);
+                    const borderHex = parseInt(groupColor.border.replace('#', ''), 16);
+                    d.border.material.color.setHex(borderHex);
+                    
+                    d.labelDiv.innerHTML = `<b style="color:${groupColor.text};font-size:${Math.min(csf*9, 20)}px">${assign.id}</b><br>` +
+                        (groupName ? `<span style="color:${groupColor.text};font-size:11px;opacity:0.8">${groupName}</span><br>` : '') +
+                        `<span style="color:#6a8aaa;font-size:11px">(${wx},${wz})</span>`;
+                } else if (isPattern) {
+                    const bgHex = isLightMode ? 0xe0f2fe : 0x111a2e;
+                    d.mesh.material.color.setHex(bgHex);
+                    d.border.material.color.setHex(parseInt(patternColor.replace('#', ''), 16));
+                    
+                    d.labelDiv.innerHTML = `<span style="color:${patternColor};font-size:${Math.min(csf*9, 16)}px">(${wx},${wz})</span>`;
+                } else {
+                    const unlitBg = isLightMode ? 0xd1d5db : 0x111a2e;
+                    const unlitBorder = isLightMode ? 0x9ca3af : 0x1a2a4a;
+                    const unlitText = isLightMode ? '#475569' : '#94a3b8';
+                    d.mesh.material.color.setHex(unlitBg);
+                    d.border.material.color.setHex(unlitBorder);
+                    d.labelDiv.innerHTML = `<span style="color:${unlitText};font-size:11px">(${wx},${wz})</span>`;
+                }
+            }
+        }
     }
 
     function showCoordsMode() {
@@ -4978,30 +5895,30 @@ function showCompressExportModal(returnToList = false) {
         body.innerHTML = `
             <div style="width:100%;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
                 <div style="text-align:center;margin-bottom:12px;">
-                    <span style="font-size:14px;color:#94a3b8;">请设置画布起始和终止坐标</span>
+                    <span style="font-size:14px;color:${colors.textColor};">请设置画布起始和终止坐标</span>
                 </div>
                 <div style="display:flex;gap:8px;margin-bottom:8px;width:100%;">
                     <div style="flex:1;">
-                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 X</label>
-                        <input id="cpSX" type="number" value="${sxInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                        <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">起始 X</label>
+                        <input id="cpSX" type="number" value="${sxInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
                     </div>
                     <div style="flex:1;">
-                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">起始 Z</label>
-                        <input id="cpSZ" type="number" value="${szInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                        <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">起始 Z</label>
+                        <input id="cpSZ" type="number" value="${szInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
                     </div>
                 </div>
                 <div style="display:flex;gap:8px;margin-bottom:12px;width:100%;">
                     <div style="flex:1;">
-                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 X</label>
-                        <input id="cpEX" type="number" value="${exInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                        <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">终止 X</label>
+                        <input id="cpEX" type="number" value="${exInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
                     </div>
                     <div style="flex:1;">
-                        <label style="display:block;font-size:11px;color:#94a3b8;margin-bottom:2px;">终止 Z</label>
-                        <input id="cpEZ" type="number" value="${ezInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid #3b82f6;background:#0f172a;color:#fff;font-size:12px;box-sizing:border-box;">
+                        <label style="display:block;font-size:11px;color:${colors.textColor};margin-bottom:2px;">终止 Z</label>
+                        <input id="cpEZ" type="number" value="${ezInput.value}" style="width:100%;padding:4px;border-radius:4px;border:1px solid ${colors.inputBorder};background:${colors.inputBg};color:${colors.inputText};font-size:12px;box-sizing:border-box;">
                     </div>
                 </div>
                 <div style="display:flex;gap:8px;justify-content:center;width:100%;">
-                    <button id="cpCancel" style="flex:1;padding:6px;border:none;border-radius:4px;background:#374151;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">取消</button>
+                    <button id="cpCancel" style="flex:1;padding:6px;border:none;border-radius:4px;background:${colors.cancelBtnBg};color:${colors.cancelBtnColor};font-size:12px;cursor:pointer;transform:skewX(-5deg);">取消</button>
                     <button id="cpConfirmCoords" style="flex:1;padding:6px;border:none;border-radius:4px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:12px;font-weight:bold;cursor:pointer;transform:skewX(-5deg);">确认坐标</button>
                 </div>
             </div>
@@ -5012,12 +5929,16 @@ function showCompressExportModal(returnToList = false) {
     }
 
     function showCanvasMode() {
+        canvasRotation = 0;
         sxInput = win.querySelector('#cpSX');
         szInput = win.querySelector('#cpSZ');
         exInput = win.querySelector('#cpEX');
         ezInput = win.querySelector('#cpEZ');
 
         title.textContent = '📦 压缩导出';
+        win.querySelector('#cpExportScheme').style.display = 'block';
+        win.querySelector('#cpPattern').style.display = 'block';
+        win.querySelector('#cpImportScheme').style.display = 'block';
         win.style.height = isMobile ? '85vh' : '550px';
         
         const sx = parseInt(sxInput.value) || 0;
@@ -5029,130 +5950,138 @@ function showCompressExportModal(returnToList = false) {
         const H = Math.abs(ez - sz) + 1;
         compressGrid = Array.from({ length: W }, () => Array(H).fill(-1));
         compressLitSlots = [];
+        compressPatternSlots = [];
         compressW = W;
         compressH = H;
-        compressSx = sx;
-        compressSz = sz;
-        compressStepX = ex >= sx ? 1 : -1;
-        compressStepZ = ez >= sz ? 1 : -1;
+        compressSx = Math.min(sx, ex);
+        compressSz = Math.min(sz, ez);
+        compressStepX = 1;
+        compressStepZ = 1;
 
+        // 修复：body 自身作为 flex 容器，避免内部 div height:100% 在 flex 父元素中失效
+        body.style.display = 'flex';
+        body.style.flexDirection = 'column';
+        body.style.alignItems = 'stretch';
+        body.style.justifyContent = 'flex-start';
+        body.style.padding = '12px';
         body.innerHTML = `
-            <div style="width:100%;height:100%;display:flex;flex-direction:column;">
-                <div id="cpCanvas" style="flex:1;border:1px solid #3b82f6;border-radius:4px;background:#0b1122;overflow:auto;margin-bottom:8px;"></div>
-                <div style="display:flex;gap:8px;">
-                    <button id="cpBack" style="flex:1;padding:8px;border:none;border-radius:4px;background:#374151;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">返回修改坐标</button>
-                    <button id="cpReset" style="flex:1;padding:8px;border:none;border-radius:4px;background:#2a3a6e;color:#fff;font-size:12px;cursor:pointer;transform:skewX(-5deg);">重置网格</button>
-                    <button id="cpExport" style="flex:2;padding:8px;border:none;border-radius:4px;background:linear-gradient(135deg,#f7971e,#ffa82e);color:#0f172a;font-size:12px;font-weight:bold;cursor:pointer;transform:skewX(-5deg);">确认压缩导出</button>
-                </div>
+            <div id="cpCanvas" style="flex:1;min-height:0;border:1px solid ${colors.canvasBorder};border-radius:4px;background:${colors.canvasBg};overflow:hidden;margin-bottom:8px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+                <button id="cpRotate" style="flex:1;min-width:100px;padding:6px;border:none;border-radius:4px;background:#6366f1;color:#fff;font-size:11px;cursor:pointer;transform:skewX(-5deg);">↻ 旋转90°</button>
+                <button id="cpReset" style="flex:1;min-width:100px;padding:6px;border:none;border-radius:4px;background:#2a3a6e;color:#fff;font-size:11px;cursor:pointer;transform:skewX(-5deg);">重置网格</button>
+                <button id="cpExport" style="flex:2;min-width:120px;padding:6px;border:none;border-radius:4px;background:linear-gradient(135deg,#f7971e,#ffa82e);color:#0f172a;font-size:11px;font-weight:bold;cursor:pointer;transform:skewX(-5deg);">确认压缩导出</button>
             </div>
         `;
 
         canvas = body.querySelector('#cpCanvas');
 
-        function handleWheel(e) {
-            if (e.ctrlKey) {
-                e.preventDefault();
-                const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                canvasScale = Math.max(0.5, Math.min(3, canvasScale + delta));
-                renderGrid();
-            }
-        }
+        body.querySelector('#cpReset').onclick = () => {
+            canvasRotation = 0;
+            compressGrid = Array.from({ length: compressW }, () => Array(compressH).fill(-1));
+            compressLitSlots = [];
+            compressPatternSlots = [];
+            zoomFactor = 1;
+            renderGrid();
+        };
 
-        function handleKeyDown(e) {
-            if (e.ctrlKey) {
-                if (e.key === '+') {
-                    e.preventDefault();
-                    canvasScale = Math.min(3, canvasScale + 0.1);
-                    renderGrid();
-                } else if (e.key === '-') {
-                    e.preventDefault();
-                    canvasScale = Math.max(0.5, canvasScale - 0.1);
-                    renderGrid();
-                }
-            }
-        }
+        body.querySelector('#cpRotate').onclick = () => {
+            showToast('🔄 使用鼠标中键拖拽旋转视角');
+        };
 
-        let touchStartDist = 0;
-        let touchStartScale = 1;
-        let touchStartX = 0, touchStartY = 0;
-        let isTouchDragging = false;
-
-        function handleTouchStart(e) {
-            if (e.touches.length === 2) {
-                const dx = e.touches[0].clientX - e.touches[1].clientX;
-                const dy = e.touches[0].clientY - e.touches[1].clientY;
-                touchStartDist = Math.sqrt(dx * dx + dy * dy);
-                touchStartScale = canvasScale;
-            } else if (e.touches.length === 1) {
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-                isTouchDragging = false;
-            }
-        }
-
-        function handleTouchMove(e) {
-            if (e.touches.length === 2 && touchStartDist > 0) {
-                e.preventDefault();
-                const dx = e.touches[0].clientX - e.touches[1].clientX;
-                const dy = e.touches[0].clientY - e.touches[1].clientY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const scale = touchStartScale * (dist / touchStartDist);
-                canvasScale = Math.max(0.5, Math.min(3, scale));
-                renderGrid();
-            } else if (e.touches.length === 1) {
-                const dx = e.touches[0].clientX - touchStartX;
-                const dy = e.touches[0].clientY - touchStartY;
-                if (Math.sqrt(dx * dx + dy * dy) > 5) {
-                    isTouchDragging = true;
-                }
-                if (isTouchDragging) {
-                    e.preventDefault();
-                    const target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-                    if (target && target.dataset && target.dataset.xi !== undefined) {
-                        const xi = parseInt(target.dataset.xi);
-                        const zi = parseInt(target.dataset.zi);
-                        toggleCell(xi, zi);
+        win.querySelector('#cpPattern').onclick = () => {
+            compressPatternSlots = [];
+            for (let xi = 0; xi < compressW; xi++) {
+                for (let zi = 0; zi < compressH; zi++) {
+                    if (compressGrid[xi] && compressGrid[xi][zi] >= 0) {
+                        compressPatternSlots.push({ x: xi, z: zi });
+                        compressGrid[xi][zi] = -1;
                     }
                 }
             }
-        }
-
-        canvas.addEventListener('wheel', handleWheel, { passive: false });
-        document.addEventListener('keydown', handleKeyDown);
-        canvas.addEventListener('touchstart', handleTouchStart);
-        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-        function handleMouseUp() {
-            isMouseDown = false;
-            drawMode = 'toggle';
-        }
-        document.addEventListener('mouseup', handleMouseUp);
-
-        const closeWithScale = closeWin;
-        closeWin = function() {
-            canvas.removeEventListener('wheel', handleWheel);
-            document.removeEventListener('keydown', handleKeyDown);
-            canvas.removeEventListener('touchstart', handleTouchStart);
-            canvas.removeEventListener('touchmove', handleTouchMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-            canvasScale = 1;
-            isMouseDown = false;
-            closeWithScale();
-        };
-
-        body.querySelector('#cpBack').onclick = () => {
-            canvas.removeEventListener('wheel', handleWheel);
-            document.removeEventListener('keydown', handleKeyDown);
-            canvas.removeEventListener('touchstart', handleTouchStart);
-            canvas.removeEventListener('touchmove', handleTouchMove);
-            canvasScale = 1;
-            showCoordsMode();
-        };
-
-        body.querySelector('#cpReset').onclick = () => {
-            compressGrid = Array.from({ length: compressW }, () => Array(compressH).fill(-1));
             compressLitSlots = [];
             renderGrid();
+        };
+
+        win.querySelector('#cpExportScheme').onclick = () => {
+            const lit = getLitEntries();
+            const data = {
+                sx: compressSx,
+                sz: compressSz,
+                ex: compressSx + compressW - 1,
+                ez: compressSz + compressH - 1,
+                rotation: canvasRotation,
+                lit: lit.map(l => ({ x: l.x, z: l.z })),
+                pattern: compressPatternSlots
+            };
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `compress-scheme-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        win.querySelector('#cpImportScheme').onclick = () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        sxInput.value = data.sx;
+                        szInput.value = data.sz;
+                        exInput.value = data.ex;
+                        ezInput.value = data.ez;
+                        canvasRotation = data.rotation || 0;
+                        
+                        const sx = parseInt(data.sx) || 0;
+                        const sz = parseInt(data.sz) || 0;
+                        const ex = parseInt(data.ex) || 0;
+                        const ez = parseInt(data.ez) || 0;
+                        const W = Math.abs(ex - sx) + 1;
+                        const H = Math.abs(ez - sz) + 1;
+                        compressGrid = Array.from({ length: W }, () => Array(H).fill(-1));
+                        compressLitSlots = [];
+                        compressPatternSlots = [];
+                        compressW = W;
+                        compressH = H;
+                        compressSx = Math.min(sx, ex);
+                        compressSz = Math.min(sz, ez);
+
+                        if (data.lit) {
+                            data.lit.forEach(({ x, z }) => {
+                                if (x >= 0 && x < W && z >= 0 && z < H) {
+                                    const idx = nextFreeIdx();
+                                    if (idx >= 0) {
+                                        compressGrid[x][z] = idx;
+                                        compressLitSlots[idx] = { x, z };
+                                    }
+                                }
+                            });
+                        }
+
+                        if (data.pattern) {
+                            data.pattern.forEach(({ x, z }) => {
+                                if (x >= 0 && x < W && z >= 0 && z < H) {
+                                    compressPatternSlots.push({ x, z });
+                                }
+                            });
+                        }
+
+                        renderGrid();
+                    } catch (err) {
+                        showModal('❌ 导入失败', '文件格式不正确');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
         };
 
         body.querySelector('#cpExport').onclick = () => {
@@ -5481,8 +6410,15 @@ function importFromCommands(text) {
         }
         const content = quoteMatch[1];
         
-        // 检查是否包含旗帜标识
-        const isFlag = content.includes("'方块类型：旗帜'") || content.includes('"方块类型：旗帜"');
+        // 检查方块类型
+        let blockType = 'cube';
+        if (content.includes("'方块类型：旗帜'") || content.includes('"方块类型：旗帜"')) {
+            blockType = 'flag';
+        } else if (content.includes("'方块类型：半砖'") || content.includes('"方块类型：半砖"')) {
+            blockType = 'halfbrick';
+        } else if (content.includes("'方块类型：楼梯'") || content.includes('"方块类型：楼梯"')) {
+            blockType = 'stair';
+        }
         
         // 提取材质名称 'block：xxx'（仅立方体使用）
         let blockMaterialName = null;
@@ -5520,12 +6456,12 @@ function importFromCommands(text) {
         });
         
         // 创建方块
-        const newBlock = new Block(finalId, M, null, '#aaccff', isFlag ? 'flag' : 'cube', groupName);
+        const newBlock = new Block(finalId, M, null, '#aaccff', blockType, groupName);
         
         // 如果存在分组名称，自动创建组
         if (groupName) {
             if (!blockGroups.find(g => g.name === groupName)) {
-                blockGroups.push({ name: groupName, expanded: false });
+                blockGroups.push({ name: groupName, expanded: false, hidden: false });
             }
         }
         
@@ -5544,8 +6480,8 @@ function importFromCommands(text) {
             }
         });
         
-        // 如果存在材质名称，尝试应用贴图（仅立方体）
-        if (blockMaterialName && newBlock.type === 'cube') {
+        // 如果存在材质名称，尝试应用贴图（立方体、半砖、楼梯）
+        if (blockMaterialName && (newBlock.type === 'cube' || newBlock.type === 'halfbrick' || newBlock.type === 'stair')) {
             const lowerName = blockMaterialName.toLowerCase();
             const url = nameToUrl.get(lowerName);
             if (url) {
@@ -5956,6 +6892,8 @@ function showCreateBlockMenu() {
             <div style="margin-bottom: 16px;">
                 <div id="createCubeBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit;">❒ 方块</div>
                 <div id="createPlaneBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">▭ 平面</div>
+                <div id="createHalfbrickBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">⬜ 半砖</div>
+                <div id="createStairBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">🪜 楼梯</div>
                 <div id="createFlagBtn" style="display: block; width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; color: inherit; margin-top: 4px;">🏳️ 旗帜</div>
             </div>
             <div style="border-top: 1px solid #334155; margin: 12px 0;"></div>
@@ -5970,11 +6908,12 @@ function showCreateBlockMenu() {
     
     const createCubeBtn = modalDiv.querySelector('#createCubeBtn');
     const createPlaneBtn = modalDiv.querySelector('#createPlaneBtn');
+    const createHalfbrickBtn = modalDiv.querySelector('#createHalfbrickBtn');
+    const createStairBtn = modalDiv.querySelector('#createStairBtn');
     const createFlagBtn = modalDiv.querySelector('#createFlagBtn');
     const createGroupBtn = modalDiv.querySelector('#createGroupBtn');
     const presetBtn = modalDiv.querySelector('#presetBtn');
     
-    // 悬停效果（与预设菜单一致）
     const addHoverEffect = (el) => {
         el.addEventListener('mouseenter', () => {
             el.style.backgroundColor = '#3b82f6';
@@ -5987,6 +6926,8 @@ function showCreateBlockMenu() {
     };
     addHoverEffect(createCubeBtn);
     addHoverEffect(createPlaneBtn);
+    addHoverEffect(createHalfbrickBtn);
+    addHoverEffect(createStairBtn);
     addHoverEffect(createFlagBtn);
     addHoverEffect(createGroupBtn);
     addHoverEffect(presetBtn);
@@ -5998,6 +6939,14 @@ function showCreateBlockMenu() {
     createPlaneBtn.onclick = () => {
         closeModal();
         createPlaneBlock();
+    };
+    createHalfbrickBtn.onclick = () => {
+        createBlockOfType('halfbrick');
+        closeModal();
+    };
+    createStairBtn.onclick = () => {
+        createBlockOfType('stair');
+        closeModal();
     };
     createFlagBtn.onclick = () => {
         createBlockOfType('flag');
@@ -6015,7 +6964,11 @@ function showCreateBlockMenu() {
 // 实际创建方块的函数（复用原有逻辑）
 function createBlockOfType(type) {
     const defaultM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
-    let base = (type === 'flag') ? "Flag" : "Cube";
+    let base;
+    if (type === 'flag') base = "Flag";
+    else if (type === 'halfbrick') base = "Halfbrick";
+    else if (type === 'stair') base = "Stair";
+    else base = "Cube";
     let id = base, idx = 1;
     while (blocks.some(b => b.id === id)) id = base + (idx++).toString();
     const newBlock = new Block(id, defaultM, null, '#aaccff', type);
@@ -6062,7 +7015,7 @@ function showCreateGroupModal() {
             showModal("提示", "组名称已存在", null, false);
             return;
         }
-        blockGroups.push({ name: name, expanded: false });
+        blockGroups.push({ name: name, expanded: false, hidden: false });
         renderSideBlockList();
         closeModal();
     };
@@ -6088,18 +7041,24 @@ function showGroupManageModal(groupName) {
     const selectedIds = Array.from(selectedBlocksSet).map(b => b.id);
     const hasSelected = selectedIds.length > 0;
     
+    const group = blockGroups.find(g => g.name === groupName);
+    const isHidden = group && group.hidden;
+    
     let html = `
         <div class="modal-content" style="max-width: 500px; max-height: 70vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <span style="font-size: 18px; font-weight: bold;">管理组: ${escapeHtml(groupName)}</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 18px; font-weight: bold;">管理组: ${escapeHtml(groupName)}</span>
+                    <button id="renameGroupBtn" style="background: none; border: none; cursor: pointer; color: #60a5fa; font-size: 16px; padding: 2px;">✏️</button>
+                </div>
                 <button id="closeGroupManageBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: inherit;">✕</button>
             </div>
-            ${hasSelected ? `
             <div style="margin-bottom: 16px;">
-                <button id="moveSelectedBtn" style="width: 100%; padding: 8px; border: none; border-radius: 4px; background: linear-gradient(135deg, #f7971e, #ffa82e); color: #0f172a; font-size: 13px; font-weight: bold; cursor: pointer; transform: skewX(-5deg);">
-                    📦 移动选中方块至本组 (${selectedIds.length})
-                </button>
-            </div>` : ''}
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                    <input type="checkbox" id="groupHiddenCheckbox" ${isHidden ? 'checked' : ''} style="width: 14px; height: 14px; cursor: pointer;">
+                    <span>组内方块不显示</span>
+                </label>
+            </div>
             <div style="margin-bottom: 16px; font-size: 12px; color: #94a3b8;">
                 选择方块添加到组中，或从组中移除
             </div>
@@ -6123,7 +7082,10 @@ function showGroupManageModal(groupName) {
     
     html += `
             <div style="margin-bottom: 16px;">
-                <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #60a5fa;">可添加方块</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 14px; font-weight: bold; color: #60a5fa;">可添加方块</span>
+                    ${hasSelected ? `<button id="moveSelectedBtn" style="padding: 3px 8px; border: none; border-radius: 4px; background: linear-gradient(135deg, #f7971e, #ffa82e); color: #0f172a; font-size: 11px; font-weight: bold; cursor: pointer; transform: skewX(-5deg);">📦 移入(${selectedIds.length})</button>` : ''}
+                </div>
                 <div id="otherBlocksList" style="max-height: 200px; overflow-y: auto; border: 1px solid #334155; border-radius: 8px; padding: 4px;">
     `;
     
@@ -6150,6 +7112,23 @@ function showGroupManageModal(groupName) {
     const closeModal = () => modalDiv.remove();
     modalDiv.querySelector('#closeGroupManageBtn').onclick = closeModal;
     modalDiv.querySelector('#confirmGroupManageBtn').onclick = closeModal;
+
+    modalDiv.querySelector('#renameGroupBtn').onclick = () => {
+        closeModal();
+        editGroupName(groupName);
+    };
+    
+    // 组内方块隐藏复选框
+    const hiddenCheckbox = modalDiv.querySelector('#groupHiddenCheckbox');
+    if (hiddenCheckbox) {
+        hiddenCheckbox.addEventListener('change', () => {
+            const g = blockGroups.find(g2 => g2.name === groupName);
+            if (g) {
+                g.hidden = hiddenCheckbox.checked;
+                updateGroupVisibility(groupName);
+            }
+        });
+    }
     
     if (hasSelected) {
         modalDiv.querySelector('#moveSelectedBtn').onclick = () => {
@@ -6188,6 +7167,46 @@ function showGroupManageModal(groupName) {
     });
 }
 
+function updateGroupVisibility(groupName) {
+    const group = blockGroups.find(g => g.name === groupName);
+    if (!group) return;
+
+    blocks.forEach(block => {
+        if (block.group === groupName) {
+            const isVisible = !group.hidden;
+            if (block.mesh) block.mesh.visible = isVisible;
+            if (block.label) {
+                const shouldShow = !hideNames && isVisible;
+                block.label.visible = shouldShow;
+                if (block.label.element) {
+                    if (shouldShow) {
+                        block.label.element.style.removeProperty('display');
+                    } else {
+                        block.label.element.style.setProperty('display', 'none', 'important');
+                    }
+                }
+            }
+            if (block.selectionWireframe) block.selectionWireframe.visible = isVisible;
+            // 隐藏时取消选中
+            if (group.hidden && selectedBlocksSet.has(block)) {
+                selectedBlocksSet.delete(block);
+                if (selectedBlock === block) {
+                    selectedBlock = null;
+                }
+            }
+        }
+    });
+
+    updateAxesVisibility();
+    renderSideBlockList();
+}
+
+function isBlockInHiddenGroup(block) {
+    if (!block.group) return false;
+    const group = blockGroups.find(g => g.name === block.group);
+    return group && group.hidden;
+}
+
 function removeGroup(groupName) {
     blocks.forEach(b => {
         if (b.group === groupName) {
@@ -6199,7 +7218,7 @@ function removeGroup(groupName) {
 }
 
 function editGroupName(oldName) {
-    showModal("编辑组名", `当前名称: ${escapeHtml(oldName)}`, (newName) => {
+    showModal(`编辑组名（当前: ${escapeHtml(oldName)}）`, '', (newName) => {
         if (!newName || !newName.trim()) {
             showModal("提示", "请输入有效的组名称", null, false);
             return;
@@ -6399,7 +7418,17 @@ function showPresetMenu() {
 
 document.getElementById('hideNameBtn').addEventListener('click', () => {
     hideNames = !hideNames;
-    blocks.forEach(b => { if (b.label) b.label.visible = !hideNames; });
+    blocks.forEach(b => { if (b.label) {
+        const shouldShow = !hideNames && !isBlockInHiddenGroup(b);
+        b.label.visible = shouldShow;
+        if (b.label.element) {
+            if (shouldShow) {
+                b.label.element.style.removeProperty('display');
+            } else {
+                b.label.element.style.setProperty('display', 'none', 'important');
+            }
+        }
+    } });
     document.getElementById('hideNameBtn').querySelector('span').textContent = hideNames ? '显示' : '隐藏';
     // 更新新布局视图菜单项
     const viewHideItem = document.querySelector('#viewDropdown .top-dropdown-item[data-view-action="hideNames"] span');
@@ -6720,6 +7749,7 @@ function applyNewLayoutMode() {
     const sideList = document.getElementById('sideBlockList');
     const dataPanel = document.getElementById('dataPanel');
     
+    const resizeHandle = document.getElementById('sideListResizeHandle');
     if (isNewLayoutMode) {
         body.classList.add('new-layout-active');
         if (newTopBar) newTopBar.style.display = 'flex';
@@ -6728,10 +7758,15 @@ function applyNewLayoutMode() {
             // 根据侧边面板模式决定方块列表位置
             if (isSidePanelMode) {
                 sideList.classList.remove('side-list-bottom');
+                if (resizeHandle) resizeHandle.style.display = 'none';
             } else {
                 sideList.classList.add('side-list-bottom');
+                if (resizeHandle) {
+                    resizeHandle.style.display = 'block';
+                }
             }
             applySideListDimensions();
+            updateSideListResizeHandle();
         }
         renderSideBlockList();
         // 新操作模式时显示世界轴位移、枢轴联动和数据面板宽度设置，隐藏方块列表位置设置
@@ -6742,6 +7777,10 @@ function applyNewLayoutMode() {
         if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'flex';
         const blockListTopLeftSetting = document.getElementById('blockListTopLeftSetting');
         if (blockListTopLeftSetting) blockListTopLeftSetting.style.display = 'none';
+        const brushModeSetting = document.getElementById('brushModeSetting');
+        if (brushModeSetting) brushModeSetting.style.display = 'flex';
+        const brushThicknessSetting = document.getElementById('brushThicknessSetting');
+        if (brushThicknessSetting) brushThicknessSetting.style.display = 'flex';
     } else {
         body.classList.remove('new-layout-active');
         if (newTopBar) newTopBar.style.display = 'none';
@@ -6749,6 +7788,7 @@ function applyNewLayoutMode() {
             sideList.style.display = 'none';
             sideList.classList.remove('side-list-bottom');
         }
+        if (resizeHandle) resizeHandle.style.display = 'none';
         // 退出关键帧模式
         if (isKeyframeMode) {
             isKeyframeMode = false;
@@ -6767,6 +7807,11 @@ function applyNewLayoutMode() {
         if (pivotLinkSetting) pivotLinkSetting.style.display = 'none';
         const blockListTopLeftSetting = document.getElementById('blockListTopLeftSetting');
         if (blockListTopLeftSetting) blockListTopLeftSetting.style.display = 'flex';
+        const brushModeSetting = document.getElementById('brushModeSetting');
+        if (brushModeSetting) brushModeSetting.style.display = 'none';
+        const brushThicknessSetting = document.getElementById('brushThicknessSetting');
+        if (brushThicknessSetting) brushThicknessSetting.style.display = 'none';
+        if (isBrushMode) exitBrushMode();
     }
     // 关闭所有下拉菜单
     closeAllTopDropdowns();
@@ -6787,9 +7832,11 @@ function renderSideBlockList() {
     let html = `<div class="side-block-list-title">📦 方块列表</div>`;
     
     // 关键帧动画入口（关键帧模式下高亮）
+    // 画笔模式下禁用关键帧入口（避免创建平面后该按钮异常显示）
+    const kfHiddenStyle = isBrushMode ? 'display:none;' : '';
     const kfActiveStyle = isKfMode
-        ? 'border-bottom:2px solid #a855f7;margin-bottom:4px;padding-bottom:8px;color:#a855f7;background:rgba(168,85,247,0.1);border-radius:6px;'
-        : 'border-bottom:1px solid rgba(59,130,246,0.3);margin-bottom:4px;padding-bottom:8px;color:#facc15;';
+        ? `border-bottom:2px solid #a855f7;margin-bottom:4px;padding-bottom:8px;color:#a855f7;background:rgba(168,85,247,0.1);border-radius:6px;${kfHiddenStyle}`
+        : `border-bottom:1px solid rgba(59,130,246,0.3);margin-bottom:4px;padding-bottom:8px;color:#facc15;${kfHiddenStyle}`;
     html += `<div class="side-block-item" id="sideBlockKeyframe" style="${kfActiveStyle}" title="${isKfMode ? '点击退出关键帧模式' : '点击进入关键帧模式'}">
         <span>🎬 关键帧动画${isKfMode ? ' <span style="font-size:10px;opacity:0.7;">(编辑中)</span>' : ''}</span>
         ${isKfMode ? '<span style="font-size:10px;color:#a855f7;">● 已激活</span>' : ''}
@@ -7013,9 +8060,14 @@ function renderSideBlockList() {
     sideList.querySelectorAll('.side-block-group-header').forEach(header => {
         let longPressTimer = null;
         let isLongPress = false;
-        
+
         const groupName = header.dataset.groupName;
         const groupBlocks = blocks.filter(b => b.group === groupName);
+        const getSelectableGroupBlocks = () => {
+            const isKfMode = (isNewLayoutMode && isKeyframeMode) || (!isNewLayoutMode && keyframeWindowOpen);
+            if (isKfMode) return groupBlocks.filter(b => hasKeyframeAnimation(b.id));
+            return groupBlocks;
+        };
         
         header.addEventListener('click', (e) => {
             if (touchMoved) {
@@ -7031,14 +8083,15 @@ function renderSideBlockList() {
             const isMulti = e.ctrlKey || e.metaKey;
             if (isMulti) {
                 e.preventDefault();
-                groupBlocks.forEach(b => {
+                const selectable = getSelectableGroupBlocks();
+                selectable.forEach(b => {
                     selectedBlocksSet.add(b);
                 });
                 updateAxesVisibility();
                 blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
                 renderSideBlockList();
-                if (groupBlocks.length > 0) {
-                    selectBlock(groupBlocks[0]);
+                if (selectable.length > 0) {
+                    selectBlock(selectable[0]);
                 }
                 return;
             }
@@ -7053,14 +8106,15 @@ function renderSideBlockList() {
         header.addEventListener('mousedown', () => {
             longPressTimer = setTimeout(() => {
                 isLongPress = true;
-                groupBlocks.forEach(b => {
+                const selectable = getSelectableGroupBlocks();
+                selectable.forEach(b => {
                     selectedBlocksSet.add(b);
                 });
                 updateAxesVisibility();
                 blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
                 renderSideBlockList();
-                if (groupBlocks.length > 0) {
-                    selectBlock(groupBlocks[0]);
+                if (selectable.length > 0) {
+                    selectBlock(selectable[0]);
                 }
             }, 500);
         });
@@ -7084,14 +8138,15 @@ function renderSideBlockList() {
             touchMoved = false;
             longPressTimer = setTimeout(() => {
                 isLongPress = true;
-                groupBlocks.forEach(b => {
+                const selectable = getSelectableGroupBlocks();
+                selectable.forEach(b => {
                     selectedBlocksSet.add(b);
                 });
                 updateAxesVisibility();
                 blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
                 renderSideBlockList();
-                if (groupBlocks.length > 0) {
-                    selectBlock(groupBlocks[0]);
+                if (selectable.length > 0) {
+                    selectBlock(selectable[0]);
                 }
             }, 500);
         });
@@ -7142,29 +8197,6 @@ function renderSideBlockList() {
         });
     });
     
-    // 组名长按编辑（手机端）
-    let longPressTimer = null;
-    sideList.querySelectorAll('.side-block-group-name').forEach(nameEl => {
-        nameEl.addEventListener('touchstart', (e) => {
-            longPressTimer = setTimeout(() => {
-                const groupName = nameEl.closest('.side-block-group-header').dataset.groupName;
-                editGroupName(groupName);
-            }, 500);
-        });
-        nameEl.addEventListener('touchend', () => {
-            if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
-            }
-        });
-        nameEl.addEventListener('touchmove', () => {
-            if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
-            }
-        });
-    });
-    
     // 关键帧动画按钮
     const kfBtnSide = document.getElementById('sideBlockKeyframe');
     if (kfBtnSide) {
@@ -7203,75 +8235,76 @@ let resizeStartDim = 0;
 
 function setupSideListResize() {
     const sideList = document.getElementById('sideBlockList');
+    const resizeHandle = document.getElementById('sideListResizeHandle');
     if (!sideList) return;
 
-    sideList.addEventListener('pointerdown', (e) => {
-        const rect = sideList.getBoundingClientRect();
-        const edgeSize = 10;
-
+    function startResize(e) {
+        const pt = e.touches ? e.touches[0] : e;
+        e.preventDefault();
+        isResizingSideList = true;
         if (isSidePanelMode) {
-            // 侧边模式：点击左侧边缘
-            if (e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
-                e.preventDefault();
-                isResizingSideList = true;
-                resizeStartClient = e.clientX;
-                resizeStartDim = sideListWidth;
-                document.body.style.userSelect = 'none';
-                document.body.style.cursor = 'ew-resize';
-                document.addEventListener('pointermove', onSideListResizeMove);
-                document.addEventListener('pointerup', onSideListResizeUp);
-            }
+            resizeStartClient = pt.clientX;
+            resizeStartDim = sideListWidth;
         } else {
-            // 底部模式：点击上边缘
-            if (e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
-                e.preventDefault();
-                isResizingSideList = true;
-                resizeStartClient = e.clientY;
-                resizeStartDim = sideListHeight;
-                document.body.style.userSelect = 'none';
-                document.body.style.cursor = 'ns-resize';
-                document.addEventListener('pointermove', onSideListResizeMove);
-                document.addEventListener('pointerup', onSideListResizeUp);
-            }
+            resizeStartClient = pt.clientY;
+            resizeStartDim = sideListHeight;
         }
-    });
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = isSidePanelMode ? 'ew-resize' : 'ns-resize';
+        document.addEventListener('pointermove', onSideListResizeMove);
+        document.addEventListener('pointerup', onSideListResizeUp);
+    }
 
-    // 鼠标悬停时显示光标样式
-    sideList.addEventListener('pointermove', (e) => {
-        if (isResizingSideList) return;
-        const rect = sideList.getBoundingClientRect();
-        const edgeSize = 10;
-        if (isSidePanelMode && e.clientX >= rect.left && e.clientX <= rect.left + edgeSize) {
-            sideList.style.cursor = 'ew-resize';
-        } else if (!isSidePanelMode && e.clientY >= rect.top && e.clientY <= rect.top + edgeSize) {
-            sideList.style.cursor = 'ns-resize';
-        } else {
-            sideList.style.cursor = '';
-        }
-    });
+    // 专用拖拽手柄（底部模式时显示在侧边列表上方）
+    if (resizeHandle) {
+        resizeHandle.addEventListener('pointerdown', startResize);
+        resizeHandle.addEventListener('touchstart', startResize, { passive: false });
+    }
+    // 侧边模式仍然使用边缘检测
+    if (isSidePanelMode) {
+        sideList.addEventListener('pointerdown', (e) => {
+            const rect = sideList.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.left + 10) {
+                startResize(e);
+            }
+        });
+        sideList.addEventListener('touchstart', (e) => {
+            const rect = sideList.getBoundingClientRect();
+            const pt = e.touches[0];
+            if (pt.clientX >= rect.left && pt.clientX <= rect.left + 10) {
+                startResize(e);
+            }
+        }, { passive: false });
+    }
 }
 
 function onSideListResizeMove(e) {
     if (!isResizingSideList) return;
     const sideList = document.getElementById('sideBlockList');
     if (!sideList) return;
+    const pt = e.touches ? e.touches[0] : e;
     if (isSidePanelMode) {
-        let newWidth = resizeStartDim + (resizeStartClient - e.clientX);
+        let newWidth = resizeStartDim + (resizeStartClient - pt.clientX);
         newWidth = Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(MAX_SIDE_PANEL_WIDTH, newWidth));
         sideListWidth = newWidth;
         sidePanelWidth = newWidth;
         sideList.style.width = newWidth + 'px';
+        sideList.style.height = '';
         if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = `${newWidth}px`;
         if (sidePanelWidthRange) sidePanelWidthRange.value = newWidth;
         try { localStorage.setItem('ui_side_list_width', String(newWidth)); } catch (err) {}
         try { localStorage.setItem('ui_side_panel_width', String(newWidth)); } catch (err) {}
     } else {
-        let newHeight = resizeStartDim + (resizeStartClient - e.clientY);
+        let newHeight = resizeStartDim + (resizeStartClient - pt.clientY);
         newHeight = Math.max(80, Math.min(400, newHeight));
         sideListHeight = newHeight;
         sideList.style.height = newHeight + 'px';
+        sideList.style.width = '';
+        sideList.style.left = '';
+        sideList.style.right = '';
         try { localStorage.setItem('ui_side_list_height', String(newHeight)); } catch (err) {}
     }
+    updateSideListResizeHandle();
 }
 
 function onSideListResizeUp() {
@@ -7292,6 +8325,24 @@ function applySideListDimensions() {
     } else {
         sideList.style.height = sideListHeight + 'px';
         sideList.style.width = '';
+        sideList.style.left = '';
+        sideList.style.right = '';
+    }
+}
+
+function updateSideListResizeHandle() {
+    const handle = document.getElementById('sideListResizeHandle');
+    const sideList = document.getElementById('sideBlockList');
+    if (!handle || !sideList) return;
+    if (isNewLayoutMode && !isSidePanelMode) {
+        const rect = sideList.getBoundingClientRect();
+        handle.style.display = 'block';
+        handle.style.left = '0';
+        handle.style.right = '0';
+        handle.style.top = (rect.top - 6) + 'px';
+        handle.style.position = 'fixed';
+    } else {
+        handle.style.display = 'none';
     }
 }
 
@@ -7857,6 +8908,33 @@ if (uiSettingsPanel) {
     });
 }
 
+const brushModeCheckbox = document.getElementById('brushModeCheckbox');
+if (brushModeCheckbox) {
+    brushModeCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleBrushMode();
+    });
+}
+
+const brushThicknessRange = document.getElementById('brushThicknessRange');
+const brushThicknessLabel = document.getElementById('brushThicknessLabel');
+if (brushThicknessRange) {
+    brushThicknessRange.addEventListener('input', (e) => {
+        brushThickness = parseFloat(e.target.value);
+        syncBrushThicknessUI();
+    });
+}
+
+// 顶部工具栏中的画笔长度滑动条（画笔模式下显示）
+const brushLengthRange = document.getElementById('brushLengthRange');
+const brushLengthLabel = document.getElementById('brushLengthLabel');
+if (brushLengthRange) {
+    brushLengthRange.addEventListener('input', (e) => {
+        brushThickness = parseFloat(e.target.value);
+        syncBrushThicknessUI();
+    });
+}
+
 document.addEventListener('click', (e) => {
     // 关闭所有下拉菜单
     if (activeTopDropdown) {
@@ -7918,9 +8996,11 @@ applyBlockListPosition();
 applySidePanelMode();
 setupNewLayoutUI();
 setupSideListResize();
+window.addEventListener('resize', updateSideListResizeHandle);
 applyNewLayoutMode();
 
-// ============================================================
+
+
 // 3D Gizmo 变换控件 —— 完整实现（基于 Three.js）
 // 包含：平移箭头、旋转弧、缩放点、拾取、拖拽、同步更新
 // ============================================================
@@ -7930,6 +9010,9 @@ const HER_DEFAULT_COLORS = { x: 0xff4444, y: 0x44ff44, z: 0x4488ff };
 
 // ---------- 全局状态 ----------
 const herModes = new Set();            // 当前激活的模式：'origin', 'base', 'rotate', 'centerRotate', 'scale'
+// 用户最近选择的局部/全局旋转子模式，供 R / Shift+R 快捷键激活
+let currentLocalRotMode = 'rotate';        // 'rotate'(局部旋转) 或 'centerRotate'(模型旋转)
+let currentGlobalRotMode = 'globalRotate'; // 'globalRotate'(全局旋转) 或 'globalCenterRotate'(全局模型旋转)
 let gizmoRoot = null;                 // 在 scene 初始化后创建并添加到场景
 let pickables = [];                   // 所有可拾取对象（隐藏命中体）
 let activePick = null;                // 当前拖拽的控件元数据
@@ -7941,6 +9024,7 @@ let originCenterLineObj = null;       // 原点→几何中心连线
 let rotArcGroups = [];                // 旋转弧组
 let gizmoAxisLines = [];              // XYZ轴向指示线
 let draggingGizmo = false;            // 是否正在拖拽
+let gizmoDragJustEnded = false;       // Gizmo拖拽刚结束，用于阻止后续click事件误选方块
 let dragNeedsRebuild = false;
 let lastDragRebuild = 0;
 let lastGizmoSig = '', gizmoDirty = true, lastGizmoCheck = 0;
@@ -8378,25 +9462,179 @@ function updateOriginCenterLineLive(b = selected()) {
     originCenterLineObj.scale.set(1, len, 1);
 }
 
-// ---------- 缩放点 ----------
-function makeScaleDots(b) {
+// ---------- 缩放点（v.scale 角点 + es 拉伸轴 + ex/ey 旋转环） ----------
+let stretchGizmoRefs = null; // { group, eyFrame, exFrame, rod, head, rodHit, eyRing, exRing, worldDir }
+
+// 由三个局部轴构造朝向四元数
+function quatFromAxes(xAx, yAx, zAx) {
+    const m = new THREE.Matrix4().makeBasis(xAx, yAx, zAx);
+    return new THREE.Quaternion().setFromRotationMatrix(m);
+}
+
+// 计算 es 拉伸轴在「局部帧」中的方向：
+// 由 computeTransformMatrix 的拉伸算子 S = Ry(-ey)·Rx(ex)·Sz(es)·Rx(-ex)·Ry(ey) 可知，
+// 其沿 Sz(es) 缩放的特征轴（即真实拉伸方向）为 Ry(-ey)·Rx(ex)·ẑ（已数值验证：S·v = es·v 恒成立）。
+// 注意 ey 取负号：之前用 +ey 导致 ey 旋转方向完全相反。
+function localStretchDir(exDeg, eyDeg) {
+    const ex = THREE.MathUtils.degToRad(exDeg);
+    const ey = THREE.MathUtils.degToRad(eyDeg);
+    const v = new THREE.Vector3(0, 0, 1);
+    v.applyAxisAngle(new THREE.Vector3(1, 0, 0), ex);    // Rx(ex)·ẑ
+    v.applyAxisAngle(new THREE.Vector3(0, 1, 0), -ey);   // Ry(-ey)·Rx(ex)·ẑ  ← 关键负号
+    return v.normalize();
+}
+
+// 拉伸专用旋转环：视觉风格与 makeArc 的旋转圆环完全一致（半圆弧带 + 菱形头 + 沿弧命中球），
+// 并复用 makeArc 的「面向摄像机」设计——圆盘平面始终垂直于旋转轴，半圆绕轴自转以正对相机。
+// axisNormalL/xBasisL/yBasisL 为「父 group 局部坐标系」下的轴向量（支持嵌套：ex 环挂在 ey 旋转框下）。
+function makeStretchRing(varName, axis, color, axisNormalL, xBasisL, yBasisL, radius) {
     const group = new THREE.Group();
+    const plane = new THREE.Group();
+    const arcGeom = makeArcBandShape(radius, 0.05, 0, Math.PI);
+    const arc = new THREE.Mesh(arcGeom, mat(color, 0.85));
+    arc.renderOrder = 997;
+    const pgram = new THREE.Mesh(makeDiamondShape(0.22), mat(color, 0.95));
+    pgram.position.set(Math.cos(Math.PI * 0.5) * radius, Math.sin(Math.PI * 0.5) * radius, 0);
+    pgram.rotation.z = Math.PI * 0.5;
+    pgram.renderOrder = 998;
+    plane.add(arc); plane.add(pgram);
+    // 沿弧线布点命中（与旋转环一致，整段半圆都可拖拽）
+    const d0 = orthonormalDiscBasis(axisNormalL.clone().normalize(), xBasisL.clone().normalize());
+    const rotMeta = { type: 'rot', varName, scale: 1, axis, rotMode: 'origin', priority: 14,
+        axisNormal: d0.z.clone(), xBasis: d0.x.clone(), yBasis: d0.y.clone(), radius, end: Math.PI };
+    const hitGeom = new THREE.SphereGeometry(0.34, 14, 10);
+    const pickMeshes = [];
+    for (let i = 0; i <= 22; i++) {
+        const a = Math.PI * i / 22;
+        const p = new THREE.Mesh(hitGeom, hitMat());
+        p.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
+        addPick(p, Object.assign({}, rotMeta));
+        plane.add(p); pickMeshes.push(p);
+    }
+    const pgramHit = new THREE.Mesh(new THREE.SphereGeometry(0.48, 14, 10), hitMat());
+    pgramHit.position.copy(pgram.position);
+    addPick(pgramHit, Object.assign({}, rotMeta));
+    plane.add(pgramHit); pickMeshes.push(pgramHit);
+    group.add(plane);
+    // 与 makeArc 一致：把 group 的局部坐标系对齐到圆盘基（axisNormal 为 group 局部 Z，XY 为圆盘面内基）
+    orientDiscToBasis(group, d0.x, d0.y, d0.z);
+    // 初始摄像机朝向角（updateStretchGizmoLive 每帧按真实相机重算，确保半圆始终正对相机）
+    const faceAngle = Math.atan2(d0.y.clone().dot(camera.position), d0.x.clone().dot(camera.position));
+    plane.rotation.z = rotVisualAngle(axis, varName) + faceAngle - Math.PI * 0.5;
+    return { group, plane, axis, varName, faceAngle, pickMeshes };
+}
+
+// 实时刷新 es 拉伸轴方向 / 长度（随 ex、ey、extend_scale 变化），并使 ex/ey 圆环面向摄像机
+function updateStretchGizmoLive(b = selected()) {
+    if (!stretchGizmoRefs || !b) return;
+    const ex = Number(b.scope.vars.get('v.extend_xrot')?.value ?? 0);
+    const ey = Number(b.scope.vars.get('v.extend_yrot')?.value ?? 0);
+    const es = Number(b.scope.vars.get('v.extend_scale')?.value ?? 1);
+    const la = rotLocalAxesOfBlock(b);
+    const nLocal = localStretchDir(ex, ey);                       // 局部方向（仅由 ex/ey 决定）
+    const worldDir = la.xAxis.clone().multiplyScalar(nLocal.x)
+        .add(la.yAxis.clone().multiplyScalar(nLocal.y))
+        .add(la.zAxis.clone().multiplyScalar(nLocal.z)).normalize();
+    // 框架旋转：ey 旋转框携带 ex 旋转环 + 拉伸杆；ex 倾斜框仅倾斜杆（圆环靠 head 表示角度）
+    // 注意 ey 取负号（与真实拉伸轴 Ry(-ey)·Rx(ex)·ẑ 一致，否则 ey 旋转方向相反）
+    stretchGizmoRefs.eyFrame.rotation.y = THREE.MathUtils.degToRad(-ey);
+    stretchGizmoRefs.exFrame.rotation.x = THREE.MathUtils.degToRad(ex);
+    stretchGizmoRefs.group.updateMatrixWorld(true);
+    // ex/ey 圆环：复用旋转环的「面向摄像机」逻辑——用各自 group 的世界朝向求面朝向角，半圆始终正对相机
+    const refreshRingFace = (ring) => {
+        if (!ring) return;
+        const wp = new THREE.Vector3(); ring.group.getWorldPosition(wp);
+        const cd = camera.position.clone().sub(wp).normalize();
+        const wq = ring.group.getWorldQuaternion(new THREE.Quaternion());
+        const wx = new THREE.Vector3(1, 0, 0).applyQuaternion(wq);
+        const wy = new THREE.Vector3(0, 1, 0).applyQuaternion(wq);
+        const wz = new THREE.Vector3(0, 0, 1).applyQuaternion(wq);
+        const faceAngle = Math.atan2(cd.dot(wy), cd.dot(wx));
+        ring.plane.rotation.z = rotVisualAngle(ring.axis, ring.varName) + faceAngle - Math.PI * 0.5;
+        // 同步拖拽轴基到当前世界朝向（ex 环随 ey 旋转后，旋转拖拽方向才正确）
+        ring.pickMeshes.forEach(m => {
+            if (m.userData.her) {
+                m.userData.her.axisNormal = wz.clone();
+                m.userData.her.xBasis = wx.clone();
+                m.userData.her.yBasis = wy.clone();
+            }
+        });
+    };
+    refreshRingFace(stretchGizmoRefs.eyRing);
+    refreshRingFace(stretchGizmoRefs.exRing);
+    // 杆长度随 es 变化（含可见下限，确保始终清晰可见）
+    const len = THREE.MathUtils.clamp(0.9 + Math.abs(es) * 0.8, 0.9, 6);
+    const { rod, head, rodHit } = stretchGizmoRefs;
+    rod.scale.set(1, len, 1);
+    rod.position.set(0, 0, len * 0.5);
+    head.position.set(0, 0, len + 0.21);
+    rodHit.scale.set(1, len + 0.6, 1);
+    rodHit.position.set(0, 0, (len + 0.6) * 0.5);
+    stretchGizmoRefs.worldDir = worldDir;                         // 供拖拽投影使用
+}
+
+function makeScaleDots(b) {
+    const root = new THREE.Group();
+    // ===== 1. 黄色角点（v.scale）—— 保留原设计 =====
+    const dotsGroup = new THREE.Group();
     const pts = [[-0.5,-0.5,-0.5],[0.5,-0.5,-0.5],[0.5,0.5,-0.5],[-0.5,0.5,-0.5],
                  [-0.5,-0.5,0.5],[0.5,-0.5,0.5],[0.5,0.5,0.5],[-0.5,0.5,0.5]];
     const s = Math.abs(b?.scope?.vars?.get('v.scale')?.value ?? 1);
-    group.quaternion.copy(quatOfBlock(b));
+    dotsGroup.quaternion.copy(quatOfBlock(b));
     const dotGeom = new THREE.PlaneGeometry(0.18, 0.18);
-    pts.forEach((p, i) => {
+    pts.forEach((p) => {
         const dot = new THREE.Mesh(dotGeom, mat(0xfff7a8));
         dot.position.set(p[0] * s, p[1] * s, p[2] * s);
         dot.lookAt(camera.position);
-        group.add(dot);
+        dotsGroup.add(dot);
         const hit = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), hitMat());
         hit.position.copy(dot.position);
         addPick(hit, { type: 'scale', varName: 'v.scale', scale: 0.012 });
-        group.add(hit);
+        dotsGroup.add(hit);
     });
-    return group;
+    root.add(dotsGroup);
+
+    // ===== 2. 拉伸轴 Gizmo（v.extend_scale / ex / ey）=====
+    const la = rotLocalAxesOfBlock(b);
+    const stretchGroup = new THREE.Group();
+    stretchGroup.quaternion.copy(quatFromAxes(la.xAxis, la.yAxis, la.zAxis));
+    root.add(stretchGroup);
+    gizmoArrowGroups.push(stretchGroup); // 随方块缩放自适应
+
+    const ringMat = (c) => new THREE.MeshBasicMaterial({ color: c, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+    // 拉伸轴与旋转环均挂在拉伸组（已对齐方块局部轴）下，使用「局部坐标系」基向量
+    const lx = new THREE.Vector3(1, 0, 0), ly = new THREE.Vector3(0, 1, 0), lz = new THREE.Vector3(0, 0, 1);
+
+    // ey 旋转环（绕局部 Y，控制 v.extend_yrot）—— 风格与其他旋转环统一，并面向摄像机
+    const eyRing = makeStretchRing('v.extend_yrot', 'y', 0x3cd6ff, ly, lz, lx, 1.8);
+    stretchGroup.add(eyRing.group);
+
+    // ey 旋转框：承载 ex 旋转环 + 拉伸杆，使 ey 旋转时带着它们一起转（满足"ey 带着 ex"的需求）
+    const eyCarryFrame = new THREE.Group();
+    stretchGroup.add(eyCarryFrame);
+
+    // ex 旋转环（绕局部 X，控制 v.extend_xrot）—— 作为 ey 旋转框的子节点，随 ey 一起转并面向摄像机
+    const exRing = makeStretchRing('v.extend_xrot', 'x', 0xff9a3c, lx, ly, lz, 1.55);
+    eyCarryFrame.add(exRing.group);
+
+    // es 拉伸轴：细长杆 + 锥头箭头（控制 v.extend_scale），风格简洁；随 ex 倾斜、随 ey 绕 Y 旋转
+    const rodGroup = new THREE.Group();
+    eyCarryFrame.add(rodGroup);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 16), ringMat(0xffd23c));
+    rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)); // 沿局部 Z（拉伸轴）
+    rod.renderOrder = 997; rodGroup.add(rod);
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.42, 24), ringMat(0xffd23c));
+    head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1));
+    head.renderOrder = 998; rodGroup.add(head);
+    const rodHit = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1, 12), hitMat());
+    rodHit.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1));
+    addPick(rodHit, { type: 'stretch', varName: 'v.extend_scale', scale: 0.012 });
+    rodGroup.add(rodHit);
+
+    stretchGizmoRefs = { group: stretchGroup, eyFrame: eyCarryFrame, exFrame: rodGroup, rod, head, rodHit,
+        eyRing, exRing, worldDir: new THREE.Vector3(0, 0, 1) };
+    updateStretchGizmoLive(b);
+    return root;
 }
 
 // ---------- 包装器 ----------
@@ -8463,7 +9701,7 @@ function makeActiveHighlight(meta) {
             plane.rotation.z = rotVisualAngle(meta.axis, meta.varName) + faceAngle - Math.PI * 0.5;
         }
         g.add(plane);
-    } else if (meta.type === 'scale') {
+    } else if (meta.type === 'scale' || meta.type === 'stretch') {
         g.add(new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.045, 12, 48), new THREE.MeshBasicMaterial({ color: 0xffff66, transparent: true, opacity: 0.72, depthTest: false, depthWrite: false })));
         g.lookAt(camera.position);
     } else {
@@ -8729,10 +9967,12 @@ function changeVar(name, delta, refresh = true) {
     if (refresh && !draggingGizmo) {
         requestGizmoRefresh(); updateToolbar(true);
     } else {
+        // rot 与 stretch 均实时刷新，拖拽中不重建 Gizmo（避免刷新覆盖 activePick.axis）
+        const isLiveDrag = activePick && (activePick.type === 'rot' || activePick.type === 'stretch');
         const isRotDrag = activePick && activePick.type === 'rot';
-        dragNeedsRebuild = !isRotDrag;
+        dragNeedsRebuild = !isLiveDrag;
         const now = performance.now();
-        if (!isRotDrag && activePick && now - lastDragRebuild > 16) {
+        if (!isLiveDrag && activePick && now - lastDragRebuild > 16) {
             lastDragRebuild = now; requestGizmoRefresh(); updateToolbar(true);
             refreshActivePickMeta(lastPX, lastPY);
         }
@@ -8839,6 +10079,7 @@ function screenTangentDelta(meta, clientX, clientY, dx, dy) {
 // ---------- 主重建 ----------
 function clearGizmo() {
     clearActiveHighlight();
+    stretchGizmoRefs = null;
     rotArcGroups = [];
     gizmoArrowGroups = [];
     originCenterLineObj = null;
@@ -9096,6 +10337,9 @@ function updateMoveGizmosLive(b) {
 function toggleHerMode(m) {
     if (herModes.has(m)) { herModes.delete(m); }
     else { herModes.clear(); herModes.add(m); }
+    // 记录用户最近选择的局部/全局旋转子模式，供 R / Shift+R 快捷键使用
+    if (m === 'rotate' || m === 'centerRotate') currentLocalRotMode = m;
+    if (m === 'globalRotate' || m === 'globalCenterRotate') currentGlobalRotMode = m;
     document.querySelectorAll('.her-mode-btn').forEach(b => b.classList.toggle('active',herModes.has(b.dataset.mode)));
     // 更新旋转模式下拉按钮的显示文字
     const localBtn = document.getElementById('localRotMenuBtn');
@@ -9110,6 +10354,8 @@ function toggleHerMode(m) {
     }
     rebuildGizmo();
 }
+
+
 function clearHerModes() { herModes.clear(); document.querySelectorAll('.her-mode-btn').forEach(b=>b.classList.remove('active')); resetRotDropdownLabels(); rebuildGizmo(); }
 // 清空模式时重置下拉按钮显示文字
 function resetRotDropdownLabels() {
@@ -9170,6 +10416,8 @@ function syncGizmo() {
         if (herModes.has('rotate') || herModes.has('centerRotate') || herModes.has('globalRotate') || herModes.has('globalCenterRotate')) {
             updateGizmoAxisLines(b);
         }
+        // ex/ey 圆环与 es 杆：每帧按当前相机重算朝向（与旋转环一致的「面向摄像机」设计）
+        if (herModes.has('scale') && stretchGizmoRefs) updateStretchGizmoLive(b);
 
     }
     updateToolbar(false);
@@ -9214,6 +10462,8 @@ function beginGizmoDrag(cx, cy, ev) {
     controls.enabled = false; if(ev) ev.preventDefault();
     if (meta.type === 'input') { pendingInputPick = {varName:meta.varName, x:cx, y:cy, lastX:cx, lastY:cy, moved:false, t:performance.now()}; return true; }
     activePick = Object.assign({}, meta, {_hitObj:obj}); lastPX = cx; lastPY = cy;
+    // 拉伸轴：记录当前世界方向，供拖拽时沿轴投影
+    if (activePick.type === 'stretch' && stretchGizmoRefs) activePick.axis = (stretchGizmoRefs.worldDir || new THREE.Vector3(0,0,1)).clone();
     draggingGizmo = true; dragNeedsRebuild = false; lastDragRebuild = 0;
     // 非世界轴位移模式的 base 箭头：将拖拽轴更新为实际的剪切轴方向，匹配视觉箭头朝向
     if (!useWorldAxisDisplacement && herModes.has('base') && activePick.type === 'move' && activePick.varName && activePick.varName.includes('basepos')) {
@@ -9269,6 +10519,8 @@ function moveGizmoDrag(cx, cy, ev) {
         let dd = -bd;
         if (Math.abs(dd) > 1e-5) { if (activePick.rotMode==='center') applyCenterRotateDelta(activePick.varName,dd); else applyOriginRotateDelta(activePick.varName,dd); dragNeedsRebuild = false; }
         updateOriginCenterLineLive(selectedBlock); updateRotGizmosLive();
+        // ex/ey 旋转环拖拽时实时刷新拉伸轴方向
+        if (activePick.varName === 'v.extend_xrot' || activePick.varName === 'v.extend_yrot') updateStretchGizmoLive(selected());
     } else if (activePick.type === 'move' && activePick.mode === 'base') {
         // 位移模式：每帧根据当前方块状态重新计算变换矩阵，确保 Ainv 和轴方向始终正确
         const b = selected();
@@ -9293,11 +10545,18 @@ function moveGizmoDrag(cx, cy, ev) {
         changeVar(activePick.varName, deltaS, false);
         updateActiveHighlightPose();
     } else if (activePick.type === 'scale') { changeVar(activePick.varName, (dx-dy)*activePick.scale, false); updateActiveHighlightPose(); }
+    else if (activePick.type === 'stretch') {
+        // 沿拉伸轴方向投影鼠标位移 → 改变 v.extend_scale
+        const a = screenAxis(activePick);
+        const deltaS = (dx * a.x + dy * a.y) * activePick.scale;
+        changeVar(activePick.varName, deltaS, false);
+        updateStretchGizmoLive(selected());
+    }
     else { const a = screenAxis(activePick); changeVar(activePick.varName, (dx*a.x+dy*a.y)*activePick.scale, false); updateActiveHighlightPose(); }
     if (ev) ev.preventDefault(); return true;
 }
 function endGizmoDrag(ev) {
-    if (pendingInputPick) { const p=pendingInputPick; pendingInputPick=null; controls.enabled=true; const dt=performance.now()-p.t, md=Math.hypot((p.lastX??p.x)-p.x,(p.lastY??p.y)-p.y); if(!p.moved&&md<=10&&dt<=650) promptVarInput(p.varName,ev); if(ev) ev.preventDefault(); return true; }
+    if (pendingInputPick) { const p=pendingInputPick; pendingInputPick=null; controls.enabled=true; const dt=performance.now()-p.t, md=Math.hypot((p.lastX??p.x)-p.x,(p.lastY??p.y)-p.y); if(!p.moved&&md<=10&&dt<=650) promptVarInput(p.varName,ev); if(ev) ev.preventDefault(); gizmoDragJustEnded = true; setTimeout(() => { gizmoDragJustEnded = false; }, 300); return true; }
     if (activePick) {
         const wr = activePick.type==='rot';
         clearActiveHighlight(); activePick=null; draggingGizmo=false; controls.enabled=true;
@@ -9307,6 +10566,7 @@ function endGizmoDrag(ev) {
         if (selectedBlock && keyframeWindowOpen) {
             syncKeyframeFromBlock(selectedBlock);
         }
+        gizmoDragJustEnded = true; setTimeout(() => { gizmoDragJustEnded = false; }, 300);
         if (ev) ev.preventDefault(); return true;
     } return false;
 }
@@ -9344,6 +10604,15 @@ window.addEventListener('keydown', (e) => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable && !isMouseInPanel) { e.preventDefault(); deleteSelectedBlocks(); return; }
     if (e.ctrlKey && e.shiftKey && (e.code === 'KeyE' || key === 'e') && !isEditable) { e.preventDefault(); showCommandListModal(); return; }
     if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
+    // —— 新操作模式：Gizmo 模式快捷键（仅新操作模式且非画笔模式、非输入框）——
+    // P 枢轴 / V 位移 / S 缩放 / R 局部旋转(用户所选子模式) / Shift+R 全局旋转(用户所选子模式)
+    if (isNewLayoutMode && !isBrushMode && !isEditable && !e.ctrlKey && !e.metaKey) {
+        if (key === 'p') { e.preventDefault(); toggleHerMode('origin'); return; }
+        if (key === 'v') { e.preventDefault(); toggleHerMode('base'); return; }
+        if (key === 's') { e.preventDefault(); toggleHerMode('scale'); return; }
+        if (key === 'r' && !e.shiftKey) { e.preventDefault(); toggleHerMode(currentLocalRotMode); return; }
+        if (key === 'r' && e.shiftKey) { e.preventDefault(); toggleHerMode(currentGlobalRotMode); return; }
+    }
 });
 
 // ==================== 3D场景初始化 ====================
@@ -9397,6 +10666,14 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
     if (handled) e.stopPropagation();
 });
 renderer.domElement.addEventListener('pointermove', (e) => {
+    if (isBrushMode && brushPoint1) {
+        const hitResult = getBrushHitPoint(e);
+        if (hitResult && hitResult.point) {
+            hitResult.point.y = 0;
+            brushPreviewPoint = hitResult.point.clone();
+        }
+        return;
+    }
     if (!draggingGizmo && !pendingInputPick) return;
     moveGizmoDrag(e.clientX, e.clientY);
 });
@@ -9588,59 +10865,189 @@ document.getElementById('showTicksCheckbox').addEventListener('change', (e) => {
 // 射线检测与点击选择
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
-let clickTimer = null; 
+let clickTimer = null;
+let lastClickedBlock = null; 
 function onCanvasClick(event) {
     if (event.target.closest('.data-panel') || event.target.closest('.top-bar') || event.target.closest('.new-top-bar') || event.target.closest('.side-block-list')) return;
     if (draggingGizmo || pendingInputPick) return;
+    if (gizmoDragJustEnded) return;
     const rect = renderer.domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
     blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); });
-    const allMeshes = blocks.flatMap(b => b.getMeshes());
+    const isKfMode = (isNewLayoutMode && isKeyframeMode) || (!isNewLayoutMode && keyframeWindowOpen);
+    const allMeshes = blocks.filter(b => !isBlockInHiddenGroup(b) && (!isKfMode || hasKeyframeAnimation(b.id))).flatMap(b => b.getMeshes());
     const hits = raycaster.intersectObjects(allMeshes);
     if (hits.length) {
         const hit = hits[0].object;
         const block = blocks.find(b => b.getMeshes().includes(hit));
-        if (block) {
+        if (block && !isBlockInHiddenGroup(block) && (!isKfMode || hasKeyframeAnimation(block.id))) {
             const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
             if (isMulti) {
-                // 多选（Ctrl/Shift+点击）立即执行，跳过双击检测延迟
                 if (clickTimer !== null) {
                     clearTimeout(clickTimer);
                     clickTimer = null;
                 }
                 toggleBlockSelection(block, true);
-                // 多选时不改变关键帧面板选中状态
-            } else if (clickTimer !== null) {
-                // 第二次点击（双击）
+            } else if (clickTimer !== null && lastClickedBlock === block) {
                 toggleBlockSelection(block, true);
                 clearTimeout(clickTimer);
                 clickTimer = null;
-                // 同步关键帧面板
+                lastClickedBlock = null;
                 if (keyframeWindowOpen && keyframeData.has(block.id)) {
                     selectKeyframeBlock(block.id);
                 }
             } else {
+                if (clickTimer !== null) {
+                    clearTimeout(clickTimer);
+                    clickTimer = null;
+                }
+                lastClickedBlock = block;
                 clickTimer = setTimeout(() => {
                     toggleBlockSelection(block, false);
                     clickTimer = null;
-                    // 同步关键帧面板
+                    lastClickedBlock = null;
                     if (keyframeWindowOpen && keyframeData.has(block.id)) {
                         selectKeyframeBlock(block.id);
                     }
                 }, 200);
             }
         }
-    } else if (!event.ctrlKey && !isNewLayoutMode) {
+    } else if (!event.ctrlKey) {
+        // 点击空白处（未命中任何方块）→ 取消所有选中（新旧操作模式均生效）
         if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+        lastClickedBlock = null;
         selectedBlocksSet.clear();
         selectBlock(null);
         renderVariablesForBlock(null);
         updateDropdownSelection();
     }
 }
-renderer.domElement.addEventListener('click', onCanvasClick);
+// ==================== 框选多选（电脑端：按住 Ctrl/Cmd + 鼠标左键拖拽） ====================
+let boxSelectStart = null;       // { x, y } 起始点（clientX/Y）
+let boxSelectActive = false;     // 是否已越过拖拽阈值（真正开始框选）
+let boxSelectOverlay = null;     // 选择框 DOM
+let boxSelectPrevControlsEnabled = true;
+let justBoxSelected = false;     // 框选拖拽结束后抑制随后的 click，避免误清空/误选
+
+function boxSelectCreateOverlay() {
+    if (boxSelectOverlay) return;
+    const div = document.createElement('div');
+    div.id = 'boxSelectOverlay';
+    div.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;border:2px solid #3b82f6;background:rgba(59,130,246,0.15);border-radius:3px;';
+    document.body.appendChild(div);
+    boxSelectOverlay = div;
+}
+function boxSelectUpdateOverlay(x1, y1, x2, y2) {
+    if (!boxSelectOverlay) return;
+    boxSelectOverlay.style.left = Math.min(x1, x2) + 'px';
+    boxSelectOverlay.style.top = Math.min(y1, y2) + 'px';
+    boxSelectOverlay.style.width = Math.abs(x2 - x1) + 'px';
+    boxSelectOverlay.style.height = Math.abs(y2 - y1) + 'px';
+}
+function boxSelectRemoveOverlay() {
+    if (boxSelectOverlay) { boxSelectOverlay.remove(); boxSelectOverlay = null; }
+}
+
+// 计算屏幕矩形内（与方块屏幕投影包围盒相交）的所有方块
+function getBlocksInScreenRect(sx1, sy1, sx2, sy2) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const left = Math.min(sx1, sx2), right = Math.max(sx1, sx2);
+    const top = Math.min(sy1, sy2), bottom = Math.max(sy1, sy2);
+    const isKfMode = (isNewLayoutMode && isKeyframeMode) || (!isNewLayoutMode && keyframeWindowOpen);
+    const result = [];
+    for (const b of blocks) {
+        if (!b.mesh || isBlockInHiddenGroup(b)) continue;
+        if (isKfMode && !hasKeyframeAnimation(b.id)) continue;
+        b.mesh.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(b.mesh);
+        if (box.isEmpty()) continue;
+        const corners = [
+            [box.min.x, box.min.y, box.min.z], [box.min.x, box.min.y, box.max.z],
+            [box.min.x, box.max.y, box.min.z], [box.min.x, box.max.y, box.max.z],
+            [box.max.x, box.min.y, box.min.z], [box.max.x, box.min.y, box.max.z],
+            [box.max.x, box.max.y, box.min.z], [box.max.x, box.max.y, box.max.z]
+        ];
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, valid = false;
+        for (const c of corners) {
+            const v = new THREE.Vector3(c[0], c[1], c[2]).project(camera);
+            if (v.z > 1) continue; // 位于相机背后，跳过
+            const px = (v.x * 0.5 + 0.5) * rect.width + rect.left;
+            const py = (-v.y * 0.5 + 0.5) * rect.height + rect.top;
+            if (px < minX) minX = px;
+            if (px > maxX) maxX = px;
+            if (py < minY) minY = py;
+            if (py > maxY) maxY = py;
+            valid = true;
+        }
+        if (!valid) continue;
+        const intersects = !(maxX < left || minX > right || maxY < top || minY > bottom);
+        if (intersects) result.push(b);
+    }
+    return result;
+}
+
+// 在画布捕获阶段拦截 Ctrl/Cmd + 左键：专用于框选，绝不让 OrbitControls 把它当成平移/旋转。
+// 注意：three r128 的 OrbitControls 会在 左键 + (Ctrl/Meta/Shift) 时把旋转切换为平移。
+// 因此这里用 stopImmediatePropagation 直接拦住同元素的 OrbitControls 监听，
+// 使 Ctrl/Cmd+左键只走框选；而 Shift+左键（不带 Ctrl/Meta）放行，由 OrbitControls 提升为平移。
+function boxSelectIntercept(e) {
+    if (isBrushMode) return;
+    if (e.button !== 0) return;
+    if (!(e.ctrlKey || e.metaKey)) return;                 // 仅 Ctrl/Cmd+左键走框选；Shift+左键留给摄像机平移
+    if (!renderer.domElement.contains(e.target)) return;  // 事件必须在主画布范围内
+    if (e.target.closest && (e.target.closest('.data-panel') || e.target.closest('.top-bar') || e.target.closest('.new-top-bar') || e.target.closest('.side-block-list'))) return;
+    if (gizmoRoot && gizmoRoot.visible) return;
+    boxSelectStart = { x: e.clientX, y: e.clientY };
+    boxSelectActive = false;
+    boxSelectPrevControlsEnabled = controls.enabled;
+    controls.enabled = false;                             // 禁用 OrbitControls，避免其把 Ctrl+左键当成平移
+    e.stopImmediatePropagation();                         // 阻止同元素上的 OrbitControls 监听触发
+}
+renderer.domElement.addEventListener('pointerdown', boxSelectIntercept, { capture: true });
+
+window.addEventListener('pointermove', (e) => {
+    if (!boxSelectStart) return;
+    const dx = e.clientX - boxSelectStart.x;
+    const dy = e.clientY - boxSelectStart.y;
+    if (!boxSelectActive) {
+        if (Math.hypot(dx, dy) < 4) return; // 未达拖拽阈值，仍视为普通 Ctrl 点击
+        boxSelectActive = true;
+        boxSelectCreateOverlay();
+    }
+    boxSelectUpdateOverlay(boxSelectStart.x, boxSelectStart.y, e.clientX, e.clientY);
+});
+
+function endBoxSelect(e) {
+    if (!boxSelectStart) return;
+    if (boxSelectActive) {
+        const hits = getBlocksInScreenRect(boxSelectStart.x, boxSelectStart.y, e.clientX, e.clientY);
+        hits.forEach(b => selectedBlocksSet.add(b));
+        if (selectedBlocksSet.size > 0) selectBlock(Array.from(selectedBlocksSet)[0]);
+        updateAxesVisibility();
+        updateDropdownSelection();
+        if (isNewLayoutMode) renderSideBlockList();
+        if (hits.length) showToast('已框选 ' + hits.length + ' 个方块');
+        boxSelectRemoveOverlay();
+        justBoxSelected = true; // 抑制随后的 click，避免误清空/误选
+        setTimeout(() => { justBoxSelected = false; }, 100);
+    }
+    controls.enabled = boxSelectPrevControlsEnabled;
+    boxSelectStart = null;
+    boxSelectActive = false;
+}
+window.addEventListener('pointerup', endBoxSelect);
+window.addEventListener('pointercancel', endBoxSelect);
+
+renderer.domElement.addEventListener('click', (e) => {
+    if (justBoxSelected) { justBoxSelected = false; return; }
+    if (isBrushMode) {
+        handleBrushClick(e);
+        return;
+    }
+    onCanvasClick(e);
+});
 renderer.domElement.addEventListener('touchstart', e => {
     if (e.target.closest('.new-top-bar') || e.target.closest('.side-block-list')) return;
     let start = { x: e.touches[0].clientX, y: e.touches[0].clientY }, moved = false;
@@ -9650,17 +11057,28 @@ renderer.domElement.addEventListener('touchstart', e => {
     const onEnd = ee => {
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
+        if (gizmoDragJustEnded) return;
         if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar') && !ee.target.closest('.new-top-bar') && !ee.target.closest('.side-block-list')) {
+            if (isBrushMode) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
+                pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(pointer, camera);
+                const event = { clientX: ee.changedTouches[0].clientX, clientY: ee.changedTouches[0].clientY };
+                handleBrushClick(event);
+                return;
+            }
             const rect = renderer.domElement.getBoundingClientRect();
             pointer.x = ((ee.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
             pointer.y = -((ee.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1;
             raycaster.setFromCamera(pointer, camera);
             blocks.forEach(b => { if (b.mesh) b.mesh.updateMatrixWorld(true); });
-            const allMeshes = blocks.flatMap(b => b.getMeshes());
+            const isKfMode = (isNewLayoutMode && isKeyframeMode) || (!isNewLayoutMode && keyframeWindowOpen);
+            const allMeshes = blocks.filter(b => !isBlockInHiddenGroup(b) && (!isKfMode || hasKeyframeAnimation(b.id))).flatMap(b => b.getMeshes());
             const hits = raycaster.intersectObjects(allMeshes);
             if (hits.length) {
                 const hitBlock = blocks.find(b => b.getMeshes().includes(hits[0].object));
-                if (hitBlock) {
+                if (hitBlock && !isBlockInHiddenGroup(hitBlock) && (!isKfMode || hasKeyframeAnimation(hitBlock.id))) {
                     toggleBlockSelection(hitBlock, false);
                     if (keyframeWindowOpen && keyframeData.has(hitBlock.id)) {
                         selectKeyframeBlock(hitBlock.id);
@@ -9678,6 +11096,626 @@ renderer.domElement.addEventListener('touchstart', e => {
     document.addEventListener('touchend', onEnd);
     e.preventDefault();
 }, { passive: false });
+
+// ============================================================
+// 画笔模式系统
+// ============================================================
+var isBrushMode = false;
+var brushThickness = 1.0;
+var brushPoint1 = null;
+var brushPoint2 = null;
+var brushPoint3 = null;
+var brushClickMode = null;
+var brushPreviewPoint = null;
+var brushLine = null;
+var brushLineGeo = null;
+var brushPreviewPlaneCenter = null;
+var brushPreviewPlaneLeft = null;
+var brushPreviewPlaneRight = null;
+var brushVertexMarkers = [];
+var brushHoveredVertex = null;
+var brushSelectedBlock = null;
+
+// 同步所有画笔长度/粗细控件（顶部工具栏滑动条 与 设置面板滑动条）
+function syncBrushThicknessUI() {
+    const lenRange = document.getElementById('brushLengthRange');
+    const lenLabel = document.getElementById('brushLengthLabel');
+    const thickRange = document.getElementById('brushThicknessRange');
+    const thickLabel = document.getElementById('brushThicknessLabel');
+    if (lenRange) lenRange.value = brushThickness;
+    if (lenLabel) lenLabel.textContent = brushThickness.toFixed(1);
+    if (thickRange) thickRange.value = brushThickness;
+    if (thickLabel) thickLabel.textContent = brushThickness.toFixed(1);
+}
+
+function toggleBrushMode() {
+    if (isBrushMode) {
+        exitBrushMode();
+    } else {
+        enterBrushMode();
+    }
+}
+
+function enterBrushMode() {
+    isBrushMode = true;
+    
+    // 显示顶部工具栏中的画笔长度滑动条并同步当前值
+    const blt = document.getElementById('brushLengthToolbar');
+    if (blt) blt.style.display = 'flex';
+    syncBrushThicknessUI();
+    
+    const cb = document.getElementById('brushModeCheckbox');
+    if (cb) { cb.classList.add('checked'); cb.setAttribute('aria-pressed', 'true'); }
+    
+    clearHerModes();
+    if (gizmoRoot) gizmoRoot.visible = false;
+    
+    document.querySelectorAll('.her-mode-btn').forEach(b => b.style.display = 'none');
+    
+    const kfBtn = document.getElementById('sideBlockKeyframe');
+    if (kfBtn) kfBtn.style.display = 'none';
+    
+    const kfToolbarBtn = document.querySelector('.top-dropdown-wrapper[data-menu="keyframeMenu"]');
+    if (kfToolbarBtn) kfToolbarBtn.style.display = 'none';
+    
+    const kfPanel = document.querySelector('.keyframe-timeline-container');
+    if (kfPanel) kfPanel.style.display = 'none';
+    
+    if (selectedBlock) {
+        clearActiveHighlight();
+        selectedBlock = null;
+        selectedBlocksSet.clear();
+        renderVariablesForBlock(null);
+    }
+    
+    controls.enableRotate = false;
+    controls.enablePan = true;
+    controls.enableZoom = true;
+    controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    
+    const camDist = Math.max(5, camera.position.length());
+    camera.position.set(0, camDist, 0);
+    camera.lookAt(0, 0, 0);
+    
+    brushPoint1 = null;
+    brushPoint2 = null;
+    brushPoint3 = null;
+    brushClickMode = null;
+    brushPreviewPoint = null;
+    brushSelectedBlock = null;
+    hideBrushLine();
+    clearBrushVertexMarkers();
+    
+    showToast('🎨 画笔模式已开启：点击平面选中，再点击顶点或空白区域绘制');
+}
+
+function exitBrushMode() {
+    isBrushMode = false;
+    
+    // 隐藏顶部工具栏中的画笔长度滑动条
+    const blt = document.getElementById('brushLengthToolbar');
+    if (blt) blt.style.display = 'none';
+    
+    const cb = document.getElementById('brushModeCheckbox');
+    if (cb) { cb.classList.remove('checked'); cb.setAttribute('aria-pressed', 'false'); }
+    
+    document.querySelectorAll('.her-mode-btn').forEach(b => b.style.display = '');
+    
+    const kfBtn = document.getElementById('sideBlockKeyframe');
+    if (kfBtn) kfBtn.style.display = '';
+    
+    const kfToolbarBtn = document.querySelector('.top-dropdown-wrapper[data-menu="keyframeMenu"]');
+    if (kfToolbarBtn) kfToolbarBtn.style.display = '';
+    
+    controls.enableRotate = true;
+    controls.enablePan = true;
+    controls.enableZoom = true;
+    controls.maxPolarAngle = Math.PI / 2.1;
+    controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    
+    brushPoint1 = null;
+    brushPoint2 = null;
+    brushPoint3 = null;
+    brushClickMode = null;
+    brushPreviewPoint = null;
+    brushSelectedBlock = null;
+    hideBrushLine();
+    clearBrushVertexMarkers();
+    
+    renderVariablesForBlock(null);
+    
+    showToast('🎨 画笔模式已关闭');
+}
+
+function hideBrushLine() {
+    if (brushLine) {
+        scene.remove(brushLine);
+        brushLine = null;
+    }
+    if (brushPreviewPlaneCenter) {
+        scene.remove(brushPreviewPlaneCenter);
+        brushPreviewPlaneCenter.geometry.dispose();
+        brushPreviewPlaneCenter.material.dispose();
+        brushPreviewPlaneCenter = null;
+    }
+    if (brushPreviewPlaneLeft) {
+        scene.remove(brushPreviewPlaneLeft);
+        brushPreviewPlaneLeft.geometry.dispose();
+        brushPreviewPlaneLeft.material.dispose();
+        brushPreviewPlaneLeft = null;
+    }
+    if (brushPreviewPlaneRight) {
+        scene.remove(brushPreviewPlaneRight);
+        brushPreviewPlaneRight.geometry.dispose();
+        brushPreviewPlaneRight.material.dispose();
+        brushPreviewPlaneRight = null;
+    }
+}
+
+function renderBrushVertexMarkers() {
+    clearBrushVertexMarkers();
+    
+    if (!brushSelectedBlock || !brushSelectedBlock.mesh || !brushSelectedBlock.mesh.matrixWorld) {
+        return;
+    }
+    
+    const corners = getBlockCorners(brushSelectedBlock);
+    for (const corner of corners) {
+        const markerSize = 0.2;
+        
+        const borderGeo = new THREE.BufferGeometry();
+        const borderVertices = new Float32Array([
+            -markerSize/2, 0, -markerSize/2,
+            markerSize/2, 0, -markerSize/2,
+            markerSize/2, 0, markerSize/2,
+            -markerSize/2, 0, markerSize/2,
+            -markerSize/2, 0, -markerSize/2
+        ]);
+        borderGeo.setAttribute('position', new THREE.BufferAttribute(borderVertices, 3));
+        const borderMat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+        const border = new THREE.Line(borderGeo, borderMat);
+        border.position.copy(corner);
+        border.position.y = 0.015;
+        border.rotation.x = -Math.PI / 2;
+        border.userData = { role: 'border' };
+        
+        const innerGeo = new THREE.PlaneGeometry(markerSize * 0.6, markerSize * 0.6);
+        const innerMat = new THREE.MeshBasicMaterial({ 
+            color: 0x00ff00, 
+            transparent: true, 
+            opacity: 0.6,
+            side: THREE.DoubleSide
+        });
+        const inner = new THREE.Mesh(innerGeo, innerMat);
+        inner.position.copy(corner);
+        inner.position.y = 0.01;
+        inner.rotation.x = -Math.PI / 2;
+        inner.userData = { role: 'inner' };
+        
+        const marker = new THREE.Group();
+        marker.add(border);
+        marker.add(inner);
+        marker.userData = { isBrushVertex: true, position: corner.clone(), block: brushSelectedBlock };
+        
+        scene.add(marker);
+        brushVertexMarkers.push(marker);
+    }
+}
+
+function clearBrushVertexMarkers() {
+    for (const marker of brushVertexMarkers) {
+        scene.remove(marker);
+        marker.traverse(obj => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+        });
+    }
+    brushVertexMarkers = [];
+    brushHoveredVertex = null;
+}
+
+function setBrushSelectedBlock(block) {
+    brushSelectedBlock = block;
+    renderBrushVertexMarkers();
+}
+
+function getBrushHitPoint(event) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    raycaster.params.Line.threshold = 0.15;
+    
+    const result = {
+        type: 'none',
+        point: null,
+        marker: null,
+        block: null
+    };
+    
+    for (const m of brushVertexMarkers) {
+        m.traverse(obj => {
+            if (obj.material && obj.material.color) {
+                const role = obj.userData.role;
+                if (role === 'glow') {
+                    obj.material.color.setHex(0x00ffff);
+                    obj.material.opacity = 0.4;
+                } else if (role === 'border') {
+                    obj.material.color.setHex(0x00ffff);
+                } else if (role === 'inner') {
+                    obj.material.color.setHex(0x00ff00);
+                    obj.material.opacity = 0.6;
+                }
+            }
+        });
+    }
+    
+    const markerIntersects = raycaster.intersectObjects(brushVertexMarkers, true);
+    if (markerIntersects.length > 0) {
+        let markerGroup = markerIntersects[0].object;
+        while (markerGroup && !markerGroup.userData.isBrushVertex) {
+            markerGroup = markerGroup.parent;
+        }
+        if (markerGroup) {
+            brushHoveredVertex = markerGroup.userData.position;
+            
+            markerGroup.traverse(obj => {
+                if (obj.material && obj.material.color) {
+                    obj.material.color.setHex(0xff0000);
+                    obj.material.opacity = 1;
+                }
+            });
+            
+            result.type = 'vertex';
+            result.point = brushHoveredVertex.clone();
+            result.marker = markerGroup;
+            result.block = markerGroup.userData.block;
+            return result;
+        }
+    }
+    
+    brushHoveredVertex = null;
+    
+    const blockMeshes = blocks
+        .filter(b => b.mesh && b.type === 'cube')
+        .map(b => b.mesh);
+    
+    const blockIntersects = raycaster.intersectObjects(blockMeshes);
+    if (blockIntersects.length > 0) {
+        const mesh = blockIntersects[0].object;
+        const block = blocks.find(b => b.mesh === mesh);
+        
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const intersectPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(plane, intersectPoint);
+        
+        result.type = 'block';
+        result.point = intersectPoint;
+        result.block = block;
+        return result;
+    }
+    
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersectPoint = new THREE.Vector3();
+    raycaster.ray.intersectPlane(plane, intersectPoint);
+    
+    result.type = 'plane';
+    result.point = intersectPoint;
+    return result;
+}
+
+function getBlockCorners(block) {
+    const corners = [];
+    
+    if (block.mesh) {
+        block.mesh.updateMatrixWorld();
+        const matrix = block.mesh.matrixWorld.clone();
+        const geometry = block.mesh.geometry;
+        
+        if (geometry && geometry.attributes && geometry.attributes.position) {
+            const positions = geometry.attributes.position;
+            const uniquePositions = new Set();
+            
+            for (let i = 0; i < positions.count; i++) {
+                const localPos = new THREE.Vector3(
+                    positions.getX(i),
+                    positions.getY(i),
+                    positions.getZ(i)
+                );
+                const worldPos = localPos.applyMatrix4(matrix);
+                worldPos.y = 0;
+                
+                const key = `${worldPos.x.toFixed(6)},${worldPos.z.toFixed(6)}`;
+                if (!uniquePositions.has(key)) {
+                    uniquePositions.add(key);
+                    corners.push(worldPos.clone());
+                }
+            }
+        } else {
+            const positions = [
+                new THREE.Vector3(-0.5, 0, -0.5),
+                new THREE.Vector3(0.5, 0, -0.5),
+                new THREE.Vector3(0.5, 0, 0.5),
+                new THREE.Vector3(-0.5, 0, 0.5)
+            ];
+            
+            for (const pos of positions) {
+                const worldPos = pos.clone().applyMatrix4(matrix);
+                worldPos.y = 0;
+                corners.push(worldPos);
+            }
+        }
+    }
+    
+    return corners;
+}
+
+function handleBrushClick(event) {
+    if (!isBrushMode) return;
+    
+    const hitResult = getBrushHitPoint(event);
+    if (!hitResult || !hitResult.point) return;
+    
+    hitResult.point.y = 0;
+    
+    // ---- 顶点模式：已有 p1+p2，任何点击都作为第三点 ----
+    if (brushClickMode === 'vertex' && brushPoint1 && brushPoint2) {
+        brushPoint3 = hitResult.point.clone();
+        brushPoint3.y = 0;
+        createBrushPlaneWithCorner();
+        brushPoint1 = null;
+        brushPoint2 = null;
+        brushPoint3 = null;
+        brushClickMode = null;
+        hideBrushLine();
+        return;
+    }
+    
+    // ---- 顶点模式：已有 p1 但无 p2，任何点击都作为第二点 ----
+    if (brushClickMode === 'vertex' && brushPoint1 && !brushPoint2) {
+        brushPoint2 = hitResult.point.clone();
+        brushPoint2.y = 0;
+        showToast('📍 点击第三点选择平面扩展方向（红色左侧/绿色右侧）');
+        return;
+    }
+    
+    // ---- 网格模式：已有 p1，任何点击都作为第二点并生成 ----
+    if (brushClickMode === 'plane' && brushPoint1) {
+        brushPoint2 = hitResult.point.clone();
+        brushPoint2.y = 0;
+        createBrushPlane();
+        brushPoint1 = null;
+        brushPoint2 = null;
+        brushPoint3 = null;
+        brushClickMode = null;
+        hideBrushLine();
+        return;
+    }
+    
+    // ---- 无起点状态：根据点击类型决定模式 ----
+    if (hitResult.type === 'vertex') {
+        brushPoint1 = hitResult.point.clone();
+        brushPoint2 = null;
+        brushPoint3 = null;
+        brushClickMode = 'vertex';
+        showToast('📍 顶点已设为平面角点：(' + hitResult.point.x.toFixed(2) + ', ' + hitResult.point.z.toFixed(2) + ')');
+    } else if (hitResult.type === 'block') {
+        if (brushSelectedBlock === hitResult.block) {
+            brushSelectedBlock = null;
+            renderBrushVertexMarkers();
+            showToast('✕ 已取消选中平面');
+        } else {
+            brushSelectedBlock = hitResult.block;
+            renderBrushVertexMarkers();
+            showToast('✓ 已选中平面：' + hitResult.block.id);
+        }
+    } else if (hitResult.type === 'plane') {
+        brushSelectedBlock = null;
+        renderBrushVertexMarkers();
+        brushPoint1 = hitResult.point.clone();
+        brushPoint2 = null;
+        brushPoint3 = null;
+        brushClickMode = 'plane';
+        showToast('📍 设置起点：(' + hitResult.point.x.toFixed(2) + ', ' + hitResult.point.z.toFixed(2) + ')');
+    }
+}
+
+function updateBrushPreview() {
+    if (!isBrushMode || !brushPoint1) {
+        hideBrushLine();
+        return;
+    }
+    
+    if (!brushLine) {
+        brushLineGeo = new THREE.BufferGeometry();
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 3 });
+        brushLine = new THREE.Line(brushLineGeo, lineMaterial);
+        scene.add(brushLine);
+    }
+    
+    const endPoint = brushPoint2 || brushPreviewPoint || brushPoint1;
+    brushLineGeo.setFromPoints([brushPoint1, endPoint]);
+    brushLineGeo.attributes.position.needsUpdate = true;
+    
+    if (brushPoint2) {
+        if (brushClickMode === 'vertex') {
+            if (brushPreviewPlaneCenter) {
+                scene.remove(brushPreviewPlaneCenter);
+                brushPreviewPlaneCenter.geometry.dispose();
+                brushPreviewPlaneCenter.material.dispose();
+                brushPreviewPlaneCenter = null;
+            }
+            updateBrushPlanePreviewVertexMode();
+        } else {
+            if (brushPreviewPlaneLeft) {
+                scene.remove(brushPreviewPlaneLeft);
+                brushPreviewPlaneLeft.geometry.dispose();
+                brushPreviewPlaneLeft.material.dispose();
+                brushPreviewPlaneLeft = null;
+            }
+            if (brushPreviewPlaneRight) {
+                scene.remove(brushPreviewPlaneRight);
+                brushPreviewPlaneRight.geometry.dispose();
+                brushPreviewPlaneRight.material.dispose();
+                brushPreviewPlaneRight = null;
+            }
+            updateBrushPlanePreviewPlaneMode();
+        }
+    }
+}
+
+function updateBrushPlanePreviewPlaneMode() {
+    const dir = new THREE.Vector3().subVectors(brushPoint2, brushPoint1);
+    const length = dir.length();
+    if (length < 0.01) return;
+    
+    const width = brushThickness;
+    const center = new THREE.Vector3().addVectors(brushPoint1, brushPoint2).multiplyScalar(0.5);
+    
+    if (!brushPreviewPlaneCenter) {
+        const planeGeo = new THREE.PlaneGeometry(length, width);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x3b82f6, 
+            transparent: true, 
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        brushPreviewPlaneCenter = new THREE.Mesh(planeGeo, material);
+        scene.add(brushPreviewPlaneCenter);
+    } else {
+        brushPreviewPlaneCenter.geometry.dispose();
+        brushPreviewPlaneCenter.geometry = new THREE.PlaneGeometry(length, width);
+    }
+    
+    brushPreviewPlaneCenter.position.copy(center);
+    brushPreviewPlaneCenter.lookAt(center.clone().add(dir));
+    brushPreviewPlaneCenter.rotateX(Math.PI / 2);
+}
+
+function updateBrushPlanePreviewVertexMode() {
+    const dir = new THREE.Vector3().subVectors(brushPoint2, brushPoint1);
+    const length = dir.length();
+    if (length < 0.01) return;
+    
+    const width = brushThickness;
+    const angle = Math.atan2(dir.z, dir.x);
+    const perpDir = new THREE.Vector3(-dir.z, 0, dir.x).normalize();
+    
+    const baseCenter = new THREE.Vector3()
+        .copy(brushPoint1)
+        .add(dir.clone().multiplyScalar(0.5));
+    
+    const leftCenter = baseCenter.clone().add(perpDir.clone().multiplyScalar(-width / 2));
+    const rightCenter = baseCenter.clone().add(perpDir.clone().multiplyScalar(width / 2));
+    
+    if (!brushPreviewPlaneLeft) {
+        const planeGeo = new THREE.PlaneGeometry(length, width);
+        planeGeo.rotateX(-Math.PI / 2);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0xff6666, 
+            transparent: true, 
+            opacity: 0.25,
+            side: THREE.DoubleSide
+        });
+        brushPreviewPlaneLeft = new THREE.Mesh(planeGeo, material);
+        scene.add(brushPreviewPlaneLeft);
+    } else {
+        brushPreviewPlaneLeft.geometry.dispose();
+        const planeGeo = new THREE.PlaneGeometry(length, width);
+        planeGeo.rotateX(-Math.PI / 2);
+        brushPreviewPlaneLeft.geometry = planeGeo;
+    }
+    
+    if (!brushPreviewPlaneRight) {
+        const planeGeo = new THREE.PlaneGeometry(length, width);
+        planeGeo.rotateX(-Math.PI / 2);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x66ff66, 
+            transparent: true, 
+            opacity: 0.25,
+            side: THREE.DoubleSide
+        });
+        brushPreviewPlaneRight = new THREE.Mesh(planeGeo, material);
+        scene.add(brushPreviewPlaneRight);
+    } else {
+        brushPreviewPlaneRight.geometry.dispose();
+        const planeGeo = new THREE.PlaneGeometry(length, width);
+        planeGeo.rotateX(-Math.PI / 2);
+        brushPreviewPlaneRight.geometry = planeGeo;
+    }
+    
+    brushPreviewPlaneLeft.position.copy(leftCenter);
+    brushPreviewPlaneLeft.rotation.y = -angle;
+    
+    brushPreviewPlaneRight.position.copy(rightCenter);
+    brushPreviewPlaneRight.rotation.y = -angle;
+}
+
+function createBrushPlane() {
+    const dir = new THREE.Vector3().subVectors(brushPoint2, brushPoint1);
+    const length = dir.length();
+    
+    if (length < 0.01) {
+        showToast('❌ 线段太短，请重新选择');
+        return;
+    }
+    
+    const width = brushThickness;
+    const center = new THREE.Vector3().addVectors(brushPoint1, brushPoint2).multiplyScalar(0.5);
+    const angle = Math.atan2(dir.z, dir.x) * 180 / Math.PI;
+    const p = generateRectParams(length, width);
+    
+    const blockId = 'plane';
+    const M = [
+        center.x, 0, center.z,
+        p.xrot, angle, p.zrot,
+        p.scale, p.extend_scale,
+        p.extend_xrot, p.extend_yrot,
+        0, 0, 0
+    ];
+    
+    addBlock(new Block(blockId, M, null, '#aaccff', 'cube'));
+}
+
+function createBrushPlaneWithCorner() {
+    const dir = new THREE.Vector3().subVectors(brushPoint2, brushPoint1);
+    const length = dir.length();
+    
+    if (length < 0.01) {
+        showToast('❌ 线段太短，请重新选择');
+        return;
+    }
+    
+    const width = brushThickness;
+    const perpDir = new THREE.Vector3(-dir.z, 0, dir.x).normalize();
+    
+    const vec12 = dir.clone();
+    const vec13 = new THREE.Vector3().subVectors(brushPoint3, brushPoint1);
+    const crossProduct = vec12.x * vec13.z - vec12.z * vec13.x;
+    const side = crossProduct > 0 ? 1 : -1;
+    
+    const center = new THREE.Vector3()
+        .copy(brushPoint1)
+        .add(dir.multiplyScalar(0.5))
+        .add(perpDir.multiplyScalar(width / 2 * side));
+    
+    const angle = Math.atan2(dir.z, dir.x) * 180 / Math.PI;
+    const p = generateRectParams(length, width);
+    
+    const blockId = 'plane';
+    const M = [
+        center.x, 0, center.z,
+        p.xrot, angle, p.zrot,
+        p.scale, p.extend_scale,
+        p.extend_xrot, p.extend_yrot,
+        0, 0, 0
+    ];
+    
+    addBlock(new Block(blockId, M, null, '#aaccff', 'cube'));
+}
 
 // 动画循环
 function animate() {
@@ -9702,27 +11740,48 @@ function animate() {
     fillLight.target.position.set(0, 0, 0);
     fillLight.target.updateMatrixWorld();
 
-  
-    
     updateAxesByDistance();
     try { if (typeof syncGizmo === 'function') syncGizmo(); } catch(e) { /* ignore gizmo sync error */ }
     blocks.forEach(b => updateBlockLabel(b));
+
+    // 同步组的隐藏状态到方块可见性（在 updateBlockLabel 之后，确保不被覆盖）
+    blocks.forEach(block => {
+        const hidden = isBlockInHiddenGroup(block);
+        if (block.mesh) block.mesh.visible = !hidden;
+        if (block.label) {
+            const shouldShow = !hideNames && !hidden;
+            block.label.visible = shouldShow;
+            if (block.label.element) {
+                if (shouldShow) {
+                    block.label.element.style.removeProperty('display');
+                } else {
+                    block.label.element.style.setProperty('display', 'none', 'important');
+                }
+            }
+        }
+        // 只对隐藏组的方块隐藏线框，非隐藏方块的线框由选中状态决定
+        if (hidden && block.selectionWireframe) block.selectionWireframe.visible = false;
+        // 隐藏时取消选中
+        if (hidden && selectedBlocksSet.has(block)) {
+            selectedBlocksSet.delete(block);
+            if (selectedBlock === block) selectedBlock = null;
+        }
+    });
+
     for (let block of selectedBlocksSet) {
         if (block.selectionWireframe && block.selectionWireframe.visible) {
-            // 直接复制方块的世界矩阵到线框，保证完全一致（涵盖复杂变换、父矩阵、缩放符号等）
-            if (block.mesh && block.mesh.matrixWorld) {
-                block.selectionWireframe.matrix.copy(block.mesh.matrixWorld);
+            const sourceMatrix = (block.type === 'stair' || block.type === 'flag') 
+                ? (block.rootGroup && block.rootGroup.matrixWorld) 
+                : (block.mesh && block.mesh.matrixWorld);
+            if (sourceMatrix) {
+                block.selectionWireframe.matrix.copy(sourceMatrix);
                 block.selectionWireframe.matrixWorldNeedsUpdate = true;
-            } else {
-                // 兜底：回退到分解方式
-                const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scale = new THREE.Vector3();
-                block.mesh.matrixWorld.decompose(pos, quat, scale);
-                block.selectionWireframe.position.copy(pos);
-                block.selectionWireframe.quaternion.copy(quat);
-                block.selectionWireframe.scale.copy(scale);
             }
         }
     }
+    
+    updateBrushPreview();
+    
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
 }
@@ -9756,9 +11815,10 @@ function applyPanelHeight(newHeight) {
 function onPointerDown(e) {
     e.preventDefault();
     isDraggingPanel = true;
-    dragStartClientY = e.clientY;
+    const pt = e.touches ? e.touches[0] : e;
+    dragStartClientY = pt.clientY;
     dragStartHeight = panel.offsetHeight;
-    dragStartClientX = e.clientX;
+    dragStartClientX = pt.clientX;
     dragStartWidth = panel.offsetWidth;
     document.body.style.userSelect = 'none';
     document.body.style.cursor = isSidePanelMode || isNewLayoutMode ? 'ew-resize' : 'ns-resize';
@@ -9775,8 +11835,9 @@ function onPointerMove(e) {
     if (resizeRAFId) cancelAnimationFrame(resizeRAFId);
     resizeRAFId = requestAnimationFrame(() => {
         resizeRAFId = null;
+        const pt = e.touches ? e.touches[0] : e;
         if (isSidePanelMode || isNewLayoutMode) {
-            const dx = e.clientX - dragStartClientX;
+            const dx = pt.clientX - dragStartClientX;
             let newWidth = dragStartWidth - dx;
             newWidth = Math.min(MAX_SIDE_PANEL_WIDTH, Math.max(MIN_SIDE_PANEL_WIDTH, newWidth));
             applyPanelWidth(newWidth);
@@ -9788,7 +11849,7 @@ function onPointerMove(e) {
                 }
             }
         } else {
-            const dy = e.clientY - dragStartClientY;
+            const dy = pt.clientY - dragStartClientY;
             let newHeight = dragStartHeight - dy;
             newHeight = Math.min(window.innerHeight * 0.85, Math.max(140, newHeight));
             applyPanelHeight(newHeight);
@@ -9814,6 +11875,7 @@ function onPointerUp() {
     try { positionUISettingsPanel(); } catch (e) { /* ignore */ }
 }
 resizeHandle.addEventListener('pointerdown', onPointerDown);
+resizeHandle.addEventListener('touchstart', onPointerDown, { passive: false });
 panel.style.height = '280px';
 
 // ====================================================================
@@ -9836,14 +11898,28 @@ const KEYFRAME_BASE_VIEW = 10; // 1x 缩放下显示的基准秒数
 let keyframeDragging = false; // 正在拖拽播放头
 _kfSystemReady = true; // 关键帧系统已就绪
 
+// 清除非关键帧动画方块的选中状态
+function clearNonKeyframeSelection() {
+    for (const b of Array.from(selectedBlocksSet)) {
+        if (!(_kfSystemReady && keyframeData.has(b.id))) {
+            selectedBlocksSet.delete(b);
+        }
+    }
+    if (selectedBlock && !(_kfSystemReady && keyframeData.has(selectedBlock.id))) {
+        selectBlock(null);
+        renderVariablesForBlock(null);
+    }
+    blocks.forEach(b => b.updateSelectionHighlight(selectedBlocksSet.has(b)));
+}
+
 // 进入/退出关键帧编辑模式（新操作模式使用）
 function enterKeyframeMode() {
     isKeyframeMode = true;
     if (!keyframeWindowOpen) openKeyframeWindow();
     else if (keyframeWindowEl) keyframeWindowEl.style.display = 'block';
+    clearNonKeyframeSelection();
     const animBlock = blocks.find(b => _kfSystemReady && keyframeData.has(b.id));
     if (animBlock) {
-        selectedBlocksSet.clear();
         selectedBlocksSet.add(animBlock);
         selectBlock(animBlock);
         selectKeyframeBlock(animBlock.id);
@@ -10222,6 +12298,8 @@ function openKeyframeWindow() {
     if (keyframeWindowEl) {
         keyframeWindowEl.style.display = 'block';
         keyframeWindowOpen = true;
+        clearNonKeyframeSelection();
+        renderSideBlockList();
         return;
     }
     
@@ -10496,6 +12574,8 @@ function openKeyframeWindow() {
     
     renderKeyframeTimeline();
     renderKeyframeDataPanel();
+    clearNonKeyframeSelection();
+    renderSideBlockList();
 }
 
 function makeKeyframeDraggable(win) {
@@ -10519,8 +12599,15 @@ function makeKeyframeDraggable(win) {
     function onDrag(e) {
         if (!isDragging) return;
         e.preventDefault();
-        win.style.left = (startLeft + e.clientX - startX) + 'px';
-        win.style.top = (startTop + e.clientY - startY) + 'px';
+        let newLeft = startLeft + e.clientX - startX;
+        let newTop = startTop + e.clientY - startY;
+        const winW = win.offsetWidth;
+        const winH = win.offsetHeight;
+        const minVisible = 40;
+        newLeft = Math.max(minVisible - winW, Math.min(newLeft, window.innerWidth - minVisible));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - minVisible));
+        win.style.left = newLeft + 'px';
+        win.style.top = newTop + 'px';
     }
     
     function onDragEnd() {
