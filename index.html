@@ -7425,6 +7425,9 @@ const texturePresets = [
 
 
 
+
+
+
 // <<<NEWMENU_INJECT_BEGIN>>>
 // ============== 材质菜单（支持整体贴图 / 六面独立贴图 / 组合方块预设） ==============
 // 记住上次浏览状态，反复挑贴图时不用每次重选分类
@@ -7606,6 +7609,7 @@ function buildMaterialMenu() {
     function showMain() {
         materialMenuDiv.innerHTML = '';
         materialMenuDiv.classList.remove('wide');
+        materialMenuDiv.classList.remove('loom-full');   // 退出织布机时也要移除，否则移动端残留铺满全屏
         const wrap = document.createElement('div');
         wrap.className = 'material-menu-main';
         wrap.appendChild(mmHead(`材质设置${targetBlocks.length > 1 ? ` (${targetBlocks.length}个方块)` : ''}`, null));
@@ -7654,6 +7658,11 @@ function buildMaterialMenu() {
             wrap.appendChild(group);
         }
         materialMenuDiv.appendChild(wrap);
+        // 退出织布机（或任意返回）后：重新按当前内容夹回视口。
+        // 否则会继承织布机被 positionMaterialMenu 夹出的 top（常接近 0，因织布机很高），
+        // 桌面端主菜单就变成贴右边的一整条竖直栏、失去小弹窗约束；
+        // 移动端则交给 CSS（.material-menu:not(.loom-full) 居中浮动小窗）。
+        if (typeof positionMaterialMenu === 'function') positionMaterialMenu();
     }
 
     // ---------- 本地上传 ----------
@@ -8943,6 +8952,7 @@ function toggleSidePanelMode(e) {
                 sideList.classList.add('side-list-bottom');
             }
             applySideListDimensions();
+            updateSideListResizeHandle();   // 切换侧边栏后同步蓝条显隐与定位（修复侧边栏下蓝条残留）
         }
     }
 }
@@ -9016,6 +9026,7 @@ function applyNewLayoutMode() {
             updateSideListResizeHandle();
         }
         renderSideBlockList();
+        updateSideListResizeHandle();   // 列表渲染完成后再定位蓝条，避免内容撑高后位置错位/不显示
         // 新操作模式时显示世界轴位移、枢轴联动和数据面板宽度设置，隐藏方块列表位置设置
         const worldAxisDispSetting = document.getElementById('worldAxisDispSetting');
         if (worldAxisDispSetting) worldAxisDispSetting.style.display = 'flex';
@@ -9471,6 +9482,8 @@ function renderSideBlockList() {
             showEulerAngleConfirmDialog();
         });
     }
+    // 列表内容变化后重新定位/显隐蓝条，避免偶尔不显示
+    if (isNewLayoutMode) updateSideListResizeHandle();
 }
 
 // ========== 方块列表边缘拖拽调整大小 ==========
@@ -9586,7 +9599,9 @@ function updateSideListResizeHandle() {
         handle.style.display = 'block';
         handle.style.left = '0';
         handle.style.right = '0';
-        handle.style.top = (rect.top - 6) + 'px';
+        // 裁剪 top 防止列表过高时把手被推到屏幕外（偶尔不显示）
+        const topPx = Math.max(2, rect.top - 6);
+        handle.style.top = topPx + 'px';
         handle.style.position = 'fixed';
     } else {
         handle.style.display = 'none';
