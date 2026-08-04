@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EX.F</title>
+    <title>EX fmbe模拟器</title>
 <style>
 /* ========== 主题CSS变量（深色模式默认 / 浅色模式覆盖） ========== */
 :root {
@@ -236,7 +236,7 @@ body.light-mode .control-item { background: var(--bg-control-item); color: var(-
 body .settings-toggle-btn, body.light-mode .settings-toggle-btn { width: 34px; height: 34px; border-radius: 10px; border: var(--bg-settings-toggle-border); background: var(--bg-settings-toggle); color: var(--color-settings-toggle); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transform: skewX(-5deg); transition: background 0.2s, transform 0.2s; }
 body .settings-toggle-btn span, body.light-mode .settings-toggle-btn span { display:inline-block; transform: skewX(5deg); }
 .panel-content { position: relative; }
-.ui-settings-panel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%) skewX(-5deg); width: 300px; background: var(--bg-settings-panel); border: var(--bg-settings-panel-border); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(10px); padding: 10px; z-index: 1010; }
+.ui-settings-panel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%) skewX(-5deg); width: 300px; background: var(--bg-settings-panel); border: var(--bg-settings-panel-border); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(10px); padding: 10px; z-index: 1010; max-height: calc(100vh - 16px); overflow-y: auto; }
 .ui-settings-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-settings-item); border-radius: 10px; transform: skewX(-5deg); cursor: pointer; }
 .ui-settings-item span { display: inline-block; transform: skewX(5deg); color: var(--color-text-strong); font-size: 13px; line-height: 1.3; }
 .ui-checkbox { width: 18px; height: 18px; border-radius: 6px; border: 1px solid var(--bg-checkbox-border); background: var(--bg-checkbox-bg); cursor: pointer; transform: skewX(-5deg); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
@@ -505,6 +505,225 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
 .new-var-row { margin-top: 16px; padding-top: 12px; border-top: 2px solid #3b82f6; display: flex; gap: 10px; }
 .new-var-input { flex: 2; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border: none; color: white; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; border-radius: 12px; outline: none; }
 .new-var-input::placeholder { color: rgba(255,255,240,0.7); }
+.program-help { font-size: 11px; color: var(--color-text-muted, #64748b); margin-top: 6px; line-height: 1.5; }
+/* molang 编辑器：透明 textarea 叠加在彩色高亮层之上 */
+.molang-editor { position: relative; }
+.molang-editor .molang-highlight,
+.molang-editor .molang-textarea {
+    margin: 0; border: 1px solid var(--bg-card-border); border-radius: 8px;
+    padding: 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.5; letter-spacing: 0; tab-size: 4;
+    white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;
+    box-sizing: border-box; width: 100%; min-height: 132px;
+}
+.molang-editor .molang-highlight {
+    position: absolute; inset: 0; z-index: 0; overflow: hidden;
+    background: var(--bg-var-details); color: var(--color-text-strong);
+    pointer-events: none;
+}
+.molang-editor .molang-textarea {
+    position: relative; z-index: 1; display: block;
+    background: transparent; color: transparent; caret-color: var(--color-text-strong);
+    resize: vertical; outline: none; overflow: auto;
+}
+/* 语法着色：全局变量=橙 局部变量=紫 查询函数=紫 math函数=黄 逻辑判断符=红 常量数值=蓝 加减乘数=绿 */
+.tok-global { color: #f59e0b; }
+.tok-local  { color: #a855f7; }
+.tok-query  { color: #a855f7; }
+.tok-math   { color: #eab308; }
+.tok-logic  { color: #ef4444; }
+.tok-num    { color: #3b82f6; }
+.tok-arith  { color: #16a34a; }
+.tok-comment{ color: #64748b; font-style: italic; }
+.tok-str    { color: #14b8a6; }
+.tok-fn     { color: var(--color-text-strong); }
+/* molang 错误行整行标红 */
+.molang-err-line { display: block; background: rgba(239,68,68,0.22); border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(239,68,68,0.55); }
+/* molang 错误面板 */
+.molang-error { display: none; margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(239,68,68,0.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; line-height: 1.5; }
+.molang-error.show { display: block; }
+/* ========== molang 编辑器顶部：帮助按钮（折叠按钮左侧，左上角） ========== */
+.molang-header-actions { display: inline-flex; align-items: center; gap: 8px; }
+.molang-help-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  font-size: 12px; font-weight: 600; line-height: 1.4; color: #e2e8f0;
+  background: linear-gradient(135deg, rgba(59,130,246,0.22), rgba(139,92,246,0.18));
+  border: 1px solid rgba(96,165,250,0.45);
+  box-shadow: 0 0 0 0 rgba(59,130,246,0);
+  transition: background .15s, box-shadow .15s, transform .08s;
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.molang-help-btn:hover { background: linear-gradient(135deg, rgba(59,130,246,0.4), rgba(139,92,246,0.32)); box-shadow: 0 0 14px rgba(59,130,246,0.42); }
+.molang-help-btn:active { transform: scale(0.94); }
+/* ========== molang 帮助弹窗 ========== */
+.molang-help-modal { position: fixed; inset: 0; z-index: 1003; display: flex; align-items: center; justify-content: center; background: rgba(2,6,23,0.62); backdrop-filter: blur(4px); animation: mhFade .18s ease; }
+@keyframes mhFade { from { opacity: 0; } to { opacity: 1; } }
+.molang-help-modal .mh-box { width: min(740px, 93vw); max-height: 86vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: linear-gradient(160deg, rgba(20,30,54,0.99), rgba(10,16,32,0.99)); border: 1px solid rgba(96,165,250,0.4); box-shadow: 0 26px 70px rgba(0,0,0,0.6), 0 0 44px rgba(59,130,246,0.2); }
+.molang-help-modal .mh-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, rgba(59,130,246,0.28), rgba(139,92,246,0.22)); border-bottom: 1px solid rgba(96,165,250,0.3); }
+.molang-help-modal .mh-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: #eef2ff; letter-spacing: .5px; }
+.molang-help-modal .mh-close { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.2); color: #e2e8f0; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 15px; line-height: 1; }
+.molang-help-modal .mh-close:hover { background: rgba(239,68,68,0.28); border-color: #ef4444; }
+.molang-help-modal .mh-body { overflow-y: auto; padding: 14px 18px 6px; color: #cbd5e1; }
+.molang-help-modal .mh-sec-title { font-size: 14px; font-weight: 700; color: #60a5fa; margin: 10px 0 8px; padding-left: 8px; border-left: 3px solid #3b82f6; }
+.molang-help-modal .mh-sec-title.q { color: #c084fc; border-color: #a855f7; }
+.molang-help-modal .mh-fn { background: rgba(15,23,42,0.6); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; padding: 10px 12px; margin-bottom: 9px; }
+.molang-help-modal .mh-fn-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.molang-help-modal .mh-name { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; font-weight: 700; color: #93c5fd; word-break: break-all; }
+.molang-help-modal .mh-name.q { color: #d8b4fe; }
+.molang-help-modal .mh-copy { flex: 0 0 auto; padding: 3px 10px; border-radius: 7px; cursor: pointer; font-size: 11px; color: #e2e8f0; background: rgba(59,130,246,0.18); border: 1px solid rgba(96,165,250,0.4); transition: background .15s, box-shadow .15s; }
+.molang-help-modal .mh-copy:hover { background: rgba(59,130,246,0.42); box-shadow: 0 0 12px rgba(59,130,246,0.4); }
+.molang-help-modal .mh-row { font-size: 12.5px; margin-top: 5px; line-height: 1.55; }
+.molang-help-modal .mh-row b { color: #e2e8f0; font-weight: 600; }
+.molang-help-modal .mh-k { color: #94a3b8; }
+.molang-help-modal .mh-foot { margin: 14px 0 16px; text-align: center; font-size: 13px; color: #fbbf24; font-weight: 700; letter-spacing: .3px; }
+/* ========== molang 数字常量泡泡（自增/自减 + 常显固定） ========== */
+.molang-num-bubble {
+  position: fixed; z-index: 99999;
+  display: flex; flex-direction: column; gap: 8px;
+  width: 224px; max-width: 88vw; padding: 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-strong, #e2e8f0);
+  background: linear-gradient(160deg, rgba(30,42,74,0.97), rgba(13,20,38,0.99));
+  border: 1px solid rgba(59,130,246,0.6);
+  border-radius: 14px;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
+  user-select: none; -webkit-user-select: none;
+  backdrop-filter: blur(7px);
+  animation: mnbPop .14s ease-out;
+}
+@keyframes mnbPop { from { opacity: 0; transform: translateY(7px) scale(.95); } to { opacity: 1; transform: none; } }
+.molang-num-bubble.pinned { z-index: 999999; }
+.molang-num-bubble.mnb-burst { animation: mnbBurst .28s ease-out forwards; pointer-events: none; }
+@keyframes mnbBurst {
+  0%   { transform: scale(1);    opacity: 1; }
+  45%  { transform: scale(1.22); opacity: 1; box-shadow: 0 0 0 10px rgba(59,130,246,0.22), 0 0 30px rgba(96,165,250,0.7); }
+  100% { transform: scale(1.5);  opacity: 0; }
+}
+/* 标题栏：变量名 + 方块名 + 固定/关闭（常显模式可拖动） */
+.molang-num-bubble .mnb-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.26), rgba(168,85,247,0.2));
+  border-bottom: 1px solid rgba(59,130,246,0.4);
+  border-radius: 14px 14px 0 0;
+  cursor: default;
+}
+.molang-num-bubble.pinned .mnb-head { cursor: grab; }
+.molang-num-bubble.pinned.dragging .mnb-head { cursor: grabbing; }
+.molang-num-bubble .mnb-var {
+  font-weight: 700; font-size: 12px; color: #c084fc;
+  text-shadow: 0 0 9px rgba(168,85,247,0.6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px;
+}
+.molang-num-bubble .mnb-block {
+  flex: 1; font-size: 10px; color: var(--color-text-muted, #94a3b8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.molang-num-bubble .mnb-ico {
+  cursor: pointer; border: none; background: transparent; color: var(--color-text-strong, #e2e8f0);
+  font-size: 14px; line-height: 1; padding: 3px 5px; border-radius: 7px; opacity: .82;
+  transition: background .12s, opacity .12s, transform .12s;
+}
+.molang-num-bubble .mnb-ico:hover { background: rgba(255,255,255,0.14); opacity: 1; }
+.molang-num-bubble .mnb-ico:active { transform: scale(.88); }
+.molang-num-bubble .mnb-pin.active { color: #fbbf24; text-shadow: 0 0 9px rgba(251,191,36,0.8); }
+/* 数值 + 单步进按钮（▲/▼ 合一） */
+.molang-num-bubble .mnb-body { display: flex; align-items: stretch; gap: 8px; padding: 6px 12px 2px; }
+.molang-num-bubble .mnb-stepper {
+  flex: 0 0 auto; display: flex; flex-direction: column;
+  border-radius: 11px; overflow: hidden;
+  border: 1px solid rgba(59,130,246,0.55);
+  background: linear-gradient(135deg, #21345c, #0f1a30);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.molang-num-bubble .mnb-stepper span {
+  width: 38px; height: 21px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--color-text-strong, #e2e8f0); font-size: 13px; line-height: 1;
+  transition: background .12s, transform .07s; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; touch-action: none;
+}
+.molang-num-bubble .mnb-stepper span:first-child { border-bottom: 1px solid rgba(59,130,246,0.4); }
+.molang-num-bubble .mnb-stepper span:hover { background: rgba(59,130,246,0.25); }
+.molang-num-bubble .mnb-stepper span:active { transform: scale(.9); background: rgba(59,130,246,0.4); }
+.molang-num-bubble .mnb-val {
+  flex: 1; min-width: 0; text-align: center; font-weight: 800; font-size: 18px;
+  padding: 9px 6px; border-radius: 9px; cursor: ns-resize;
+  color: #7dd3fc; background: rgba(59,130,246,0.13);
+  text-shadow: 0 0 11px rgba(96,165,250,0.6);
+  border: 1px solid rgba(59,130,246,0.28);
+  overflow-wrap: anywhere; word-break: break-all; line-height: 1.15;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
+}
+/* 步长区 */
+.molang-num-bubble .mnb-foot { display: flex; align-items: center; gap: 6px; padding: 2px 12px 11px; flex-wrap: wrap; }
+.molang-num-bubble .mnb-stepwrap { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-text-muted, #94a3b8); }
+.molang-num-bubble .mnb-stepinput {
+  width: 66px; padding: 3px 5px; border-radius: 7px; font-size: 11px;
+  background: var(--bg-var-range-input, #0f172a); color: #fff;
+  border: 1px solid rgba(59,130,246,0.55); font-family: inherit;
+  overflow: hidden; text-overflow: clip;
+}
+.molang-num-bubble .mnb-stepinput:focus { outline: none; box-shadow: var(--color-focus-shadow, 0 0 0 2px rgba(59,130,246,0.3)); }
+.molang-num-bubble .mnb-q {
+  cursor: pointer; padding: 3px 9px; border-radius: 7px; font-size: 11px;
+  border: 1px solid rgba(59,130,246,0.42); background: rgba(59,130,246,0.08);
+  color: var(--color-text-strong, #e2e8f0);
+  transition: background .12s, border-color .12s;
+}
+.molang-num-bubble .mnb-q:hover { background: rgba(59,130,246,0.22); }
+.molang-num-bubble .mnb-q.active { background: rgba(59,130,246,0.38); border-color: #60a5fa; }
+.molang-num-bubble .mnb-hint { font-size: 10px; color: #64748b; text-align: center; padding: 0 10px 10px; line-height: 1.4; }
+/* 指向数值的小三角（仅锚定/瞬时模式显示，泡泡在数值上方） */
+.molang-num-bubble:not(.pinned)::before,
+.molang-num-bubble:not(.pinned)::after {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0; border: 9px solid transparent;
+}
+.molang-num-bubble:not(.pinned)::before { bottom: -11px; border-top-color: rgba(59,130,246,0.6); }
+.molang-num-bubble:not(.pinned)::after  { bottom: -9px;  border-top-color: rgba(13,20,38,0.99); }
+/* 只读数值显示 */
+.mv-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--bg-card-border); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+.mv-row:last-child { border-bottom: none; }
+.mv-name { color: #a855f7; }
+.mv-val { color: var(--color-text-strong); font-weight: 600; }
+/* molang 接管视图：隐藏冗长分组标题，折叠按钮简约化（无背景、仅三角形、两组高度一致、对齐） */
+.var-group[data-group="molang-values"] .group-title,
+.var-group[data-group="molang"] .group-title { display: none; }
+/* 两组分组头使用同一套简约样式：透明背景、无边框、固定行高 → 三角形高度与垂直对齐完全一致 */
+.var-group[data-group="molang-values"] .group-header,
+.var-group[data-group="molang"] .group-header {
+  background: transparent; border: none; padding: 6px 4px; margin-bottom: 4px;
+  min-height: 28px;
+  justify-content: flex-end; font-weight: 600;
+}
+/* 折叠三角形本身：去除按钮化外观（无背景/边框/内边距盒），仅保留字形；固定宽高 → 折叠/展开时 ▼↔▶ 字形宽度不同也不会让按钮位置或尺寸跳动 */
+.var-group[data-group="molang-values"] .group-toggle,
+.var-group[data-group="molang"] .group-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; flex: 0 0 auto;
+  background: transparent; border: none; margin: 0; padding: 0;
+  font-size: 12px; line-height: 1; color: var(--color-text-muted, #64748b);
+  user-select: none;
+}
+/* molang 面板手机端适配：窄屏下只读数值在表达式上方（DOM 顺序已保证），并加大触控区域、避免溢出 */
+@media (max-width: 640px) {
+  .molang-editor .molang-highlight,
+  .molang-editor .molang-textarea {
+    min-height: 160px;
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+  .molang-editor .molang-textarea { font-size: 14px; }
+  .mv-row { font-size: 14px; padding: 7px 10px; }
+  .molang-error { font-size: 12px; padding: 8px 10px; }
+  /* 窄屏明确让只读数值组位于表达式组上方 */
+  .var-group[data-group="molang-values"] { order: -1; }
+  .var-group[data-group="molang"] { order: 0; }
+  /* 窄屏：标题已隐藏，折叠箭头保持简约（与桌面同一套无背景样式，仅略微加大触控留白，两组一致） */
+  .var-group[data-group="molang-values"] .group-header,
+  .var-group[data-group="molang"] .group-header { padding: 8px 6px; }
+}
 .info-note { font-size: 11px; text-align: center; margin: 16px 0 8px; padding: 6px; transform: skewX(-6deg); border-radius: 12px; }
 
 /* 滑块 */
@@ -518,7 +737,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .delete-var { background: linear-gradient(135deg, #9f1239, #e11d48); transform: skewX(-12deg); padding: 6px 16px; cursor: pointer; color: white; border: none; margin-top: 10px; border-radius: 20px; font-size: 12px; transition: 0.1s; }
 
 /* 模态框 */
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 10000; display: flex; align-items: center; justify-content: center; }
 .modal-content { background: var(--modal-bg-grayscale, var(--bg-modal)); border-radius: 24px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; border: var(--bg-modal-border); box-shadow: 0 20px 35px rgba(0,0,0,0.5); color: var(--color-text-strong); }
 body.light-mode .modal-content { background: var(--bg-modal); }
 :root { --modal-bg-grayscale: #162136; }
@@ -2057,6 +2276,11 @@ body.light-mode .keyframe-import-time-input input {
                 <span>方块列表UI布局在左上角</span>
                 <button class="ui-checkbox checked" id="blockListPositionCheckbox" type="button" aria-pressed="true"></button>
             </div>
+            <div class="ui-settings-item" id="molangTakeoverSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
+                <span>molang 表达式接管</span>
+                <button class="modal-btn" id="molangTakeoverBtn" type="button" style="width:100%;">使用 molang 表达式完全接管当前方块</button>
+                <div style="font-size:11px; color:var(--color-text-muted,#64748b);">仅对当前选中的方块生效（支持多选）；开启后不可逆，变量区将变为只读数值并生成 molang 基线。</div>
+            </div>
             <div class="ui-settings-item" id="themeSetting" style="margin-top:8px;">
                 <span>浅色模式</span>
                 <button class="ui-checkbox" id="themeToggleCheckbox" type="button" aria-pressed="false"></button>
@@ -2072,6 +2296,10 @@ body.light-mode .keyframe-import-time-input input {
             <div class="ui-settings-item" id="newLayoutSetting" style="margin-top:8px;">
                 <span>启用新布局&amp;操作方案</span>
                 <button class="ui-checkbox" id="newLayoutCheckbox" type="button" aria-pressed="false"></button>
+            </div>
+            <div class="ui-settings-item" id="queryUpdateSetting" style="margin-top:8px;">
+                <span>查询函数更新</span>
+                <button class="ui-checkbox checked" id="queryUpdateCheckbox" type="button" aria-pressed="true"></button>
             </div>
             <div class="ui-settings-item" id="worldAxisDispSetting" style="margin-top:8px; display:none;">
                 <span>世界轴位移</span>
@@ -2223,11 +2451,92 @@ function showToast(msg) {
 }
 
 // ==================== 数学库 ====================
+// 每个方块独立的伪随机数状态（math.random / die_roll 等按方块隔离，每帧自发推进）
+const _blockRngStates = new Map();
+let _globalRngSeed = 0x9e3779b9;
+let _currentEvalBlockId = null;
+
+function hashString(str) {
+    let h = 1779033703;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h ^ (h >>> 16), 2246822507);
+        h = Math.imul(h ^ (h >>> 13), 3266489909);
+        h ^= h >>> 16;
+    }
+    return h >>> 0;
+}
+function nextRng(seed) {
+    let s = seed + 0x6D2B79F5;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return { value: ((t ^ (t >>> 14)) >>> 0) / 4294967296, state: s };
+}
+function blockRandom(blockId) {
+    if (!blockId) return globalRandom();
+    let seed = _blockRngStates.get(blockId);
+    if (seed === undefined) { seed = hashString(String(blockId)); _blockRngStates.set(blockId, seed); }
+    const r = nextRng(seed);
+    _blockRngStates.set(blockId, r.state);
+    return r.value;
+}
+function globalRandom() {
+    const r = nextRng(_globalRngSeed);
+    _globalRngSeed = r.state;
+    return r.value;
+}
+function randomFloat(low, high, blockId) {
+    const lo = Number(low) || 0, hi = Number(high) || 0;
+    return lo + (blockId ? blockRandom(blockId) : globalRandom()) * (hi - lo);
+}
+function randomInt(low, high, blockId) {
+    const lo = Math.ceil(Number(low) || 0), hi = Math.floor(Number(high) || 0);
+    if (hi < lo) return lo;
+    return lo + Math.floor((blockId ? blockRandom(blockId) : globalRandom()) * (hi - lo + 1));
+}
+
 const angleMath = {
-    sin: d => Math.sin(d * Math.PI / 180), cos: d => Math.cos(d * Math.PI / 180), tan: d => Math.tan(d * Math.PI / 180),
+    sin: d => Math.sin(d * Math.PI / 180), cos: d => Math.cos(d * Math.PI / 180),
     asin: v => Math.asin(v) * 180 / Math.PI, acos: v => Math.acos(v) * 180 / Math.PI, atan: v => Math.atan(v) * 180 / Math.PI,
     atan2: (y, x) => Math.atan2(y, x) * 180 / Math.PI, sqrt: Math.sqrt, abs: Math.abs, floor: Math.floor, ceil: Math.ceil,
-    round: Math.round, pow: Math.pow, exp: Math.exp, log: Math.log, min: Math.min, max: Math.max, PI: Math.PI, E: Math.E
+    round: Math.round, pow: Math.pow, exp: Math.exp, ln: Math.log, min: Math.min, max: Math.max,
+    trunc: Math.trunc, mod: (v, d) => (d === 0 ? v : v % d),
+    clamp: (v, lo, hi) => Math.max(lo, Math.min(hi, v)),
+    lerp: (a, b, t) => a + (b - a) * t,
+    lerp_rotate: (start, end, t) => { let diff = (end - start) % 360; if (diff > 180) diff -= 360; if (diff <= -180) diff += 360; return start + diff * t; },
+    lerprotate: (start, end, t) => { let diff = (end - start) % 360; if (diff > 180) diff -= 360; if (diff <= -180) diff += 360; return start + diff * t; },
+    min_angle: a => { a = a % 360; if (a > 180) a -= 360; if (a <= -180) a += 360; return a; },
+    hermite_blend: t => 3 * t * t - 2 * t * t * t,
+    pi: Math.PI, PI: Math.PI,
+    random: (low, high) => randomFloat(low, high, _currentEvalBlockId),
+    random_integer: (low, high) => randomInt(low, high, _currentEvalBlockId),
+    die_roll: (num, low, high) => { let sum = 0; const n = Math.max(0, Math.floor(Number(num) || 0)); for (let i = 0; i < n; i++) sum += angleMath.random(low, high); return sum; },
+    die_roll_integer: (num, low, high) => { let sum = 0; const n = Math.max(0, Math.floor(Number(num) || 0)); for (let i = 0; i < n; i++) sum += angleMath.random_integer(low, high); return sum; }
+};
+
+// ==================== 查询函数（供方块变量表达式调用） ====================
+// 命名空间 q：可在方块变量表达式中以 q.xxx(...) 形式调用。
+// 查询函数是否随相机实时更新（false 时冻结为关闭瞬间的“当前值”）
+let _queryUpdateEnabled = true;
+const _queryCache = {};
+// 例如 v.yrot = q.rotation_to_camera(1) 可让方块绕 Y 轴对准摄像机。
+const queryNamespace = {
+    // 坐标原点 (0,0,0) 看向摄像机的角度（单位：度，与 math / 方块旋转统一为角度制）
+    // mode = 0：返回俯仰角（相对水平面，符号与方块 xrot 约定一致，故此处取负）
+    // mode = 1：返回偏航角（XZ 平面方位角），对齐方块 yrot 基准，故整体减 90°
+    rotation_to_camera: function (mode) {
+        if (!_queryUpdateEnabled && _queryCache[mode] !== undefined) return _queryCache[mode];
+        const dx = camera.position.x, dy = camera.position.y, dz = camera.position.z;
+        const horiz = Math.sqrt(dx * dx + dz * dz);
+        const len = Math.sqrt(horiz * horiz + dy * dy);
+        let val;
+        if (len < 1e-9) val = 0;
+        else if (Number(mode) === 1) val = Math.atan2(dz, dx) * 180 / Math.PI - 90;
+        else val = -Math.atan2(dy, horiz) * 180 / Math.PI;
+        _queryCache[mode] = val; // 始终记录最近一次真实值，关闭更新时即为冻结的“当前值”
+        return val;
+    }
 };
 
 // 更新日志库
@@ -2237,9 +2546,15 @@ const changelogData = [
     {
         date: "*",
         title: "公告",
-        items: ["EX模拟器APP将在联网条件下强制更新为 v.4.00 版本"],
-        details: "本次更新为强制更新，所有植入了更新程序的客户端，都将在联网条件下将自动升级至最新版本。更新内容包括材质系统的重大改进。",
+        items: ["EX模拟器APP将在联网条件下强制更新为 v.4.50 版本"],
+        details: "本次更新为强制更新，所有植入了更新程序的客户端，都将在联网条件下将自动升级至最新版本。。",
         actions: []
+    },
+    {
+         date: "2026-08-3",
+        title: "v.4.50 正式版",
+        items: ["更新了molang控制系统","尝试支持查询函数","给所有Gizmo控件添加了快捷键"],
+        details: "【molang控制系统】\n- 支持了所有math函数、逻辑运算\n- 让模拟更加完善、便捷！\n- molang表达式先后顺序为从前往后 \n- 支持了查询函数q.rotation_to_camera的调用 \n\n【Gizmo快捷键】\n- P枢轴  v位移 S缩放 \n- R->rot变量的旋转   shift+R->rotation变量的旋转\n"
     },
     {
         date: "2026-08-3",
@@ -2338,15 +2653,18 @@ const changelogData = [
 
 
 
-function evaluateExpression(expr, localVarsMap, globalVarsMap) {
-    const scope = { math: angleMath };
+function evaluateExpression(expr, localVarsMap, globalVarsMap, blockId = null) {
+    const scope = { math: angleMath, q: queryNamespace };
     const vProxy = {};
     for (let [k, obj] of localVarsMap) if (k.startsWith('v.')) vProxy[k.slice(2)] = obj.value;
     scope.v = vProxy;
     const tProxy = {};
     for (let [n, g] of globalVarsMap) tProxy[n] = g.def.value;
     scope.t = tProxy;
-    try { return new Function('math', 'v', 't', `return (${expr})`)(scope.math, scope.v, scope.t); } catch(e) { return 0; }
+    const prev = _currentEvalBlockId;
+    _currentEvalBlockId = blockId;
+    try { return new Function('math', 'v', 't', 'q', `return (${expr})`)(scope.math, scope.v, scope.t, scope.q); } catch(e) { return 0; }
+    finally { _currentEvalBlockId = prev; }
 }
 
 function isConstantExpr(e) { return /^\s*-?\d+(\.\d+)?\s*$/.test(e); }
@@ -2361,6 +2679,259 @@ function getDefaultRange(name) {
     return { min: -10, max: 10 , step: 0.01};
 }
 
+// ========== 程序式脚本解释器（FMBE 风格，顺序执行）==========
+// 语法（自上而下顺序执行；同一变量可多次赋值，后写覆盖先写）：
+//   语句以 ; 分隔（末尾 ; 可省略）
+//   赋值语句：  v.NAME = 表达式
+//   条件语句：  条件表达式 ? (语句序列) : (语句序列)    分支也可用 { } 包围
+//   表达式支持：数字、v.NAME、t.NAME、math.xxx(...)、q.xxx(...)、
+//              运算符 ! && || == != < <= > >= + - * / 、括号 ( )、以及表达式级三元 a?b:c
+//   变量若不存在视为 0；t. 引用全局变量；条件为真（非 0）走 then 分支。
+// 词法分析：返回带行号(line, 1-based)的记号数组，供解释器与静态校验共用
+function tokenizeMolang(text) {
+    const tokens = [];
+    let i = 0, line = 1;
+    const isDig = c => c >= '0' && c <= '9';
+    const isAlp = c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_';
+    const isAln = c => isAlp(c) || isDig(c);
+    const TWO = ['==', '!=', '<=', '>=', '&&', '||', '??'];
+    while (i < text.length) {
+        const c = text[i];
+        if (c === ' ' || c === '\t') { i++; continue; }
+        if (c === '\n' || c === '\r') { if (c === '\n') line++; i++; continue; }
+        if (isDig(c) || (c === '.' && isDig(text[i + 1]))) {
+            let j = i + 1;
+            while (j < text.length && (isDig(text[j]) || text[j] === '.')) j++;
+            tokens.push({ t: 'num', v: parseFloat(text.slice(i, j)), s: i, e: j, line }); i = j; continue;
+        }
+        if (isAlp(c)) {
+            let j = i + 1;
+            while (j < text.length && isAln(text[j])) j++;
+            tokens.push({ t: 'id', v: text.slice(i, j), s: i, e: j, line }); i = j; continue;
+        }
+        const two = text.substr(i, 2);
+        if (TWO.indexOf(two) !== -1) { tokens.push({ t: 'op', v: two, s: i, e: i + 2, line }); i += 2; continue; }
+        if ('!<>=&|?:(){};+-*/.,'.indexOf(c) !== -1) { tokens.push({ t: 'op', v: c, s: i, e: i + 1, line }); i += 1; continue; }
+        i++;
+    }
+    return tokens;
+}
+
+function runBlockProgram(text, scope, opts) {
+    const validateOnly = !!(opts && opts.validateOnly);
+    const collectDecl = opts && opts.collectDecl;
+    const tokens = tokenizeMolang(text);
+    scope._assigned = new Set(); // 本次执行中被赋值的变量（供核心变量默认回退使用）
+    scope._tolerant = false;     // ?? 左操作数求值时的“宽容模式”：允许读取尚未定义的变量（用于 v.x=v.x??0 初始化）
+    let p = 0;
+    const peek = () => tokens[p];
+    const next = () => tokens[p++];
+    const setVar = (name, val, srcExpr) => {
+        let d = scope.vars.get('v.' + name);
+        if (!d) { d = new VarDef(srcExpr != null ? srcExpr : String(val), val, -1e9, 1e9, 1); scope.vars.set('v.' + name, d); }
+        else { d.value = val; if (srcExpr != null) d.expr = srcExpr; } // 保留源表达式（含查询函数），仅更新数值
+        if (scope._assigned) scope._assigned.add('v.' + name); // 记录本次执行中被赋值的变量
+    };
+    const env = { math: angleMath, q: queryNamespace, t: {} };
+    for (let [n, g] of globalVars) env.t[n] = g.def.value;
+
+    // 带行号的语法错误：curLine 取当前待消费记号的行号（EOF 时返回 null）
+    const curLine = () => { const tk = tokens[p]; return tk ? tk.line : null; };
+    function synErr(m) { const ln = curLine(); const err = new Error('语法错误：' + m + (ln ? '（第 ' + ln + ' 行）' : '（末尾）')); err.mlLine = ln || 0; throw err; }
+    function expect(v) { const tk = peek(); if (!tk || tk.v !== v) synErr('期望 ' + v); p++; }
+    function parseExpr(allowTernary) {
+        const left = parseNullCoalescing();
+        if (allowTernary && peek() && peek().v === '?') {
+            next(); const t = parseExpr(true); expect(':'); const f = parseExpr(true);
+            return () => { const c = left(); return c ? t() : f(); };
+        }
+        return left;
+    }
+    // ?? 空值合并（FMBE 初始化语法：v.x = v.x ?? 0）。左操作数在“宽容模式”下求值，
+    // 允许读取尚未定义的变量（返回 undefined），从而不会因为前向未定义而误报错误。
+    function parseNullCoalescing() {
+        let left = parseLogicOr();
+        while (peek() && peek().v === '??') {
+            next();
+            const r = parseNullCoalescing();
+            const a = left;
+            left = () => {
+                scope._tolerant = true;
+                let l;
+                try { l = a(); } finally { scope._tolerant = false; }
+                const undef = (l === undefined || l === null || (typeof l === 'number' && Number.isNaN(l)));
+                return undef ? r() : l;
+            };
+        }
+        return left;
+    }
+    function parseLogicOr() {
+        let left = parseLogicAnd();
+        while (peek() && peek().v === '||') { next(); const r = parseLogicAnd(); const a = left; left = () => (a() || r()); }
+        return left;
+    }
+    function parseLogicAnd() {
+        let left = parseEquality();
+        while (peek() && peek().v === '&&') { next(); const r = parseEquality(); const a = left; left = () => (a() && r()); }
+        return left;
+    }
+    function parseEquality() {
+        let left = parseComparison();
+        while (peek() && (peek().v === '==' || peek().v === '!=')) {
+            const op = next().v; const r = parseComparison(); const a = left;
+            left = () => { const x = a(), y = r(); return op === '==' ? (x === y ? 1 : 0) : (x !== y ? 1 : 0); };
+        }
+        return left;
+    }
+    function parseComparison() {
+        let left = parseAdditive();
+        while (peek() && (peek().v === '<' || peek().v === '<=' || peek().v === '>' || peek().v === '>=')) {
+            const op = next().v; const r = parseAdditive(); const a = left;
+            left = () => { const x = a(), y = r();
+                if (op === '<') return x < y ? 1 : 0;
+                if (op === '<=') return x <= y ? 1 : 0;
+                if (op === '>') return x > y ? 1 : 0;
+                return x >= y ? 1 : 0; };
+        }
+        return left;
+    }
+    function parseAdditive() {
+        let left = parseMultiplicative();
+        while (peek() && (peek().v === '+' || peek().v === '-')) {
+            const op = next().v; const r = parseMultiplicative(); const a = left;
+            left = () => { const x = a(), y = r(); return op === '+' ? x + y : x - y; };
+        }
+        return left;
+    }
+    function parseMultiplicative() {
+        let left = parseUnary();
+        while (peek() && (peek().v === '*' || peek().v === '/')) {
+            const op = next().v; const r = parseUnary(); const a = left;
+            left = () => { const x = a(), y = r(); return op === '*' ? x * y : (y === 0 ? 0 : x / y); };
+        }
+        return left;
+    }
+    function parseUnary() {
+        if (peek() && peek().v === '!') { next(); const u = parseUnary(); return () => (u() ? 0 : 1); }
+        if (peek() && peek().v === '-') { next(); const u = parseUnary(); return () => -u(); }
+        if (peek() && peek().v === '+') { next(); return parseUnary(); }
+        return parsePrimary();
+    }
+    function parsePrimary() {
+        const tk = peek();
+        if (!tk) synErr('表达式意外结束');
+        if (tk.t === 'num') { next(); const v = tk.v; return () => v; }
+        if (tk.t === 'op' && tk.v === '(') { next(); const e = parseExpr(true); expect(')'); return e; }
+        if (tk.t === 'id') {
+            const name = next().v;
+            if (name === 'v') {
+                if (peek() && peek().v === '.') {
+                    next();
+                    const prop = next();
+                    if (!prop || prop.t !== 'id') synErr('v. 后需要变量名');
+                    const full = 'v.' + prop.v, line = prop.line;
+                    return () => {
+                        const assigned = scope._assigned && scope._assigned.has(full);
+                        if (!assigned) {
+                            // 宽容模式（?? 左操作数）下允许读取未定义变量，返回 undefined
+                            if (scope._tolerant) { const d = scope.vars.get(full); return d ? d.value : undefined; }
+                            const msg = '未定义的变量 ' + full + '（第 ' + line + ' 行）';
+                            // 校验模式：收集全部错误（返回 0 让后续语句继续检查），而不是遇到第一个就中断
+                            if (opts && opts.collectErrors) { opts.collectErrors.push({ line, message: msg }); return 0; }
+                            const err = new Error(msg); err.mlLine = line; throw err;
+                        }
+                        const d = scope.vars.get(full);
+                        return d ? d.value : 0;
+                    };
+                }
+                return () => 0;
+            }
+            if (name === 'q' || name === 'math' || name === 't') {
+                if (peek() && peek().v === '.') {
+                    next(); const member = next();
+                    if (!member || member.t !== 'id') synErr(name + '. 后需要成员名');
+                    if (peek() && peek().v === '(') {
+                        next(); const args = [];
+                        if (peek() && peek().v !== ')') { args.push(parseExpr(true)); while (peek() && peek().v === ',') { next(); args.push(parseExpr(true)); } }
+                        expect(')');
+                        return () => { const obj = name === 'q' ? queryNamespace : name === 'math' ? angleMath : env.t; const fn = obj[member.v]; if (typeof fn === 'function') return fn.apply(null, args.map(a => a())); return fn; };
+                    }
+                    return () => { const obj = name === 'q' ? queryNamespace : name === 'math' ? angleMath : env.t; return obj[member.v]; };
+                }
+                return () => 0;
+            }
+            // 裸标识符（未带 v./q./math./t. 前缀）一律视为未定义变量，直接报错（含行号），不再静默当作 0
+            if (name === 'true') return () => 1;
+            if (name === 'false') return () => 0;
+            if (name === 'if' || name === 'else') return () => 0; // 保留字兜底，正常不会走到这里
+            const ln = curLine();
+            const err = new Error('未定义的变量 ' + name + (ln ? '（第 ' + ln + ' 行）' : ''));
+            err.mlLine = ln || 0;
+            throw err;
+        }
+        synErr('无法解析的记号: ' + tk.v);
+    }
+
+    function parseBlock() {
+        const tk = peek();
+        if (!tk || (tk.v !== '(' && tk.v !== '{')) synErr('条件分支需要 ( 或 { 包围');
+        const close = tk.v === '(' ? ')' : '}';
+        next();
+        const list = [];
+        while (p < tokens.length && peek().v !== close) list.push(parseStatement());
+        if (peek() && peek().v === close) next(); else synErr('缺少 ' + close);
+        return list;
+    }
+    function runList(list) { for (const s of list) s(); }
+    function parseStatement() {
+        const tk = peek();
+        if (!tk) return () => {};
+        if (tk.t === 'id' && tk.v === ';') { next(); return () => {}; } // 允许连续分号 / 空语句
+        if (tk.t === 'id' && tk.v === 'if') {
+            next(); expect('(');
+            const cond = parseExpr(false); expect(')');
+            const thenB = parseBlock();
+            let elseB = null;
+            if (peek() && peek().v === 'else') { next(); elseB = parseBlock(); }
+            if (peek() && peek().v === ';') next(); else synErr('语句结尾缺少分号'); // FMBE：分号硬性要求
+            return () => { if (cond()) runList(thenB); else if (elseB) runList(elseB); };
+        }
+        if (tk.t === 'id' && tk.v === 'v' && tokens[p + 1] && tokens[p + 1].v === '.' && tokens[p + 2] && tokens[p + 2].t === 'id' && tokens[p + 3] && tokens[p + 3].v === '=') {
+            next(); next(); const name = next().v; next();
+            const rhsStart = p, rhs = parseExpr(true), rhsEnd = p;
+            if (peek() && peek().v === ';') next(); else synErr('语句结尾缺少分号'); // FMBE：分号硬性要求
+            if (collectDecl) collectDecl.add(name);
+            // 截取赋值号右侧的原始源码（保留 q./math. 等查询/函数调用，导出时原样输出，不转换为具体数值）
+            const rhsText = (rhsStart < rhsEnd) ? text.slice(tokens[rhsStart].s, tokens[rhsEnd - 1].e) : '0';
+            return () => setVar(name, rhs(), rhsText);
+        }
+        const cond = parseExpr(false);
+        if (peek() && peek().v === '?') {
+            next();
+            const thenB = parseBlock();
+            let elseB = null;
+            // FMBE 兼容：else 分支可选，允许省略 ':' 与 else 分支（如  v.n>1000?(v.zrot=math.random(0,360);v.n=0);  ）
+            if (peek() && peek().v === ':') { next(); elseB = parseBlock(); }
+            if (peek() && peek().v === ';') next(); else synErr('语句结尾缺少分号'); // FMBE：分号硬性要求
+            return () => { if (cond()) runList(thenB); else if (elseB) runList(elseB); };
+        }
+        if (peek() && peek().v === ';') next(); else synErr('语句结尾缺少分号'); // FMBE：分号硬性要求
+        const e = cond;
+        return () => { e(); };
+    }
+    function parseProgram() {
+        const stmts = [];
+        while (p < tokens.length) {
+            if (peek().v === ';') { next(); continue; }
+            stmts.push(parseStatement());
+        }
+        for (const s of stmts) s(); // 完整解析后再执行：语法/未定义变量错误时整段不生效（异常会中断并向上抛出）
+    }
+    const prevBlockId = _currentEvalBlockId;
+    _currentEvalBlockId = scope.blockId || null;
+    try { parseProgram(); } finally { _currentEvalBlockId = prevBlockId; }
+}
+
 //修改了预设的min max
 
 class VarDef {
@@ -2370,7 +2941,7 @@ class VarDef {
 }
 
 class VariableScope {
-    constructor(bid) { this.blockId = bid; this.vars = new Map(); }
+    constructor(bid) { this.blockId = bid; this.vars = new Map(); this.program = ''; this.molangMode = false; }
     initFromM(M) {
         const names = ['xpos','ypos','zpos','xrot','yrot','zrot','scale','extend_scale','extend_xrot','extend_yrot','xbasepos','ybasepos','zbasepos'];
         for (let i = 0; i < names.length; i++) {
@@ -2395,12 +2966,33 @@ else {
                  this.vars.get('v.xbasepos')?.value ?? 0, this.vars.get('v.ybasepos')?.value ?? 0, this.vars.get('v.zbasepos')?.value ?? 0 ];
     }
     recompute() {
+        if (this.molangMode || (this.program && this.program.trim())) {
+            if (this.molangMode) {
+                // FMBE 语义：每次执行都是全新上下文，不继承上一帧数值（除非用 v.x=v.x??0 显式初始化）。
+                // 先在临时作用域执行，成功后才提交，避免“出错帧”污染方块状态。
+                const tmp = { vars: new Map(), _assigned: new Set(), blockId: this.blockId, molangMode: true, program: this.program };
+                let ok = true;
+                try { runBlockProgram(this.program || '', tmp); } catch (e) { ok = false; console.warn('高级脚本执行错误:', e.message); }
+                if (ok) {
+                    this.vars.clear();
+                    for (const [k, v] of tmp.vars) this.vars.set(k, v);
+                    ensureCoreVars(this); // 未赋值的「核心变换变量」补中性默认值，保证方块不消失
+                }
+                // 出错则不提交，保留上一帧正确状态
+                return;
+            }
+            // 非接管模式下携带 program 的罕见情况：维持原行为，直接在本作用域执行
+            let ok = true;
+            try { runBlockProgram(this.program || '', this); } catch (e) { ok = false; console.warn('高级脚本执行错误:', e.message); }
+            if (ok) ensureCoreVars(this);
+            return;
+        }
         let changed = true, iter = 0;
         while (changed && iter++ < 20) {
             changed = false;
             for (let [n, d] of this.vars) {
                 let old = d.value;
-                let nv = isConstantExpr(d.expr) ? parseFloat(d.expr) : evaluateExpression(d.expr, this.vars, globalVars);
+                let nv = isConstantExpr(d.expr) ? parseFloat(d.expr) : evaluateExpression(d.expr, this.vars, globalVars, this.blockId);
                 if (d.rangeMin !== undefined) {
                     if (nv > d.rangeMax) d.rangeMax = nv;
                     if (nv < d.rangeMin) d.rangeMin = nv;
@@ -2413,6 +3005,27 @@ else {
     setVarExpr(n, expr) { const d = this.vars.get(n); if (d) { d.expr = expr; this.recompute(); } }
     addVar(n, expr, min = -100, max = 100, step = 1) { if (!this.vars.has(n)) { this.vars.set(n, new VarDef(expr, 0, min, max, step)); this.recompute(); } }
     deleteVar(n) { this.vars.delete(n); }
+}
+
+// 核心变换变量的中性默认值：位置/旋转为 0，scale 系列为 1
+const CORE_VAR_DEFAULTS = { xpos:0, ypos:0, zpos:0, xrot:0, yrot:0, zrot:0, scale:1, extend_scale:1, extend_xrot:0, extend_yrot:0, xbasepos:0, ybasepos:0, zbasepos:0 };
+// molang 接管后确保核心变量存在且有限：未赋值（被用户删除该行）或非有限值 → 还原为默认值，避免方块消失/NaN
+function ensureCoreVars(scope) {
+    // 仅保证「核心变换变量」存在且为有限值（供 3D 变换使用），不做“未赋值即回退默认”的语义覆盖；
+    // 表达式层面的未定义引用已在运行器里按 FMBE 严格报错，这里不会把程序已赋的值重置掉。
+    for (const name in CORE_VAR_DEFAULTS) {
+        const full = 'v.' + name, def = CORE_VAR_DEFAULTS[name];
+        let d = scope.vars.get(full);
+        if (!d) {
+            const rg = getDefaultRange(full);
+            d = new VarDef(String(def), def, rg.min, rg.max, rg.step);
+            scope.vars.set(full, d);
+        } else if (!Number.isFinite(d.value)) {
+            d.value = def; d.expr = String(def);
+        }
+    }
+    // 全局兜底：任何非有限值归零，防止渲染出现 NaN
+    for (const [, d] of scope.vars) { if (!Number.isFinite(d.value)) d.value = 0; }
 }
 
 const degToRad = d => d * Math.PI / 180;
@@ -2486,10 +3099,11 @@ const TEX_BLOCK_PRESETS = [["acacia_door","金合欢木门","door",["acacia_door
 let TEXTURE_ROOT = 'Textures/';
 function setTextureRoot(root) { TEXTURE_ROOT = root.endsWith('/') ? root : root + '/'; }
 
-// 把贴图文件名解析为可加载的 URL；已经是完整 URL / blob / data 时原样返回
+// 把贴图文件名解析为可加载的 URL；已经是完整 URL / blob / data / 已含前缀的路径 时原样返回
 function texUrl(name) {
     if (!name) return null;
     if (/^(https?:|blob:|data:|file:|\/\/)/i.test(name)) return name;
+    if (name.startsWith(TEXTURE_ROOT)) return name;   // 幂等：避免重复拼接 TEXTURE_ROOT（如撤销时 textureUrl 已是完整路径）
     return TEXTURE_ROOT + name;
 }
 // 反向：把 URL 还原为贴图文件名（用于存档与命令导出）
@@ -3033,7 +3647,7 @@ const MODEL_REGISTRY = {
                     [-0.321428,0.2371425,-1.653565], [-0.321428,0.158622865,0.344893],
                     [0.678575,0.187181,-1.6555275], [0.678575,0.108661415,0.34293],
                     [0.678575,0.2371425,-1.653565], [0.678575,0.158622865,0.344893]],
-                uv: { face: 1, edge: true }
+                uv: { face: 0, rot: 270, edge: true }
             }
         ]
     }
@@ -3299,7 +3913,7 @@ class Block {
         return arr.some(u => u) ? arr : null;
     }
 
-    constructor(id, M, textureUrl = null, materialColor = '#aaccff', type = 'cube', groupName = null, faceTextures = null) {
+    constructor(id, M, textureUrl = null, materialColor = '#aaccff', type = 'cube', groupName = null, faceTextures = null, forceDoubleSide = false) {
         this.id = id;
         this.type = type;
         this.group = groupName;
@@ -3310,6 +3924,7 @@ class Block {
         this.materialColor = materialColor;
         this.materialPresetName = null;   // 记录材质预设名称（用于命令导出）
         this.faceTextures = Block.normFaces(faceTextures); // null 或 长度6数组[底,顶,左,右,前,后]
+        this.forceDoubleSide = forceDoubleSide; // 画笔平面为零厚度单面矩形，需强制双面以保证正反均可被射线选中
         this.facePresetKey = null;        // 命中的组合方块预设 key
         this.materialType = this.faceTextures ? 'faces' : (textureUrl ? 'texture' : 'color');
         this.rootGroup = null;
@@ -3335,7 +3950,7 @@ class Block {
 
         // 从注册表获取模型定义
         const modelDef = MODEL_REGISTRY[this.type];
-        const useDoubleSide = (this.type !== 'cube'); // cube用FrontSide(由updateMaterialSide调整)，其余用DoubleSide
+        const useDoubleSide = (this.type !== 'cube') || this.forceDoubleSide; // cube默认FrontSide(由updateMaterialSide调整)，其余/强制双面的用DoubleSide
 
         // 计算整体局部包围盒(跨所有 cube)：供 triplanar 投影 UV，使多 cube 模型贴图整体连贯、缺角自然裁切
         const _bb = {
@@ -3394,9 +4009,9 @@ class Block {
 
 // 设置纯色材质：遍历所有允许贴图的cube，替换为饱和色材质(不贴图)
 // 不允许贴图的cube(如旗杆)保持其固定颜色不变
-setSolidColor(hex) {
+    setSolidColor(hex) {
     if (!this.mesh) return;
-    const useDoubleSide = (this.type !== 'cube');
+    const useDoubleSide = (this.type !== 'cube') || this.forceDoubleSide;
     this.meshes.forEach(mesh => {
         // 跳过不允许贴图的cube(通过userData.cubeIdx查注册表)
         if (!this.isCubeTexturable(mesh.userData.cubeIdx)) return;
@@ -3421,7 +4036,7 @@ loadTexture(url, presetName = null, skipCreate = false) {
     if (!url) return;
     const full = texUrl(url);
     const isGlass = /glass/i.test(full);
-    const useDoubleSide = (this.type !== 'cube') || isGlass;
+    const useDoubleSide = (this.type !== 'cube') || isGlass || this.forceDoubleSide;
     const side = useDoubleSide ? THREE.DoubleSide : THREE.FrontSide;
 
     this.meshes.forEach(mesh => {
@@ -3470,7 +4085,7 @@ rebuildFaceMaterials() {
     const arr = this.faceTextures;
     if (!arr || !this.meshes.length) return;
     const isGlass = arr.some(u => u && /glass/i.test(u));
-    const useDoubleSide = (this.type !== 'cube') || isGlass;
+    const useDoubleSide = (this.type !== 'cube') || isGlass || this.forceDoubleSide;
     const side = useDoubleSide ? THREE.DoubleSide : THREE.FrontSide;
     const fallback = this.materialColor || '#aaccff';
 
@@ -3551,6 +4166,16 @@ updateMaterialSide() {
         }
         // 旗帜通常为薄面几何，避免因矩阵镜像导致面不可见，始终使用 DoubleSide
         if (this.type === 'flag') {
+            for (let i = 0; i < this.meshes.length; i++) {
+                forEachMat(this.meshes[i], m => {
+                    if (m.side !== THREE.DoubleSide) { m.side = THREE.DoubleSide; m.needsUpdate = true; }
+                });
+            }
+            return;
+        }
+
+        // 画笔平面为零厚度单面矩形：强制双面，保证正/反/侧视均能被射线选中（否则背面点击选不中、无法用 Gizmo 修改）
+        if (this.forceDoubleSide) {
             for (let i = 0; i < this.meshes.length; i++) {
                 forEachMat(this.meshes[i], m => {
                     if (m.side !== THREE.DoubleSide) { m.side = THREE.DoubleSide; m.needsUpdate = true; }
@@ -3666,6 +4291,13 @@ function recordAction() {
     if (recordDebounceTimer) clearTimeout(recordDebounceTimer);
     recordDebounceTimer = setTimeout(() => { const s = getState(); history.record(s); }, 200);
 }
+// 立即提交任何尚未落账的撤销快照（molang 文本输入、泡泡调数都使用防抖记录）。
+// 必须在 undo / redo 之前调用：否则 history.undo 会把「编辑前状态」当作待丢弃的栈顶直接弹出，
+// 导致 Ctrl+Z 跳过 molang 编辑、一路跳回更早的状态。
+function flushPendingRecords() {
+    if (recordDebounceTimer) { clearTimeout(recordDebounceTimer); recordDebounceTimer = null; history.record(getState()); }
+    if (typeof mnbRecordTimer !== 'undefined' && mnbRecordTimer) { clearTimeout(mnbRecordTimer); mnbRecordTimer = null; history.record(getState()); }
+}
 
 const history = (() => {
     let u = [], r = [];
@@ -3678,7 +4310,7 @@ const history = (() => {
 
 function getState() {
     return {
-        blocks: blocks.map(b => ({ id: b.id, type: b.type, vars: Array.from(b.scope.vars.entries()).map(([n,d]) => ({ name:n, expr:d.expr, value:d.value, rangeMin:d.rangeMin, rangeMax:d.rangeMax, step:d.step })), textureUrl: b.textureUrl ? texName(b.textureUrl) : null, materialColor: b.materialColor, materialType: b.materialType, faceTextures: b.faceTextures ? b.faceTextures.map(u => u ? texName(u) : null) : null, facePresetKey: b.facePresetKey, materialPresetName: b.materialPresetName, group: b.group })),
+        blocks: blocks.map(b => ({ id: b.id, type: b.type, vars: Array.from(b.scope.vars.entries()).map(([n,d]) => ({ name:n, expr:d.expr, value:d.value, rangeMin:d.rangeMin, rangeMax:d.rangeMax, step:d.step })), program: b.scope.program || '', molangMode: !!b.scope.molangMode, textureUrl: b.textureUrl ? texName(b.textureUrl) : null, materialColor: b.materialColor, materialType: b.materialType, faceTextures: b.faceTextures ? b.faceTextures.map(u => u ? texName(u) : null) : null, facePresetKey: b.facePresetKey, materialPresetName: b.materialPresetName, group: b.group })),
         globalVars: Array.from(globalVars.entries()).map(([n,g]) => ({ name:n, expr:g.def.expr, value:g.def.value, rangeMin:g.def.rangeMin, rangeMax:g.def.rangeMax, step:g.def.step, sourceBlockId:g.sourceBlockId })),
         keyframes: Array.from(keyframeData.entries()).map(([blockId, data]) => ({
             blockId,
@@ -3707,6 +4339,8 @@ function restoreState(state) {
         blk.materialType = s.materialType || (s.faceTextures ? 'faces' : 'color');
         blk.facePresetKey = s.facePresetKey || null;
         blk.materialPresetName = s.materialPresetName || null;
+        blk.scope.program = s.program || '';
+        blk.scope.molangMode = !!s.molangMode;
         blk.scope.vars.clear();
         s.vars.forEach(v => blk.scope.vars.set(v.name, new VarDef(v.expr, v.value, v.rangeMin, v.rangeMax, v.step)));
         blk.refresh();
@@ -3769,8 +4403,8 @@ function restoreState(state) {
     }
 }
 
-function undo() { const cur = getState(); const prev = history.undo(cur); if (prev) restoreState(prev); }
-function redo() { const cur = getState(); const nxt = history.redo(cur); if (nxt) restoreState(nxt); }
+function undo() { flushPendingRecords(); const cur = getState(); const prev = history.undo(cur); if (prev) restoreState(prev); }
+function redo() { flushPendingRecords(); const cur = getState(); const nxt = history.redo(cur); if (nxt) restoreState(nxt); }
 // 暴露到 window 供 Android 原生接口调用
 window.undo = undo;
 window.redo = redo;
@@ -3808,6 +4442,7 @@ function removeBlock(block, silent = false) {
         }
     }
     const idx = blocks.indexOf(block);
+    removeBubblesForBlock(block);   // 方块被删 → 其名下所有泡泡（瞬时 + 常显）炸开移除
     if (idx === -1) return;
     if (idx !== -1) blocks.splice(idx, 1);
     scene.remove(block.mesh);
@@ -4016,9 +4651,16 @@ function applyBatchDelta(varName, delta) {
             def = b.scope.vars.get(varName);
         }
         if (def) {
+            // 被 molang 接管的方块：用当前值 + 增量后写回程序
+            if (b.scope.molangMode) {
+                setConstVarValue(b, varName, (Number(def.value) || 0) + delta);
+                b.mesh.updateMatrixWorld(true);
+                syncKeyframeFromBlock(b);
+                continue;
+            }
             const isConst = isConstantExpr(def.expr);
             let newExpr;
-            
+
             if (isConst) {
                 let nv = parseFloat(def.expr) + delta;
                 const dec = (def.step.toString().includes('.') ? def.step.toString().split('.')[1].length : 0);
@@ -4028,7 +4670,7 @@ function applyBatchDelta(varName, delta) {
             } else {
                 const deltaStr = delta >= 0 ? ` + ${delta}` : ` - ${-delta}`;
                 newExpr = `(${def.expr})${deltaStr}`;
-                def.value = evaluateExpression(newExpr, b.scope.vars, globalVars);
+                def.value = evaluateExpression(newExpr, b.scope.vars, globalVars, b.scope.blockId);
             }
             
             def.expr = newExpr;
@@ -4286,7 +4928,703 @@ function renderVarDetails(name, def, sourceId) {
 }
 
 // ========== 渲染变量面板 ==========
+
+// ========== molang 接管：只读数值显示 + 高亮脚本编辑器 ==========
+function fmtNumRaw(v) {
+    if (!isFinite(v)) return '0';
+    const r = Math.round(v * 1e6) / 1e6;
+    return String(r);
+}
+function generateMolangBaseline(block) {
+    // 标准变换变量（缺省值取自用户示例），已存在则用当前值；再补上自定义局部变量
+    const std = [
+        ['xpos', 0], ['ypos', 0], ['zpos', 0],
+        ['xrot', 0], ['yrot', 0], ['zrot', 0],
+        ['scale', 1], ['extend_scale', 1],
+        ['extend_xrot', -90], ['extend_yrot', 0],
+        ['xbasepos', 0], ['ybasepos', 0], ['zbasepos', 0]
+    ];
+    const lines = [];
+    for (const [name, def] of std) {
+        const d = block.scope.vars.get('v.' + name);
+        const val = d ? fmtNumRaw(d.value) : def;
+        lines.push(`v.${name}=${val};`);
+    }
+    for (const [n, d] of block.scope.vars) {
+        if (!n.startsWith('v.')) continue;
+        const name = n.slice(2);
+        if (std.some(([s]) => s === name)) continue;
+        lines.push(`v.${name}=${fmtNumRaw(d.value)};`);
+    }
+    return lines.join(' ');
+}
+// 把数值写回 molang 程序：仅当该变量的程序行右值已是纯常量时才覆盖（bake），
+// 若原行是表达式（受程序驱动）则保持不动（保护，不被吞成常量）；程序里无此变量则追加。
+// 返回是否被实际写入：true=已写回/追加，false=该行是表达式、受保护未写（调用方据此提示）。
+function molangWriteBack(block, varName, value) {
+    if (!block.scope.molangMode) return true;
+    const lit = String(parseFloat(Number(value).toFixed(4)));
+    const esc = varName.replace(/\./g, '\\.');
+    const re = new RegExp('(\\b' + esc + '\\s*=\\s*)([^;]*?)(;)');
+    const lines = (block.scope.program || '').split('\n');
+    let replaced = false, hasExpr = false;
+    for (let i = 0; i < lines.length; i++) {
+        const code = lines[i].split('//')[0]; // 忽略行内注释，避免误改注释中的同名赋值
+        re.lastIndex = 0;
+        const m = re.exec(code);
+        if (m) {
+            const rhs = m[2].trim();
+            if (isConstantExpr(rhs)) {
+                // 原值是常量 → 允许写回为常数（bake）
+                lines[i] = lines[i].replace(re, (mm, pre, rhs2, semi) => pre + lit + semi);
+                replaced = true;
+            } else {
+                // 原值是表达式 → 受程序驱动，保护不被吞掉
+                hasExpr = true;
+            }
+        }
+    }
+    if (!replaced && !hasExpr) {
+        // 程序里完全没有该变量 → 作为新常量追加（基线未覆盖的自定义变量）
+        const append = varName + ' = ' + lit + ';';
+        if (lines.join('').trim() === '') lines[0] = append;
+        else lines.push(append);
+    }
+    block.scope.program = lines.join('\n');
+    return replaced || !hasExpr;
+}
+let _molangProtectToastAt = 0;
+function molangProtectToast(varName) {
+    const now = performance.now();
+    if (now - _molangProtectToastAt < 1500) return; // 限频，避免拖拽时刷屏
+    _molangProtectToastAt = now;
+    showToast('⚠️ ' + varName + ' 由 molang 表达式驱动，拖动/批量修改无效；请在编辑器中修改表达式');
+}
+// molang 程序静态校验：语法错误（带行号）+ 未定义变量 / 未知函数成员；返回 errors[{line,message,kind}]
+function validateMolang(text, scope) {
+    const errors = [];
+    // 在临时作用域执行：运行期读取未定义的变量按 collectErrors 收集（带行号），从而精确报告
+    // 全部「未定义变量 / 前向引用」（FMBE：引用必须先于定义，不能前向引用）。
+    const sandbox = { vars: new Map(), _assigned: new Set(), blockId: null };
+    try {
+        runBlockProgram(text || '', sandbox, { validateOnly: true, collectErrors: errors });
+    } catch (e) {
+        errors.push({ line: e.mlLine || 0, message: e.message, kind: 'syntax' });
+    }
+    // 静态扫描：q./math./t. 未知成员（运行期不会抛，需单独检查；与顺序无关）
+    const tokens = tokenizeMolang(text || '');
+    const globalSet = new Set([...globalVars].map(([n]) => n));
+    const qKeys = new Set(Object.keys(queryNamespace));
+    const mKeys = new Set(Object.keys(angleMath));
+    for (let k = 0; k < tokens.length; k++) {
+        const tk = tokens[k];
+        if (tk.t === 'id' && (tk.v === 't' || tk.v === 'q' || tk.v === 'math')
+            && tokens[k + 1] && tokens[k + 1].t === 'op' && tokens[k + 1].v === '.'
+            && tokens[k + 2] && tokens[k + 2].t === 'id') {
+            const ns = tk.v, member = tokens[k + 2].v;
+            if (ns === 't' && !globalSet.has(member)) errors.push({ line: tk.line, message: '未定义的全局变量 t.' + member, kind: 'undef' });
+            else if (ns === 'q' && !qKeys.has(member)) errors.push({ line: tk.line, message: '未知的查询函数 q.' + member, kind: 'undef' });
+            else if (ns === 'math' && !mKeys.has(member)) errors.push({ line: tk.line, message: '未知的数学函数 math.' + member, kind: 'undef' });
+        }
+    }
+    // 去重（同一行同一消息只报一次）
+    const seen = new Set(); const dedup = [];
+    for (const e of errors) { const key = e.line + '|' + e.message; if (!seen.has(key)) { seen.add(key); dedup.push(e); } }
+    return { errors: dedup };
+}
+function renderMolangValues(block) {
+    let rows = '';
+    for (const [n, d] of block.scope.vars) {
+        if (!n.startsWith('v.')) continue;
+        rows += `<div class="mv-row"><span class="mv-name">${escapeHtml(n)}</span><span class="mv-val">${fmtNumRaw(d.value)}</span></div>`;
+    }
+    if (!rows) rows = '<div class="empty-state">暂无局部变量</div>';
+    return `<div class="var-group" data-group="molang-values"><div class="group-header" data-group-toggle="molang-values"><span class="group-title">📊 当前数值（只读）</span><span class="group-toggle">▼</span></div><div class="group-content" data-group-content="molang-values" style="display:block">${rows}</div></div>`;
+}
+function highlightMolang(text, errorLines) {
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const re = /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(\bt\.[A-Za-z_]\w*)|(\bv\.[A-Za-z_]\w*)|(\bq\.[A-Za-z_]\w*)|(\bmath\.[A-Za-z_]\w*)|(&&|\|\||!=|==|<=|>=|\?\?)|([<>!?=:])|(\d+(?:\.\d+)?)|([+\-*\/])|([A-Za-z_]\w*)|(\s+)/g;
+    const hlLine = (ln) => {
+        let out = '', last = 0, m; re.lastIndex = 0;
+        while ((m = re.exec(ln)) !== null) {
+            out += esc(ln.slice(last, m.index));
+            last = re.lastIndex;
+            if (m[1] !== undefined) out += `<span class="tok-comment">${esc(m[1])}</span>`;
+            else if (m[2] !== undefined) out += `<span class="tok-str">${esc(m[2])}</span>`;
+            else if (m[3] !== undefined) out += `<span class="tok-global">${esc(m[3])}</span>`;
+            else if (m[4] !== undefined) out += `<span class="tok-local">${esc(m[4])}</span>`;
+            else if (m[5] !== undefined) out += `<span class="tok-query">${esc(m[5])}</span>`;
+            else if (m[6] !== undefined) out += `<span class="tok-math">${esc(m[6])}</span>`;
+            else if (m[7] !== undefined) out += `<span class="tok-logic">${esc(m[7])}</span>`;
+            else if (m[8] !== undefined) out += `<span class="tok-logic">${esc(m[8])}</span>`;
+            else if (m[9] !== undefined) out += `<span class="tok-num">${esc(m[9])}</span>`;
+            else if (m[10] !== undefined) out += `<span class="tok-arith">${esc(m[10])}</span>`;
+            else if (m[11] !== undefined) out += `<span class="tok-fn">${esc(m[11])}</span>`;
+            else if (m[12] !== undefined) out += esc(m[12]);
+        }
+        out += esc(ln.slice(last));
+        return out;
+    };
+    const lines = text.split('\n');
+    return lines.map((ln, idx) => {
+        let hi = hlLine(ln);
+        if (errorLines && errorLines.has(idx + 1)) hi = `<span class="molang-err-line">${hi}</span>`;
+        return hi;
+    }).join('\n');
+}
+function renderMolangEditor(block) {
+    return `<div class="var-group" data-group="molang">
+      <div class="group-header" data-group-toggle="molang"><span class="molang-header-actions"><button type="button" class="molang-help-btn" id="molangHelpBtn" title="molang 帮助：查询函数 / math 函数">❓ 帮助</button><span class="group-toggle">▼</span></span><span class="group-title">📜 molang 表达式（完全接管）</span></div>
+      <div class="group-content" data-group-content="molang" style="display:block">
+        <div class="molang-editor">
+          <pre class="molang-highlight" id="molangHighlight" aria-hidden="true"></pre>
+          <textarea class="molang-textarea" id="molangTextarea" data-block-id="${escapeHtml(block.id)}" spellcheck="false" placeholder="例如：&#10;v.xrot = q.rotation_to_camera(1) > 0 ? 90 : -90;"></textarea>
+        </div>
+        <div class="molang-error" id="molangError"></div>
+        <div class="program-help">自上而下严格顺序执行（引用必须先于定义，不能前向引用）；v.名称=表达式 赋值；每条语句必须以分号 ; 结尾；条件语句 条件 ? (语句) : (语句)，其中 else 分支可省略；用 v.xx=v.xx ?? 0; 初始化变量（未定义即报错，FMBE 不为变量自动注册默认值）。支持 ! &amp;&amp; || == != &lt; &lt;= &gt; &gt;= ?? 及 ( ) 与 q./math./t.。&nbsp;💡 <b>单击任意数字常量</b>（如 90、0.5、360）可在其上方弹出微调泡泡：点 +/− 增减、滚轮 / ↑↓ 微调、步长可自定义（输入框或 0.1/1/10）；点 📌 可把该变量的泡泡<b>固定</b>为常显浮动控件（显示变量名与方块名、可拖动、层级最高，方块或变量删除时炸开消失）。</div>
+      </div>
+    </div>`;
+}
+// 实时校验 + 着色 + 错误显示：高亮、整行标红、错误面板，且不重建文本框（光标不跳）
+function refreshMolangEditor(block) {
+    const ta = document.getElementById('molangTextarea'), pre = document.getElementById('molangHighlight');
+    const errBox = document.getElementById('molangError');
+    if (!ta || !pre) return;
+    const { errors } = validateMolang(ta.value, block.scope);
+    const errorLines = new Set();
+    const linesArr = ta.value.split('\n');
+    let lastNonEmpty = linesArr.length;
+    while (lastNonEmpty > 1 && linesArr[lastNonEmpty - 1].trim() === '') lastNonEmpty--;
+    for (const e of errors) { if (e.line > 0) errorLines.add(e.line); }
+    // 末尾/整体语法错误（line=0）退化为标红最后一行，确保有可见反馈
+    if (errors.some(e => e.line === 0) && lastNonEmpty > 0) errorLines.add(lastNonEmpty);
+    pre.innerHTML = highlightMolang(ta.value, errorLines) + '\n';
+    if (errBox) {
+        if (errors.length) {
+            errBox.innerHTML = errors.map(e => {
+                const loc = e.line > 0 ? ('第 ' + e.line + ' 行：') : '';
+                return '<div>❌ ' + loc + escapeHtml(e.message) + '</div>';
+            }).join('');
+            errBox.classList.add('show');
+        } else {
+            errBox.innerHTML = ''; // 清空残留旧错误文本（面板隐藏时不可见，但需清除以免下次误显）
+            errBox.classList.remove('show');
+        }
+    }
+}
+// 仅就地更新只读数值显示，不重建文本框（避免光标/焦点跳动）
+function updateMolangValueDisplay(block) {
+    const wrap = document.querySelector('.var-group[data-group="molang-values"] .group-content');
+    if (!wrap) return;
+    wrap.querySelectorAll('.mv-row').forEach(row => {
+        const name = row.querySelector('.mv-name')?.textContent;
+        const valEl = row.querySelector('.mv-val');
+        if (!name || !valEl) return;
+        const d = block.scope.vars.get(name);
+        if (d) valEl.textContent = fmtNumRaw(d.value);
+    });
+}
+// 判断某作用域是否用到自发式随机函数（math.random / math.random_integer / math.die_roll / math.die_roll_integer）。
+// 这些函数每调用一次推进一次种子，需要每帧重算才能持续变化，像查询函数一样“每一帧返回一个值”。
+function scopeUsesSpontaneous(scope) {
+    if (scope.molangMode && scope.program) {
+        return /\bmath\.(random|die_roll)/.test(scope.program);
+    }
+    if (!scope.molangMode) {
+        for (const [, d] of scope.vars) {
+            if (d.expr && /\bmath\.(random|die_roll)/.test(d.expr)) return true;
+        }
+    }
+    return false;
+}
+// molang 接管视图的折叠（接管分支会提前 return，走不到 RVFB 末尾的通用 groupClick 绑定）
+function molangGroupClick(e) {
+    const gn = this.dataset.groupToggle;
+    const cnt = document.querySelector(`.group-content[data-group-content="${gn}"]`);
+    if (!cnt) return;
+    const open = cnt.style.display !== 'none';
+    if (open) { cnt.style.display = 'none'; this.querySelector('.group-toggle').textContent = '▶'; }
+    else { cnt.style.display = 'block'; this.querySelector('.group-toggle').textContent = '▼'; }
+}
+function attachMolangEditorEvents(block) {
+    const ta = document.getElementById('molangTextarea'), pre = document.getElementById('molangHighlight');
+    if (!ta || !pre) return;
+    mnbHide(); // 重建编辑器时关闭可能残留的数字气泡（旧的 textarea 已失效）
+    // 绑定 molang 接管视图里的分组折叠（只读数值 + 表达式编辑器）
+    document.querySelectorAll('.var-group[data-group="molang-values"] .group-header, .var-group[data-group="molang"] .group-header').forEach(h => {
+        h.removeEventListener('click', molangGroupClick);
+        h.addEventListener('click', molangGroupClick);
+    });
+    ta.value = block.scope.program || '';
+    refreshMolangEditor(block);
+    // 关键修复：每次输入即时生效（写入程序 → 重算 → 刷新 3D → 更新只读数值 + 实时校验报错），无需失焦
+    ta.addEventListener('input', () => {
+        refreshMolangEditor(block);
+        block.scope.program = ta.value;
+        block.refresh(); // 内部 recompute（表达式未完成时静默忽略）并应用变换
+        updateMolangValueDisplay(block);
+        if (mnbEl) mnbHide();        // 手动编辑时关闭（可能已失效的）瞬时泡泡
+        refreshPinnedBubbles(block); // 同步 / 清理常显泡泡（变量被删则炸开消失）
+        recordAction();              // 纳入撤销系统：recordAction 内部 200ms 防抖，连续打字只产生一个检查点
+    });
+    ta.addEventListener('scroll', () => { pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft; });
+    ta.addEventListener('change', () => {
+        block.scope.program = ta.value;
+        block.refresh();
+        if (selectedBlock) renderVariablesForBlock(selectedBlock); // 失焦时整体重建一次，校正数值
+    });
+    setupMolangNumberBubble(block); // 单击数字常量弹出自增/自减泡泡
+    // 帮助按钮：打开 molang 函数速查弹窗（阻止冒泡，避免触发分组折叠）
+    const helpBtn = document.getElementById('molangHelpBtn');
+    if (helpBtn) helpBtn.addEventListener('click', (e) => { e.stopPropagation(); openMolangHelp(); });
+}
+
+// ========== molang 帮助弹窗：查询函数（q.）+ 数学函数（math.）速查 ==========
+// 数据须与 queryNamespace / angleMath 实际实现保持一致
+const MOLANG_QUERY_FUNCS = [
+    { name: 'q.rotation_to_camera(mode)', copy: 'q.rotation_to_camera(1)',
+      params: 'mode（0 或 1）：选择返回的角度类型',
+      desc: '返回「方块原点 (0,0,0) 看向摄像机」的角度（单位：度，与 math / 方块旋转统一为角度制）。常用于让方块始终朝向或背向摄像机。',
+      ret: 'mode=0 → 俯仰角（pitch，相对水平面，符号与方块 xrot 约定一致）；mode=1 → 偏航角（yaw，XZ 平面方位角）。' }
+];
+const MOLANG_MATH_FUNCS = [
+    { name: 'math.sin(x)', desc: '正弦。输入为角度（度），返回正弦值，范围 -1~1。' },
+    { name: 'math.cos(x)', desc: '余弦。输入为角度（度），返回余弦值，范围 -1~1。' },
+    { name: 'math.asin(x)', desc: '反正弦。输入 -1~1，返回角度（度）。' },
+    { name: 'math.acos(x)', desc: '反余弦。输入 -1~1，返回角度（度）。' },
+    { name: 'math.atan(x)', desc: '反正切。输入数值，返回角度（度）。' },
+    { name: 'math.atan2(y,x)', desc: '四象限反正切。返回 y/x 的角度（度），可正确处理各象限与符号。' },
+    { name: 'math.sqrt(x)', desc: '平方根 √x（x≥0）。' },
+    { name: 'math.abs(x)', desc: '绝对值 |x|。' },
+    { name: 'math.floor(x)', desc: '向下取整（不大于 x 的最大整数）。' },
+    { name: 'math.ceil(x)', desc: '向上取整（不小于 x 的最小整数）。' },
+    { name: 'math.round(x)', desc: '四舍五入到最接近的整数。' },
+    { name: 'math.trunc(x)', desc: '截断取整（直接舍去小数部分）。' },
+    { name: 'math.pow(a,b)', desc: '幂运算 a 的 b 次幂（a^b）。' },
+    { name: 'math.exp(x)', desc: '自然指数 e^x。' },
+    { name: 'math.ln(x)', desc: '自然对数 ln(x)。' },
+    { name: 'math.min(a,b,...)', desc: '返回所有参数中的最小值。' },
+    { name: 'math.max(a,b,...)', desc: '返回所有参数中的最大值。' },
+    { name: 'math.mod(x,d)', desc: '取模 x % d；若 d=0 则返回 x（避免除零异常）。' },
+    { name: 'math.clamp(v,lo,hi)', desc: '将 v 限制在 [lo, hi] 区间内并返回。' },
+    { name: 'math.lerp(a,b,t)', desc: '线性插值，返回 a + (b-a)*t（t 建议 0~1）。' },
+    { name: 'math.lerprotate(start,end,t)', desc: '角度线性插值，自动走最短路径（正确处理 ±180° 环绕）。' },
+    { name: 'math.min_angle(a)', desc: '将角度归一化到 (-180, 180] 区间。' },
+    { name: 'math.hermite_blend(t)', desc: '平滑插值曲线 3t²-2t³（输入建议 0~1），常用于缓动。' },
+    { name: 'math.pi / math.PI', desc: '圆周率 π ≈ 3.14159。' },
+    { name: 'math.random(low,high)', desc: '返回 [low, high] 间的随机浮点数。按方块隔离、且每帧自发变化（自发性函数）。' },
+    { name: 'math.random_integer(low,high)', desc: '返回 [low, high] 间的随机整数。按方块隔离、每帧自发变化。' },
+    { name: 'math.die_roll(num,low,high)', desc: '投掷 num 次骰子并将结果求和，每次范围 [low, high]（浮点）。' },
+    { name: 'math.die_roll_integer(num,low,high)', desc: '投掷 num 次骰子并将结果求和，每次范围 [low, high]（整数）。' }
+];
+function mhCopy(text) {
+    const done = () => showToast('已复制：' + text);
+    const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) { showToast('复制失败'); }
+        ta.remove();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else fallback();
+}
+function openMolangHelp() {
+    if (document.getElementById('molangHelpModal')) return; // 防止重复打开
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const qHtml = MOLANG_QUERY_FUNCS.map(f => `
+      <div class="mh-fn">
+        <div class="mh-fn-top"><span class="mh-name q">${esc(f.name)}</span><button type="button" class="mh-copy" data-copy="${esc(f.copy)}">📋 复制</button></div>
+        <div class="mh-row"><span class="mh-k">参数：</span><b>${esc(f.params)}</b></div>
+        <div class="mh-row"><span class="mh-k">作用：</span>${esc(f.desc)}</div>
+        <div class="mh-row"><span class="mh-k">返回值：</span>${esc(f.ret)}</div>
+      </div>`).join('');
+    const mHtml = MOLANG_MATH_FUNCS.map(f => `
+      <div class="mh-fn">
+        <div class="mh-fn-top"><span class="mh-name">${esc(f.name)}</span><button type="button" class="mh-copy" data-copy="${esc(f.name)}">📋 复制</button></div>
+        <div class="mh-row">${esc(f.desc)}</div>
+      </div>`).join('');
+    const m = document.createElement('div');
+    m.className = 'molang-help-modal';
+    m.id = 'molangHelpModal';
+    m.innerHTML = `
+      <div class="mh-box">
+        <div class="mh-head"><h2>📘 molang 函数帮助</h2><button type="button" class="mh-close" id="mhCloseBtn" title="关闭">✕</button></div>
+        <div class="mh-body">
+          <div class="mh-sec-title q">🔍 查询函数（q.）</div>
+          ${qHtml}
+          <div class="mh-sec-title">🧮 数学函数（math.）</div>
+          ${mHtml}
+          <div class="mh-foot">学习 molang？QQ1057514348</div>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+    const close = () => m.remove();
+    m.addEventListener('click', (e) => { if (e.target === m) close(); }); // 点击遮罩关闭
+    m.querySelector('#mhCloseBtn').addEventListener('click', close);
+    m.querySelectorAll('.mh-copy').forEach(b => b.addEventListener('click', () => mhCopy(b.dataset.copy)));
+}
+
+
+// ========== molang 数字常量：单击弹出自增/自减泡泡（含"常显"固定泡泡） ==========
+// 触发：在 molang 文本框单击任意数字常量 → 在其【上方】弹出微调泡泡（点外部自动关闭）。
+// 泡泡可一键"📌 常显"固定为浮动控件：显示 变量名 + 方块名、可拖动、层级最高；
+// 变量被删 / 方块被删 / 手动关闭 时泡泡炸开消失。步长可自定义（输入框 + 0.1/1/10 快捷）。
+let mnbEl = null, mnbState = null, mnbDocBound = false;
+const pinnedBubbles = [];   // {id, block, varName, el, left, top, step}
+let mnbIdSeq = 1;
+function fmtLit(v) {
+    if (v === 0) return '0';
+    const r = Math.round(v * 1e6) / 1e6;
+    return String(r === 0 ? 0 : r);   // 避免 -0
+}
+// 扫描文本里的数字字面量（含一元负号），返回 {start, end, value}（下标基于原文）
+function scanNumberTokens(text) {
+    const out = [];
+    let i = 0;
+    while (i < text.length) {
+        const c = text[i];
+        const isDig = c >= '0' && c <= '9';
+        if (isDig || (c === '.' && text[i + 1] >= '0' && text[i + 1] <= '9')) {
+            let j = i + 1;
+            while (j < text.length && ((text[j] >= '0' && text[j] <= '9') || text[j] === '.')) j++;
+            let start = i;
+            let value = parseFloat(text.slice(i, j));
+            if (start > 0 && text[start - 1] === '-') {
+                const p = text[start - 2];
+                const unary = (p === undefined) || /[\s+\-*/()<>=!&|?:;.,]/.test(p);
+                if (unary) { start -= 1; value = -value; }
+            }
+            out.push({ start, end: j, value });
+            i = j;
+        } else { i++; }
+    }
+    return out;
+}
+function findNumberAt(text, pos) {
+    for (const t of scanNumberTokens(text)) {
+        if (pos >= t.start && pos <= t.end) return t;
+    }
+    return null;
+}
+// 找到 token 左侧、同一语句内最近被赋值的变量名（如 v.xrot 或 t.xxx）；找不到返回 null。
+// 若该赋值的右侧到被点数字之间包含函数调用/条件表达式（如 v.zrot=math.random(0,360)），
+// 则该数字不是变量的"直接字面量"，不归属（避免把 360 误判为 v.zrot 的值）。
+function findVarForToken(text, token) {
+    let s = token.start;
+    while (s > 0 && text[s - 1] !== ';') s--;
+    const seg = text.slice(s, token.start);
+    const re = /([A-Za-z_][\w.]*)\s*=(?!=)/g;
+    let m, last = null, lastIdx = -1, lastLen = 0;
+    while ((m = re.exec(seg)) !== null) { last = m[1]; lastIdx = m.index; lastLen = m[0].length; }
+    if (!last) return null;
+    const between = seg.slice(lastIdx + lastLen);
+    if (/[()?:]/.test(between)) return null;
+    return last;
+}
+// 按变量名定位其赋值后的第一个数字 token（绝对下标）；找不到返回 null（变量可能已被删）
+function findVarNumberToken(text, varName) {
+    if (!varName) return null;
+    const esc = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(esc + '\\s*=(?!=)', 'g');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+        const after = text.slice(m.index + m[0].length);
+        const toks = scanNumberTokens(after);
+        if (toks.length) {
+            const t = toks[0];
+            return { start: m.index + m[0].length + t.start, end: m.index + m[0].length + t.end, value: t.value };
+        }
+    }
+    return null;
+}
+function mnbGetProgramText(block) {
+    const ta = document.getElementById('molangTextarea');
+    if (ta && ta.dataset.blockId === String(block.id)) return ta.value;
+    return block.scope.program || '';
+}
+function mnbSetProgramText(block, text) {
+    const ta = document.getElementById('molangTextarea');
+    if (ta && ta.dataset.blockId === String(block.id)) ta.value = text;
+    block.scope.program = text;
+}
+// 把新数值写回程序文本并重算 3D / 刷新只读数值 /（延迟）记录撤销；同步原地 token 位置
+function mnbWriteValue(block, token, newVal, silent) {
+    let text = mnbGetProgramText(block);
+    const lit = fmtLit(newVal);
+    text = text.slice(0, token.start) + lit + text.slice(token.end);
+    mnbSetProgramText(block, text);
+    token.end = token.start + lit.length;
+    token.value = newVal;
+    const ta = document.getElementById('molangTextarea');
+    // 连续/拖拽模式（silent）不重建编辑器，避免高频刷新卡顿；只读数值仍由 updateMolangValueDisplay 轻量同步
+    if (ta && ta.dataset.blockId === String(block.id) && !silent) refreshMolangEditor(block);
+    block.refresh();
+    if (typeof updateMolangValueDisplay === 'function') updateMolangValueDisplay(block);
+    mnbScheduleRecord();
+}
+let mnbRecordTimer = null;
+function mnbScheduleRecord() {
+    if (mnbRecordTimer) clearTimeout(mnbRecordTimer);
+    mnbRecordTimer = setTimeout(() => { mnbRecordTimer = null; recordAction(); }, 400);
+}
+// 关闭瞬时泡泡（并固化最近一次调整手势的撤销记录）
+function mnbHide() {
+    if (mnbEl) { mnbEl.remove(); mnbEl = null; }
+    mnbState = null;
+    if (mnbRecordTimer) { clearTimeout(mnbRecordTimer); mnbRecordTimer = null; recordAction(); }
+}
+// 炸开并移除一个常显泡泡（带消失动画）
+function burstRemovePinned(entry) {
+    const el = entry.el;
+    if (!el || el.classList.contains('mnb-burst')) return;
+    const idx = pinnedBubbles.findIndex(p => p.el === el);
+    if (idx >= 0) pinnedBubbles.splice(idx, 1);
+    el.classList.add('mnb-burst');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 420);   // 兜底
+}
+// 方块被删除时，移除它名下的所有泡泡（瞬时 + 常显）
+function removeBubblesForBlock(block) {
+    if (mnbState && mnbState.block === block) mnbHide();
+    for (let i = pinnedBubbles.length - 1; i >= 0; i--) {
+        if (pinnedBubbles[i].block === block) burstRemovePinned(pinnedBubbles[i]);
+    }
+}
+// 手动编辑文本后，同步常显泡泡的显示 / 清理已删除变量的泡泡
+function refreshPinnedBubbles(block) {
+    for (let i = pinnedBubbles.length - 1; i >= 0; i--) {
+        const p = pinnedBubbles[i];
+        if (p.block !== block) continue;
+        const tok = findVarNumberToken(block.scope.program || '', p.varName);
+        if (!tok) { burstRemovePinned(p); continue; }
+        const valEl = p.el.querySelector('.mnb-val');
+        if (valEl) { valEl.textContent = fmtLit(tok.value); fitMnbVal(valEl); }
+    }
+}
+// 让数值文本根据长度自适应字号，避免超大 / 超小数值在框内被截断
+function fitMnbVal(valEl) {
+    if (!valEl) return;
+    const len = valEl.textContent.length;
+    let fs = 18;
+    if (len > 12) fs = 10; else if (len > 8) fs = 11; else if (len > 5) fs = 14;
+    valEl.style.fontSize = fs + 'px';
+}
+// 构建泡泡 DOM（transient 与 pinned 共用）。ctx = {block, varName, token, pinned, anchorX, anchorY, left, top, step}
+function buildMolangBubble(ctx) {
+    const el = document.createElement('div');
+    el.className = 'molang-num-bubble' + (ctx.pinned ? ' pinned' : '');
+    const blockName = (ctx.block && ctx.block.id != null) ? String(ctx.block.id) : '方块';
+    const showPin = !!ctx.varName;
+    el.innerHTML = `
+      <div class="mnb-head">
+        <span class="mnb-var" title="${ctx.varName || ''}">${ctx.varName || '数值'}</span>
+        <span class="mnb-block" title="${escapeHtml(blockName)}">🧊 ${escapeHtml(blockName)}</span>
+        ${showPin ? '<button class="mnb-ico mnb-pin' + (ctx.pinned ? ' active' : '') + '" data-act="pin" title="常显 / 固定（可拖动）">📌</button>' : ''}
+        <button class="mnb-ico mnb-close" data-act="close" title="关闭">✕</button>
+      </div>
+      <div class="mnb-body">
+        <div class="mnb-stepper" title="增大 / 减小（按步长）">
+          <span data-act="inc" title="增大">▲</span>
+          <span data-act="dec" title="减小">▼</span>
+        </div>
+        <div class="mnb-val">${fmtLit(ctx.token.value)}</div>
+      </div>
+      <div class="mnb-foot">
+        <label class="mnb-stepwrap">步长<input class="mnb-stepinput" type="number" value="${ctx.step}" step="0.1" min="0" /></label>
+        <button class="mnb-q" data-act="q01">0.1</button>
+        <button class="mnb-q" data-act="q1">1</button>
+        <button class="mnb-q" data-act="q10">10</button>
+      </div>
+      <div class="mnb-hint">${ctx.pinned ? '拖动标题栏移动 · 点 ✕ 关闭' : '▲/▼ 或滚轮/↑↓ 微调 · 手机可长按 ▲/▼ 连续增减或拖动数值 · 点外部关闭 · 点 📌 常显'}</div>`;
+    document.body.appendChild(el);
+    ctx.el = el;
+    fitMnbVal(el.querySelector('.mnb-val'));   // 数值自适应字号（防超大/超小数值截断）
+    // 定位（瞬时：点击点上方；常显：沿用记录位置或初始锚点）
+    const bw = el.offsetWidth || 214, bh = el.offsetHeight || 150;
+    let left, top;
+    if (ctx.pinned && ctx.left != null) { left = ctx.left; top = ctx.top; }
+    else {
+        left = Math.max(8, Math.min(window.innerWidth - bw - 8, ctx.anchorX - bw / 2));
+        top = ctx.anchorY - bh - 16;                 // 显示在数值上方
+        if (top < 8) top = ctx.anchorY + 22;          // 上方空间不足则放到下方
+    }
+    left = Math.max(8, Math.min(window.innerWidth - bw - 8, left));
+    top = Math.max(8, Math.min(window.innerHeight - bh - 8, top));
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+    if (ctx.pinned) { ctx.left = left; ctx.top = top; }
+    // 步长：输入框 + 快捷按钮（以输入框为准）
+    const stepInput = el.querySelector('.mnb-stepinput');
+    const getStep = () => { let v = parseFloat(stepInput.value); if (!isFinite(v) || v <= 0) v = 1; return v; };
+    const syncQuick = () => {
+        const v = parseFloat(stepInput.value);
+        el.querySelectorAll('.mnb-q').forEach(x => {
+            const map = { q01: 0.1, q1: 1, q10: 10 };
+            x.classList.toggle('active', Math.abs(map[x.dataset.act] - v) < 1e-9);
+        });
+    };
+    el.querySelectorAll('.mnb-q').forEach(b => {
+        b.addEventListener('click', () => { stepInput.value = { q01: 0.1, q1: 1, q10: 10 }[b.dataset.act]; syncQuick(); });
+    });
+    stepInput.addEventListener('input', syncQuick);
+    // 增量应用（统一入口）。silent=true 表示连续/拖拽模式，不重建编辑器防卡顿
+    const applyStep = (dir, silent) => {
+        const step = getStep();
+        if (ctx.pinned) {
+            const tok = findVarNumberToken(mnbGetProgramText(ctx.block), ctx.varName);
+            if (!tok) { burstRemovePinned(ctx); return; }
+            ctx.token = tok;
+        }
+        mnbWriteValue(ctx.block, ctx.token, ctx.token.value + dir * step, !!silent);
+        const valEl = el.querySelector('.mnb-val');
+        if (valEl) { valEl.textContent = fmtLit(ctx.token.value); fitMnbVal(valEl); }
+    };
+    // 手机端友好：▲/▼ 短按=单步，长按=连续增减（约 55ms/步，按住 >800ms 加速到 ~15ms/步）
+    const bindStepperHold = (btn, dir) => {
+        if (!btn) return;
+        let holdTimer = null, accTimer = null, t0 = 0;
+        const stop = () => {
+            if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+            if (accTimer) { clearTimeout(accTimer); accTimer = null; }
+        };
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+            t0 = Date.now();
+            applyStep(dir, false);                 // 短按：立即单步（并同步编辑器）
+            holdTimer = setTimeout(() => {
+                const tick = () => {
+                    applyStep(dir, true);          // 连续：不重建编辑器
+                    const held = Date.now() - t0;
+                    accTimer = setTimeout(tick, held > 800 ? 15 : 55);
+                };
+                tick();
+            }, 320);
+        });
+        const end = (e) => { try { btn.releasePointerCapture(e.pointerId); } catch (_) {} stop(); };
+        btn.addEventListener('pointerup', end);
+        btn.addEventListener('pointercancel', end);
+        btn.addEventListener('pointerleave', end);
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());   // 屏蔽移动端长按复制菜单
+    };
+    bindStepperHold(el.querySelector('[data-act="inc"]'), +1);
+    bindStepperHold(el.querySelector('[data-act="dec"]'), -1);
+    // 手机端友好：在数值区上下拖动连续增减（每约 4px 一个步长）
+    const valDragEl = el.querySelector('.mnb-val');
+    if (valDragEl) {
+        let dragging = false, lastY = 0, accum = 0;
+        valDragEl.style.cursor = 'ns-resize';
+        valDragEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            try { valDragEl.setPointerCapture(e.pointerId); } catch (_) {}
+            dragging = true; lastY = e.clientY; accum = 0;
+        });
+        valDragEl.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const dy = lastY - e.clientY; lastY = e.clientY; accum += dy;
+            const sens = 4;
+            while (accum >= sens) { applyStep(+1, true); accum -= sens; }
+            while (accum <= -sens) { applyStep(-1, true); accum -= sens; }
+        });
+        const endDrag = (e) => { dragging = false; try { valDragEl.releasePointerCapture(e.pointerId); } catch (_) {} };
+        valDragEl.addEventListener('pointerup', endDrag);
+        valDragEl.addEventListener('pointercancel', endDrag);
+        valDragEl.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    el.querySelector('[data-act="close"]').addEventListener('click', () => {
+        if (ctx.pinned) burstRemovePinned(ctx); else mnbHide();
+    });
+    el.addEventListener('mousedown', (e) => { e.stopPropagation(); });   // 防止触发外部关闭 / 文本框失焦
+    el.addEventListener('wheel', (e) => { e.preventDefault(); applyStep(e.deltaY < 0 ? +1 : -1); }, { passive: false });
+    // 固定 / 取消固定
+    const pinBtn = el.querySelector('[data-act="pin"]');
+    if (pinBtn) {
+        pinBtn.addEventListener('click', () => {
+            if (ctx.pinned) burstRemovePinned(ctx);
+            else {
+                const r = el.getBoundingClientRect();
+                mnbHide();   // 关闭原瞬时泡泡（不炸开）
+                const p = { id: mnbIdSeq++, block: ctx.block, varName: ctx.varName, el: null, left: r.left, top: r.top, step: ctx.step };
+                pinnedBubbles.push(p);
+                const newCtx = { block: p.block, varName: p.varName, token: ctx.token, pinned: true, left: r.left, top: r.top, step: p.step };
+                buildMolangBubble(newCtx);
+                p.el = newCtx.el;
+            }
+        });
+    }
+    // 常显模式：标题栏拖动（pointer 事件，兼容触屏）
+    if (ctx.pinned) {
+        const head = el.querySelector('.mnb-head');
+        head.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.mnb-ico')) return;   // 按钮不触发拖动
+            e.preventDefault();
+            const r = el.getBoundingClientRect();
+            const ox = e.clientX - r.left, oy = e.clientY - r.top;
+            el.classList.add('dragging');
+            head.setPointerCapture(e.pointerId);
+            const move = (ev) => {
+                let nl = ev.clientX - ox, nt = ev.clientY - oy;
+                nl = Math.max(4, Math.min(window.innerWidth - r.width - 4, nl));
+                nt = Math.max(4, Math.min(window.innerHeight - r.height - 4, nt));
+                el.style.left = nl + 'px'; el.style.top = nt + 'px';
+                ctx.left = nl; ctx.top = nt;
+            };
+            const up = () => {
+                head.releasePointerCapture(e.pointerId);
+                head.removeEventListener('pointermove', move);
+                head.removeEventListener('pointerup', up);
+                el.classList.remove('dragging');
+            };
+            head.addEventListener('pointermove', move);
+            head.addEventListener('pointerup', up);
+        });
+    }
+    return el;
+}
+function mnbShow(block, token, clientX, clientY) {
+    mnbHide();
+    const varName = findVarForToken(block.scope.program || '', token);
+    const ctx = { block, varName, token, pinned: false, anchorX: clientX, anchorY: clientY, step: 1 };
+    buildMolangBubble(ctx);
+    mnbEl = ctx.el;
+    mnbState = ctx;
+}
+function mnbKeyStep(block, token, dir) {
+    mnbWriteValue(block, token, token.value + dir * 1);
+}
+function setupMolangNumberBubble(block) {
+    const ta = document.getElementById('molangTextarea');
+    if (!ta) return;
+    // 单击数字常量 → 弹泡泡；单击非数字位置 → 关闭
+    ta.addEventListener('click', (e) => {
+        if (ta.selectionStart !== ta.selectionEnd) return; // 有选区（拖动高亮）时不弹
+        const tok = findNumberAt(ta.value, ta.selectionStart);
+        if (tok) mnbShow(block, tok, e.clientX, e.clientY);
+        else mnbHide();
+    });
+    // 泡泡开启时，方向键微调（已被全局守卫拦截、不会误移摄像机）
+    ta.addEventListener('keydown', (e) => {
+        if (!mnbState) return;
+        const t = mnbState.token;
+        if (e.key === 'ArrowUp') { e.preventDefault(); mnbKeyStep(block, t, +1); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); mnbKeyStep(block, t, -1); }
+        else if (e.key === 'Escape') { mnbHide(); }
+    });
+    ta.addEventListener('scroll', mnbHide);
+    // 全局：点击泡泡外部（且不是文本框）时关闭瞬时泡泡（常显泡泡不受影响）
+    if (!mnbDocBound) {
+        mnbDocBound = true;
+        document.addEventListener('mousedown', (e) => {
+            if (mnbEl && !mnbEl.contains(e.target) && e.target !== document.getElementById('molangTextarea')) mnbHide();
+        });
+    }
+}
+
+
 function renderVariablesForBlock(block) {
+    mnbHide();   // 重建/切换/关闭变量面板时关闭瞬时泡泡（修复"失焦后仍残留"）
     const cont = document.getElementById('varsContainer'), newC = document.getElementById('newVarContainer');
     if (selectedBlocksSet.size > 1) { cont.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`; newC.innerHTML = ''; attachBatchEvents(); return; }
     // 离开批量修改面板时清理临时的 batchDeltas，已应用的变更保持不变
@@ -4316,6 +5654,15 @@ function renderVariablesForBlock(block) {
         cont.innerHTML = '<div class="empty-state">未选中任何方块<br>点击3D场景中的方块进行编辑</div>'; 
         newC.innerHTML = ''; 
         return; 
+    }
+
+    // molang 接管模式：变量区改为只读数值显示 + 高亮 molang 编辑器（不影响多选/未接管方块）
+    const takeover = block.scope.molangMode || (block.scope.program && block.scope.program.trim());
+    if (takeover) {
+        cont.innerHTML = renderMolangValues(block) + renderMolangEditor(block);
+        newC.innerHTML = '';
+        attachMolangEditorEvents(block);
+        return;
     }
 
     const vars = block.getVarList();
@@ -4430,6 +5777,8 @@ function renderGlobalVarCard(name, def, source) {
     return `<div class="var-card global ${cls}" data-var="${name}"><div class="var-header" data-toggle="${name}"><input class="assignment-input ${inpCls}" data-var="${name}" value="${escapeHtml(`${name} = ${def.expr}`)}"><span class="var-expand">${exp?'▲':'▼'}</span></div>
         <div class="var-details" data-details="${name}" style="${exp?'display:block':'display:none'}">` + renderVarDetails(name, def, source) + `</div></div>`;
 }
+
+
 
 // ========== 事件绑定 ==========
 function attachVariableEvents(block) {
@@ -4607,7 +5956,7 @@ function updateGlobalVarsDependingOn(block, localVarName) {
     let changed = false;
     for (let [n, g] of globalVars) if (g.sourceBlockId === block.id) {
         const sb = blocks.find(b=>b.id===g.sourceBlockId); if(!sb) continue;
-        let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars);
+        let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars, sb.scope.blockId);
         if (Math.abs(nv - g.def.value) > 1e-8) { g.def.value = nv; changed = true; }
     }
     if (changed) blocks.forEach(b=>b.refresh());
@@ -7051,9 +8400,8 @@ function importFromCommands(text) {
     let failCount = 0;
 
     // 预先建立材质名称到URL的映射（不区分大小写）
-    // 来源优先级: 旧的远程预设 < 新贴图库单图 < 组合方块预设
+    // 来源优先级: 新贴图库单图 < 组合方块预设
     const nameToUrl = new Map();
-    texturePresets.forEach(p => nameToUrl.set(p.name.toLowerCase(), p.url));
     TEX_LIB.forEach(t => nameToUrl.set(t[1].toLowerCase(), t[0]));   // 中文名 -> 文件名
     TEX_LIB.forEach(t => nameToUrl.set(t[0].toLowerCase(), t[0]));   // 文件名 -> 文件名
     TEX_LIB.forEach(t => nameToUrl.set(t[0].replace(/\.(png|jpg)$/i, '').toLowerCase(), t[0]));
@@ -7187,7 +8535,7 @@ function importFromCommands(text) {
     for (let [n, g] of globalVars.entries()) {
         const sb = blocks.find(b => b.id === g.sourceBlockId);
         if (sb) {
-            let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars);
+            let nv = isConstantExpr(g.def.expr) ? parseFloat(g.def.expr) : evaluateExpression(g.def.expr, sb.scope.vars, globalVars, sb.scope.blockId);
             if (g.def.rangeMin !== undefined) {
                 if (nv > g.def.rangeMax) g.def.rangeMax = nv;
                 if (nv < g.def.rangeMin) g.def.rangeMin = nv;
@@ -7333,100 +8681,6 @@ materialMenuDiv.addEventListener('click', () => { mmInternalClick = true; });
 const colorPresets = ['#aaccff','#88aaff','#06b6d4','#8b5cf6','#f43f5e','#10b981','#facc15','#ffffff','#1e293b','#ef4444','#3b82f6','#eab308','#ec4899','#14b8a6','#a855f7','#ff7f50','#2dd4bf','#f97316','#6366f1','#94a3b8'];
 
 // ============== 贴图预设 ==================
-const texturePresets = [
-    { name: "钻石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/3bb557edad19b9e8fd33b32bb34bea20.jpg" },        
-    { name: "绿宝石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/a228c3c53167ea83318b58ec106cfbd9.jpg" },
-    { name: "圆石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/69afaa5d9fc5c0acfd6bd18b7d3414a1.jpg" },
-    
-    
-    { name: "凿制石砖", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/chiseled_stone_bricks_1024x1024.png" },
-    
-    { name: "石砖", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/stone_bricks_1024x1024.png" },
-    
-    { name: "平滑石砖", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/smooth_stone_1024x1024.png" },
-    
-    { name: "泥土", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/dirt_1024x1024-5.png" },
-    
-    { name: "萤石块", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/glowstone_1024x1024.png" },
-    
-    { name: "紫红色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/magenta_stained_glass_1024x1024.png" },
-    
-    { name: "棕色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/brown_stained_glass_1024x1024.png" },
-    
-    { name: "淡蓝色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_stained_glass_1024x1024-3.png" },
-    
-    { name: "黄色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/yellow_stained_glass_1024x1024.png" },
-    
-    { name: "黑色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_stained_glass_1024x1024-1.png" },
-      { name: "蓝色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_stained_glass_1024x1024-1.png" },
-        { name: "红色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/red_stained_glass_1024x1024.png" },    
-        { name: "白色玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/white_stained_glass_1024x1024.png" },
-        { name: "遮光玻璃", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/tinted_glass_1024x1024.png" },
-       { name: "淡蓝色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/light_blue_wool_1024x1024.png" },
-       { name: "白色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/white_wool_1024x1024.png" },
-       { name: "蓝色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/blue_wool_1024x1024.png" },
-       { name: "粉色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/pink_wool_1024x1024.png" },    
-       { name: "黑色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/black_wool_1024x1024.png" },    
-       { name: "粉色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/pink_wool_1024x1024.png" },    
-       { name: "红色羊毛", url: "https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/red_wool_1024x1024.png" },    
-                      
-];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // <<<NEWMENU_INJECT_BEGIN>>>
 // ============== 材质菜单（支持整体贴图 / 六面独立贴图 / 组合方块预设） ==============
@@ -8876,6 +10130,7 @@ const sidePanelWidthLabel = document.getElementById('sidePanelWidthLabel');
 let isBlockListTopLeft = true;
 let isSidePanelMode = false;
 let sidePanelWidth = 360;
+let panelBottomHeight = 280;   // 底部模式下数据面板的高度，切换侧边栏时用于正确还原
 let isNewLayoutMode = false;
 let isKeyframeMode = false; // 新操作模式下的关键帧编辑模式
 let useWorldAxisDisplacement = false;
@@ -8897,6 +10152,9 @@ function applyBlockListPosition() {
 
 function applySidePanelMode() {
     if (!panel) return;
+    // 切换瞬间关闭过渡动画：避免宽度/高度从全屏动画到侧边（或反之）造成的“被砍一半/跳动”观感
+    const hadInlineTransition = panel.style.transition !== '';
+    panel.style.transition = 'none';
     panel.classList.toggle('side-panel', isSidePanelMode);
     if (isSidePanelMode) {
         panel.style.width = `${sidePanelWidth}px`;
@@ -8905,17 +10163,26 @@ function applySidePanelMode() {
         panel.style.right = '0';
         panel.style.top = '0';
         panel.style.bottom = '0';
+        // 清理任何可能残留的边界约束，确保侧边尺寸干净
+        panel.style.maxWidth = '';
+        panel.style.minWidth = '';
+        panel.style.maxHeight = '';
         panel.style.minHeight = '';
         panel.style.borderRadius = '20px 0 0 20px';
         panel.style.willChange = 'width';
         if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'flex';
     } else {
         panel.style.width = '';
-        panel.style.height = panel.style.height || '280px';
+        // 关键修复：离开侧边模式时使用保存的底部高度，而不是沿用侧边模式遗留的 '100%'
+        // 否则面板会以 height:100% + bottom:0 占满整屏（表现为“顶到屏幕最上方”）
+        panel.style.height = panelBottomHeight + 'px';
         panel.style.left = '0';
         panel.style.right = '0';
         panel.style.top = 'auto';
         panel.style.bottom = '0';
+        panel.style.maxWidth = '';
+        panel.style.minWidth = '';
+        panel.style.maxHeight = '';
         panel.style.minHeight = '140px';
         panel.style.borderRadius = '20px 20px 0 0';
         panel.style.willChange = '';
@@ -8936,6 +10203,10 @@ function applySidePanelMode() {
     if (uiSettingsPanel && uiSettingsPanel.style.display === 'block') {
         positionUISettingsPanel();
     }
+    // 下一帧恢复过渡，避免影响后续拖拽手感（仅当原本没有内联过渡时才恢复）
+    requestAnimationFrame(() => {
+        if (panel && !hadInlineTransition) panel.style.transition = '';
+    });
 }
 
 function toggleSidePanelMode(e) {
@@ -9828,6 +11099,16 @@ function positionUISettingsPanel() {
         panel.style.top = 'auto';
         panel.style.right = 'auto';
     }
+    // 防止面板超出视口底部把下方选项（如 molang 接管）挤出可视区：限制高度可滚动，溢出时上移
+    panel.style.maxHeight = (window.innerHeight - 16) + 'px';
+    panel.style.overflowY = 'auto';
+    const pr = panel.getBoundingClientRect();
+    if (pr.bottom > window.innerHeight - 8) {
+        let t = window.innerHeight - pr.height - 8;
+        if (t < 8) t = 8;
+        panel.style.top = t + 'px';
+        panel.style.bottom = 'auto';
+    }
 }
 
 window.addEventListener('resize', () => { positionUISettingsPanel(); });
@@ -10164,9 +11445,55 @@ if (localAxesCheckbox) {
         }
     });
 }
+
+const queryUpdateCheckbox = document.getElementById('queryUpdateCheckbox');
+if (queryUpdateCheckbox) {
+    queryUpdateCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _queryUpdateEnabled = !_queryUpdateEnabled;
+        queryUpdateCheckbox.classList.toggle('checked', _queryUpdateEnabled);
+        queryUpdateCheckbox.setAttribute('aria-pressed', String(_queryUpdateEnabled));
+        try { localStorage.setItem('ui_query_func_update', _queryUpdateEnabled ? '1' : '0'); } catch (e) {}
+        if (_queryUpdateEnabled) {
+            // 重新开启：清空冻结缓存并立即刷新所有使用了 q. 的方块
+            for (const k in _queryCache) delete _queryCache[k];
+            _cameraExprDirty = true;
+        }
+    });
+}
 if (uiSettingsPanel) {
     uiSettingsPanel.addEventListener('click', (e) => {
         e.stopPropagation();
+    });
+}
+
+// molang 接管：仅对当前选中方块（支持多选）生效，不可逆，开启前警告
+const molangTakeoverBtn = document.getElementById('molangTakeoverBtn');
+if (molangTakeoverBtn) {
+    molangTakeoverBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targets = selectedBlocksSet.size ? Array.from(selectedBlocksSet) : (selectedBlock ? [selectedBlock] : []);
+        if (!targets.length) { showModal('提示', '请先选中至少一个方块，再开启 molang 接管。', null, false); return; }
+        const allTaken = targets.every(b => b.scope.molangMode);
+        if (allTaken) { showModal('提示', '所选方块均已处于 molang 接管模式，无需重复开启。', null, false); return; }
+        const names = targets.map(b => b.id).join('、');
+        // 先收起设置面板（其 inline z-index 为 9999，若不收起会遮挡警告弹窗），保证警告以大弹窗形式完整显示
+        if (uiSettingsPanel) uiSettingsPanel.style.display = 'none';
+        showModal('确认开启 molang 接管',
+            `即将对【${names}】启用 <b>molang 表达式完全接管</b>。<br><br>⚠️ <b>此操作不可逆</b>：开启后该方块将脱离普通变量卡片，由 molang 脚本完全控制，且会自动按当前数值生成一段 molang 基线指令。<br><br>确定要继续吗？`,
+            () => {
+                targets.forEach(b => {
+                    if (b.scope.molangMode) return;
+                    b.scope.program = generateMolangBaseline(b);
+                    b.scope.molangMode = true;
+                    b.refresh();
+                });
+                recordAction();
+                if (selectedBlock) renderVariablesForBlock(selectedBlock);
+                // 关闭设置面板，避免其遮挡已切换为 molang 只读数值的变量区
+                if (uiSettingsPanel) uiSettingsPanel.style.display = 'none';
+                showModal('已开启', `已对 ${targets.length} 个方块启用 molang 接管。变量区已变为只读数值，可在下方 molang 编辑器自由编写表达式。`, null, false);
+            }, false);
     });
 }
 
@@ -10251,6 +11578,14 @@ try {
         if (!showLocalAxes && localAxesCheckbox) {
             localAxesCheckbox.classList.remove('checked');
             localAxesCheckbox.setAttribute('aria-pressed', 'false');
+        }
+    }
+    const savedQueryUpdate = localStorage.getItem('ui_query_func_update');
+    if (savedQueryUpdate !== null) {
+        _queryUpdateEnabled = savedQueryUpdate === '1';
+        if (!_queryUpdateEnabled && queryUpdateCheckbox) {
+            queryUpdateCheckbox.classList.remove('checked');
+            queryUpdateCheckbox.setAttribute('aria-pressed', 'false');
         }
     }
 } catch (e) {}
@@ -11095,6 +12430,19 @@ function setConstVarValue(b, varName, value) {
         def = b.scope.vars.get(varName);
     }
     if (!def || !Number.isFinite(value)) return;
+    // 被 molang 接管的方块：仅当原程序行右值是常量时才写回（bake），避免吞掉表达式
+    if (b.scope.molangMode) {
+        if (['v.xrot','v.yrot','v.zrot'].includes(varName)) value = normRotDeg(value);
+        const wrote = molangWriteBack(b, varName, value);
+        if (wrote) {
+            def.expr = String(parseFloat(Number(value).toFixed(4))); // 保持增量拖拽基准正确
+            b.refresh();
+        } else {
+            // 该变量由 molang 表达式驱动，拖动/批量修改无效（限频提示）
+            molangProtectToast(varName);
+        }
+        return;
+    }
     if (['v.xrot','v.yrot','v.zrot'].includes(varName)) value = normRotDeg(value);
     const highPrecision = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'].includes(varName);
     const dec = highPrecision ? 4 : ((def.step && def.step.toString().includes('.')) ? Math.max(4, def.step.toString().split('.')[1].length) : 4);
@@ -11180,8 +12528,7 @@ function changeVar(name, delta, refresh = true) {
                     const cur = parseFloat(def.expr) || def.value;
                     const nv = cur + baseDeltaVec.getComponent(i);
                     // 拖拽时保留较高精度（6位小数），避免 toFixed(2) 丢失小增量导致大数值抖动
-                    def.expr = nv.toFixed(6);
-                    def.value = nv;
+                    setConstVarValue(b, vn, nv);
                 }
             });
             b.refresh();
@@ -11198,8 +12545,7 @@ function changeVar(name, delta, refresh = true) {
             let nv = (parseFloat(d.expr) || d.value) + delta;
             const dec = (d.step.toString().includes('.') ? d.step.toString().split('.')[1].length : 0);
             nv = parseFloat(nv.toFixed(dec));
-            d.expr = nv.toString();
-            d.value = nv;
+            setConstVarValue(b, name, nv);
 
             // 2. 获取更新后的位置 pos_new
             const posNew = new THREE.Vector3(
@@ -11218,8 +12564,7 @@ function changeVar(name, delta, refresh = true) {
                 const bd = b.scope.vars.get(bn);
                 if (bd) {
                     const val = baseNew.getComponent(i);
-                    bd.expr = val.toString();
-                    bd.value = val;
+                    setConstVarValue(b, bn, val);
                 }
             });
 
@@ -11263,8 +12608,8 @@ function setVarDirect(varName, value) {
         }
         if (def) {
             if (['v.xrot','v.yrot','v.zrot'].includes(varName)) value = normRotDeg(value);
-            def.expr = String(value); def.value = value;
-            b.refresh(); b.mesh.updateMatrixWorld(true);
+            setConstVarValue(b, varName, value);
+            b.mesh.updateMatrixWorld(true);
             syncKeyframeFromBlock(b);
         }
     }
@@ -11920,6 +13265,8 @@ window.addEventListener('keydown', (e) => {
     const activeEl = document.activeElement;
     const isEditable = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable || activeEl.getAttribute('contenteditable') === 'true');
     const key = e.key.toLowerCase();
+    // 编辑文本时，方向键交给文本框处理（移动光标），不要平移相机
+    if (isEditable && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.stopImmediatePropagation(); return; }
     if (e.ctrlKey && (key === 'z' || e.code === 'KeyZ')) { e.preventDefault(); safeUndo(); return; }
     if (e.ctrlKey && (key === 'y' || e.code === 'KeyY')) { e.preventDefault(); safeRedo(); return; }
     if (e.ctrlKey && (key === 'd' || e.code === 'KeyD') && !isEditable) { e.preventDefault(); duplicateSelectedBlocks(); return; }
@@ -11979,6 +13326,16 @@ controls.touchRotate = true;
 controls.touchZoom = true;
 controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
 controls.listenToKeyEvents(window);
+// 编辑文本（输入框/文本框/可编辑区）时禁用方向键平移相机：避免 molang 等多处文本编辑时方向键被识别为移动摄像机
+function isEditableTarget(el) {
+    return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable || (el.getAttribute && el.getAttribute('contenteditable') === 'true'));
+}
+document.addEventListener('focusin', (e) => { if (controls) controls.enableKeys = !isEditableTarget(e.target); });
+document.addEventListener('focusout', () => { if (controls) controls.enableKeys = true; });
+
+// 相机视角变化（旋转/缩放/平移）时标记脏，供 animate 刷新含 q.rotation_to_camera 等相机相关表达式的方块
+let _cameraExprDirty = false;
+controls.addEventListener('change', () => { if (_queryUpdateEnabled) _cameraExprDirty = true; });
 
 // ---------- 挂载 Gizmo 拖拽事件 ----------
 renderer.domElement.addEventListener('pointerdown', (e) => {
@@ -12053,12 +13410,6 @@ function applyTheme() {
     const body = document.body;
     if (isLightMode) {
         body.classList.add('light-mode');
-        const bgUrl = 'https://raw.githubusercontent.com/Fairy-Oracle-Sanctuary/EX-FMBE-simulator/main/IMG_20260518_130827.jpg';
-        body.style.backgroundImage = `url('${bgUrl}')`;
-        body.style.backgroundSize = 'cover';
-        body.style.backgroundPosition = 'center';
-        body.style.backgroundRepeat = 'no-repeat';
-        body.style.backgroundAttachment = 'fixed';
         body.style.backgroundColor = '#eef2ff';
         scene.background = new THREE.Color(0xeef2ff);
         ambient.intensity = 1.0;
@@ -12990,7 +14341,8 @@ function createBrushPlane() {
     const angle = Math.atan2(dir.z, dir.x) * 180 / Math.PI;
     const p = generateRectParams(length, width);
     
-    const blockId = 'plane';
+    let blockId = 'Plane', _pi = 1;
+    while (blocks.some(b => b.id === blockId)) blockId = 'Plane' + (_pi++);
     const M = [
         center.x, 0, center.z,
         p.xrot, angle, p.zrot,
@@ -12998,8 +14350,8 @@ function createBrushPlane() {
         p.extend_xrot, p.extend_yrot,
         0, 0, 0
     ];
-    
-    addBlock(new Block(blockId, M, null, '#aaccff', 'cube'));
+
+    addBlock(new Block(blockId, M, null, '#aaccff', 'cube', null, null, true));
 }
 
 function createBrushPlaneWithCorner() {
@@ -13027,7 +14379,8 @@ function createBrushPlaneWithCorner() {
     const angle = Math.atan2(dir.z, dir.x) * 180 / Math.PI;
     const p = generateRectParams(length, width);
     
-    const blockId = 'plane';
+    let blockId = 'Plane', _pi = 1;
+    while (blocks.some(b => b.id === blockId)) blockId = 'Plane' + (_pi++);
     const M = [
         center.x, 0, center.z,
         p.xrot, angle, p.zrot,
@@ -13035,14 +14388,36 @@ function createBrushPlaneWithCorner() {
         p.extend_xrot, p.extend_yrot,
         0, 0, 0
     ];
-    
-    addBlock(new Block(blockId, M, null, '#aaccff', 'cube'));
+
+    addBlock(new Block(blockId, M, null, '#aaccff', 'cube', null, null, true));
 }
 
 // 动画循环
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+
+    // 相机视角变化后，刷新直接使用了 q.（如 q.rotation_to_camera）的方块，使相机相关表达式实时生效
+    if (_cameraExprDirty) {
+        _cameraExprDirty = false;
+        for (let i = 0; i < blocks.length; i++) {
+            const b = blocks[i];
+            let usesCam = false;
+            if (b.scope.program && b.scope.program.indexOf('q.') !== -1) usesCam = true;
+            else { for (let [, d] of b.scope.vars) { if (d.expr && d.expr.indexOf('q.') !== -1) { usesCam = true; break; } } }
+            if (usesCam) b.refresh();
+        }
+    }
+
+    // 自发式随机函数（math.random / math.die_roll 系列）每帧重算，使其像查询函数一样持续变化；
+    // 否则程序只在编辑/初始化时执行一次，zrot 等随机变量会一直保持最初那个值。
+    for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        if (scopeUsesSpontaneous(b.scope)) {
+            b.refresh();
+            if (b === selectedBlock) updateMolangValueDisplay(b); // 让只读数值面板里的 zrot 等实时跳动
+        }
+    }
 
     // ---------- 主光跟随摄像机（提供摄像机视角方向的照明），补光固定在世界空间 ----------
     const camDir = new THREE.Vector3();
@@ -13134,6 +14509,7 @@ function applyPanelWidth(newWidth) {
 }
 function applyPanelHeight(newHeight) {
     panel.style.height = newHeight + 'px';
+    panelBottomHeight = newHeight;
 }
 function onPointerDown(e) {
     e.preventDefault();
