@@ -236,13 +236,19 @@ body.light-mode .control-item { background: var(--bg-control-item); color: var(-
 body .settings-toggle-btn, body.light-mode .settings-toggle-btn { width: 34px; height: 34px; border-radius: 10px; border: var(--bg-settings-toggle-border); background: var(--bg-settings-toggle); color: var(--color-settings-toggle); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transform: skewX(-5deg); transition: background 0.2s, transform 0.2s; }
 body .settings-toggle-btn span, body.light-mode .settings-toggle-btn span { display:inline-block; transform: skewX(5deg); }
 .panel-content { position: relative; }
-.ui-settings-panel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%) skewX(-5deg); width: 300px; background: var(--bg-settings-panel); border: var(--bg-settings-panel-border); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(10px); padding: 10px; z-index: 1010; max-height: calc(100vh - 16px); overflow-y: auto; }
-.ui-settings-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-settings-item); border-radius: 10px; transform: skewX(-5deg); cursor: pointer; }
-.ui-settings-item span { display: inline-block; transform: skewX(5deg); color: var(--color-text-strong); font-size: 13px; line-height: 1.3; }
-.ui-checkbox { width: 18px; height: 18px; border-radius: 6px; border: 1px solid var(--bg-checkbox-border); background: var(--bg-checkbox-bg); cursor: pointer; transform: skewX(-5deg); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
-.ui-checkbox::after { content: '\2713'; display: inline-block; line-height: 1; opacity: 0; transform: skewX(5deg) scale(0.8); transition: transform 0.12s ease, opacity 0.12s ease; color: #16a34a; }
+.ui-settings-panel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 320px; background: var(--bg-settings-panel); border: var(--bg-settings-panel-border); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(10px); z-index: 1010; max-height: calc(100vh - 32px); overflow-y: auto; }
+.ui-settings-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-weight: 600; font-size: 14px; color: var(--color-text-strong); border-bottom: 1px solid rgba(148,163,184,0.25); background: var(--bg-settings-panel); }
+.ui-settings-scroll { padding: 8px; }
+.ui-settings-group { margin-bottom: 8px; }
+.ui-settings-group:last-child { margin-bottom: 0; }
+.ui-settings-group-head { display: block; padding: 6px 2px 5px; margin-top: 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.4px; color: var(--color-text-strong); border-bottom: 1px solid rgba(148,163,184,0.22); }
+.ui-settings-group-body { padding-top: 8px; }
+.ui-settings-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg-settings-item); border-radius: 10px; cursor: pointer; }
+.ui-settings-item span { display: inline-block; color: var(--color-text-strong); font-size: 13px; line-height: 1.3; }
+.ui-checkbox { width: 18px; height: 18px; border-radius: 6px; border: 1px solid var(--bg-checkbox-border); background: var(--bg-checkbox-bg); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+.ui-checkbox::after { content: '\2713'; display: inline-block; line-height: 1; opacity: 0; transform: scale(0.8); transition: transform 0.12s ease, opacity 0.12s ease; color: #16a34a; }
 .ui-checkbox.checked { background: rgba(22,163,74,0.08); border-color: #16a34a; color: #16a34a; }
-.ui-checkbox.checked::after { opacity: 1; transform: skewX(5deg) scale(1); }
+.ui-checkbox.checked::after { opacity: 1; transform: scale(1); }
 body.light-mode .ui-checkbox.checked { background: rgba(16,185,129,0.12); border-color: #10b981; color: #10b981; }
 body.light-mode .control-item label { color: var(--color-text-inverse); }
 body.light-mode .block-dropdown-item.selected { background: var(--color-primary); color: var(--color-text-inverse); border-radius: 0; }
@@ -431,7 +437,7 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
 
 /* 底部面板 */
 .data-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.3); transition: height 0.05s linear, width 0.05s linear; }
-.data-panel.side-panel { top: 0; bottom: 0; left: auto; right: 0; width: 360px; max-width: 80%; min-width: 5px; height: 100%; min-height: auto; border-radius: 20px 0 0 20px; flex-direction: row; box-shadow: -8px 0 30px rgba(0,0,0,0.3); overflow: visible; }
+.data-panel.side-panel { top: 0; bottom: 0; left: auto; right: 0; width: 360px; max-width: 92vw; min-width: 5px; height: 100%; min-height: auto; border-radius: 20px 0 0 20px; flex-direction: row; box-shadow: -8px 0 30px rgba(0,0,0,0.3); overflow: visible; }
 .data-panel.side-panel[data-collapsed="true"] .panel-content { display: none; }
 .resize-handle { background: linear-gradient(135deg, #1e4a76, #3b82f6); cursor: ns-resize; touch-action: none; position: relative; border-radius: 0; z-index: 16; flex-shrink: 0; width: 100%; height: 10px; }
 .data-panel.side-panel .resize-handle { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; height: auto; cursor: ew-resize; border-radius: 20px 0 0 20px; }
@@ -484,9 +490,14 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
 .dropdown-actions { display: flex; gap: 8px; }
 
 /* 变量布局 */
-.variables-container { display: flex; gap: 24px; position: relative; }
+.variables-container { display: flex; flex-wrap: wrap; gap: 24px; position: relative; }
 .variables-left { flex: 1; min-width: 0; border-right: var(--bg-var-divider-right); padding-right: 20px; }
 .variables-right { flex: 1; min-width: 0; }
+/* molang 接管模式下，#varsContainer 的直接子元素就是 .var-group（数值组 + 编辑器组）。
+   动态布局：面板足够宽时数值组在左、编辑器组在右并排；不够宽时自动换行堆叠（数值在上）。
+   只命中 molang 托管的这两个组，不影响普通模式的 .variables-left / .variables-right 分栏。 */
+.variables-container > .var-group[data-group="molang-values"] { flex: 0 1 240px; min-width: 180px; align-self: flex-start; overflow: auto; max-height: 70vh; }
+.variables-container > .var-group[data-group="molang"] { flex: 1 1 380px; min-width: 280px; align-self: flex-start; }
 @media (max-width: 768px) { .variables-container { flex-direction: column; gap: 16px; } .variables-left { border-right: none; padding-right: 0; } }
 
 /* 变量卡片 */
@@ -515,6 +526,9 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
     font-size: 13px; line-height: 1.5; letter-spacing: 0; tab-size: 4;
     white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;
     box-sizing: border-box; width: 100%; min-height: 132px;
+    /* 关键：高亮层与文本框常驻相同的滚动条占位，保证两者文字宽度/换行点完全一致，
+       否则文本框一出现滚动条就会挤压文字宽度，导致彩色高亮与真实光标所在字符错位（点错数字） */
+    scrollbar-gutter: stable;
 }
 .molang-editor .molang-highlight {
     position: absolute; inset: 0; z-index: 0; overflow: hidden;
@@ -674,6 +688,44 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
 .molang-num-bubble .mnb-q:hover { background: rgba(59,130,246,0.22); }
 .molang-num-bubble .mnb-q.active { background: rgba(59,130,246,0.38); border-color: #60a5fa; }
 .molang-num-bubble .mnb-hint { font-size: 10px; color: #64748b; text-align: center; padding: 0 10px 10px; line-height: 1.4; }
+/* ========== molang 自动补全泡泡（v./t./q./math. 触发） ========== */
+#molangAutocomplete {
+  position: fixed; z-index: 100001; display: none;
+  max-width: 360px; max-height: 252px; overflow-y: auto; overflow-x: hidden;
+  padding: 6px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+  color: var(--color-text-strong, #e2e8f0);
+  background: linear-gradient(160deg, rgba(30,42,74,0.98), rgba(13,20,38,0.99));
+  border: 1px solid rgba(59,130,246,0.6);
+  border-radius: 12px;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.62), 0 0 0 1px rgba(59,130,246,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(7px);
+  user-select: none; -webkit-user-select: none;
+  animation: acPop .12s ease-out;
+}
+@keyframes acPop { from { opacity: 0; transform: translateY(6px) scale(.97); } to { opacity: 1; transform: none; } }
+#molangAutocomplete .ac-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px; border-radius: 8px; cursor: pointer;
+  white-space: nowrap; overflow: hidden;
+}
+#molangAutocomplete .ac-item .ac-name {
+  font-weight: 700; color: #7dd3fc; text-shadow: 0 0 9px rgba(96,165,250,0.5);
+  overflow: hidden; text-overflow: ellipsis;
+}
+#molangAutocomplete .ac-item .ac-tag {
+  flex: 0 0 auto; margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 6px;
+  color: #cbd5e1; background: rgba(148,163,184,0.16); border: 1px solid rgba(148,163,184,0.3);
+}
+#molangAutocomplete .ac-item .ac-tag.var { color: #c084fc; background: rgba(168,85,247,0.16); border-color: rgba(168,85,247,0.4); }
+#molangAutocomplete .ac-item .ac-tag.func { color: #fcd34d; background: rgba(251,191,36,0.14); border-color: rgba(251,191,36,0.4); }
+#molangAutocomplete .ac-item .ac-tag.q { color: #6ee7b7; background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.4); }
+#molangAutocomplete .ac-item.active, #molangAutocomplete .ac-item:hover { background: rgba(59,130,246,0.26); }
+#molangAutocomplete .ac-empty { padding: 8px 10px; color: #94a3b8; font-size: 12px; }
+#molangAutocomplete .ac-hint {
+  padding: 6px 9px 2px; margin-top: 4px; color: #64748b; font-size: 10px; line-height: 1.5;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
 /* 指向数值的小三角（仅锚定/瞬时模式显示，泡泡在数值上方） */
 .molang-num-bubble:not(.pinned)::before,
 .molang-num-bubble:not(.pinned)::after {
@@ -690,6 +742,72 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
 /* molang 接管视图：隐藏冗长分组标题，折叠按钮简约化（无背景、仅三角形、两组高度一致、对齐） */
 .var-group[data-group="molang-values"] .group-title,
 .var-group[data-group="molang"] .group-title { display: none; }
+/* ========== molang 浮层面板浅色模式适配：数值泡泡 / Tab 补全 / 语法着色 / 帮助与错误 ========== */
+/* 数值修改泡泡 */
+body.light-mode .molang-num-bubble {
+  color: var(--color-text-strong, #0f172a);
+  background: linear-gradient(160deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99));
+  border: 1px solid rgba(59,130,246,0.45);
+  box-shadow: 0 14px 44px rgba(15,23,42,0.18), 0 0 0 1px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+body.light-mode .molang-num-bubble .mnb-head {
+  background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(168,85,247,0.12));
+  border-bottom: 1px solid rgba(59,130,246,0.3);
+}
+body.light-mode .molang-num-bubble .mnb-var { color: #7c3aed; text-shadow: none; }
+body.light-mode .molang-num-bubble .mnb-block { color: var(--color-text-muted, #64748b); }
+body.light-mode .molang-num-bubble .mnb-ico { color: var(--color-text-strong, #0f172a); }
+body.light-mode .molang-num-bubble .mnb-ico:hover { background: rgba(15,23,42,0.08); }
+body.light-mode .molang-num-bubble .mnb-pin.active { color: #d97706; text-shadow: none; }
+body.light-mode .molang-num-bubble .mnb-stepper {
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  border: 1px solid rgba(59,130,246,0.4);
+  box-shadow: 0 3px 10px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+body.light-mode .molang-num-bubble .mnb-stepper span { color: var(--color-text-strong, #0f172a); }
+body.light-mode .molang-num-bubble .mnb-stepper span:hover { background: rgba(59,130,246,0.18); }
+body.light-mode .molang-num-bubble .mnb-stepper span:active { background: rgba(59,130,246,0.3); }
+body.light-mode .molang-num-bubble .mnb-val {
+  color: #0369a1; background: rgba(59,130,246,0.1); text-shadow: none;
+  border: 1px solid rgba(59,130,246,0.25);
+}
+body.light-mode .molang-num-bubble .mnb-stepinput { color: var(--bg-var-range-input-text, #0f172a); }
+body.light-mode .molang-num-bubble .mnb-q { color: var(--color-text-strong, #0f172a); border-color: rgba(59,130,246,0.35); background: rgba(59,130,246,0.06); }
+body.light-mode .molang-num-bubble .mnb-q:hover { background: rgba(59,130,246,0.16); }
+body.light-mode .molang-num-bubble .mnb-q.active { background: rgba(59,130,246,0.28); border-color: #2563eb; }
+body.light-mode .molang-num-bubble .mnb-hint { color: var(--color-text-muted, #64748b); }
+/* 指向数值的小三角：箭头填色随面板底色变化（深/浅两套） */
+body.light-mode .molang-num-bubble:not(.pinned)::before { border-top-color: rgba(59,130,246,0.45); }
+body.light-mode .molang-num-bubble:not(.pinned)::after  { border-top-color: rgba(241,245,249,0.99); }
+/* Tab 自动补全面板 */
+body.light-mode #molangAutocomplete {
+  color: var(--color-text-strong, #0f172a);
+  background: linear-gradient(160deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99));
+  border: 1px solid rgba(59,130,246,0.45);
+  box-shadow: 0 14px 44px rgba(15,23,42,0.18), 0 0 0 1px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+body.light-mode #molangAutocomplete .ac-item .ac-name { color: #0369a1; text-shadow: none; }
+body.light-mode #molangAutocomplete .ac-item .ac-tag { color: #475569; background: rgba(100,116,139,0.12); border-color: rgba(100,116,139,0.25); }
+body.light-mode #molangAutocomplete .ac-item .ac-tag.var { color: #7c3aed; background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.35); }
+body.light-mode #molangAutocomplete .ac-item .ac-tag.func { color: #b45309; background: rgba(251,191,36,0.14); border-color: rgba(251,191,36,0.4); }
+body.light-mode #molangAutocomplete .ac-item .ac-tag.q { color: #047857; background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); }
+body.light-mode #molangAutocomplete .ac-item.active,
+body.light-mode #molangAutocomplete .ac-item:hover { background: rgba(59,130,246,0.14); }
+body.light-mode #molangAutocomplete .ac-empty { color: var(--color-text-muted, #64748b); }
+body.light-mode #molangAutocomplete .ac-hint { color: var(--color-text-muted, #64748b); border-top: 1px solid rgba(15,23,42,0.08); }
+/* molang 编辑面板：帮助按钮 / 错误面板 / 语法着色 浅色模式适配 */
+body.light-mode .molang-help-btn { color: var(--color-text-strong, #0f172a); }
+body.light-mode .molang-error { color: #b91c1c; background: rgba(239,68,68,0.1); border-color: #ef4444; }
+/* 语法着色：浅色背景上使用更深的同色系，保证对比度（深色主题仍用原来的亮色） */
+body.light-mode .tok-global { color: #b45309; }
+body.light-mode .tok-local  { color: #7c3aed; }
+body.light-mode .tok-query  { color: #7c3aed; }
+body.light-mode .tok-math   { color: #b45309; }
+body.light-mode .tok-logic  { color: #dc2626; }
+body.light-mode .tok-num    { color: #2563eb; }
+body.light-mode .tok-arith  { color: #15803d; }
+body.light-mode .tok-str    { color: #0f766e; }
+body.light-mode .tok-comment{ color: #64748b; }
 /* 两组分组头使用同一套简约样式：透明背景、无边框、固定行高 → 三角形高度与垂直对齐完全一致 */
 .var-group[data-group="molang-values"] .group-header,
 .var-group[data-group="molang"] .group-header {
@@ -2271,70 +2389,117 @@ body.light-mode .keyframe-import-time-input input {
             <button class="settings-toggle-btn" id="uiSettingsBtn" type="button"><span>⚙</span></button>
         </div>
         <button class="block-menu-btn" id="blockMenuBtn" style="display:none;"><span>📦 方块列表 ▼</span></button>
-        <div class="ui-settings-panel" id="uiSettingsPanel" style="display:none;">
-            <div class="ui-settings-item" id="blockListTopLeftSetting">
-                <span>方块列表UI布局在左上角</span>
-                <button class="ui-checkbox checked" id="blockListPositionCheckbox" type="button" aria-pressed="true"></button>
-            </div>
-            <div class="ui-settings-item" id="molangTakeoverSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
-                <span>molang 表达式接管</span>
-                <button class="modal-btn" id="molangTakeoverBtn" type="button" style="width:100%;">使用 molang 表达式完全接管当前方块</button>
-                <div style="font-size:11px; color:var(--color-text-muted,#64748b);">仅对当前选中的方块生效（支持多选）；开启后不可逆，变量区将变为只读数值并生成 molang 基线。</div>
-            </div>
-            <div class="ui-settings-item" id="themeSetting" style="margin-top:8px;">
-                <span>浅色模式</span>
-                <button class="ui-checkbox" id="themeToggleCheckbox" type="button" aria-pressed="false"></button>
-            </div>
-            <div class="ui-settings-item" id="sidePanelSetting" style="margin-top:8px;">
-                <span>数据面板侧边显示</span>
-                <button class="ui-checkbox" id="sidePanelCheckbox" type="button" aria-pressed="false"></button>
-            </div>
-            <div class="ui-settings-item" id="sidePanelWidthSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
-                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>数据面板宽度</span><span id="sidePanelWidthLabel">360px</span></div>
-                <input id="sidePanelWidthRange" type="range" min="5" max="880" value="360" style="width:100%;">
-            </div>
-            <div class="ui-settings-item" id="newLayoutSetting" style="margin-top:8px;">
-                <span>启用新布局&amp;操作方案</span>
-                <button class="ui-checkbox" id="newLayoutCheckbox" type="button" aria-pressed="false"></button>
-            </div>
-            <div class="ui-settings-item" id="queryUpdateSetting" style="margin-top:8px;">
-                <span>查询函数更新</span>
-                <button class="ui-checkbox checked" id="queryUpdateCheckbox" type="button" aria-pressed="true"></button>
-            </div>
-            <div class="ui-settings-item" id="worldAxisDispSetting" style="margin-top:8px; display:none;">
-                <span>世界轴位移</span>
-                <button class="ui-checkbox" id="worldAxisDispCheckbox" type="button" aria-pressed="false"></button>
-            </div>
-            <div class="ui-settings-item" id="brushModeSetting" style="margin-top:8px; display:none;">
-                <span>画笔模式</span>
-                <button class="ui-checkbox" id="brushModeCheckbox" type="button" aria-pressed="false"></button>
-            </div>
-            <div class="ui-settings-item" id="brushThicknessSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
-                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>画笔粗细(米)</span><span id="brushThicknessLabel">1.0</span></div>
-                <input id="brushThicknessRange" type="range" min="0.1" max="5" step="0.1" value="1.0" style="width:100%;">
-            </div>
-            <div class="ui-settings-item" id="pivotLinkSetting" style="margin-top:8px; display:none;">
-                <span>枢轴联动模型</span>
-                <button class="ui-checkbox checked" id="pivotLinkCheckbox" type="button" aria-pressed="true"></button>
-            </div>
-            <div class="ui-settings-item" id="localAxesSetting" style="margin-top:8px;">
-                <span>渲染局部坐标系</span>
-                <button class="ui-checkbox checked" id="localAxesCheckbox" type="button" aria-pressed="true"></button>
-            </div>
-            <div class="ui-settings-item" id="grayscaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;"><span>灰度强度</span><span id="grayscaleValueLabel">0%</span></div>
-                <input id="grayscaleRange" type="range" min="0" max="100" value="0" style="width:100%;">
-            </div>
-            <div class="ui-settings-item" id="collapseBtnSizeSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;"><span>折叠按钮大小</span><span id="collapseBtnSizeLabel">14px</span></div>
-                <input id="collapseBtnSizeRange" type="range" min="10" max="30" value="14" style="width:100%;">
-            </div>
-            <div class="ui-settings-item" id="uiScaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;"><span>UI缩放</span><span id="uiScaleLabel">100%</span></div>
-                <input id="uiScaleRange" type="range" min="50" max="150" value="100" style="width:100%;">
-                <div id="uiScaleRevert" style="display:none; justify-content:flex-end; align-items:center; gap:6px;">
-                    <span id="uiScaleRevertTimer" style="font-size:11px; color:#f87171;"></span>
-                    <button id="uiScaleRevertBtn" style="padding:3px 10px; border:none; border-radius:4px; background:#ef4444; color:#fff; font-size:11px; cursor:pointer;">↩ 撤销缩放</button>
+                <div class="ui-settings-panel" id="uiSettingsPanel" style="display:none;">
+            <div class="ui-settings-head"><span>设置</span><span style="font-size:13px;opacity:0.65;">⚙</span></div>
+            <div class="ui-settings-scroll">
+                <div class="ui-settings-group" data-group="layout">
+                    <div class="ui-settings-group-head"><span>界面布局</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="blockListTopLeftSetting">
+                            <span>方块列表UI布局在左上角</span>
+                            <button class="ui-checkbox checked" id="blockListPositionCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                        <div class="ui-settings-item" id="themeSetting" style="margin-top:8px;">
+                            <span>浅色模式</span>
+                            <button class="ui-checkbox" id="themeToggleCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="sidePanelSetting" style="margin-top:8px;">
+                            <span>数据面板侧边显示</span>
+                            <button class="ui-checkbox" id="sidePanelCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="sidePanelWidthSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>数据面板宽度</span><span id="sidePanelWidthLabel">360px</span></div>
+                            <input id="sidePanelWidthRange" type="range" min="5" max="880" value="360" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="newLayoutSetting" style="margin-top:8px;">
+                            <span>启用新布局&amp;操作方案</span>
+                            <button class="ui-checkbox" id="newLayoutCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="uiScaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span>UI缩放</span><span id="uiScaleLabel">100%</span></div>
+                            <input id="uiScaleRange" type="range" min="50" max="150" value="100" style="width:100%;">
+                            <div id="uiScaleRevert" style="display:none; justify-content:flex-end; align-items:center; gap:6px;">
+                                <span id="uiScaleRevertTimer" style="font-size:11px; color:#f87171;"></span>
+                                <button id="uiScaleRevertBtn" style="padding:3px 10px; border:none; border-radius:4px; background:#ef4444; color:#fff; font-size:11px; cursor:pointer;">↩ 撤销缩放</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group" data-group="display">
+                    <div class="ui-settings-group-head"><span>显示细节</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="grayscaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span>灰度强度</span><span id="grayscaleValueLabel">0%</span></div>
+                            <input id="grayscaleRange" type="range" min="0" max="100" value="0" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="collapseBtnSizeSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span>折叠按钮大小</span><span id="collapseBtnSizeLabel">14px</span></div>
+                            <input id="collapseBtnSizeRange" type="range" min="10" max="30" value="14" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="localAxesSetting" style="margin-top:8px;">
+                            <span>渲染局部坐标系</span>
+                            <button class="ui-checkbox checked" id="localAxesCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                        <div class="ui-settings-item" id="worldAxisDispSetting" style="margin-top:8px; display:none;">
+                            <span>世界轴位移</span>
+                            <button class="ui-checkbox" id="worldAxisDispCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group" data-group="camera">
+                    <div class="ui-settings-group-head"><span>摄像机</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="cameraCoordSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
+                            <span>摄像机坐标 (X, Y, Z)</span>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <label style="font-size:11px; color:var(--color-text-muted,#64748b);">X</label>
+                                <input id="camPosX" type="number" step="0.5" style="flex:1; min-width:0; width:100%; padding:4px 6px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(255,255,255,0.08); color: var(--color-input-text); font-size:12px;">
+                                <label style="font-size:11px; color:var(--color-text-muted,#64748b);">Y</label>
+                                <input id="camPosY" type="number" step="0.5" style="flex:1; min-width:0; width:100%; padding:4px 6px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(255,255,255,0.08); color: var(--color-input-text); font-size:12px;">
+                                <label style="font-size:11px; color:var(--color-text-muted,#64748b);">Z</label>
+                                <input id="camPosZ" type="number" step="0.5" style="flex:1; min-width:0; width:100%; padding:4px 6px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(255,255,255,0.08); color: var(--color-input-text); font-size:12px;">
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button id="camPosApplyBtn" class="modal-btn" type="button" style="flex:1; border:1px solid var(--bg-settings-toggle-border, rgba(255,255,255,0.2)); border-radius:6px; padding:6px;">应用坐标</button>
+                                <button id="camPosReadBtn" class="modal-btn" type="button" style="flex:1; border:1px solid var(--bg-settings-toggle-border, rgba(255,255,255,0.2)); border-radius:6px; padding:6px;">读取当前</button>
+                            </div>
+                        </div>
+                        <div class="ui-settings-item" id="cameraFovSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>摄像机视场角 (FOV)</span>
+                                <span id="cameraFovLabel">45°</span>
+                            </div>
+                            <div>
+                                <input id="cameraFovRange" type="range" min="20" max="120" step="1" value="45" style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group" data-group="edit">
+                    <div class="ui-settings-group-head"><span>编辑 / 高级</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="molangTakeoverSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
+                            <span>molang 表达式接管</span>
+                            <button class="modal-btn" id="molangTakeoverBtn" type="button" style="width:100%;">使用 molang 表达式完全接管当前方块</button>
+                            <div style="font-size:11px; color:var(--color-text-muted,#64748b);">仅对当前选中的方块生效（支持多选）；开启后不可逆，变量区将变为只读数值并生成 molang 基线。</div>
+                        </div>
+                        <div class="ui-settings-item" id="queryUpdateSetting" style="margin-top:8px;">
+                            <span>查询函数更新</span>
+                            <button class="ui-checkbox checked" id="queryUpdateCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                        <div class="ui-settings-item" id="brushModeSetting" style="margin-top:8px; display:none;">
+                            <span>画笔模式</span>
+                            <button class="ui-checkbox" id="brushModeCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="brushThicknessSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>画笔粗细(米)</span><span id="brushThicknessLabel">1.0</span></div>
+                            <input id="brushThicknessRange" type="range" min="0.1" max="5" step="0.1" value="1.0" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="pivotLinkSetting" style="margin-top:8px;">
+                            <span>枢轴联动模型</span>
+                            <button class="ui-checkbox checked" id="pivotLinkCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2348,8 +2513,8 @@ body.light-mode .keyframe-import-time-input input {
 <script type="importmap">
 {
     "imports": {
-        "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
     }
 }
 </script>
@@ -2548,6 +2713,20 @@ const changelogData = [
         title: "公告",
         items: ["EX模拟器APP将在联网条件下强制更新为 v.4.50 版本"],
         details: "本次更新为强制更新，所有植入了更新程序的客户端，都将在联网条件下将自动升级至最新版本。。",
+        actions: []
+    },
+    {
+        date: "2026-08-07",
+        title: "v.4.65 正式版",
+        items: [
+            "新增导入 URL 支持：允许外部网站直接打开模拟器并一键导入指令",
+            "重新优化 molang 编辑模式，编辑体验更流畅",
+            "重新优化设置列表 UI，布局与交互更清晰",
+            "修复全局变量折叠（收起）失效的 bug",
+            "修复骨骼绑定会覆盖原有内容的小问题",
+            "顺带调整坐标网格/刻度显示：缩放时按整齐档位切换、刻度标签更干净"
+        ],
+        details: "【导入 URL 支持】\n- 新增导入时 URL 支持，允许外部网站直接打开模拟器并导入指令，便于跨平台调用与分享式打开。\n\n【molang 编辑模式】\n- 重新优化了 molang 编辑模式，编辑体验更流畅、更易用。\n\n【设置列表 UI】\n- 重新优化了设置列表的界面与交互，布局更清晰、操作更直观。\n\n【问题修复】\n- 修复全局变量折叠（收起）功能失效的 bug。\n- 修复骨骼绑定会覆盖原有内容的小问题。\n\n【坐标网格/刻度】\n- 顺带调整了坐标网格与刻度显示：缩放时按整齐档位（0.5/1/2/5…）整档切换，刻度标签保持干净。",
         actions: []
     },
     {
@@ -2968,9 +3147,11 @@ else {
     recompute() {
         if (this.molangMode || (this.program && this.program.trim())) {
             if (this.molangMode) {
-                // FMBE 语义：每次执行都是全新上下文，不继承上一帧数值（除非用 v.x=v.x??0 显式初始化）。
+                // FMBE 语义：以「上一帧已提交的数值」为起点建立本帧语境（复制上一帧的 vars）。
+                // 这样 v.t = v.t ?? 0 能读到上一帧的 v.t 并逐帧累加；
+                // v.xpos = v.rot 在 v.rot 本帧尚未赋值时，读到的是上一帧的 v.rot（首帧无数据→按 molang 约定回退 0）。
                 // 先在临时作用域执行，成功后才提交，避免“出错帧”污染方块状态。
-                const tmp = { vars: new Map(), _assigned: new Set(), blockId: this.blockId, molangMode: true, program: this.program };
+                const tmp = { vars: new Map(this.vars), _assigned: new Set(), blockId: this.blockId, molangMode: true, program: this.program };
                 let ok = true;
                 try { runBlockProgram(this.program || '', tmp); } catch (e) { ok = false; console.warn('高级脚本执行错误:', e.message); }
                 if (ok) {
@@ -4935,8 +5116,28 @@ function fmtNumRaw(v) {
     const r = Math.round(v * 1e6) / 1e6;
     return String(r);
 }
+// 判断表达式是否含有「逻辑判别式」：三元条件 ?: 、q. 查询、比较 / 逻辑运算符。
+// 这些结构无法用普通变量卡片表示，必须以 molang 接管模式完整保留，否则指令内容会丢失。
+function hasLogicalDiscriminator(expr) {
+    if (!expr || typeof expr !== 'string') return false;
+    if (/\?[\s\S]*:/.test(expr)) return true;                // 三元条件 (cond)?a:b
+    if (/\bq\s*\./.test(expr)) return true;                  // q. 查询函数（如 q.rotation_to_camera）
+    if (/(<=|>=|==|!=|&&|\|\||<|>)/.test(expr)) return true; // 比较 / 逻辑运算符
+    return false;
+}
+// 从命令内容中抽取 molang 程序本体：去掉材质/编号/类型等不含等号的 '...' 标签，
+// 保留全部变量赋值（含三元条件与 q. 查询），使接管后脚本可完整执行与导出。
+function extractMolangProgram(content) {
+    return (content || '')
+        .replace(/['"][^'"]*['"]/g, (m) => /[=]/.test(m) ? m : '')  // 去掉材质/编号等不含等号的标签
+        .replace(/;\s*;/g, ';')   // 合并因去标签产生的空语句
+        .replace(/^\s*;+/, '')    // 去掉开头残留的分号
+        .replace(/;\s*$/, '')     // 去掉结尾残留的分号
+        .trim();
+}
 function generateMolangBaseline(block) {
-    // 标准变换变量（缺省值取自用户示例），已存在则用当前值；再补上自定义局部变量
+    // 标准变换变量（缺省值取自用户示例）。优先保留变量原有「表达式」(d.expr)，
+    // 仅在无表达式时回退到求值数值(d.value)，从而接管后绝不把计算式吞成常量。
     const std = [
         ['xpos', 0], ['ypos', 0], ['zpos', 0],
         ['xrot', 0], ['yrot', 0], ['zrot', 0],
@@ -4944,19 +5145,29 @@ function generateMolangBaseline(block) {
         ['extend_xrot', -90], ['extend_yrot', 0],
         ['xbasepos', 0], ['ybasepos', 0], ['zbasepos', 0]
     ];
-    const lines = [];
+    const exprOrVal = (d, def) => {
+        if (d && d.expr != null && String(d.expr).trim() !== '') return d.expr;
+        if (d && d.value != null && isFinite(d.value)) return fmtNumRaw(d.value);
+        return String(def);
+    };
+    // 收集全部变量（标准 + 自定义），统一参与依赖拓扑排序
+    const entries = [];
+    const seen = new Set();
     for (const [name, def] of std) {
-        const d = block.scope.vars.get('v.' + name);
-        const val = d ? fmtNumRaw(d.value) : def;
-        lines.push(`v.${name}=${val};`);
+        entries.push({ name, expr: exprOrVal(block.scope.vars.get('v.' + name), def) });
+        seen.add(name);
     }
     for (const [n, d] of block.scope.vars) {
         if (!n.startsWith('v.')) continue;
         const name = n.slice(2);
-        if (std.some(([s]) => s === name)) continue;
-        lines.push(`v.${name}=${fmtNumRaw(d.value)};`);
+        if (seen.has(name)) continue;
+        entries.push({ name, expr: exprOrVal(d, 0) });
     }
-    return lines.join(' ');
+    // 按依赖关系拓扑排序：被依赖的变量必须先定义，否则接管后自上而下求值时
+    // 会引用到尚未定义的变量而得到 NaN（典型如 v.xrot 依赖自定义 v.scy_or/v.scy_rot）。
+    const wrapped = entries.map(e => ({ name: 'v.' + e.name, def: { expr: e.expr } }));
+    const ordered = topologicalSortVariables(wrapped);
+    return ordered.map(o => `v.${o.name.slice(2)}=${o.def.expr};`).join(' ');
 }
 // 把数值写回 molang 程序：仅当该变量的程序行右值已是纯常量时才覆盖（bake），
 // 若原行是表达式（受程序驱动）则保持不动（保护，不被吞成常量）；程序里无此变量则追加。
@@ -5081,7 +5292,7 @@ function renderMolangEditor(block) {
           <textarea class="molang-textarea" id="molangTextarea" data-block-id="${escapeHtml(block.id)}" spellcheck="false" placeholder="例如：&#10;v.xrot = q.rotation_to_camera(1) > 0 ? 90 : -90;"></textarea>
         </div>
         <div class="molang-error" id="molangError"></div>
-        <div class="program-help">自上而下严格顺序执行（引用必须先于定义，不能前向引用）；v.名称=表达式 赋值；每条语句必须以分号 ; 结尾；条件语句 条件 ? (语句) : (语句)，其中 else 分支可省略；用 v.xx=v.xx ?? 0; 初始化变量（未定义即报错，FMBE 不为变量自动注册默认值）。支持 ! &amp;&amp; || == != &lt; &lt;= &gt; &gt;= ?? 及 ( ) 与 q./math./t.。&nbsp;💡 <b>单击任意数字常量</b>（如 90、0.5、360）可在其上方弹出微调泡泡：点 +/− 增减、滚轮 / ↑↓ 微调、步长可自定义（输入框或 0.1/1/10）；点 📌 可把该变量的泡泡<b>固定</b>为常显浮动控件（显示变量名与方块名、可拖动、层级最高，方块或变量删除时炸开消失）。</div>
+        <div class="program-help">终止表达式</div>
       </div>
     </div>`;
 }
@@ -5099,6 +5310,9 @@ function refreshMolangEditor(block) {
     // 末尾/整体语法错误（line=0）退化为标红最后一行，确保有可见反馈
     if (errors.some(e => e.line === 0) && lastNonEmpty > 0) errorLines.add(lastNonEmpty);
     pre.innerHTML = highlightMolang(ta.value, errorLines) + '\n';
+    // innerHTML 重置会把 pre.scrollTop 清零，必须还原与文本框一致，否则高亮层跳回顶部、与文本框错位
+    pre.scrollTop = ta.scrollTop;
+    pre.scrollLeft = ta.scrollLeft;
     if (errBox) {
         if (errors.length) {
             errBox.innerHTML = errors.map(e => {
@@ -5150,6 +5364,7 @@ function attachMolangEditorEvents(block) {
     const ta = document.getElementById('molangTextarea'), pre = document.getElementById('molangHighlight');
     if (!ta || !pre) return;
     mnbHide(); // 重建编辑器时关闭可能残留的数字气泡（旧的 textarea 已失效）
+    acHide();  // 同时关闭可能残留的自动补全泡泡
     // 绑定 molang 接管视图里的分组折叠（只读数值 + 表达式编辑器）
     document.querySelectorAll('.var-group[data-group="molang-values"] .group-header, .var-group[data-group="molang"] .group-header').forEach(h => {
         h.removeEventListener('click', molangGroupClick);
@@ -5166,8 +5381,32 @@ function attachMolangEditorEvents(block) {
         if (mnbEl) mnbHide();        // 手动编辑时关闭（可能已失效的）瞬时泡泡
         refreshPinnedBubbles(block); // 同步 / 清理常显泡泡（变量被删则炸开消失）
         recordAction();              // 纳入撤销系统：recordAction 内部 200ms 防抖，连续打字只产生一个检查点
+        if (!acSuppress) acUpdate(ta, block); // 输入时动态刷新自动补全候选（acSuppress 时跳过，避免补全点击后重开）
     });
-    ta.addEventListener('scroll', () => { pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft; });
+    // 自动补全键盘控制：Tab 补全（保持打开）/ ↑↓ 选择 / Esc 关闭
+    ta.addEventListener('keydown', (e) => {
+        if (!acItems.length || (acEl && acEl.style.display === 'none')) return;
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const it = acItems[acIndex] || acItems[0];
+            if (it) acApply(it, false); // Tab 补全：不关闭泡泡
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            acIndex = (acIndex + 1) % acItems.length;
+            acRender(acItems); acPosition(ta);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            acIndex = (acIndex - 1 + acItems.length) % acItems.length;
+            acRender(acItems); acPosition(ta);
+        } else if (e.key === 'Escape') {
+            e.preventDefault(); acHide();
+        }
+    });
+    ta.addEventListener('blur', () => {
+        // 延迟关闭：避免与候选项 mousedown（已 preventDefault 不会触发 blur）冲突
+        setTimeout(() => { if (acEl && acEl.style.display !== 'none' && document.activeElement !== ta) acHide(); }, 120);
+    });
+    ta.addEventListener('scroll', () => { pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft; if (acEl && acEl.style.display !== 'none') acPosition(ta); });
     ta.addEventListener('change', () => {
         block.scope.program = ta.value;
         block.refresh();
@@ -5264,6 +5503,190 @@ function openMolangHelp() {
     m.addEventListener('click', (e) => { if (e.target === m) close(); }); // 点击遮罩关闭
     m.querySelector('#mhCloseBtn').addEventListener('click', close);
     m.querySelectorAll('.mh-copy').forEach(b => b.addEventListener('click', () => mhCopy(b.dataset.copy)));
+}
+
+// ========== molang 自动补全（在 v./variable./t./temp./q./math. 后弹出候选） ==========
+// 电脑端 Tab 补全（保持泡泡不关闭）；点击候选项补全并关闭；↑↓ 选择；Esc 关闭。
+// 输入过程中动态过滤：math 显示全部数学函数，math.s 只显示 sqrt/sin 等。
+let acEl = null, acItems = [], acIndex = 0, acBlock = null, acSuppress = false;
+
+// textarea 光标像素坐标（镜像法，用于把泡泡放在光标上方）
+function getCaretCoordinates(el, position) {
+    const div = document.createElement('div');
+    const style = getComputedStyle(el);
+    const props = ['boxSizing', 'width', 'height', 'overflowX', 'overflowY',
+        'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+        'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch', 'fontSize', 'fontSizeAdjust',
+        'lineHeight', 'fontFamily', 'textAlign', 'textTransform', 'textIndent',
+        'letterSpacing', 'wordSpacing', 'tabSize', 'whiteSpace', 'wordWrap'];
+    props.forEach(p => { try { div.style[p] = style[p]; } catch (e) {} });
+    div.style.position = 'absolute';
+    div.style.visibility = 'hidden';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordWrap = 'break-word';
+    div.textContent = el.value.substring(0, position);
+    const span = document.createElement('span');
+    span.textContent = el.value.substring(position) || '.';
+    div.appendChild(span);
+    document.body.appendChild(div);
+    const coords = {
+        top: span.offsetTop + (parseInt(style.borderTopWidth, 10) || 0),
+        left: span.offsetLeft + (parseInt(style.borderLeftWidth, 10) || 0),
+        height: parseInt(style.lineHeight, 10) || parseInt(style.fontSize, 10) || 16
+    };
+    document.body.removeChild(div);
+    return coords;
+}
+
+function acEnsureEl() {
+    if (acEl) return acEl;
+    acEl = document.createElement('div');
+    acEl.id = 'molangAutocomplete';
+    // 点击候选项：阻止默认（保留 textarea 焦点、避免 blur），补全并关闭
+    acEl.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('.ac-item');
+        if (!item || !acItems.length) return;
+        e.preventDefault();
+        const idx = parseInt(item.dataset.idx, 10);
+        acApply(acItems[idx], true);
+    });
+    // 点击泡泡之外：关闭（点到 textarea 本身不关，便于继续输入）
+    document.addEventListener('mousedown', (e) => {
+        if (acEl && acEl.style.display !== 'none' && !acEl.contains(e.target)) {
+            const ta = document.getElementById('molangTextarea');
+            if (e.target !== ta) acHide();
+        }
+    });
+    document.body.appendChild(acEl);
+    return acEl;
+}
+
+function acHide() {
+    if (acEl) acEl.style.display = 'none';
+    acItems = []; acIndex = 0;
+}
+
+// 依据光标前的 token 计算候选列表（含每个候选项的替换区间与插入文本）
+function acBuildCandidates(ta, block) {
+    const caret = ta.selectionStart;
+    const before = ta.value.slice(0, caret);
+    // 向后扫描标识符字符（含 . 与 _）
+    let start = caret;
+    while (start > 0) {
+        const ch = before[start - 1];
+        if (/[A-Za-z0-9_.]/.test(ch)) start--; else break;
+    }
+    const token = before.slice(start, caret);
+    if (!token) return null;
+    let base, rest, hasDot;
+    const dotIdx = token.indexOf('.');
+    if (dotIdx >= 0) { base = token.slice(0, dotIdx); rest = token.slice(dotIdx + 1); hasDot = true; }
+    else { base = token; rest = ''; hasDot = false; }
+    const lb = base.toLowerCase();
+    const filter = rest.toLowerCase();
+    const matchName = (n) => n.toLowerCase().startsWith(filter);
+    const list = [];
+    if (lb === 'v' || lb === 'variable') {
+        for (const k of block.scope.vars.keys()) {
+            const bare = k.startsWith('v.') ? k.slice(2) : k;
+            if (matchName(bare)) list.push({ kind: 'var', bare, ns: lb === 'variable' ? 'variable.' : 'v.' });
+        }
+    } else if (lb === 't' || lb === 'temp') {
+        for (const k of globalVars.keys()) {
+            if (matchName(k)) list.push({ kind: 'var', bare: k, ns: lb === 'temp' ? 'temp.' : 't.' });
+        }
+    } else if (lb === 'q') {
+        for (const f of MOLANG_QUERY_FUNCS) {
+            const p = f.name.indexOf('(');
+            const fn = p >= 0 ? f.name.slice(2, p) : f.name.slice(2);
+            if (matchName(fn)) list.push({ kind: 'func', bare: fn, display: f.name, ns: 'q.', paren: p >= 0 });
+        }
+    } else if (lb === 'math') {
+        for (const f of MOLANG_MATH_FUNCS) {
+            const p = f.name.indexOf('(');
+            const fn = p >= 0 ? f.name.slice(5, p) : f.name.slice(5).split(/\s+/)[0];
+            if (matchName(fn)) list.push({ kind: 'func', bare: fn, display: f.name, ns: 'math.', paren: p >= 0 });
+        }
+    } else {
+        return null;
+    }
+    if (!list.length) return null;
+    return list.map((it) => {
+        let replaceStart, insertText, label, tag, tagCls;
+        if (it.kind === 'var') {
+            if (hasDot) { replaceStart = start + base.length + 1; insertText = it.bare; }
+            else { replaceStart = start; insertText = it.ns + it.bare; }
+            label = it.ns + it.bare; tag = '变量'; tagCls = 'var';
+        } else {
+            if (hasDot) { replaceStart = start + base.length + 1; insertText = it.paren ? it.bare + '(' : it.bare; }
+            else { replaceStart = start; insertText = it.paren ? it.ns + it.bare + '(' : it.ns + it.bare; }
+            label = it.display; tag = it.ns === 'q.' ? '查询' : '函数'; tagCls = it.ns === 'q.' ? 'q' : 'func';
+        }
+        return { replaceStart, replaceEnd: caret, insertText, label, tag, tagCls };
+    });
+}
+
+function acRender(items) {
+    const el = acEnsureEl();
+    if (acIndex >= items.length) acIndex = items.length - 1;
+    if (acIndex < 0) acIndex = 0;
+    el.innerHTML = '';
+    items.forEach((it, i) => {
+        const d = document.createElement('div');
+        d.className = 'ac-item' + (i === acIndex ? ' active' : '');
+        d.dataset.idx = i;
+        d.innerHTML = `<span class="ac-name">${escapeHtml(it.label)}</span><span class="ac-tag ${it.tagCls}">${it.tag}</span>`;
+        el.appendChild(d);
+    });
+    const hint = document.createElement('div');
+    hint.className = 'ac-hint';
+    hint.textContent = '↑↓ 选择 · Tab 补全（保持打开）· 点击选择（关闭）· Esc 关闭';
+    el.appendChild(hint);
+    el.style.display = 'block';
+    const active = el.querySelector('.ac-item.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function acPosition(ta) {
+    if (!acEl || acEl.style.display === 'none') return;
+    const c = getCaretCoordinates(ta, ta.selectionStart);
+    const tr = ta.getBoundingClientRect();
+    const pw = acEl.offsetWidth, ph = acEl.offsetHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let left = tr.left + c.left - ta.scrollLeft;
+    let top = tr.top + c.top - ta.scrollTop - ph - 8;
+    if (left + pw > vw - 8) left = vw - pw - 8;
+    if (left < 8) left = 8;
+    if (top < 8) {
+        top = tr.top + c.top - ta.scrollTop + c.height + 8;
+        if (top + ph > vh - 8) top = vh - ph - 8;
+    }
+    acEl.style.left = left + 'px';
+    acEl.style.top = top + 'px';
+}
+
+function acUpdate(ta, block) {
+    acBlock = block;
+    const items = acBuildCandidates(ta, block);
+    if (!items) { acHide(); return; }
+    acItems = items;
+    acIndex = 0;
+    acRender(items);
+    acPosition(ta);
+}
+
+function acApply(item, closeAfter) {
+    const ta = document.getElementById('molangTextarea');
+    if (!ta || !item) return;
+    const val = ta.value;
+    ta.value = val.slice(0, item.replaceStart) + item.insertText + val.slice(item.replaceEnd);
+    const caret = item.replaceStart + item.insertText.length;
+    ta.setSelectionRange(caret, caret);
+    if (closeAfter) acSuppress = true; // 阻止后续 input 事件重新弹出
+    ta.dispatchEvent(new Event('input'));
+    if (closeAfter) { acSuppress = false; acHide(); }
+    // Tab 路径（closeAfter=false）：上面的 input 事件触发 acUpdate 重新渲染并保持打开
 }
 
 
@@ -5734,15 +6157,22 @@ function renderVariablesForBlock(block) {
     if (!cnt) return;
     const isOpen = cnt.style.display !== 'none';
 
+    // 被点击分组的父级（用于嵌套子分组时，避免把父分组也一起折叠）
+    const parent = this.closest('.group-content')?.closest('.var-group');
+    const parentGroupName = parent ? parent.dataset.group : null;
+
     if (isOpen) {
         cnt.style.display = 'none';
         this.querySelector('.group-toggle').textContent = '▶';
         if (currentOpenGroup === gn) currentOpenGroup = null;
         expandedVars.delete(gn);
     } else {
-        // 关闭所有同级一级分组（位移、缩放、旋转、自定义变量 以及 全局变量顶级组）
+        // 关闭所有同级一级分组（位移、缩放、旋转、自定义变量 以及 全局变量顶级组），
+        // 但**跳过被点击子分组的父级**——否则展开子分组（如 t.xx_）会把整个父分组（全局变量）折叠，
+        // 表现为「子折叠影响到父折叠 / 整个全局变量被折叠」。
         const allTopGroups = document.querySelectorAll('.var-group[data-group="位移"], .var-group[data-group="缩放"], .var-group[data-group="旋转"], .var-group[data-group="自定义"], .var-group[data-group="global_top"]');
         allTopGroups.forEach(g => {
+            if (g.dataset.group === parentGroupName) return; // 保留父级不被折叠
             const content = g.querySelector('.group-content');
             if (content && content !== cnt) {
                 content.style.display = 'none';
@@ -5750,10 +6180,8 @@ function renderVariablesForBlock(block) {
             }
         });
 
-        // 对于多级分组（如 custom_xxx, global_xxx），也要关闭它们的兄弟组
-        const parent = this.closest('.group-content')?.closest('.var-group');
+        // 对于多级分组（如 custom_xxx, global_xxx），关闭它们的兄弟组（与父级保护一致）
         if (parent) {
-            const parentGroupName = parent.dataset.group;
             const siblings = document.querySelectorAll(`.var-group[data-group="${parentGroupName}"] > .group-content > .var-group`);
             siblings.forEach(g => {
                 const c = g.querySelector('.group-content');
@@ -6543,11 +6971,12 @@ function bindBone(child, parent) {
 }
 
 function ensureGlobalVar(key, expr, sourceBlockId) {
-    if (!globalVars.has(key)) { 
-    const rg = getDefaultRange(`t.${key}`); 
-    globalVars.set(key, { def: new VarDef(expr, 0, rg.min, rg.max, rg.step), sourceBlockId: sourceBlockId }); 
-}
-    else { const g = globalVars.get(key); g.def.expr = expr; g.sourceBlockId = sourceBlockId; }
+    if (!globalVars.has(key)) {
+        const rg = getDefaultRange(`t.${key}`);
+        globalVars.set(key, { def: new VarDef(expr, 0, rg.min, rg.max, rg.step), sourceBlockId: sourceBlockId });
+    }
+    // 已存在的全局变量（可能已被用户自定义，例如把 v.xrot 改为 v.rotatex）一律保留，
+    // 不再用预设 expr 覆盖——否则对同一父级再次绑定时会把用户修改清空，导致骨骼绑定"失效"。
 }
 function escapeHtml(str) { return str.replace(/[&<>"]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : '&quot;'); }
 function showModal(title, content, onConfirm = null, isTextarea = true) {
@@ -6737,7 +7166,14 @@ function getMaterialTag(block) {
 
 // 获取单个方块的完整命令文本（包括前缀、后缀、旗帜标记）
 function getCommandTextForBlock(block) {
-    let varsStr = getOrderedAssignmentsString(block);
+    // molang 接管方块：直接输出完整 program（含三元条件、q. 查询与全部变量），
+    // 不能用 def.expr 重建，否则条件分支会被吞成单一求值结果而丢失指令内容。
+    let varsStr;
+    if (block.scope && block.scope.molangMode && block.scope.program && block.scope.program.trim()) {
+        varsStr = block.scope.program.trim();
+    } else {
+        varsStr = getOrderedAssignmentsString(block);
+    }
     let blockIdPrefix = getMaterialTag(block);
     let groupPrefix = '';
     if (block.group) {
@@ -6922,9 +7358,21 @@ function showCompressExportModal(returnToList = false) {
     saveSceneState();
 
     compressParamsList = [];
+    // 批次内若含 molang 接管方块，统一用全称（禁用短名压缩），否则短名恢复串会覆盖全称变量导致脚本错乱
+    let compressHasMolang = false;
+    for (let b of blocks) {
+        if (b.scope && b.scope.molangMode && b.scope.program && b.scope.program.trim()) { compressHasMolang = true; break; }
+    }
     for (let b of blocks) {
         let varsStr = '';
-        try { varsStr = getOrderedAssignmentsString(b, true); } catch(e) { varsStr = ''; }
+        const isMolang = b.scope && b.scope.molangMode && b.scope.program && b.scope.program.trim();
+        if (isMolang) {
+            varsStr = b.scope.program.trim();
+        } else if (compressHasMolang) {
+            varsStr = getOrderedAssignmentsString(b, false);
+        } else {
+            try { varsStr = getOrderedAssignmentsString(b, true); } catch(e) { varsStr = ''; }
+        }
         
         let blockIdPrefix = getMaterialTag(b);
         let groupPrefix = '';
@@ -8131,7 +8579,7 @@ function showCompressExportModal(returnToList = false) {
             const MAX_LEN = 30000;
             const prefix = exportPrefix;
             const suffix = exportSuffix.replace(/{id}/g, '');
-            const restoreStr = getShortNameRestoreString();
+            const restoreStr = compressHasMolang ? '' : getShortNameRestoreString();
             const compressedBlocks = items.map(item => `${item.cond}?(${item.param})`);
             const cmds = [];
             let currentGroup = [];
@@ -8234,7 +8682,13 @@ function generateCompressedCommands(sx, sz, ex, ez) {
 
     const items = [];
     for (let b of blocks) {
-        let varsStr = getOrderedAssignmentsString(b);
+        // molang 接管方块：直接输出完整 program，避免条件分支被重建吞掉
+        let varsStr;
+        if (b.scope && b.scope.molangMode && b.scope.program && b.scope.program.trim()) {
+            varsStr = b.scope.program.trim();
+        } else {
+            varsStr = getOrderedAssignmentsString(b);
+        }
         let blockIdPrefix = getMaterialTag(b);
         let groupPrefix = '';
         if (b.group) {
@@ -8526,6 +8980,14 @@ function importFromCommands(text) {
             }
         }
         
+        // 若含有逻辑判别式（三元条件 / q. 查询 / 比较逻辑运算符），普通变量卡片无法表达，
+        // 必须自动启用 molang 接管并把原始指令整段存为 program，否则条件逻辑会被拆分丢失。
+        const hasLogic = assignments.some(a => hasLogicalDiscriminator(a.expr));
+        if (hasLogic) {
+            newBlock.scope.molangMode = true;
+            newBlock.scope.program = extractMolangProgram(content);
+        }
+
         newBlock.refresh();
         addBlock(newBlock);
         successCount++;
@@ -10129,7 +10591,7 @@ const sidePanelWidthRange = document.getElementById('sidePanelWidthRange');
 const sidePanelWidthLabel = document.getElementById('sidePanelWidthLabel');
 let isBlockListTopLeft = true;
 let isSidePanelMode = false;
-let sidePanelWidth = 360;
+let sidePanelWidth = Math.max(320, Math.min(460, Math.floor(window.innerWidth * 0.32))); // 侧边模式初始宽度随屏幕宽度自适应
 let panelBottomHeight = 280;   // 底部模式下数据面板的高度，切换侧边栏时用于正确还原
 let isNewLayoutMode = false;
 let isKeyframeMode = false; // 新操作模式下的关键帧编辑模式
@@ -10299,17 +10761,19 @@ function applyNewLayoutMode() {
         renderSideBlockList();
         updateSideListResizeHandle();   // 列表渲染完成后再定位蓝条，避免内容撑高后位置错位/不显示
         // 新操作模式时显示世界轴位移、枢轴联动和数据面板宽度设置，隐藏方块列表位置设置
+        // revealSetting：显示项并确保其所在设置分组（可能默认收起）同步展开，避免被藏起来
+        const revealSetting = (el) => { if (!el) return; el.style.display = 'flex'; };
         const worldAxisDispSetting = document.getElementById('worldAxisDispSetting');
-        if (worldAxisDispSetting) worldAxisDispSetting.style.display = 'flex';
+        revealSetting(worldAxisDispSetting);
         const pivotLinkSetting = document.getElementById('pivotLinkSetting');
-        if (pivotLinkSetting) pivotLinkSetting.style.display = 'flex';
-        if (sidePanelWidthSetting) sidePanelWidthSetting.style.display = 'flex';
+        revealSetting(pivotLinkSetting);
+        revealSetting(sidePanelWidthSetting);
         const blockListTopLeftSetting = document.getElementById('blockListTopLeftSetting');
         if (blockListTopLeftSetting) blockListTopLeftSetting.style.display = 'none';
         const brushModeSetting = document.getElementById('brushModeSetting');
-        if (brushModeSetting) brushModeSetting.style.display = 'flex';
+        revealSetting(brushModeSetting);
         const brushThicknessSetting = document.getElementById('brushThicknessSetting');
-        if (brushThicknessSetting) brushThicknessSetting.style.display = 'flex';
+        revealSetting(brushThicknessSetting);
     } else {
         body.classList.remove('new-layout-active');
         if (newTopBar) newTopBar.style.display = 'none';
@@ -11001,10 +11465,10 @@ function setupNewLayoutUI() {
     document.querySelectorAll('#actionDropdown .top-dropdown-item[data-action]').forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
-            closeAllTopDropdowns();
             const action = item.dataset.action;
             switch (action) {
                 case 'settings':
+                    closeAllTopDropdowns();   // 打开设置面板：收起操作列表（避免与设置面板叠放）
                     // 打开设置面板
                     if (uiSettingsPanel) {
                         const show = uiSettingsPanel.style.display !== 'block';
@@ -11018,15 +11482,18 @@ function setupNewLayoutUI() {
                     }
                     break;
                 case 'fullscreen':
+                    closeAllTopDropdowns();
                     toggleFullscreen();
                     break;
                 case 'undo':
+                    // 撤销/重做：保持操作列表打开，方便连续多次撤销或紧接着点重做（不再自动收起）
                     safeUndo();
                     break;
                 case 'redo':
                     safeRedo();
                     break;
                 case 'changelog':
+                    closeAllTopDropdowns();
                     showChangelogModal();
                     break;
             }
@@ -11055,6 +11522,7 @@ function toggleUISettingsPanel(e) {
             if (uiSettingsPanel.parentElement !== document.body) document.body.appendChild(uiSettingsPanel);
         } catch (err) { /* ignore */ }
         positionUISettingsPanel();
+        try { syncCamPosInputs(); } catch (e) {}
     }
 }
 window.toggleUISettingsPanel = toggleUISettingsPanel;
@@ -11065,6 +11533,7 @@ function positionUISettingsPanel() {
     if (!panel || !btn) return;
     const rect = btn.getBoundingClientRect();
     const gap = 8;
+    const heightCap = Math.round(window.innerHeight * 0.25);
     panel.style.position = 'fixed';
     panel.style.zIndex = 9999;
     panel.style.pointerEvents = 'auto';
@@ -11093,15 +11562,37 @@ function positionUISettingsPanel() {
         panel.style.bottom = 'auto';
         panel.style.transform = 'none';
     } else {
-        panel.style.left = '50%';
-        panel.style.transform = 'translateX(-50%) skewX(-5deg)';
-        panel.style.bottom = `${Math.max(8, window.innerHeight - rect.bottom + gap)}px`;
-        panel.style.top = 'auto';
+        // 默认模式：设置面板贴近设置按钮（左缘对齐按钮，优先在其下方，空间不足则贴在其上方同一列）
+        const pw = panel.offsetWidth || 320;
+        const ph = panel.offsetHeight || 0;
+        let left = rect.left;
+        if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+        if (left < 8) left = 8;
+        panel.style.left = `${left}px`;
         panel.style.right = 'auto';
+        panel.style.transform = 'none';
+        panel.style.width = '320px';
+        // 按按钮上/下方可用空间限制高度，让面板能真正贴着按钮（放不下才滚动）
+        const spaceBelow = window.innerHeight - rect.bottom - gap;
+        const spaceAbove = rect.top - gap - 8;
+        const avail = Math.max(spaceBelow, spaceAbove);
+        panel.style.maxHeight = Math.max(160, Math.min(avail, heightCap)) + 'px';
+        let top;
+        if (spaceBelow >= ph && spaceBelow >= spaceAbove) {
+            top = rect.bottom + gap;
+        } else if (spaceAbove >= ph) {
+            top = rect.top - ph - gap;
+        } else {
+            top = Math.max(8, rect.top - avail - gap);
+        }
+        panel.style.top = `${top}px`;
+        panel.style.bottom = 'auto';
     }
-    // 防止面板超出视口底部把下方选项（如 molang 接管）挤出可视区：限制高度可滚动，溢出时上移
-    panel.style.maxHeight = (window.innerHeight - 16) + 'px';
-    panel.style.overflowY = 'auto';
+    // 限制面板最大高度：若前面分支已算出更紧的 maxHeight（如默认模式贴按钮）则保留，否则用整屏高度；溢出视口时由下方逻辑上移兜底
+    const prevMax = parseInt(panel.style.maxHeight) || 0;
+    if (!prevMax || prevMax > heightCap) {
+        panel.style.maxHeight = Math.min(heightCap, window.innerHeight - 32) + 'px';
+    }
     const pr = panel.getBoundingClientRect();
     if (pr.bottom > window.innerHeight - 8) {
         let t = window.innerHeight - pr.height - 8;
@@ -13132,6 +13623,10 @@ function beginGizmoDrag(cx, cy, ev) {
     // 拉伸轴：记录当前世界方向，供拖拽时沿轴投影
     if (activePick.type === 'stretch' && stretchGizmoRefs) activePick.axis = (stretchGizmoRefs.worldDir || new THREE.Vector3(0,0,1)).clone();
     draggingGizmo = true; dragNeedsRebuild = false; lastDragRebuild = 0;
+    // 拖拽起点即抢占指针：保证鼠标移动到面板/工具栏上方或移出画布时，move/up 事件仍持续送达画布，
+    // 避免 Gizmo 拖拽中途丢失事件而“改不动数据”；同时抢占后浏览器不会再派发 pointerleave，
+    // 也就不会触发下面“离开画布即结束拖拽”的提前终止分支。
+    if (ev && ev.pointerId != null) { try { renderer.domElement.setPointerCapture(ev.pointerId); } catch (_) {} }
     // 非世界轴位移模式的 base 箭头：将拖拽轴更新为实际的剪切轴方向，匹配视觉箭头朝向
     if (!useWorldAxisDisplacement && herModes.has('base') && activePick.type === 'move' && activePick.varName && activePick.varName.includes('basepos')) {
         const b = selected();
@@ -13223,10 +13718,12 @@ function moveGizmoDrag(cx, cy, ev) {
     if (ev) ev.preventDefault(); return true;
 }
 function endGizmoDrag(ev) {
-    if (pendingInputPick) { const p=pendingInputPick; pendingInputPick=null; controls.enabled=true; const dt=performance.now()-p.t, md=Math.hypot((p.lastX??p.x)-p.x,(p.lastY??p.y)-p.y); if(!p.moved&&md<=10&&dt<=650) promptVarInput(p.varName,ev); if(ev) ev.preventDefault(); gizmoDragJustEnded = true; setTimeout(() => { gizmoDragJustEnded = false; }, 300); return true; }
+    const _pid = (ev && ev.pointerId != null) ? ev.pointerId : null;
+    const _rel = () => { if (_pid != null) { try { renderer.domElement.releasePointerCapture(_pid); } catch (_) {} } };
+    if (pendingInputPick) { const p=pendingInputPick; pendingInputPick=null; _rel(); controls.enabled=true; const dt=performance.now()-p.t, md=Math.hypot((p.lastX??p.x)-p.x,(p.lastY??p.y)-p.y); if(!p.moved&&md<=10&&dt<=650) promptVarInput(p.varName,ev); if(ev) ev.preventDefault(); gizmoDragJustEnded = true; setTimeout(() => { gizmoDragJustEnded = false; }, 300); return true; }
     if (activePick) {
         const wr = activePick.type==='rot';
-        clearActiveHighlight(); activePick=null; draggingGizmo=false; controls.enabled=true;
+        clearActiveHighlight(); activePick=null; draggingGizmo=false; controls.enabled=true; _rel();
         if (wr) { recordAction(); renderVariablesForBlock(selectedBlock); updateOriginCenterLineLive(selectedBlock); updateRotGizmosLive(); }
         if (dragNeedsRebuild) { dragNeedsRebuild=false; requestGizmoRefresh(); updateToolbar(true); }
         // 拖拽结束后同步关键帧数据
@@ -13267,8 +13764,11 @@ window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
     // 编辑文本时，方向键交给文本框处理（移动光标），不要平移相机
     if (isEditable && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.stopImmediatePropagation(); return; }
-    if (e.ctrlKey && (key === 'z' || e.code === 'KeyZ')) { e.preventDefault(); safeUndo(); return; }
-    if (e.ctrlKey && (key === 'y' || e.code === 'KeyY')) { e.preventDefault(); safeRedo(); return; }
+    // 文本框/输入框聚焦时，Ctrl+Z / Ctrl+Y 交给浏览器原生撤销/重做：
+    // 原生撤销只回退文本、不重建面板（并触发 input 把 program 同步回去），
+    // 否则全局接管会触发整面板重渲染，把 molang 编辑器被手动拖高的高度重置掉。
+    if (e.ctrlKey && (key === 'z' || e.code === 'KeyZ')) { if (isEditable) return; e.preventDefault(); safeUndo(); return; }
+    if (e.ctrlKey && (key === 'y' || e.code === 'KeyY')) { if (isEditable) return; e.preventDefault(); safeRedo(); return; }
     if (e.ctrlKey && (key === 'd' || e.code === 'KeyD') && !isEditable) { e.preventDefault(); duplicateSelectedBlocks(); return; }
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable && !isMouseInPanel) { e.preventDefault(); deleteSelectedBlocks(); return; }
     if (e.ctrlKey && e.shiftKey && (e.code === 'KeyE' || key === 'e') && !isEditable) { e.preventDefault(); showCommandListModal(); return; }
@@ -13289,8 +13789,9 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x030617);
 gizmoRoot = new THREE.Group(); scene.add(gizmoRoot); gizmoRoot.visible = false;
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 20000);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000000);
 camera.position.set(8, 6, 10);
+const BASE_CAM_DIST = camera.position.length(); // 默认视角相机到目标(原点)的轨道半径：作为网格精细度的基准（此距离时 step=1，即 1×1 网格）。旋转/平移不改变该半径 → 刻度不随转动变化；仅缩放(拉近/拉远)改变它 → 精细度平滑变化
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
 renderer.setClearColor(0x000000, 1); // 不透明背景，避免透明穿透导致空白
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -13337,6 +13838,62 @@ document.addEventListener('focusout', () => { if (controls) controls.enableKeys 
 let _cameraExprDirty = false;
 controls.addEventListener('change', () => { if (_queryUpdateEnabled) _cameraExprDirty = true; });
 
+// ========== 摄像机坐标 & 视场角(FOV) 设置 ==========
+const camPosX = document.getElementById('camPosX');
+const camPosY = document.getElementById('camPosY');
+const camPosZ = document.getElementById('camPosZ');
+const camPosApplyBtn = document.getElementById('camPosApplyBtn');
+const camPosReadBtn = document.getElementById('camPosReadBtn');
+const cameraFovRange = document.getElementById('cameraFovRange');
+const cameraFovLabel = document.getElementById('cameraFovLabel');
+
+function readCamPosInputs() {
+    const x = camPosX ? parseFloat(camPosX.value) : NaN;
+    const y = camPosY ? parseFloat(camPosY.value) : NaN;
+    const z = camPosZ ? parseFloat(camPosZ.value) : NaN;
+    if (isNaN(x) || isNaN(y) || isNaN(z)) return null;
+    return new THREE.Vector3(x, y, z);
+}
+
+function applyCamPos() {
+    const p = readCamPosInputs();
+    if (!p) return;
+    camera.position.copy(p);
+    if (controls) controls.update();
+}
+
+function syncCamPosInputs() {
+    if (camPosX) camPosX.value = camera.position.x.toFixed(1);
+    if (camPosY) camPosY.value = camera.position.y.toFixed(1);
+    if (camPosZ) camPosZ.value = camera.position.z.toFixed(1);
+}
+
+if (camPosApplyBtn) camPosApplyBtn.addEventListener('click', applyCamPos);
+if (camPosReadBtn) camPosReadBtn.addEventListener('click', syncCamPosInputs);
+if (camPosX) camPosX.addEventListener('change', applyCamPos);
+if (camPosY) camPosY.addEventListener('change', applyCamPos);
+if (camPosZ) camPosZ.addEventListener('change', applyCamPos);
+
+let cameraFov = 45;
+function applyCameraFov(v) {
+    cameraFov = Math.min(120, Math.max(20, v));
+    camera.fov = cameraFov;
+    camera.updateProjectionMatrix();
+    if (cameraFovLabel) cameraFovLabel.textContent = Math.round(cameraFov) + '°';
+    if (cameraFovRange) cameraFovRange.value = cameraFov;
+    try { localStorage.setItem('camera_fov', String(cameraFov)); } catch (e) {}
+}
+if (cameraFovRange) {
+    cameraFovRange.addEventListener('input', (e) => { applyCameraFov(parseFloat(e.target.value) || 45); });
+}
+// 恢复上次 FOV 偏好
+try {
+    const savedFov = parseFloat(localStorage.getItem('camera_fov'));
+    if (!isNaN(savedFov)) cameraFov = savedFov;
+} catch (e) {}
+applyCameraFov(cameraFov);
+syncCamPosInputs();
+
 // ---------- 挂载 Gizmo 拖拽事件 ----------
 renderer.domElement.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.data-panel') || e.target.closest('.top-bar') || e.target.closest('.new-top-bar') || e.target.closest('.side-block-list')) return;
@@ -13361,6 +13918,11 @@ renderer.domElement.addEventListener('pointerup', (e) => {
     endGizmoDrag(e);
 });
 renderer.domElement.addEventListener('pointerleave', (e) => {
+    // 仅在未成功抢占指针（极少数浏览器不支持）时才允许“离开画布即结束”，
+    // 正常抢占了指针时浏览器不会派发 pointerleave，避免拖拽中途被误终止。
+    if ((draggingGizmo || pendingInputPick) && !(renderer.domElement.hasPointerCapture && renderer.domElement.hasPointerCapture(e.pointerId))) endGizmoDrag(e);
+});
+renderer.domElement.addEventListener('pointercancel', (e) => {
     if (draggingGizmo || pendingInputPick) endGizmoDrag(e);
 });
 renderer.domElement.addEventListener('touchstart', (e) => {
@@ -13455,85 +14017,394 @@ document.getElementById('modeSwitchBtn').addEventListener('click', () => {
     applyTheme();                  // 应用主题
 });
 // 轴线与网格
-let axisGroup = null;
+let originAxesGroup = null;  // 固定在世界原点的 XYZ 参考轴（X、Z 轴恒在 Y=0 平面，绝不随视点移动）
+let axisGroup = null;        // 跟随视点、提供精细刻度的动态网格与坐标标签（始终位于 Y=0 平面）
+let originGridGroup = null;  // 固定在世界原点的"home base"地面网格层：模型/坐标轴始终踩在其上，平移脱离原点时也不悬空
+let originGridMat = null;    // 原点网格共享材质（每帧据相机到原点距离淡出）
 let showAxes = true, showGrid = true, showTicks = true;
-let lastDistance = 0;
-function createDynamicAxesAndGrid(camDist) {
+let lastGridSig = '';
+let lastOriginSig = '';
+let lastOriginGridSig = '';
+// 根据相机状态计算坐标网格参数：精细度(step)取「整齐档位」(0.5/1/2/5/10…)，由「默认视角相机到目标的轨道半径(BASE_CAM_DIST)」决定——默认视角时 step=1(1×1 网格)；
+// 旋转/平移不改变轨道半径 → 刻度不变；仅缩放改变它并按约 2 倍档位整档切换（标准地图式缩放级别，标签始终干净）；显示范围 = camDist*GRID_K（覆盖视野）。
+// 坐标轴 + 轴上刻度显示范围须超过网格长度（axisActualMax = 网格 × AXIS_OVER）。
+// 刻度数值格式化：按步长动态取小数位（最多 3 位），避免精细时（如 0.5）被 toFixed(1) 显示成 0.0；整齐档位下刻度通常为整数或半格(0.5)。
+function formatTick(v, stepHint) {
+    let s = String(stepHint);
+    let i = s.indexOf('.');
+    let dec = i < 0 ? 0 : (s.length - i - 1);
+    dec = Math.min(dec, 3);
+    const r = Math.round(v * Math.pow(10, dec)) / Math.pow(10, dec);
+    if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
+    return r.toFixed(dec);
+}
+function computeGridParams(camDist, panDist = 0) {
+    // 精细度(step)取「整齐档位」：间距恒为 0.5/1/2/5/10… 这类整齐值 → 刻度标签永远干净（整数或半格0.5），最高精度精确停在 0.5；
+    //   旋转/平移不改变 camDist，故刻度不变；仅缩放改变它，按约 2 倍档位整档切换（标准地图式缩放级别）。默认 step=1（1×1 网格）。
+    const NICE_STEPS = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];  // 整齐档位：0.5 最高精度、10000 最低精度
+    const minStep = 0.5;                                 // 最高精度下限（最精细网格间距）
+    const maxStep = 10000;                               // 最低精度上限
+    const minMax = minStep * 16;                         // 贴地时最小可见半径下限
+    // 连续间距随 camDist 线性缩放（原离散档位表已移除）→ 跨阈值时不再"啪"地整档跳变，网格中心也不再随取整平移错位
+    // 相对默认轨道半径：=1 时 step=1（1×1 网格）。加 epsilon 吸附，避免浮点误差使 rel 略大于 1 时
+    // 落入"放大"分支误取更大档位（默认视角 step 应为 1 而非 2）。
+    let rel = camDist / BASE_CAM_DIST;
+    if (Math.abs(rel - 1) < 1e-6) rel = 1;   // 默认视角：精确 step=1
+    rel = Math.max(1e-9, rel);
+    let step;
+    if (rel <= 1) {
+        // 比默认更近(放大)：取最大整齐档位 <= rel（更精细），下限 0.5
+        step = minStep;
+        for (const s of NICE_STEPS) { if (s <= rel) step = s; else break; }
+    } else {
+        // 比默认更远(缩小)：取最小整齐档位 >= rel（更粗略）
+        step = maxStep;
+        for (let i = NICE_STEPS.length - 1; i >= 0; i--) { if (NICE_STEPS[i] >= rel) step = NICE_STEPS[i]; }
+    }
+    // 网格显示范围（半幅）：= camDist*GRID_K（始终覆盖视野，保证网格可见），并至少 MIN_CELLS 格
+    const GRID_K = 3.0;       // 网格范围 = camDist * 3（较原 1.5 加大）
+    const MIN_CELLS = 16;     // 网格半幅最少格数（保证至少可见一片网格）
+    const N_MAX = 400;        // 网格半幅线条数上限（性能护栏）
+    let gridMaxLen = Math.max(minMax, camDist * GRID_K, step * MIN_CELLS);
+    // 性能护栏：若格数超过 N_MAX，放宽到「不小于 gridMaxLen/N_MAX 的最小整齐档位」（仍为整齐值、标签干净），避免海量网格线卡顿
+    if (gridMaxLen / step > N_MAX) {
+        const need = gridMaxLen / N_MAX;
+        step = maxStep;
+        for (let i = NICE_STEPS.length - 1; i >= 0; i--) { if (NICE_STEPS[i] >= need) step = NICE_STEPS[i]; }
+    }
+    step = Math.min(maxStep, Math.max(minStep, step));   // 精度区间 [0.5, 10000] 收口
+    const gridActualMax = Math.floor(gridMaxLen / step) * step;
+    // 坐标轴 + 轴上刻度显示范围须超过网格长度；并随平移"延伸"：覆盖"原点→相机目标"整段跨度，
+    // 使原点 XYZ 轴在平移后也延伸到你所在位置（而不是只钉在原点），刻度步长自适应保证标签数量有界。
+    const AXIS_OVER = 1.5;
+    const axisZoomMax = Math.floor((gridMaxLen * AXIS_OVER) / step) * step;
+    const axisExtendMax = Math.ceil((panDist + gridActualMax) / step) * step; // 延伸到覆盖平移目标处的网格
+    const axisActualMax = Math.max(axisZoomMax, axisExtendMax);
+    // 轴刻度步长：取网格步长 step 的「整齐整数倍」（与网格对齐、标签永远干净，不出二/三位小数）。
+    //   允许为 step×1（与网格同精度，缩放贴近原点时可显示 0.5 刻度），仅在轴半幅刻度超过 AXIS_TICK_MAX 时才按 2/5/10… 放大，
+    //   使放大/延伸更远时标签数量仍可控。step 本身为整齐值(0.5/1/2/5…)，乘以整数倍后仍为干净刻度，无小数位问题。
+    const AXIS_TICK_MAX = 60;
+    const AXIS_K_MUL = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+    const axisNeedK = axisActualMax / (step * AXIS_TICK_MAX);
+    let axisK = AXIS_K_MUL[0];
+    for (const m of AXIS_K_MUL) { axisK = m; if (m >= axisNeedK) break; }
+    const axisTickStep = step * axisK;
+    return { maxLen: gridMaxLen, step, actualMax: gridActualMax, gridActualMax, axisActualMax, axisTickStep };
+}
+// 世界原点参考轴：X(红)/Y(绿)/Z(蓝) 三条轴钉在世界原点，X、Z 轴位于 Y=0 平面，绝不随视点移动。
+// 轴的精细度(step)由轨道半径决定（旋转/平移不变，仅缩放改变）；显示范围(半幅)由「相机到视点的距离(轨道半径)」与「原点到目标点的水平距离(平移)」共同决定：
+// 平移时坐标轴会"延伸"加长，覆盖"原点→相机目标"整段跨度，保证脚下始终能踩到坐标轴参考。
+function createOriginAxes(step, actualMax, axisTickStep) {
+    if (originAxesGroup) {
+        originAxesGroup.traverse(c => { if (c.isCSS2DObject && c.element) c.element.remove(); });
+        scene.remove(originAxesGroup);
+    }
+    originAxesGroup = new THREE.Group();
+    const L = actualMax;
+    const isMobile = window.innerWidth <= 700;
+    const fontSize = isMobile ? '9px' : '12px';
+    const textColor = document.body.classList.contains('light-mode') ? '#0f172a' : '#e2e8f0';
+    // 沿轴的刻度数值：每 axisTickStep 一个（比网格步长稀疏，使轴延伸到超过网格长度）
+    const tickStep = axisTickStep || step;
+    const axisTicks = (c) => {
+        const out = [];
+        const k0 = Math.ceil((c - actualMax) / tickStep), k1 = Math.floor((c + actualMax) / tickStep);
+        for (let k = k0; k <= k1; k++) { const v = k * tickStep; if (Math.abs(v) > 0.01) out.push(v); }
+        return out;
+    };
+    const ticksX = axisTicks(0), ticksY = axisTicks(0), ticksZ = axisTicks(0);
+    const axes = [
+        { label:'X', color:0xff6666, start:new THREE.Vector3(-L,0,0), end:new THREE.Vector3(L,0,0) },
+        { label:'Y', color:0x66ff66, start:new THREE.Vector3(0,-L,0), end:new THREE.Vector3(0,L,0) },
+        { label:'Z', color:0x66aaff, start:new THREE.Vector3(0,0,-L), end:new THREE.Vector3(0,0,L) }
+    ];
+    axes.forEach(axis => {
+        // 轴线/箭头始终构建进 group，是否显示只由 originAxesGroup.visible 决定，
+        // 避免「先关刻度触发重建时 showAxes 为假、几何未生成，之后单独开轴线却无几何可显示」的 bug
+        const geo = new THREE.BufferGeometry().setFromPoints([axis.start, axis.end]);
+        const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: axis.color }));
+        originAxesGroup.add(line);
+        const dir = new THREE.Vector3().subVectors(axis.end, axis.start).normalize();
+        const arrow = new THREE.ArrowHelper(dir, axis.end, 0.4, axis.color, 0.2, 0.1);
+        originAxesGroup.add(arrow);
+        if (showTicks) {
+            const vals = axis.label === 'X' ? ticksX : axis.label === 'Y' ? ticksY : ticksZ;
+            const tickLen = Math.max(0.05, tickStep * 0.12); // 斜线刻度长度随刻度步长缩放，使其在任何缩放下都可见
+            vals.forEach(val => {
+                let pos = axis.label === 'X' ? new THREE.Vector3(val,0,0) : axis.label === 'Y' ? new THREE.Vector3(0,val,0) : new THREE.Vector3(0,0,val);
+                // 灰色小斜线刻度（恢复原始外观）：沿轴每 step 一个，斜向离开轴线
+                let tickDir = axis.label === 'X' ? new THREE.Vector3(0, tickLen, tickLen) : axis.label === 'Y' ? new THREE.Vector3(tickLen, 0, tickLen) : new THREE.Vector3(tickLen, tickLen, 0);
+                const tickGeo = new THREE.BufferGeometry().setFromPoints([pos, pos.clone().add(tickDir)]);
+                originAxesGroup.add(new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0x888888 })));
+                const div = document.createElement('div');
+                div.textContent = formatTick(val, tickStep);
+                div.style.cssText = `color:${textColor};font-size:${fontSize};font-weight:bold;text-shadow:0 0 2px rgba(0,0,0,0.3);padding:0 2px;white-space:nowrap;`;
+                const labelObj = new CSS2DObject(div);
+                labelObj.position.copy(pos);
+                originAxesGroup.add(labelObj);
+            });
+        }
+    });
+    originAxesGroup.visible = showAxes;
+    scene.add(originAxesGroup);
+}
+// 动态网格：始终位于 Y=0 平面（与原点 X、Z 轴保持一致），水平中心跟随视点(controls.target)，
+// 因此无论在世界哪个象限、缩放到多近，都能获得精细网格与真实世界坐标刻度（如 5020），
+// 而原点 XYZ 参考轴保持钉在世界原点不动。
+function createDynamicGrid(camDist, center) {
     if (axisGroup) {
         axisGroup.traverse(c => { if (c.isCSS2DObject && c.element) c.element.remove(); });
         scene.remove(axisGroup);
     }
     axisGroup = new THREE.Group();
-    let maxLen = Math.min(200, Math.max(5, camDist * 1.5));
-    let step = 1;
-    const targetSteps = [0.5, 1, 2, 5, 10, 20, 50];
-    for (let s of targetSteps) if (maxLen / s <= 16 && maxLen / s >= 6) { step = s; break; }
-    const actualMax = Math.floor(maxLen / step) * step;
-    const ticks = [];
-    for (let v = -actualMax; v <= actualMax + 0.001; v += step) if (Math.abs(v) > 0.01) ticks.push(v);
-    const axes = [
-        { start: new THREE.Vector3(-actualMax,0,0), end: new THREE.Vector3(actualMax,0,0), label:'X', color:0xff6666 },
-        { start: new THREE.Vector3(0,-actualMax,0), end: new THREE.Vector3(0,actualMax,0), label:'Y', color:0x66ff66 },
-        { start: new THREE.Vector3(0,0,-actualMax), end: new THREE.Vector3(0,0,actualMax), label:'Z', color:0x66aaff }
-    ];
+    const { step, gridActualMax } = computeGridParams(camDist);
+    const actualMax = gridActualMax; // 网格显示范围（小于坐标轴范围）
+    const cx = center.x, cz = center.z; // Y 强制为 0：网格保持在水平面
+    const axisTicks = (c) => {
+        const out = [];
+        const k0 = Math.ceil((c - actualMax) / step), k1 = Math.floor((c + actualMax) / step);
+        for (let k = k0; k <= k1; k++) { const v = k * step; if (Math.abs(v) > 0.01) out.push(v); }
+        return out;
+    };
+    const ticksX = axisTicks(cx), ticksZ = axisTicks(cz);
     const isMobile = window.innerWidth <= 700;
     const fontSize = isMobile ? '9px' : '12px';
     const textColor = document.body.classList.contains('light-mode') ? '#0f172a' : '#e2e8f0';
-    axes.forEach(axis => {
-        if (showAxes) {
-            const points = [axis.start, axis.end];
-            const geo = new THREE.BufferGeometry().setFromPoints(points);
-            const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: axis.color }));
-            axisGroup.add(line);
-            const dir = new THREE.Vector3().subVectors(axis.end, axis.start).normalize();
-            const arrow = new THREE.ArrowHelper(dir, axis.end, 0.4, axis.color, 0.2, 0.1);
-            axisGroup.add(arrow);
-        }
-        if (showTicks) {
-            ticks.forEach(val => {
-                let pos = axis.label === 'X' ? new THREE.Vector3(val,0,0) : axis.label === 'Y' ? new THREE.Vector3(0,val,0) : new THREE.Vector3(0,0,val);
-                let tickDir = axis.label === 'X' ? new THREE.Vector3(0,0.1,0.1) : axis.label === 'Y' ? new THREE.Vector3(0.1,0,0.1) : new THREE.Vector3(0.1,0.1,0);
-                const tickGeo = new THREE.BufferGeometry().setFromPoints([pos, pos.clone().add(tickDir)]);
-                const tickLine = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0x88aaff }));
-                axisGroup.add(tickLine);
-                const div = document.createElement('div');
-                div.textContent = val.toFixed(1);
-                div.style.cssText = `color:${textColor};font-size:${fontSize};font-weight:bold;text-shadow:0 0 2px rgba(0,0,0,0.3);padding:0 2px;white-space:nowrap;`;
-                const labelObj = new CSS2DObject(div);
-                labelObj.position.copy(pos);
-                axisGroup.add(labelObj);
-            });
-        }
-    });
     if (showGrid) {
-        const gridSize = actualMax * 2;
-        const divisions = ticks.length * 2;
-        const gridStep = gridSize / divisions;
-        for (let i = -divisions/2; i <= divisions/2; i++) {
-            const pos = i * gridStep;
-            if (Math.abs(pos) > actualMax) continue;
-            const pointsX = [new THREE.Vector3(-actualMax,0,pos), new THREE.Vector3(actualMax,0,pos)];
-            const geoX = new THREE.BufferGeometry().setFromPoints(pointsX);
-            const lineX = new THREE.Line(geoX, new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.35 }));
-            axisGroup.add(lineX);
-            const pointsZ = [new THREE.Vector3(pos,0,-actualMax), new THREE.Vector3(pos,0,actualMax)];
-            const geoZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
-            const lineZ = new THREE.Line(geoZ, new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.35 }));
-            axisGroup.add(lineZ);
-        }
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.35 });
+        // 沿 X 方向的线（常数 Z）
+        ticksZ.forEach(z => {
+            if (Math.abs(z - cz) > actualMax) return;
+            const points = [new THREE.Vector3(cx-actualMax,0,z), new THREE.Vector3(cx+actualMax,0,z)];
+            axisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), lineMat));
+        });
+        // 沿 Z 方向的线（常数 X）
+        ticksX.forEach(x => {
+            if (Math.abs(x - cx) > actualMax) return;
+            const points = [new THREE.Vector3(x,0,cz-actualMax), new THREE.Vector3(x,0,cz+actualMax)];
+            axisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), lineMat));
+        });
     }
+    // 注：坐标数值不再散落在地面网格上（之前被认为太乱）。当原点坐标轴滚出屏幕、看不见数值时，
+    // 由屏幕边框标尺 updateScreenRuler() 在网格接触边框处显示 XZ 坐标刻度。
+    axisGroup.visible = showGrid;
     scene.add(axisGroup);
 }
+// 原点锚定网格层（"home base" 地面参考）：固定在世界原点(模型/坐标轴所在)的粗糙网格，
+// 使模型与原点坐标轴始终踩在网格上、不随平移脱离原点而"悬空"于黑暗中。
+// 步长取 fineStep 的整数倍（与精细网格/原点轴刻度严格对齐），并用线数护栏保证性能。
+function createOriginGrid(camDistOrigin, themeTag) {
+    if (originGridGroup) {
+        originGridGroup.traverse(c => { if (c.isCSS2DObject && c.element) c.element.remove(); });
+        scene.remove(originGridGroup);
+    }
+    originGridGroup = new THREE.Group();
+    // 原点网格层锚定世界原点；其精细度由「相机到原点的距离」决定（与精细网格同源算法 computeGridParams），
+    // 因此当你缩放贴近原点时，原点处也会细分到 0.5；距离远时自动变粗并限制半幅，避免线条爆炸（线条数天然受控）。
+    const ORIGIN_EXTENT_MAX = 20000;   // 原点网格最大半幅（极远时作为远处"地面"参考）
+    const opO = computeGridParams(camDistOrigin, 0);
+    const originStep = opO.step;
+    const half = Math.min(ORIGIN_EXTENT_MAX, opO.gridActualMax);
+    const baseColor = document.body.classList.contains('light-mode') ? 0x1d4ed8 : 0x1e3a8a; // 比精细网格更暗，读起来像背景地面
+    originGridMat = new THREE.LineBasicMaterial({ color: baseColor, transparent: true, opacity: 0.25 });
+    if (showGrid) {
+        // 沿 X 方向的线（常数 Z）
+        for (let z = -half; z <= half + 1e-6; z += originStep) {
+            const zz = Math.round(z / originStep) * originStep;
+            const points = [new THREE.Vector3(-half, 0, zz), new THREE.Vector3(half, 0, zz)];
+            originGridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), originGridMat));
+        }
+        // 沿 Z 方向的线（常数 X）
+        for (let x = -half; x <= half + 1e-6; x += originStep) {
+            const xx = Math.round(x / originStep) * originStep;
+            const points = [new THREE.Vector3(xx, 0, -half), new THREE.Vector3(xx, 0, half)];
+            originGridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), originGridMat));
+        }
+    }
+    originGridGroup.visible = showGrid;
+    scene.add(originGridGroup);
+}
 function updateAxesByDistance(force = false) {
-    const dist = camera.position.length();
-    if (force || Math.abs(dist - lastDistance) > 0.5) {
-        lastDistance = dist;
-        createDynamicAxesAndGrid(dist);
+    const themeTag = document.body.classList.contains('light-mode') ? 'L' : 'D';
+    // 精细度(step)由「轨道半径 camDist」决定：旋转/平移不改变 camDist，故刻度不随转动变化；仅缩放改变它
+    const camDist = camera.position.distanceTo(controls.target);
+    const panDist = Math.hypot(controls.target.x, controls.target.z); // 原点到相机目标(平移)的水平距离，用于让坐标轴延伸过去
+    const op = computeGridParams(camDist, panDist);
+    // ① 原点参考轴（钉在世界原点）：轴与刻度范围须超过网格长度
+    const originSig = op.step + '|' + op.axisActualMax + '|' + op.axisTickStep + '|' + themeTag;
+    if (force || originSig !== lastOriginSig) {
+        lastOriginSig = originSig;
+        createOriginAxes(op.step, op.axisActualMax, op.axisTickStep);
+    }
+    // ② 动态网格：水平中心跟随视点(controls.target)、始终位于 Y=0 平面，步长与原点轴一致（仅由轨道半径决定），范围 = 网格长度
+    const p = op;
+    const cx = Math.round(controls.target.x / p.step) * p.step;
+    const cz = Math.round(controls.target.z / p.step) * p.step;
+    const gridSig = p.step + '|' + p.gridActualMax + '|' + cx + ',' + cz + '|' + themeTag;
+    // 仅当步长/范围/中心真正改变时才重建（平移跨过 step 边界或缩放改变时重建，支持无限距离）
+    if (force || gridSig !== lastGridSig) {
+        lastGridSig = gridSig;
+        createDynamicGrid(camDist, { x: cx, y: 0, z: cz });
+    }
+    // ③ 原点锚定网格层：固定世界原点，使原点附近的模型/坐标轴始终有"地面"参考而不悬空。
+    //    协调逻辑：当轨道中心(target)距原点很近、动态网格已覆盖原点时，原点层与动态网格步长/对齐完全一致 → 二者会完美重叠，
+    //    若强行叠加只会变暗/重影且浪费线条，故此时跳过重建并隐藏原点层；仅在平移使原点脱离动态网格覆盖范围后才启用原点层。
+    //    注意：原点层精细度由「相机到原点的距离 camera.position.length()」同源计算（与精细网格共用 computeGridParams），
+    //    因此贴近原点缩放时原点处也会细分到 0.5（不再被固定粗网格卡住）。
+    const panDistForOrigin = Math.hypot(controls.target.x, controls.target.z);
+    const originCoveredByDynamic = panDistForOrigin <= op.gridActualMax + 1e-6;
+    if (originCoveredByDynamic) {
+        // 动态网格已覆盖原点：隐藏原点层（二者重叠，无需重复绘制）
+        if (originGridGroup) originGridGroup.visible = false;
+        lastOriginGridSig = '__covered__';
+    } else {
+        const camDistOrigin = camera.position.length(); // 相机到世界原点的距离（原点层精细度基准）
+        const originGridSig = camDistOrigin + '|' + themeTag;
+        if (force || originGridSig !== lastOriginGridSig) {
+            lastOriginGridSig = originGridSig;
+            createOriginGrid(camDistOrigin, themeTag);
+        }
+        if (originGridGroup) originGridGroup.visible = showGrid;
+    }
+    // 原点网格淡出：仅在极端远距离（原点已成远处小点）时轻微淡出避免杂乱；常规平移范围保持可见，
+    // 确保模型始终被"地面"托住（不重新引入悬空错觉）。
+    if (originGridMat) {
+        const distOrigin = camera.position.length(); // 相机到世界原点的距离
+        const t = THREE.MathUtils.clamp((distOrigin - 10000) / 50000, 0, 1);
+        originGridMat.opacity = 0.25 * (1 - 0.75 * t); // 0.25 → 0.0625（极端远时）
     }
 }
-document.getElementById('showAxesCheckbox').addEventListener('change', (e) => { showAxes = e.target.checked; updateAxesByDistance(true); });
+document.getElementById('showAxesCheckbox').addEventListener('change', (e) => { showAxes = e.target.checked; if (originAxesGroup) originAxesGroup.visible = showAxes; });
 document.getElementById('showGridCheckbox').addEventListener('change', (e) => { showGrid = e.target.checked; updateAxesByDistance(true); });
 document.getElementById('showTicksCheckbox').addEventListener('change', (e) => { showTicks = e.target.checked; updateAxesByDistance(true); });
+
+// ---- 屏幕边框 XZ 标尺：原点坐标轴滚出屏幕、看不见数值时，在网格接触屏幕边框处显示 XZ 坐标刻度 ----
+let rulerEl = null, rulerW = 0, rulerH = 0, lastRulerKey = '';
+let rulerLastTick = { left: null, right: null, top: null, bottom: null };
+function ensureRulerEl() {
+    if (rulerEl) return;
+    const style = document.createElement('style');
+    style.textContent = '#screenRuler{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden;}' +
+        '.ruler-tick{position:absolute;display:flex;align-items:center;justify-content:center;font:bold 11px/1 sans-serif;white-space:nowrap;text-shadow:0 0 2px rgba(0,0,0,.55);}' +
+        '.ruler-tick .bar{background:currentColor;opacity:.85;flex:none;}' +
+        '.ruler-tick.left{flex-direction:row;} .ruler-tick.left .bar{width:7px;height:2px;margin-right:3px;}' +
+        '.ruler-tick.right{flex-direction:row-reverse;} .ruler-tick.right .bar{width:7px;height:2px;margin-left:3px;}' +
+        '.ruler-tick.top{flex-direction:column;} .ruler-tick.top .bar{height:7px;width:2px;margin-bottom:3px;}' +
+        '.ruler-tick.bottom{flex-direction:column-reverse;} .ruler-tick.bottom .bar{height:7px;width:2px;margin-top:3px;}';
+    document.head.appendChild(style);
+    rulerEl = document.createElement('div');
+    rulerEl.id = 'screenRuler';
+    document.body.appendChild(rulerEl);
+}
+function w2s(v) { const n = v.clone().project(camera); return { x: (n.x * 0.5 + 0.5) * rulerW, y: (-n.y * 0.5 + 0.5) * rulerH, behind: n.z > 1 }; }
+// 屏幕像素坐标 → 地面(Y=0)上的真实 3D 点：用于判断边框标尺某个数字离相机到底有多远
+function screenToGround(sx, sy) {
+    const ndcX = (sx / rulerW) * 2 - 1;
+    const ndcY = -(sy / rulerH) * 2 + 1;
+    const v = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera);
+    const dir = v.sub(camera.position).normalize();
+    if (Math.abs(dir.y) < 1e-6) return null; // 视线几乎平行地面（地平线附近）→ 视为过远，不显示
+    const tHit = -camera.position.y / dir.y;
+    if (tHit <= 0) return null;
+    return camera.position.clone().add(dir.multiplyScalar(tHit));
+}
+// 线段 P0-P1（屏幕像素）与视口四边相交点
+function segRectHits(P0, P1) {
+    const res = [];
+    const tryEdge = (fixed, vertical, t) => {
+        if (t < 0 || t > 1) return;
+        let x, y;
+        if (vertical) { x = fixed; y = P0.y + t * (P1.y - P0.y); if (y < 0 || y > rulerH) return; }
+        else { y = fixed; x = P0.x + t * (P1.x - P0.x); if (x < 0 || x > rulerW) return; }
+        res.push({ edge: vertical ? (fixed <= 0 ? 'left' : 'right') : (fixed <= 0 ? 'top' : 'bottom'), x, y });
+    };
+    if (P1.x !== P0.x) { tryEdge(0, true, (0 - P0.x) / (P1.x - P0.x)); tryEdge(rulerW, true, (rulerW - P0.x) / (P1.x - P0.x)); }
+    if (P1.y !== P0.y) { tryEdge(0, false, (0 - P0.y) / (P1.y - P0.y)); tryEdge(rulerH, false, (rulerH - P0.y) / (P1.y - P0.y)); }
+    return res;
+}
+function addRulerTick(edge, x, y, text, col) {
+    // 同一条边框上去重：避免偏航角任意时两条网格线在角落处贴出重叠标签（看着像幽灵数字）。
+    const pos = (edge === 'left' || edge === 'right') ? y : x;
+    if (rulerLastTick[edge] !== null && Math.abs(pos - rulerLastTick[edge]) < 16) return;
+    rulerLastTick[edge] = pos;
+    const el = document.createElement('div');
+    el.className = 'ruler-tick';
+    el.style.color = col;
+    if (edge === 'left') { el.style.left = '0px'; el.style.top = y + 'px'; el.style.transform = 'translateY(-50%)'; }
+    else if (edge === 'right') { el.style.right = '0px'; el.style.top = y + 'px'; el.style.transform = 'translateY(-50%)'; }
+    else if (edge === 'top') { el.style.top = '0px'; el.style.left = x + 'px'; el.style.transform = 'translateX(-50%)'; }
+    else { el.style.bottom = '0px'; el.style.left = x + 'px'; el.style.transform = 'translateX(-50%)'; }
+    const bar = document.createElement('span'); bar.className = 'bar';
+    const num = document.createElement('span'); num.textContent = text;
+    el.appendChild(bar); el.appendChild(num);
+    rulerEl.appendChild(el);
+}
+function updateScreenRuler() {
+    if (!showTicks) { if (rulerEl) rulerEl.style.display = 'none'; return; }
+    ensureRulerEl();
+    rulerW = renderer.domElement.clientWidth;
+    rulerH = renderer.domElement.clientHeight;
+    // 仅在原点坐标轴完全不可见时才显示边框标尺：坐标读数由原点轴上的数字刻度承担；
+    // 原点一旦回到屏幕内（坐标轴可见），边框标尺自动隐藏，避免重复。
+    const o = new THREE.Vector3(0, 0, 0).project(camera);
+    const sx = (o.x * 0.5 + 0.5) * rulerW, sy = (-o.y * 0.5 + 0.5) * rulerH;
+    const onScreen = o.z <= 1 && sx >= 0 && sx <= rulerW && sy >= 0 && sy <= rulerH;
+    if (onScreen) { rulerEl.style.display = 'none'; return; }
+    rulerEl.style.display = 'block';
+    // 节流：相机位置/朝向、视口尺寸、主题未变则不重建
+    const key = camera.position.toArray().join(',') + '|' + controls.target.toArray().join(',') + '|' + camera.quaternion.toArray().join(',') + '|' + rulerW + 'x' + rulerH + '|' + (document.body.classList.contains('light-mode') ? 'L' : 'D');
+    if (key === lastRulerKey) return;
+    lastRulerKey = key;
+    rulerEl.innerHTML = '';
+    rulerLastTick = { left: null, right: null, top: null, bottom: null };
+    const dist = camera.position.distanceTo(controls.target); // 边框标尺与原点轴/网格一致：精细度由轨道半径决定，旋转/平移不改变它，故刻度不随转动跳变
+    const p = computeGridParams(dist);
+    const cx = Math.round(controls.target.x / p.step) * p.step;
+    const cz = Math.round(controls.target.z / p.step) * p.step;
+    // 边框标尺：每个网格线都在屏幕边框处标一个数字，使「数字数量 == 网格线数量」（不再比网格少一倍）
+    const labelStep = p.step;
+    // X/Z 标尺标签使用各自坐标轴的颜色（与原点坐标轴一致），避免偏航角非 90° 倍数时
+    // 网格斜穿屏幕、X 值被标到 Z 边框（或反之）造成的「串轴/幽灵数字」误读。
+    const colX = '#ff6666', colZ = '#66aaff';
+    // 距离过滤：距相机超过 maxShowDist 的网格线标签不显示。避免抬头看时，
+    // 接近地平线的远处网格线在屏幕边框上挤一堆、随视角滑动（“一堆数字在移动”）的问题。
+    const camPos = camera.position;
+    const maxShowDist = p.actualMax * 1.5;
+    // 象限过滤：原点轴不可见时，只显示「摄像机本象限」相邻半轴（+X/-X、+Z/-Z）的刻度数字。
+    // 例如摄像机在 (+X,+Z) 象限，则只标 +X、+Z 方向的刻度，避免四象限数字全堆在边框上造成干扰。
+    const camSx = camera.position.x >= 0 ? 1 : -1;
+    const camSz = camera.position.z >= 0 ? 1 : -1;
+    // 常数 X 线（沿 Z 延伸）：在边框处标 X 值
+    const k0x = Math.ceil((cx - p.actualMax) / labelStep), k1x = Math.floor((cx + p.actualMax) / labelStep);
+    for (let k = k0x; k <= k1x; k++) {
+        const x = k * labelStep;
+        if (Math.sign(x) !== camSx) continue; // 仅显示摄像机本象限相邻的 X 半轴刻度
+        if (Math.abs(x - cx) > p.actualMax) continue;
+        const A = new THREE.Vector3(x, 0, cz - p.actualMax), B = new THREE.Vector3(x, 0, cz + p.actualMax);
+        const sa = w2s(A), sb = w2s(B);
+        if (sa.behind || sb.behind) continue;
+        segRectHits(sa, sb).forEach(h => {
+            const wp = screenToGround(h.x, h.y);
+            if (!wp || camPos.distanceTo(wp) > maxShowDist) return; // 远处（近地平线）数字：隐藏
+            addRulerTick(h.edge, h.x, h.y, formatTick(x, p.step), colX);
+        });
+    }
+    // 常数 Z 线（沿 X 延伸）：在边框处标 Z 值
+    const k0z = Math.ceil((cz - p.actualMax) / labelStep), k1z = Math.floor((cz + p.actualMax) / labelStep);
+    for (let k = k0z; k <= k1z; k++) {
+        const z = k * labelStep;
+        if (Math.sign(z) !== camSz) continue; // 仅显示摄像机本象限相邻的 Z 半轴刻度
+        if (Math.abs(z - cz) > p.actualMax) continue;
+        const A = new THREE.Vector3(cx - p.actualMax, 0, z), B = new THREE.Vector3(cx + p.actualMax, 0, z);
+        const sa = w2s(A), sb = w2s(B);
+        if (sa.behind || sb.behind) continue;
+        segRectHits(sa, sb).forEach(h => {
+            const wp = screenToGround(h.x, h.y);
+            if (!wp || camPos.distanceTo(wp) > maxShowDist) return; // 远处（近地平线）数字：隐藏
+            addRulerTick(h.edge, h.x, h.y, formatTick(z, p.step), colZ);
+        });
+    }
+}
 
 // 射线检测与点击选择
 const raycaster = new THREE.Raycaster();
@@ -14413,7 +15284,9 @@ function animate() {
     // 否则程序只在编辑/初始化时执行一次，zrot 等随机变量会一直保持最初那个值。
     for (let i = 0; i < blocks.length; i++) {
         const b = blocks[i];
-        if (scopeUsesSpontaneous(b.scope)) {
+        // molang 接管块每帧重算（FMBE：程序每帧执行，v.t=v.t+0.01 之类才能跨帧累加读取上一帧值）；
+        // 含自发随机函数的块同样每帧重算以保持持续变化。
+        if (b.scope.molangMode || scopeUsesSpontaneous(b.scope)) {
             b.refresh();
             if (b === selectedBlock) updateMolangValueDisplay(b); // 让只读数值面板里的 zrot 等实时跳动
         }
@@ -14438,6 +15311,7 @@ function animate() {
     fillLight.target.updateMatrixWorld();
 
     updateAxesByDistance();
+    try { updateScreenRuler(); } catch(e) { /* ignore ruler error */ }
     try { if (typeof syncGizmo === 'function') syncGizmo(); } catch(e) { /* ignore gizmo sync error */ }
     blocks.forEach(b => updateBlockLabel(b));
 
@@ -14486,7 +15360,7 @@ function animate() {
 animate();
 
 // 初始化默认方块
-createDynamicAxesAndGrid(camera.position.length());
+updateAxesByDistance(true);
 const defM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
 let base = "Cube", bid = base, idx = 1;
 while (blocks.some(b => b.id === bid)) bid = base + (idx++).toString();
@@ -14575,7 +15449,35 @@ function onPointerUp() {
 }
 resizeHandle.addEventListener('pointerdown', onPointerDown);
 resizeHandle.addEventListener('touchstart', onPointerDown, { passive: false });
-panel.style.height = '280px';
+// 仅底部模式设置默认高度；侧边模式由 applySidePanelMode 设为 100% 占满全高，
+// 此处若无条件覆盖回 280px，会在「旧操作模式 + 已启用侧边栏」重新打开时被拦腰斩断。
+if (!isSidePanelMode) panel.style.height = '280px';
+
+// 窗口尺寸变化时，把面板宽/高钳制在视口范围内，使数据面板（含 molang 编辑器）自动适应屏幕，
+// 不会因窗口缩小而溢出或变得过宽/过高。用 rAF 节流，且只改尺寸不重建面板（避免编辑器高度被重置）。
+let _panelResizeClampRAF = null;
+window.addEventListener('resize', () => {
+    if (_panelResizeClampRAF) cancelAnimationFrame(_panelResizeClampRAF);
+    _panelResizeClampRAF = requestAnimationFrame(() => {
+        _panelResizeClampRAF = null;
+        if (isSidePanelMode) {
+            const maxW = Math.floor(window.innerWidth * 0.92);
+            if (sidePanelWidth > maxW) {
+                sidePanelWidth = maxW;
+                panel.style.width = maxW + 'px';
+                panel.dataset.narrow = maxW < 400 ? 'true' : 'false';
+                if (sidePanelWidthRange) sidePanelWidthRange.value = maxW;
+                if (sidePanelWidthLabel) sidePanelWidthLabel.textContent = maxW + 'px';
+            }
+        } else {
+            const maxH = Math.floor(window.innerHeight * 0.85);
+            if (panelBottomHeight > maxH) {
+                panelBottomHeight = maxH;
+                panel.style.height = maxH + 'px';
+            }
+        }
+    });
+});
 
 // ====================================================================
 // 关键帧动画系统
@@ -16457,6 +17359,41 @@ document.addEventListener('keydown', (e) => {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
   else showBanner();
+})();
+</script>
+<!-- ===== 自动导入：从 URL 片段 #cmds=<base64url> 读取 BB转换器 导出的指令 ===== -->
+<script>
+(function () {
+  function b64urlToUtf8(b64) {
+    b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    try { return decodeURIComponent(escape(atob(b64))); }
+    catch (e) { console.error('模拟器解析导入数据失败:', e); return null; }
+  }
+  function autoImport() {
+    var h = location.hash || '';
+    var i = h.indexOf('cmds=');
+    if (i === -1) return;
+    var b64 = h.slice(i + 5);
+    // 立即清掉片段，避免刷新页面时重复导入
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    var text = b64urlToUtf8(b64);
+    if (!text) return;
+    if (typeof importFromCommands !== 'function') {
+      console.warn('importFromCommands 未就绪，无法自动导入');
+      return;
+    }
+    try {
+      importFromCommands(text);
+      var n = (text.match(/playanimation/g) || []).length;
+      if (typeof showToast === 'function') showToast('✅ 已从 外部工具 自动导入 ' + n + ' 条指令');
+    } catch (e) {
+      console.error('自动导入出错:', e);
+      if (typeof showToast === 'function') showToast('❌ 自动导入失败，请手动粘贴');
+    }
+  }
+  if (document.readyState === 'complete') setTimeout(autoImport, 0);
+  else window.addEventListener('load', function () { setTimeout(autoImport, 60); });
 })();
 </script>
 </body>
