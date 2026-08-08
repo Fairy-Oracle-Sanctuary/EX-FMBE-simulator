@@ -17341,6 +17341,12 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// 暴露到全局：本文件主逻辑在 ES module 内，函数默认为模块作用域；
+// 而底部「自动导入」脚本是普通 <script>（全局作用域），无法访问模块内函数。
+// 不挂到 window 会导致 typeof importFromCommands === 'undefined'，自动导入静默失败。
+window.importFromCommands = importFromCommands;
+window.showToast = showToast;
+
 </script>
 
 <!-- file:// 跨源提示：直接双击打开时 WebGL 无法加载本地贴图（方块变黑），引导改用本地服务器 -->
