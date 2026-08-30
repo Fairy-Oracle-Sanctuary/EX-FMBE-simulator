@@ -3276,6 +3276,30 @@ body:not(.light-mode) .pm-delete-confirm-btns button {
     border-color: #2a3a5a;
     color: #cbd5e6;
 }
+
+/* ===== 项目加载遮罩（打开大项目时显示，等待材质纹理下载完成） ===== */
+.project-loading {
+    position: fixed; inset: 0; z-index: 11000;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; background: rgba(8, 12, 22, 0.82);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.pl-spinner {
+    width: 54px; height: 54px; border-radius: 50%;
+    border: 5px solid rgba(255,255,255,0.18);
+    border-top-color: #3b82f6;
+    animation: pl-spin 0.9s linear infinite;
+}
+@keyframes pl-spin { to { transform: rotate(360deg); } }
+.pl-text { color: #e2e8f0; font-size: 16px; letter-spacing: 0.05em; }
+.pl-progress { width: 240px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; }
+.pl-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg,#3b82f6,#60a5fa); transition: width 0.2s ease; }
+.pl-percent { color: #94a3b8; font-size: 13px; font-variant-numeric: tabular-nums; }
+body.light-mode .project-loading { background: rgba(240,244,248,0.86); }
+body.light-mode .pl-text { color: #1e293b; }
+body.light-mode .pl-percent { color: #64748b; }
+body.light-mode .pl-spinner { border-color: rgba(0,0,0,0.12); border-top-color: #2563eb; }
+body.light-mode .pl-progress { background: rgba(0,0,0,0.1); }
 </style>
 </head>
 <body>
@@ -3314,6 +3338,14 @@ body:not(.light-mode) .pm-delete-confirm-btns button {
             <!-- project cards injected here -->
         </div>
     </div>
+</div>
+
+<!-- ========== 项目加载遮罩 ========== -->
+<div id="projectLoading" class="project-loading">
+    <div class="pl-spinner"></div>
+    <div class="pl-text" id="plText">正在加载项目…</div>
+    <div class="pl-progress"><div class="pl-progress-bar" id="plProgressBar"></div></div>
+    <div class="pl-percent" id="plPercent">0%</div>
 </div>
 
 <div id="canvas-container"></div>
@@ -4572,25 +4604,230 @@ function fileToDataURL(file) {
     });
 }
 
+// 纹理加载计数：打开大项目（含大量带材质方块）时，所有贴图都是异步 fetch，
+// 浏览器并发下载几百上千张图需要时间。这里维护一个全局计数，配合 #projectLoading 遮罩，
+// 在“所有纹理就绪”后再隐藏遮罩，避免用户面对空白/卡顿误以为卡死。
+//
+// ⚠️ 进度分母必须包含「缓存命中」的纹理：loadTextureCached 在缓存命中时同步返回，不走下载。
+// 若只把“真正下载”的纹理计入分母，重开已缓存过的项目时分母极小（如只剩 2 张要下），
+// 进度就会 0% → 50% → 100% 大跳。正确做法是分母 = 本次会话全部纹理需求（含缓存命中），
+// 分子 = 已就绪数（缓存命中即时计入 + 下载完成计入），这样分母通常很大、每完成一张只涨 1/N。
+let _pendingDownloads = 0;  // 真正在下载中（未缓存）的纹理数 —— 仅用于“全部完成”判定
+let _totalDemand = 0;       // 本次会话纹理需求总数（含缓存命中）—— 进度分母
+let _resolvedTex = 0;       // 已就绪的纹理数（缓存命中即时 + 下载完成）—— 进度分子
+let _realPct = 0;           // 真实进度%（基于 已就绪/总需求），由计数回调更新
+let _displayPct = 0;        // 显示进度%（每帧朝 _realPct 缓动逼近），驱动 DOM
+let _progressAnimStart = 0; // 缓动动画起始时间（看门狗用）
+let _onAllTexLoaded = null; // 全部下载完时触发的回调
+
+// 仅在「缓存未命中、真正发起下载」时调用：分母 +1、在途 +1
+function _incTexPending() {
+    _pendingDownloads++;
+    _totalDemand++;
+    _updateLoadingProgress();
+}
+// 纹理下载结算（成功 / 失败 / 超时）时调用：在途 -1、已就绪 +1
+function _decTexPending() {
+    _pendingDownloads = Math.max(0, _pendingDownloads - 1);
+    _resolvedTex++;
+    _updateLoadingProgress();
+    if (_pendingDownloads === 0 && _onAllTexLoaded) {
+        const cb = _onAllTexLoaded;
+        _onAllTexLoaded = null;
+        cb();
+    }
+}
+// 缓存命中（同步返回）时调用：分母 +1、已就绪 +1，进度立即前进
+function _countCachedTex() {
+    _totalDemand++;
+    _resolvedTex++;
+    _updateLoadingProgress();
+}
+function _updateLoadingProgress() {
+    // 只更新「真实进度」。DOM 由 _animateProgress 缓动循环统一驱动，避免阶梯跳变。
+    _realPct = _totalDemand > 0 ? Math.min(100, _resolvedTex / _totalDemand * 100) : 0;
+}
+// 缓动显示循环：真实进度（_realPct）受 HTTP/1.1 同域连接槽（默认 6 条）限制，
+// 纹理是一批一批完成的（每批 ~6 张几乎同时 onload），直接显示会呈 0→6/N→12/N 阶梯跳变。
+// 这里每帧把「显示进度」朝「真实进度」缓动逼近（lerp 0.18），无论底层怎么跳，
+// 进度条宽度与百分比数字都连续滑动，彻底消除阶梯感，且一定会收敛到 100%。
+async function _animateProgress() {
+    const bar = document.getElementById('plProgressBar');
+    const pct = document.getElementById('plPercent');
+    if (_totalDemand === 0) return;   // 无纹理需求，无需进度动画
+    _displayPct = 0;
+    _progressAnimStart = Date.now();
+    while (true) {
+        const diff = _realPct - _displayPct;
+        _displayPct = Math.abs(diff) < 0.4 ? _realPct : _displayPct + diff * 0.18;
+        const p = Math.min(100, Math.max(0, Math.round(_displayPct)));
+        if (bar) bar.style.width = p + '%';
+        if (pct) pct.textContent = p + '%';
+        // 真实进度到顶且显示已逼近 → 收尾为精确 100%
+        if (_realPct >= 100 && _displayPct >= 99.4) {
+            if (bar) bar.style.width = '100%';
+            if (pct) pct.textContent = '100%';
+            break;
+        }
+        // 绝对看门狗：即便真实进度异常，最多跑 ~25s 也退出，避免空转
+        if (Date.now() - _progressAnimStart > 25000) {
+            if (bar) bar.style.width = '100%';
+            if (pct) pct.textContent = '100%';
+            break;
+        }
+        await new Promise(r => requestAnimationFrame(r));
+    }
+}
+// 等待本次会话所有「真正下载」的纹理完成；若已无在途立即 resolve
+function waitForTexturesLoaded() {
+    if (_pendingDownloads <= 0) return Promise.resolve();
+    return new Promise(resolve => { _onAllTexLoaded = resolve; });
+}
+// 稳定版等待：纹理可能分批发起（restoreState 之后仍有异步补建块 / 面材质补齐），
+// 单次在途归零不代表真的加载完。这里每轮归零后让出一帧复查，确认没有新批次才返回。
+// 同时整体受 LOADING_WATCHDOG_MS 总闸约束：即便有纹理因请求挂起而迟迟不结算，也不会无限等待。
+async function waitForTexturesStable(maxMs = LOADING_WATCHDOG_MS) {
+    const start = Date.now();
+    for (let guard = 0; guard < 200; guard++) {
+        if (_pendingDownloads > 0) {
+            const r = waitForTexturesLoaded();
+            const remain = Math.max(0, maxMs - (Date.now() - start));
+            const timeout = new Promise(res => setTimeout(res, remain));
+            await Promise.race([r, timeout]);
+        }
+        await new Promise(r => requestAnimationFrame(r));
+        if (_pendingDownloads <= 0) return;
+        if (Date.now() - start > maxMs) return;
+    }
+}
+// 等两帧，确保浏览器先把“正在加载”遮罩 paint 出来，再跑重负载的 restoreState
+function nextFrame() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// 「重项目」判定阈值：state 里的方块数。超过它就在跑 restoreState 之前先把遮罩画出来。
+const HEAVY_PROJECT_BLOCKS = 40;
+// 遮罩一旦显示，至少留这么久，避免“闪一下就消失”的突兀感
+const LOADING_MIN_VISIBLE_MS = 400;
+// 轻项目：restoreState 结束后若纹理仍在下载，先宽限这么久，仍未完成才显示遮罩
+const LOADING_GRACE_MS = 180;
+// 单张纹理加载的兜底超时：复杂项目几百上千张贴图并发请求时，本地单线程服务器 /
+// 浏览器同域连接槽（HTTP/1.1 默认 6 条）可能被占满，个别 <img> 请求会长时间挂起，
+// 既不 onload 也不 onerror —— 若只靠回调把 pending 归零，进度就会永远卡在某百分比、
+// 遮罩永不消失。这里给每张纹理一个超时，到点强制结算，保证计数一定能归零。
+const TEX_LOAD_TIMEOUT_MS = 12000;
+// 整个“正在加载”遮罩的最长等待：即便有纹理超时兜底，也再设一道总闸，杜绝任何极端情况下卡死。
+const LOADING_WATCHDOG_MS = 20000;
+
+// 统一的「打开/新建项目」加载流程。
+// ⚠️ 关键：不能用「setTimeout 延迟 180ms 显示遮罩」——restoreState 是同步重负载，
+// 会把主线程占满，定时器回调只能排队等它跑完，结果最需要提示的阻塞期完全没提示，
+// 反而在加载都快结束时遮罩才「闪」出来（用户报告的「开复杂项目立即触发加载提示」）。
+// 正确做法：用项目规模（方块数）在 task 之前同步决定是否显示遮罩，并确保 paint 后再跑重负载。
+async function runProjectOpenLoad(task, opts = {}) {
+    _totalDemand = 0; _resolvedTex = 0; _pendingDownloads = 0; _onAllTexLoaded = null;
+    const loadingEl = document.getElementById('projectLoading');
+    const textEl = document.getElementById('plText');
+    const bar = document.getElementById('plProgressBar');
+    const pct = document.getElementById('plPercent');
+    let shownAt = 0;
+
+    const showMask = (msg) => {
+        if (shownAt || !loadingEl) return;
+        if (bar) bar.style.width = '0%';
+        if (pct) pct.textContent = '0%';
+        if (textEl && msg) textEl.textContent = msg;
+        loadingEl.style.display = 'flex';
+        shownAt = Date.now();
+    };
+    const setMaskText = (msg) => { if (shownAt && textEl && msg) textEl.textContent = msg; };
+
+    const heavy = (opts.blockCount || 0) >= HEAVY_PROJECT_BLOCKS;
+    if (heavy) {
+        // 重项目：立刻显示遮罩，并等两帧确保浏览器真的把它画上屏，再去跑阻塞主线程的 restoreState
+        showMask('正在构建模型…');
+        await nextFrame();
+    }
+
+    try { await task(); } catch (e) { console.error('项目加载失败', e); }
+    _updateLoadingProgress();  // restoreState 已发起全部纹理请求，刷新真实进度
+
+    // 纹理阶段：restoreState 已同步发起全部贴图请求，此刻才知道真实待下载量
+    let animPromise = null;
+    if (_totalDemand > 0) {
+        // 启动独立的缓动显示循环：每帧把显示进度朝真实进度逼近，与“等待下载完成”并行，
+        // 这样进度条/百分比数字是连续滑动的，而非随每批纹理完成而阶梯跳变。
+        animPromise = _animateProgress();
+        if (_pendingDownloads > 0) {
+            if (shownAt) {
+                setMaskText('正在加载材质…');
+            } else {
+                // 轻项目：给一个宽限期，纹理很快下完就完全不显示遮罩（不闪）
+                await _sleep(LOADING_GRACE_MS);
+                if (_pendingDownloads > 0) showMask('正在加载材质…');
+            }
+        } else if (shownAt) {
+            setMaskText('正在加载材质…');
+        }
+    }
+
+    const waits = [waitForTexturesStable()];
+    if (animPromise) waits.push(animPromise);
+    await Promise.all(waits);
+
+    if (shownAt && loadingEl) {
+        const rest = LOADING_MIN_VISIBLE_MS - (Date.now() - shownAt);
+        if (rest > 0) await _sleep(rest);
+        loadingEl.style.display = 'none';
+        if (textEl) textEl.textContent = '正在加载项目…';
+    }
+}
+// 从序列化 state 字符串里低成本估算方块数（每个方块必带 "faceTextures":），
+// 避免为了判断规模而多做一次几百 KB 的 JSON.parse。
+function estimateStateBlockCount(stateStr) {
+    if (!stateStr || typeof stateStr !== 'string') return 0;
+    let n = 0, i = 0;
+    const key = '"faceTextures":';
+    while ((i = stateStr.indexOf(key, i)) !== -1) { n++; i += key.length; }
+    return n;
+}
+
 // 纹理缓存：同一张图在多个方块 / 多个面之间复用，避免重复下载与解码
 const _texCache = new Map();
 function loadTextureCached(url, onReady) {
     if (!url) return null;
     const hit = _texCache.get(url);
     if (hit) {
+        _countCachedTex();   // 缓存命中：立即计入进度（分母 + 已就绪）
         if (onReady) { if (hit.image && hit.image.width) onReady(hit); else hit.__cbs.push(onReady); }
         return hit;
     }
+    _incTexPending();
+    // 单张纹理结算：成功 / 失败 / 超时 三者取最先发生者，保证计数必定归零，
+    // 避免个别请求挂起导致“正在加载”遮罩卡在某一百分比永不消失。
+    let _settled = false;
+    const settle = () => {
+        if (_settled) return;
+        _settled = true;
+        if (tex.__decTimer) { clearTimeout(tex.__decTimer); tex.__decTimer = null; }
+        _decTexPending();
+    };
     const tex = new THREE.TextureLoader().load(url,
-        t => { (t.__cbs || []).forEach(cb => cb(t)); t.__cbs = []; },
+        t => { (t.__cbs || []).forEach(cb => cb(t)); t.__cbs = []; settle(); },
         undefined,
-        err => console.warn('纹理加载失败:', url, err));
+        err => { console.warn('纹理加载失败:', url, err); settle(); });
     tex.__cbs = onReady ? [onReady] : [];
     tex.anisotropy = 16;
     tex.minFilter = THREE.LinearMipmapLinearFilter;
     tex.magFilter = THREE.LinearFilter;
     tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
+    // 兜底超时：到点仍未结算（请求挂起）则强制结算，使进度条能走到 100%、遮罩能消失
+    tex.__decTimer = setTimeout(() => {
+        if (!_settled) console.warn('纹理加载超时（疑似服务端连接受限），强制结算:', url);
+        settle();
+    }, TEX_LOAD_TIMEOUT_MS);
     _texCache.set(url, tex);
     return tex;
 }
@@ -20578,8 +20815,10 @@ async function createNewProject() {
     await saveProjectToDB(project);
     currentProjectSavedAt = project.updatedAt;
     enterProject();
-    loadProjectIntoSimulator(null); // new empty project
-    await autoImportHashProject();
+    await runProjectOpenLoad(async () => {
+        loadProjectIntoSimulator(null); // new empty project
+        await autoImportHashProject();
+    });
     renderProjectManager();
 }
 
@@ -20590,8 +20829,12 @@ async function openProject(id) {
     currentProjectName = project.name || id;
     currentProjectSavedAt = project.updatedAt || Date.now();
     enterProject();
-    loadProjectIntoSimulator(project);
-    await autoImportHashProject();
+    // 先估算方块数：重项目要在 restoreState（同步阻塞）之前就把加载遮罩画出来
+    const blockCount = estimateStateBlockCount(project.state);
+    await runProjectOpenLoad(async () => {
+        loadProjectIntoSimulator(project);
+        await autoImportHashProject();
+    }, { blockCount });
 }
 
 // 同步「项目」设置分组里的当前项目名与保存状态显示
