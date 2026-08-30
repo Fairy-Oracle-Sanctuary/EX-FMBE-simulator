@@ -550,12 +550,17 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
 .molang-editor .molang-textarea {
     margin: 0; border: 1px solid var(--bg-card-border); border-radius: 8px;
     padding: 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 13px; line-height: 1.5; letter-spacing: 0; tab-size: 4;
-    white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;
+    font-size: 13px; line-height: 19.5px; letter-spacing: 0; tab-size: 4;
+    white-space: pre-wrap; overflow-wrap: break-word;
     box-sizing: border-box; width: 100%; min-height: 132px;
     /* 关键：高亮层与文本框常驻相同的滚动条占位，保证两者文字宽度/换行点完全一致，
        否则文本框一出现滚动条就会挤压文字宽度，导致彩色高亮与真实光标所在字符错位（点错数字） */
     scrollbar-gutter: stable;
+    /* 强制两层使用完全一致的文本渲染引擎参数，消除 <pre> 与 <textarea> 的排版差异 */
+    font-variant-ligatures: none;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeSpeed;
+    transform: none;
 }
 .molang-editor .molang-highlight {
     position: absolute; inset: 0; z-index: 0; overflow: auto;
@@ -574,6 +579,15 @@ body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-pr
     resize: vertical; outline: none; overflow: auto;
 }
 /* 语法着色：全局变量=橙 局部变量=紫 查询函数=紫 math函数=黄 逻辑判断符=红 常量数值=蓝 加减乘数=绿 */
+.tok-global, .tok-local, .tok-query, .tok-math, .tok-logic,
+.tok-num, .tok-arith, .tok-comment, .tok-str, .tok-fn {
+    /* 强制所有 token span 不引入任何额外布局偏移 */
+    display: inline;
+    margin: 0; padding: 0;
+    border: none; background: none;
+    line-height: inherit; font-size: inherit;
+    vertical-align: baseline;
+}
 .tok-global { color: #f59e0b; }
 .tok-local  { color: #a855f7; }
 .tok-query  { color: #a855f7; }
@@ -863,6 +877,7 @@ body.light-mode .tok-comment{ color: #64748b; }
   .molang-editor .molang-textarea {
     min-height: 160px;
     font-size: 14px;
+    line-height: 21px;
     padding: 10px 12px;
   }
   .molang-editor .molang-textarea { font-size: 14px; }
@@ -3021,6 +3036,7 @@ body.light-mode .keyframe-import-time-input input {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 18px;
     max-width: 1200px;
+    align-items: start;
 }
 .pm-card {
     background: #fff;
@@ -3038,12 +3054,21 @@ body.light-mode .keyframe-import-time-input input {
 }
 .pm-card-thumb {
     width: 100%;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 4 / 3;
     background: #e2e8f0;
     background-size: cover;
     background-position: center;
     position: relative;
+    line-height: 0;
+    overflow: hidden;
 }
+.pm-card-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.pm-card-thumb-empty { aspect-ratio: 4 / 3; }
 .pm-card-title-overlay {
     position: absolute;
     left: 0;
@@ -3254,9 +3279,19 @@ body:not(.light-mode) .pm-delete-confirm-btns button {
 </style>
 </head>
 <body>
+<script>
+/* 在浏览器绘制前同步设置主题 class，避免浅色模式闪黑 */
+(function(){
+  try {
+    var v = localStorage.getItem('ui_light_mode');
+    var isLight = (v === null) ? true : (v === '1');
+    if (isLight) document.body.classList.add('light-mode');
+  } catch(e) {}
+})();
+</script>
 
 <!-- ========== 项目管理器 ========== -->
-<div id="projectManager" style="display:none;">
+<div id="projectManager">
     <div class="pm-header">
         <div class="pm-header-left">
             <img class="pm-logo" src="ex_logo.jpg" alt="EX" onerror="this.style.display='none'">
@@ -20358,6 +20393,10 @@ function captureThumbnail() {
         const savedPos = camera.position.clone();
         const savedTarget = (typeof controls !== 'undefined' && controls) ? controls.target.clone() : null;
         const savedUp = camera.up.clone();
+        // 缩略图恒定 4:3：临时把相机宽高比设为 4:3 取景/渲染，主画面与用户视角不受影响
+        const savedAspect = camera.aspect;
+        camera.aspect = 4 / 3;
+        camera.updateProjectionMatrix();
 
         if (counted > 0 && !box.isEmpty()) {
             const center = box.getCenter(new THREE.Vector3());
@@ -20365,8 +20404,12 @@ function captureThumbnail() {
             const maxDim = Math.max(size.x, size.y, size.z) || 1;
             let dir = new THREE.Vector3().subVectors(camera.position, (savedTarget || camera.position)).normalize();
             if (!isFinite(dir.x) || dir.lengthSq() < 1e-6) dir.set(0.6, 0.5, 1).normalize();
-            const fov = camera.fov * Math.PI / 180;
-            const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.25;
+            // 取景距离同时考虑垂直与水平 FOV（目标 4:3 比多数屏幕更方，确保模型在两个方向都完整）
+            const vfov = camera.fov * Math.PI / 180;
+            const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+            const distV = (maxDim / 2) / Math.tan(vfov / 2);
+            const distH = (maxDim / 2) / Math.tan(hfov / 2);
+            const dist = Math.max(distV, distH) * 1.15;
             camera.position.copy(center).add(dir.multiplyScalar(dist));
             camera.up.set(0, 1, 0);
             camera.lookAt(center);
@@ -20379,19 +20422,22 @@ function captureThumbnail() {
         const fixedBg = new THREE.Color('#1a1a2e');
         scene.background = fixedBg;
 
-        // 用取景后的相机同步渲染一帧（固定背景色）
-        renderer.render(scene, camera);
-
-        // ★ 先读像素（必须在恢复相机之前）
+        // 恒定 4:3 渲染：把场景渲染到离屏 800×600 渲染目标（相机已设为 4:3），
+        // 再读取像素。无论实际窗口横竖，缩略图都按 4:3 重新构图，且完全不影响主画面。
+        const TW = 800, TH = 600;
         let result = null;
         try {
-            const gl = renderer.getContext();
-            const srcW = canvas.width, srcH = canvas.height;
+            const rt = new THREE.WebGLRenderTarget(TW, TH, {
+                minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+                format: THREE.RGBAFormat, type: THREE.UnsignedByteType,
+                depthBuffer: true, stencilBuffer: false
+            });
+            renderer.setRenderTarget(rt);
+            renderer.render(scene, camera);
+            const pixels = new Uint8Array(TW * TH * 4);
+            renderer.readRenderTargetPixels(rt, 0, 0, TW, TH, pixels);
             renderer.setRenderTarget(null);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            const pixels = new Uint8Array(srcW * srcH * 4);
-            gl.readPixels(0, 0, srcW, srcH, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            rt.dispose();
 
             // 检查像素有效性
             let sum = 0;
@@ -20400,33 +20446,30 @@ function captureThumbnail() {
 
             if (avg > 1) {
                 const tmpCanvas = document.createElement('canvas');
-                tmpCanvas.width = 800; tmpCanvas.height = 500;
+                tmpCanvas.width = TW; tmpCanvas.height = TH;
                 const ctx = tmpCanvas.getContext('2d');
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
-                const dstW = 800, dstH = 500;
-
-                // 固定中性深色背景——不依赖 scene.background，确保浅色/深色模式缩略图一致
                 ctx.fillStyle = '#1a1a2e';
-                ctx.fillRect(0, 0, dstW, dstH);
+                ctx.fillRect(0, 0, TW, TH);
 
                 // Y 轴翻转（WebGL 原点左下 → Canvas 原点左上）
-                const srcImgData = ctx.createImageData(srcW, srcH);
-                const rowBytes = srcW * 4;
-                for (let y = 0; y < srcH; y++)
-                    srcImgData.data.set(pixels.subarray((srcH - 1 - y) * rowBytes, (srcH - y) * rowBytes), y * rowBytes);
+                const rowBytes = TW * 4;
+                const srcImgData = ctx.createImageData(TW, TH);
+                for (let y = 0; y < TH; y++)
+                    srcImgData.data.set(pixels.subarray((TH - 1 - y) * rowBytes, (TH - y) * rowBytes), y * rowBytes);
 
                 const srcCanvas = document.createElement('canvas');
-                srcCanvas.width = srcW; srcCanvas.height = srcH;
+                srcCanvas.width = TW; srcCanvas.height = TH;
                 srcCanvas.getContext('2d').putImageData(srcImgData, 0, 0);
 
-                // contain 等比缩放居中
-                const scale = Math.min(dstW / srcW, dstH / srcH);
-                ctx.drawImage(srcCanvas, 0, 0, srcW, srcH,
-                    (dstW - srcW * scale) / 2, (dstH - srcH * scale) / 2, srcW * scale, srcH * scale);
+                // 4:3 → 4:3 比例一致，直接绘制即可（零黑边）
+                ctx.drawImage(srcCanvas, 0, 0);
                 result = tmpCanvas.toDataURL('image/jpeg', 0.90);
             }
-        } catch (glErr) { /* fallback */ }
+        } catch (rtErr) {
+            console.warn('[captureThumbnail] 离屏渲染失败，降级', rtErr);
+        }
 
         // 恢复场景背景色（不影响用户编辑器）
         if (savedBg !== null) scene.background = savedBg;
@@ -20440,6 +20483,8 @@ function captureThumbnail() {
         } else {
             camera.lookAt(savedTarget || new THREE.Vector3(0, 0, 0));
         }
+        // 恢复相机宽高比与主投影矩阵
+        if (typeof savedAspect !== 'undefined') { camera.aspect = savedAspect; camera.updateProjectionMatrix(); }
         camera.updateMatrixWorld(true);
 
         if (result) return result;
@@ -20652,8 +20697,17 @@ function renderProjectManager() {
 
             const thumb = document.createElement('div');
             thumb.className = 'pm-card-thumb';
-            if (p.thumbnail) thumb.style.backgroundImage = `url(${p.thumbnail})`;
-            else thumb.style.background = 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)';
+            if (p.thumbnail) {
+                const img = document.createElement('img');
+                img.className = 'pm-card-thumb-img';
+                img.src = p.thumbnail;
+                img.alt = p.name || '项目缩略图';
+                img.loading = 'lazy';
+                thumb.appendChild(img);
+            } else {
+                thumb.classList.add('pm-card-thumb-empty');
+                thumb.style.background = 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)';
+            }
 
             const overlay = document.createElement('div');
             overlay.className = 'pm-card-title-overlay';
