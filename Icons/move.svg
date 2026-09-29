@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- 位移：坐标轴三向箭头（Y 上 / X 右斜下 / Z 左斜下），与视口里的轴向箭头同一个朝向 -->
+  <g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round">
+    <g transform="translate(12 15.1) rotate(0)"><line x1="0" y1="0" x2="0" y2="-6.4"/></g>
+    <g transform="translate(12 15.1) rotate(115)"><line x1="0" y1="0" x2="0" y2="-6.4"/></g>
+    <g transform="translate(12 15.1) rotate(245)"><line x1="0" y1="0" x2="0" y2="-6.4"/></g>
+  </g>
+  <g fill="#fff" stroke="#fff" stroke-width="1.1" stroke-linejoin="round">
+    <g transform="translate(12 15.1) rotate(0)"><polygon points="0,-10.8 2.3,-6 -2.3,-6"/></g>
+    <g transform="translate(12 15.1) rotate(115)"><polygon points="0,-10.8 2.3,-6 -2.3,-6"/></g>
+    <g transform="translate(12 15.1) rotate(245)"><polygon points="0,-10.8 2.3,-6 -2.3,-6"/></g>
+  </g>
+</svg>

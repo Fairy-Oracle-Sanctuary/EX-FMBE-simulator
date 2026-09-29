@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="1.78" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 旋转循环（模型旋转）：粉 + 青，取自模型旋转 Gizmo 的 x 环 / z 环。
+       为了给左下角的勾线方块徽标让位，整组箭头相对局部/全局旋转的环形
+       （中心 (12,12)、外接半径 9.31、弧半径 6.6）整体缩放 0.74 并向右上平移，
+       最终落在 24 框的 x≈48%~96%、y≈8%~55%，与左下角方块构成「并排」构图。
+       方块不在此文件内，由 Icons/cube.svg + CSS 伪元素按主题黑白上色叠加。 -->
+  <path d="M18.59 2.96 A4.884 4.884 0 0 1 20.78 11.13" stroke="#ff66cc"/>
+  <path d="M16.06 12.39 A4.884 4.884 0 0 1 13.87 4.22" stroke="#66ffe8"/>
+  <path d="M19.11 12.81 L22.20 12.55 L19.37 9.72 Z" fill="#ff66cc" stroke="#ff66cc" stroke-width="1.04"/>
+  <path d="M15.54 2.55 L12.46 2.81 L15.29 5.64 Z" fill="#66ffe8" stroke="#66ffe8" stroke-width="1.04"/>
+</svg>

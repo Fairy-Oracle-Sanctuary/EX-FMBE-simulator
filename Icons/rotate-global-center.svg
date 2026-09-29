@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="1.78" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 旋转循环（全局模型旋转）：橘黄 + 青，取自全局模型旋转 Gizmo 的 x 环 / z 环。
+       几何与 rotate-center.svg 完全一致（缩放 0.74 + 右上平移，给左下角方块徽标让位），仅配色不同。
+       方块不在此文件内，由 Icons/cube.svg + CSS 伪元素按主题黑白上色叠加。 -->
+  <path d="M18.59 2.96 A4.884 4.884 0 0 1 20.78 11.13" stroke="#ffab40"/>
+  <path d="M16.06 12.39 A4.884 4.884 0 0 1 13.87 4.22" stroke="#40c4ff"/>
+  <path d="M19.11 12.81 L22.20 12.55 L19.37 9.72 Z" fill="#ffab40" stroke="#ffab40" stroke-width="1.04"/>
+  <path d="M15.54 2.55 L12.46 2.81 L15.29 5.64 Z" fill="#40c4ff" stroke="#40c4ff" stroke-width="1.04"/>
+</svg>
