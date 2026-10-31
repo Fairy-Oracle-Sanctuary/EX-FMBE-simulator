@@ -1,0 +1,436 @@
+/* 10-sidebar-and-view-buttons.css · 源 测试版v.6b79.html 第 4424-4858 行（原样搬运，仅 url 路径退两级） */
+/* ===== 侧边栏数值显示区（inspector）===== */
+.inspector-panel {
+    margin: 2px 0;
+    padding: 4px 6px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    font-size: 10px;
+    color: #cbd5e6;
+    /* 数据列表面板最大宽度固定，不随方块列表面板无限变宽 */
+    max-width: 320px;
+}
+/* Gizmo 拖拽增量 HUD（新操作模式）：固定屏幕顶部居中显示本次拖拽对方块/文件夹数据的改动量。
+   走项目常规卡片样式（--bg-card + 1px 描边），克制简洁、不加装饰。 */
+.gizmo-delta-hud {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 58px;
+    z-index: 9999;
+    display: none;
+    pointer-events: none;
+    min-width: 132px;
+    max-width: 260px;
+    padding: 6px 9px 7px;
+    /* 直角 + 无阴影：标题只用一条细线分隔，避免「卡片/气泡」观感 */
+    border-radius: 0;
+    background: var(--bg-card, #162136);
+    border: 1px solid #2a3a5a;
+    box-shadow: none;
+    color: var(--color-text, #cbd5e6);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.gizmo-delta-hud .gdh-head {
+    padding: 0 0 4px;
+    margin-bottom: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted, #94a3b8);
+    border-bottom: 1px solid rgba(148,163,184,0.18);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gizmo-delta-hud .gdh-body { padding: 0; }
+.gizmo-delta-hud .gdh-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+}
+.gizmo-delta-hud .gdh-k { color: var(--color-text-muted, #94a3b8); }
+.gizmo-delta-hud .gdh-d { font-weight: 700; font-variant-numeric: tabular-nums; }
+.gizmo-delta-hud .gdh-d.pos { color: #6ee7b7; }
+.gizmo-delta-hud .gdh-d.neg { color: #fca5a5; }
+.gizmo-delta-hud .gdh-none { color: var(--color-text-soft, #64748b); justify-content: flex-start; }
+body.light-mode .gizmo-delta-hud {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #0f172a;
+    box-shadow: none;
+}
+body.light-mode .gizmo-delta-hud .gdh-head {
+    color: #64748b;
+    border-bottom-color: rgba(15,23,42,0.1);
+}
+body.light-mode .gizmo-delta-hud .gdh-k { color: #64748b; }
+body.light-mode .gizmo-delta-hud .gdh-d.pos { color: #047857; }
+body.light-mode .gizmo-delta-hud .gdh-d.neg { color: #b91c1c; }
+body.light-mode .gizmo-delta-hud .gdh-none { color: #94a3b8; }
+body.light-mode .inspector-panel { color: #1e293b; }
+.inspector-panel .insp-title {
+    font-weight: bold;
+    color: #60a5fa;
+    margin-bottom: 6px;
+    font-size: 11px;
+    letter-spacing: .2px;
+}
+/* 一行：分组标签在左，三个输入框在右 */
+.inspector-panel .insp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.inspector-panel .insp-label {
+    width: 44px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.2;
+}
+.inspector-panel .insp-inputs {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    min-width: 0;
+}
+.inspector-panel .insp-cell {
+    position: relative;
+    display: block;
+    font-size: 9px;
+    color: #94a3b8;
+}
+.inspector-panel .insp-marker {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 8px;
+    height: 8px;
+    z-index: 1;
+    pointer-events: none;
+}
+.inspector-panel .insp-cell input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px 2px 5px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px;
+    text-align: center;
+    /* 隐藏原生数字输入框的上下三角形微调按钮，避免与角标混淆 */
+    -moz-appearance: textfield;
+    appearance: none;
+}
+.inspector-panel .insp-cell input::-webkit-outer-spin-button,
+.inspector-panel .insp-cell input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.inspector-panel .insp-cell input:focus { background: rgba(255,255,255,0.10); border-color: rgba(96,165,250,0.45); outline: none; }
+body.light-mode .inspector-panel .insp-cell input { background: rgba(0,0,0,0.04); color: #0f172a; border-color: rgba(0,0,0,0.08); }
+body.light-mode .inspector-panel .insp-cell input:focus { background: rgba(0,0,0,0.08); border-color: rgba(37,99,235,0.45); }
+/* 行尾操作按钮（如枢轴点归零/居中） */
+.inspector-panel .insp-row-action {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 0;
+}
+.inspector-panel .insp-row-action:hover { color: #e2e8f0; background: rgba(255,255,255,0.06); }
+body.light-mode .inspector-panel .insp-row-action:hover { color: #0f172a; background: rgba(0,0,0,0.06); }
+.inspector-panel .insp-disabled {
+    padding: 5px;
+    text-align: center;
+    color: #64748b;
+    background: transparent;
+    border-radius: 0;
+    font-style: italic;
+    font-size: 10px;
+}
+.inspector-panel .insp-hint {
+    padding: 5px;
+    text-align: center;
+    color: #64748b;
+    font-size: 10px;
+}
+/* ===== 视图切换按钮（图形，非文字）=====
+   造型沿用全局「切角矩形」语言：但按钮靠在面板【左上角】，故切角取【左上 + 右下】两个角，
+   使切面朝向它贴靠的角落。clip-path 会裁掉 border，故用淡蓝填充表达形状（无 border/圆角/阴影）。 */
+.view-toggle-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; padding: 0; border: none; cursor: pointer;
+    background: rgba(59,130,246,0.16);
+    color: #60a5fa;
+    clip-path: polygon(0 7px, 7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+    transition: background .15s ease, color .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.view-toggle-btn:hover { background: rgba(59,130,246,0.34); color: #93c5fd; }
+.view-toggle-btn:active { transform: translateY(1px); }
+.view-toggle-btn svg { width: 14px; height: 14px; display: block; pointer-events: none; }
+body.light-mode .view-toggle-btn { background: rgba(37,99,235,0.12); color: #2563eb; }
+body.light-mode .view-toggle-btn:hover { background: rgba(37,99,235,0.26); color: #1d4ed8; }
+/* 方块列表头部：切换按钮与右侧三个图标之间的斜杠分隔 */
+.outliner-actions-sep { color: #64748b; font-size: 13px; line-height: 1; margin: 0 6px; user-select: none; pointer-events: none; }
+body.light-mode .outliner-actions-sep { color: #94a3b8; }
+/* 数据视图头部细条：与 .outliner-actions 同款（底边分隔线 + 左内边距），放在数据面板最顶部、数值上方 */
+.data-view-header {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 10px 5px 12px;
+    border-bottom: 1px solid rgba(59,130,246,0.18);
+    margin-bottom: 2px;
+    flex-shrink: 0;
+}
+body.light-mode .data-view-header { border-bottom-color: rgba(0,0,0,0.08); }
+/* 切换按钮位置恒定：永远在面板【左上角】（细条最左侧），不随屏宽移动、不做贴边/垂直居中。
+   （曾试过宽屏时吸附到面板左边缘垂直居中 → 用户否决：「切换按键始终在左上角」。） */
+
+/* 组内方块缩进 */
+/* 文件夹内方块：左侧蓝色竖线（画在内层 .side-block-box 的 ::before，避免与外层的 molang 角标争用伪元素） */
+.side-block-group-item .side-block-box {
+    padding-left: 20px;
+}
+.side-block-group-item .side-block-box::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: #3b82f6;
+    opacity: 0.5;
+}
+body.light-mode .side-block-group-item .side-block-box::before {
+    background: #60a5fa;
+    opacity: 0.6;
+}
+@media (max-width: 480px) {
+    .side-block-group-item .side-block-box { padding-left: 14px; }
+    .side-block-group-item .side-block-box::before { left: 7px; }
+}
+@media (max-width: 320px) {
+    .side-block-group-item .side-block-box { padding-left: 10px; }
+    .side-block-group-item .side-block-box::before { left: 5px; }
+}
+.side-block-group-empty {
+    padding: 8px 24px;
+    color: #64748b;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* 关键帧模式下禁用状态的方块（未加入关键帧系统） */
+.side-block-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.side-block-disabled span {
+    color: #64748b !important;
+}
+body.light-mode .side-block-disabled span {
+    color: #9ca3af !important;
+}
+
+/* 关键帧方块标识 - 紫色小三角形 */
+.side-block-kf-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-left: 8px solid #a855f7;
+    border-bottom: 8px solid transparent;
+}
+.side-block-group-item .side-block-kf-badge {
+    left: 12px;
+}
+/* 骨骼方块标记：骨干 = 方块名斜体（无条纹/无星标）；子块/普通块均不再显示任何条纹（用户要求） */
+
+/* 新布局模式下隐藏旧变量操作面板（.panel-content 内含工具栏/设置/变量卡等），
+   仅保留已移出的数据表 #dataTableInspector，这样 /= 按钮才能正常显隐数据表。
+   原先 dataTableInspector 被误放在 .panel-content 内部，导致一并被隐藏。 */
+body.new-layout-active .data-panel > .panel-content,
+body.new-layout-active .data-panel > #resizeHandle {
+    display: none !important;
+}
+/* 新布局模式：数据表面板按内容自适应高度（清除 280px 固定高度），并限制最大高度可滚动，
+   避免数据表被裁切；位于底部方块列表之上 */
+body.new-layout-active .data-panel {
+    max-height: 62vh;
+    overflow: auto;
+    /* 与方块列表一致的毛玻璃半透效果（原先是 var(--bg-panel)=rgba(18,25,45,0.94) 几乎不透明，看不出毛玻璃） */
+    background: rgba(10,15,26,0.35);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border-top: 1px solid rgba(59,130,246,0.25);
+}
+body.light-mode.new-layout-active .data-panel {
+    background: rgba(232,238,245,0.5);
+    border-top-color: rgba(0,0,0,0.08);
+}
+/* 拉伸面板过程中：仅关闭过渡动画，消除“拖动卡顿/追帧”；
+   保留 backdrop-filter（毛玻璃）——否则半透明背景（0.35 alpha）关掉模糊后会变成近乎透明、看不清内容 */
+body.is-resizing .data-panel,
+body.is-resizing .side-block-list {
+    transition: none !important;
+}
+/* 内联数据表（#dataTableInspector）同样补全毛玻璃，与新布局方块列表视觉一致 */
+body.new-layout-active #dataTableInspector.inspector-panel {
+    background: rgba(10,15,26,0.35);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid rgba(59,130,246,0.25);
+}
+body.light-mode.new-layout-active #dataTableInspector.inspector-panel {
+    background: rgba(232,238,245,0.5);
+    border-color: rgba(0,0,0,0.08);
+}
+body.new-layout-active .top-bar {
+    display: none !important;
+}
+body.new-layout-active .top-left-bar {
+    display: none !important;
+}
+body.new-layout-active .toolbar-integrated #importBtn,
+body.new-layout-active .toolbar-integrated #exportBtn,
+body.new-layout-active .toolbar-integrated #materialPresetBtn,
+body.new-layout-active .toolbar-integrated #resetViewBtn,
+body.new-layout-active .toolbar-integrated #hideNameBtn,
+body.new-layout-active .axis-controls {
+    display: none !important;
+}
+body.new-layout-active .block-menu-btn {
+    display: block !important;
+}
+body.new-layout-active #canvas-container {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    right: auto !important;
+    bottom: auto !important;
+}
+body.new-layout-active .new-top-bar {
+    display: flex !important;
+}
+/* 注意：不要在这里强制 .side-block-list display:block !important，
+   否则底部非侧边栏模式下 JS 无法通过 style.display='none' 隐藏方块列表，
+   导致 /= 与 ☰ 两个面板无法互斥。显隐由 applyNewLayoutMode / toggle* 函数控制。 */
+/* 新布局模式隐藏灰度强度 */
+body.new-layout-active #grayscaleSetting {
+    display: none !important;
+}
+/* 新布局模式隐藏折叠按钮大小设置 */
+body.new-layout-active #collapseBtnSizeSetting {
+    display: none !important;
+}
+/* 新布局全屏时 */
+body.new-layout-active:-webkit-full-screen #canvas-container,
+body.new-layout-active:fullscreen #canvas-container {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+body.new-layout-active:-webkit-full-screen .new-top-bar,
+body.new-layout-active:fullscreen .new-top-bar {
+    display: none !important;
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 500px) {
+    .changelog-modal .modal-content {
+        max-width: 70vw;
+        max-height: 85vh;
+        padding: 16px 20px;
+    }
+    .changelog-modal .modal-title {
+        font-size: 20px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+    }
+    .changelog-list {
+        max-height: 50vh;
+    }
+    .changelog-date-header {
+        padding: 6px 6px;
+    }
+    .changelog-date-text {
+        font-size: 13px;
+    }
+    .changelog-body li {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+}
+@media (max-width: 480px) {
+    .changelog-modal .modal-content {
+        padding: 16px;
+        max-width: 94%;
+    }
+    .changelog-modal .modal-title {
+        font-size: 20px;
+    }
+    .changelog-date-text {
+        font-size: 13px;
+    }
+    .changelog-version-tag {
+        font-size: 10px;
+        padding: 1px 0 1px 5px;
+        border-left-width: 2px;
+    }
+    .changelog-entry-label {
+        font-size: 10px;
+    }
+    .changelog-body li {
+        font-size: 12px;
+    }
+}
+
+/* 悬浮方块名称：响应式自适应，替代原内联超小字体 */
+.block-label {
+    display: inline-block;
+}
+@media (max-width: 480px) {
+    .block-label { display: inline-block; }
+}
+
+/* 内层元素用于应用缩放，避免被 CSS2DRenderer 覆写 */
+.block-label-inner {
+    display: inline-block;
+    transform-origin: center;
+    transition: transform 0.12s linear, opacity 0.12s linear;
+    /* 背景和文本都放在内层，这样 scale 会同时作用于背景 */
+    background: rgba(15,23,42,0.85);
+    color: #a5f3fc;
+    font-weight: bold;
+    border-left: 3px solid #06b6d4;
+    border-radius: 999px;
+    backdrop-filter: blur(4px);
+    white-space: nowrap;
+    /* 响应式字号与内边距 */
+    font-size: clamp(10px, 1.0vw, 14px);
+    padding: clamp(3px, 0.5vw, 6px) clamp(7px, 1.2vw, 10px);
+    transform: skewX(-8deg); /* 保持斜切外观，JS 缩放时会在此基础上合并 */
+}
+

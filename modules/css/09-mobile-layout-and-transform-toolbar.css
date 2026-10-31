@@ -1,0 +1,949 @@
+/* 09-mobile-layout-and-transform-toolbar.css · 源 测试版v.6b79.html 第 3484-4423 行（原样搬运，仅 url 路径退两级） */
+/* ===== 手机屏幕比例（≤600px）：Gizmo 工具栏改停靠到屏幕右侧、方块列表之上 =====
+   原因（实测）：顶栏一行放不下「文件 / 视图 / 操作」+ 整条 Gizmo 工具栏，而右上角常驻的
+   「编辑模式 / 动画模式」切换控件（#kfModeGroup，fixed top:12px right:12px）会直接盖住 Gizmo 按钮
+   —— 390px 宽时重叠 144px、480px 时 81px、560px 时刚好擦边 1px，**600px 起才完全不重叠**，
+   所以断点取 600px（与虚拟修饰键宽屏断点 min-width:600px 正好互补）。
+   停靠位：屏幕右侧、紧贴「当前可见的底部面板」（方块列表 / 数据表面板）上沿；
+   bottom 的精确值由 JS syncMobileGizmoDock() 按实际面板高度实时写入（面板高度可拖拽调节），
+   这里只留一个兜底值，保证 JS 未跑到时也不会盖住列表。 */
+@media (max-width: 600px) {
+    #herTransformToolbar {
+        position: fixed;
+        right: 8px;
+        bottom: 268px;              /* 兜底：260（默认方块列表高）+ 8 间距 */
+        top: auto; left: auto;
+        margin-left: 0;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 1px;               /* 收紧到 1px：卡片左右不再留出多余的空白边 */
+        /* ★ 这里刻意【不用 backdrop-filter】：毛玻璃会给 position:fixed 的后代当包含块，
+           两个旋转下拉（.top-dropdown-menu 是 fixed）就会被钉在这条 58px 宽的竖条上，
+           左对齐后整块飞出屏幕右侧（实测菜单 left=553px 而视口只有 390px）。
+           故改用不透明一点的底色换取「下拉按视口定位」的正确行为（JS 里再做右边界回收）。 */
+        background: rgba(15,23,42,0.86);
+        border: 1px solid rgba(59,130,246,0.22);
+        border-radius: 3px;         /* 圆角尽量小 */
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        z-index: 29;                /* 高于方块列表(25)、低于顶栏(30) */
+    }
+    body.light-mode #herTransformToolbar {
+        background: rgba(255,255,255,0.92);
+        border-color: rgba(59,130,246,0.3);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+    /* 竖排后每枚按钮收成贴合图标的窄条：
+       卡片总宽 = 26（按钮）+ 2×1（卡片内边距）+ 2×1（描边）= 30px，
+       图标 22px 落在 26px 按钮里（左右各 2px），「卡片外缘 → 图标外缘」只剩 4px —— 左右不留空。
+       ★ 图标在顶栏横排里是 16px，这里单独放大到 22px —— 触屏上本身就该大一点，
+         且 SVG 是 viewBox 24 的近满幅矢量，等比放大不会糊。 */
+    #herTransformToolbar .her-mode-btn .hmb-icon {
+        width: 22px;
+        height: 22px;
+    }
+    /* ★ 按钮自身【不带任何描边框、圆角压到 2px】—— 卡片已经是一层底，
+       再给每个按钮加一层带框的底就成了「双重按钮底层」（与右上角模式切换控件同样的简约语言）。 */
+    #herTransformToolbar .her-mode-btn,
+    #herTransformToolbar .her-mode-btn.icon-only,
+    #herTransformToolbar .her-mode-btn.rot-btn {
+        width: 26px;
+        padding: 8px 0;
+        gap: 0;
+        justify-content: center;
+        border: none;
+        border-radius: 2px;
+        background: transparent;
+    }
+    /* 选中态＝纯色填充，无边框、小圆角（不再出现第二层「框」） */
+    #herTransformToolbar .her-mode-btn.active {
+        border: none;
+        border-radius: 2px;
+        color: #60a5fa;
+        background: rgba(59,130,246,0.22);
+    }
+    body.light-mode #herTransformToolbar .her-mode-btn.active {
+        color: #2563eb;
+        background: rgba(37,99,235,0.14);
+    }
+    #herTransformToolbar .her-mode-btn:hover {
+        border: none;
+        background: rgba(59,130,246,0.12);
+    }
+    /* 旋转按钮的 ▾ 展开箭头在竖排里改为「右下角角标」：图标两侧只剩 5px，
+       若走「右边缘中线」会压在图标右缘上；移到右下角正好落在 9px 的底部内边距里，
+       与 16px 图标完全错开，图标因此能严格居中、五枚同处一列中轴线 */
+    #herTransformToolbar .her-mode-btn { position: relative; }
+    /* 竖排窄条（26px）放不下「顶点捕捉 + 功能」两枚图标：手机端只保留顶点捕捉图标，当前模式看下拉里的蓝色对勾 */
+    #herTransformToolbar .hmb-fn-wrap { display: none; }
+    #herTransformToolbar .her-mode-btn .hmb-caret {
+        position: absolute; right: 1px; bottom: 1px; top: auto;
+        transform: none; margin-left: 0; font-size: 7px; line-height: 1;
+    }
+    /* 两个旋转下拉之间的竖线分隔是「顶栏横排」语境下的产物，竖排后只剩一条多余短线，去掉 */
+    #herTransformToolbar .top-dropdown-wrapper + .top-dropdown-wrapper::before { display: none; }
+    /* 「局部旋转」下拉在顶栏里带了 margin-left:6px 作横向间距，竖排后会把该按钮整列推右 6px，归零 */
+    #herTransformToolbar .top-dropdown-wrapper { margin-left: 0 !important; }
+    /* 顶栏里紧随工具栏的那条分隔竖线随工具栏一起退出顶栏，避免留下孤立短线 */
+    #herToolbarDivider { display: none; }
+}
+
+/* ===== 画笔工具条停靠（屏幕右侧、方块列表之上）=====
+   触发由 JS 判定并给 <body> 加 .brush-dock（不写死媒体查询）：画笔工具条横排自然宽
+   563px（描点）/ 414px（生成方块），从顶栏 x≈157 起；只要「右缘超出视口」或「右缘压到右上角
+   模式控件 #kfModeGroup」就停靠 —— 实测描点模式临界约 990px（远大于 Gizmo 工具条的 600px，
+   因为它窄得多），故不能沿用 600px 断点，否则 640~990px（含手机横屏）仍是坏的。
+   停靠前 JS 会先把它搬出顶栏（顶栏 backdrop-filter 会给 position:fixed 的后代当包含块）。
+   注意：#brushLengthToolbar 带内联样式（margin-left / padding-left / border-left / gap / align-items），
+   故冲突属性必须用 !important 覆盖内联值。 */
+body.brush-dock #brushLengthToolbar {
+    position: fixed !important;
+    right: 8px !important;
+    bottom: 268px;                      /* 兜底：260（默认方块列表高）+ 8 间距；精确值由 JS 写入 */
+    top: auto !important; left: auto !important;
+    margin-left: 0 !important;
+    padding: 6px !important;
+    border-left: none !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    width: 100px;
+    background: rgba(15,23,42,0.9);
+    border: 1px solid rgba(59,130,246,0.22);
+    border-radius: 3px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    z-index: 29;                        /* 高于方块列表(25)、低于顶栏(30) */
+}
+body.light-mode.brush-dock #brushLengthToolbar {
+    background: rgba(255,255,255,0.94);
+    border-color: rgba(59,130,246,0.3);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+/* 竖排后 1px 分割竖线失去意义，去掉 */
+body.brush-dock #brushLengthToolbar .pt-sep { display: none; }
+/* 按钮铺满卡片宽度、文字居中（缩一点字号让「🗑删除选中(N)」在 88px 内不换行） */
+body.brush-dock #brushLengthToolbar .pt-top-btn { font-size: 10.5px; padding: 7px 3px; text-align: center; }
+/* 色板：10 色折成 5 列 × 2 行（宽 88px 内容区恰好放下 5×14 + 4×4） */
+body.brush-dock #brushLengthToolbar .pt-color-row { flex-wrap: wrap; justify-content: center; gap: 4px; }
+body.brush-dock #brushLengthToolbar .pt-swatch { width: 14px; height: 14px; }
+/* 侧边点列表顶部动作行：停靠后 删除/形状 已移入右侧卡片（不再重复），仅保留「矩形宽」内联滑动条；
+   其它模式下该行没有可见子元素 → 高度塌陷为 0，不占位。 */
+body.brush-dock .pt-side-actions { padding: 0; border-bottom: none; }
+body.brush-dock .pt-side-actions #ptSideDelSel,
+body.brush-dock .pt-side-actions #ptSideShape { display: none; }
+body.brush-dock .pt-side-actions .pt-side-len { padding: 6px 8px; border-bottom: 1px solid rgba(100,116,139,0.25); white-space: nowrap; }
+/* 矮视口（横屏手机，视口高 < 560px）：竖排卡片高约 186px，会超过「列表上沿以上」的可用空间而被裁掉顶部
+   → 改成「底部横排条」：仍停在方块列表之上，但横向铺开（横屏宽裕，563px 内容可一行放下）。 */
+body.brush-dock.brush-dock-flat #brushLengthToolbar {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: auto !important;                 /* 收缩到内容宽 */
+    max-width: calc(100% - 16px);           /* 放不下就换行，绝不溢出 */
+    left: auto !important;
+    right: 8px !important;                  /* 仍贴屏幕右侧 */
+    gap: 6px !important;
+}
+body.brush-dock.brush-dock-flat #brushLengthToolbar .pt-top-btn { width: auto; }
+body.brush-dock.brush-dock-flat #brushLengthToolbar .pt-color-row { flex-wrap: nowrap; }
+/* 画笔模式：画笔长度滑动条（显示在"操作"按钮右侧） */
+.brush-length-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid rgba(100,116,139,0.25);
+}
+.brush-length-label {
+    font-size: 12px;
+    color: #cbd5e1;
+    white-space: nowrap;
+}
+.brush-length-range {
+    width: 120px;
+    accent-color: #3b82f6;
+    cursor: pointer;
+}
+.brush-length-value {
+    font-size: 12px;
+    min-width: 28px;
+    text-align: right;
+    font-family: monospace;
+    color: #60a5fa;
+}
+body.light-mode .brush-length-toolbar { border-left-color: rgba(0,0,0,0.08); }
+body.light-mode .brush-length-label { color: #334155; }
+body.light-mode .brush-length-value { color: #2563eb; }
+.top-menu-btn {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    transform: none !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    border: none !important;
+    font-weight: 500;
+}
+.top-menu-btn:hover {
+    background: rgba(59,130,246,0.1) !important;
+}
+.top-menu-btn span {
+    transform: none !important;
+}
+.top-dropdown-menu {
+    position: fixed;
+    min-width: 160px;
+    background: rgba(15,23,42,0.96);
+    backdrop-filter: blur(12px);
+    border: 1px solid #3b82f6;
+    border-radius: 12px;
+    padding: 6px 0;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+body.light-mode .top-dropdown-menu {
+    background: var(--bg-dropdown);
+    border-color: #cbd5e1;
+}
+.top-dropdown-menu.open {
+    display: block;
+    animation: topDropdownFadeIn 0.15s ease-out;
+}
+@keyframes topDropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+.top-dropdown-item {
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #e2e8f0;
+    transition: background 0.1s;
+    white-space: nowrap;
+}
+body.light-mode .top-dropdown-item {
+    color: #0f172a;
+}
+.top-dropdown-item:hover {
+    background: rgba(59,130,246,0.15);
+}
+body.light-mode .top-dropdown-item:hover {
+    background: rgba(59,130,246,0.1);
+}
+.top-dropdown-divider {
+    height: 1px;
+    background: rgba(51,65,85,0.5);
+    margin: 4px 0;
+}
+body.light-mode .top-dropdown-divider {
+    background: rgba(0,0,0,0.06);
+}
+/* ===== 变换工具栏（旋转 / 顶点捕捉）的下拉卡片：延续顶栏的无边框深色设计 =====
+   矩形无圆角、与顶栏同底色，贴着顶栏底边往下渐出，左侧一条灰色细线 */
+#herTransformToolbar .top-dropdown-menu {
+    border: none;
+    border-radius: 0;
+    border-left: 1px solid rgba(100,116,139,0.45);
+    background: rgba(10,15,26,0.92);
+    backdrop-filter: blur(10px);
+    padding: 4px 0;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+}
+#herTransformToolbar .top-dropdown-menu.open {
+    animation: topCardDropIn 0.16s ease-out;
+}
+body.light-mode #herTransformToolbar .top-dropdown-menu {
+    background: var(--bg-header);
+    border-left-color: rgba(0,0,0,0.22);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+}
+/* 顶点捕捉下拉的 6 个子分支：上往下**每两个一组**，组与组之间一条灰色分割线
+   （即第 2、4 项下面各一条，共 2 条；不是每相邻两项之间都画） */
+#vtxSnapDropdown .top-dropdown-item:nth-child(2n):not(:last-child) {
+    border-bottom: 1px solid rgba(100,116,139,0.45);
+}
+body.light-mode #vtxSnapDropdown .top-dropdown-item:nth-child(2n):not(:last-child) {
+    border-bottom-color: rgba(0,0,0,0.12);
+}
+/* 自上而下的擦出：卡片从顶栏底边往下"长"出来，不做位移（避免动画期间压到顶栏） */
+@keyframes topCardDropIn {
+    from { opacity: 0; clip-path: inset(0 0 100% 0); }
+    to { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+/* 方块列表可拖动边框 */
+.side-block-list {
+    resize: none;
+}
+/* 侧边显示时左侧可拖动边框 */
+.side-block-list:not(.side-list-bottom) {
+    border-left: 4px solid rgba(59,130,246,0.15);
+    border-left-width: 4px !important;
+}
+.side-block-list:not(.side-list-bottom):hover {
+    border-left-color: rgba(59,130,246,0.4);
+}
+
+/* 方块列表 - 在3D视图之上叠加渲染 */
+.side-block-list {
+    position: fixed;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    width: 300px;
+    min-width: 250px; /* 防止被压得过窄 */
+    z-index: 25;
+    background: rgba(10,15,26,0.35);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    overflow-y: auto;
+    padding: 8px;
+    pointer-events: auto;
+}
+/* 侧边显示时左侧可拖动边框（需在基类之后） */
+.side-block-list:not(.side-list-bottom) {
+    border-left: 4px solid rgba(59,130,246,0.15);
+    border-left-width: 4px !important;
+    min-width: 250px; /* 防止方块列表被压得过窄导致内容挤成一团 */
+}
+.side-block-list:not(.side-list-bottom):hover {
+    border-left-color: rgba(59,130,246,0.4);
+}
+body.light-mode .side-block-list:not(.side-list-bottom) {
+    border-left-color: rgba(0,0,0,0.08) !important;
+}
+/* 底部显示时左停靠（避免与底部数据表全宽重叠）：仅占据左下角，宽度固定、高度可调 */
+/* 底部显示（新操作模式 + 非侧边栏）时：横铺在屏幕底部，宽度与屏幕等宽 */
+.side-block-list.side-list-bottom {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 200px !important;
+    border-top: 1px solid rgba(59,130,246,0.25) !important;
+    border: 1px solid rgba(59,130,246,0.25);
+    border-radius: 0;
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.35);
+}
+.side-block-list.side-list-bottom:hover {
+    border-right-color: rgba(59,130,246,0.4);
+}
+body.light-mode .side-block-list.side-list-bottom {
+    border-top-color: rgba(0,0,0,0.08) !important;
+    background: rgba(232,238,245,0.5);
+}
+body.light-mode .side-block-list {
+    background: rgba(232,238,245,0.5);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+/* 底部模式拖拽手柄：贴附面板顶边的半透浅色细条，与侧边栏 resize-handle 视觉一致 */
+#sideListResizeHandle {
+    background: linear-gradient(to bottom, rgba(59,130,246,0) 0, rgba(59,130,246,0) 10px, rgba(59,130,246,0.22) 10px, rgba(59,130,246,0.5) 14px);
+    transition: background 0.15s ease;
+}
+#sideListResizeHandle:hover {
+    background: linear-gradient(to bottom, rgba(59,130,246,0) 0, rgba(59,130,246,0) 10px, rgba(59,130,246,0.4) 10px, rgba(59,130,246,0.85) 14px);
+}
+
+/* 外层容器：仅定位/缩进，不裁剪、不上色；molang 角标画在这里，故只出现在切角、不碰直边 */
+.side-block-item {
+    position: relative;
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+/* 可视方块通用样式：普通方块的内层 .side-block-box，未包裹的特殊行（关键帧开关等）直接加 .side-block-box。
+   自带 clip-path 切左下/右上角；悬浮/选中背景作用于此层。 */
+.side-block-box {
+    padding: 8px 12px;
+    border-radius: 0;
+    font-size: 13px;
+    color: #cbd5e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+    background: transparent;
+    position: relative;
+    /* 统一切角：左下 + 右上 */
+    clip-path: polygon(
+        0 0,
+        calc(100% - 12px) 0,
+        100% 12px,
+        100% 100%,
+        12px 100%,
+        0 calc(100% - 12px)
+    );
+}
+body.light-mode .side-block-box {
+    color: #1e293b;
+}
+.side-block-item:hover .side-block-box {
+    background-color: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.3);
+}
+.side-block-item.selected .side-block-box {
+    background-color: rgba(59,130,246,0.2);
+    border-color: #3b82f6;
+}
+body.light-mode .side-block-item.selected .side-block-box {
+    background-color: rgba(59,130,246,0.12);
+}
+.side-block-item .side-block-name-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+.side-block-item .side-block-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.side-block-item:hover .side-block-actions {
+    opacity: 1;
+}
+/* 触屏设备没有 hover：强制显示删除/复制按钮，否则手机上侧栏按钮永远隐形、无法点按（这正是“按不动”的真凶） */
+.side-block-item:focus-within .side-block-actions,
+.side-block-item.selected .side-block-actions {
+    opacity: 1;
+}
+@media (hover: none) {
+    .side-block-item .side-block-actions {
+        opacity: 1;
+    }
+}
+/* molang 驱动方块：仅在左下/右上切角处画一小段颜色（清新切角风格），绝不污染整块或直边。
+   driven(子骨骼)=暖橙  source(骨源)=蔚蓝  mode(完全接管)=淡紫。
+   颜色画在外层 .side-block-item（不裁剪）的 ::before(左下)/::after(右上) 角三角上，
+   对角线对齐切角切口；内层 .side-block-box 才裁剪。故颜色只落在切角、不碰直边、不整块染色。 */
+.side-block-item.side-block-molang::before,
+.side-block-item.side-block-molang::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+    z-index: 2;
+}
+.side-block-item.side-block-molang::before {
+    left: 0; bottom: 0;
+    background: #fb923c;
+    /* 沿左下切角切口的斜边(对角线 0,0→12,12)画一条约1.5px宽的颜色线段，两端缩进不碰直边 */
+    clip-path: polygon(20% 11%, 11% 20%, 80% 89%, 89% 80%);
+}
+.side-block-item.side-block-molang::after {
+    right: 0; top: 0;
+    background: #fb923c;
+    /* 沿右上切角切口的斜边(对角线 0,0→12,12)画一条约1.5px宽的颜色线段，两端缩进不碰直边 */
+    clip-path: polygon(20% 11%, 11% 20%, 80% 89%, 89% 80%);
+}
+.side-block-item.side-block-molang-mode::before,
+.side-block-item.side-block-molang-mode::after { background: #a78bfa; }
+.side-block-item.side-block-molang-source::before,
+.side-block-item.side-block-molang-source::after { background: #0ea5e9; }
+/* 单项方块隐藏（无分组场景）：整行降透明度 + 名字划线 + 眼睛按钮常显，切回前仍一眼可辨 */
+.side-block-item.side-block-hidden .side-block-box {
+    opacity: 0.42;
+}
+.side-block-item.side-block-hidden .side-block-name-wrap > span:not(.side-block-kf-badge) {
+    text-decoration: line-through;
+}
+.side-block-item.side-block-hidden .side-block-actions {
+    opacity: 1;
+}
+/* ★ 隐藏行里「复制 / ✛ / 删除」不可见但仍占位（visibility 而非移除）：
+   保证 👁 始终停在「复制左边」那一列，与显示行的 👁 左缘对齐 —— 鼠标位置恒定，可原地反复开关。
+   （若整块移除，actions 容器收缩后仍贴右，👁 会被推到行尾换位置。） */
+.side-block-item.side-block-hidden .side-block-copy,
+.side-block-item.side-block-hidden .side-block-bind,
+.side-block-item.side-block-hidden .side-block-unbind,
+.side-block-item.side-block-hidden .side-block-delete {
+    visibility: hidden;
+    pointer-events: none;
+}
+.side-block-actions .side-block-eye {
+    width: 26px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    background: rgba(148,163,184,0.16);
+}
+.side-block-actions .side-block-eye:hover {
+    background: #10b981;
+    color: #fff;
+}
+.side-block-item.side-block-hidden .side-block-eye {
+    color: #f59e0b;
+    background: rgba(245,158,11,0.20);
+}
+.side-block-item.side-block-hidden .side-block-eye:hover {
+    background: #f59e0b;
+    color: #fff;
+}
+/* 🔒 方块「锁定」按钮：与 👁 同尺寸、并排在其右侧（形状由 getBlockLockIcon 提供）。
+   ★锁定 ≠ 隐藏：不改变可见性，只禁止选中（见 isBlockLocked / setBlocksLocked）。
+   配色：默认中性灰同 👁；锁定态转金色实心态，与「隐藏」的琥珀色眼睛靠图标形状区分。 */
+.side-block-actions .side-block-lock {
+    width: 26px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    background: rgba(148,163,184,0.16);
+}
+.side-block-actions .side-block-lock:hover {
+    background: #f59e0b;
+    color: #fff;
+}
+.side-block-item.side-block-locked .side-block-lock {
+    color: #fbbf24;
+    background: rgba(251,191,36,0.18);
+}
+.side-block-item.side-block-locked .side-block-lock:hover {
+    background: #f59e0b;
+    color: #fff;
+}
+/* 锁定行：名字前挂一枚金色小锁（svg 不是 span，不会被隐藏行的划线规则命中）；
+   整行轻微降权但**不划线**，保持「仍保持显示」的语义。 */
+.side-block-lock-mark {
+    width: 11px;
+    height: 11px;
+    color: #fbbf24;
+    flex-shrink: 0;
+}
+.side-block-item.side-block-locked .side-block-name-wrap > span:not(.side-block-kf-badge) {
+    opacity: 0.72;
+}
+.side-block-actions button {
+    background: rgba(0,0,0,0.3);
+    border: none;
+    color: #cbd5e6;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+    /* 关键：按钮上的触摸不当成滚动，避免手指微移触发滚动取消 tap（真机“按不动”的第二层根因） */
+    touch-action: none;
+}
+body.light-mode .side-block-actions button {
+    background: rgba(0,0,0,0.06);
+    color: #0f172a;
+}
+.side-block-actions button:hover {
+    background: #3b82f6;
+    color: white;
+}
+/* 旧操作模式：显式 molang 骨骼绑定（紫色加号按钮） */
+.side-block-actions .side-block-bind {
+    width: 28px;
+    color: #c4b5fd;
+    background: rgba(139,92,246,0.20);
+    font-size: 16px;
+    padding: 0;
+}
+.side-block-actions .side-block-bind:hover {
+    background: #8b5cf6;
+    color: white;
+}
+.side-block-actions .side-block-unbind {
+    color: #fda4af;
+    background: rgba(244,63,94,0.16);
+}
+.side-block-actions .side-block-unbind:hover {
+    background: #f43f5e;
+    color: white;
+}
+/* 大纲顶部紫色加号骨骼绑定按钮（备份样式恢复） */
+.side-block-bone-btn {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #a78bfa;
+    background: rgba(139,92,246,0.12);
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+    line-height: 1;
+}
+.side-block-bone-btn:hover {
+    border-color: rgba(139,92,246,0.5);
+    background: rgba(139,92,246,0.22);
+}
+body.light-mode .side-block-bone-btn {
+    color: #7c3aed;
+    background: rgba(124,58,237,0.10);
+}
+body.light-mode .side-block-bone-btn:hover {
+    border-color: rgba(124,58,237,0.4);
+    background: rgba(124,58,237,0.18);
+}
+.side-block-all {
+    font-weight: bold;
+    border-bottom: 1px solid rgba(59,130,246,0.3);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+}
+/* 方块列表顶部工具栏 */
+.outliner-header {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 10px 4px 12px;
+    border-bottom: 1px solid rgba(59,130,246,0.18);
+    margin-bottom: 4px;
+}
+body.light-mode .outliner-header { border-bottom-color: rgba(0,0,0,0.08); }
+.outliner-header-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.12s;
+    user-select: none;
+}
+.outliner-header-btn:hover { color: #60a5fa; }
+body.light-mode .outliner-header-btn { color: #64748b; }
+body.light-mode .outliner-header-btn:hover { color: #2563eb; }
+.outliner-header-btn svg { display: block; }
+/* 方块列表操作按钮组（“新建方块”＋ 与“新建文件夹”图标，位于“全部选中”下方） */
+.outliner-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 10px 4px 12px;
+    border-bottom: 1px solid rgba(59,130,246,0.18);
+    margin-bottom: 4px;
+}
+body.light-mode .outliner-actions { border-bottom-color: rgba(0,0,0,0.08); }
+.outliner-actions { position: relative; }
+/* 工具收纳下拉（扳手图标） */
+.outliner-tools-btn {
+    transition: color 0.12s, background 0.12s;
+}
+.outliner-tools-btn:hover,
+.outliner-tools-btn.active {
+    color: #60a5fa;
+    background: rgba(59,130,246,0.12);
+    border-radius: 4px;
+}
+body.light-mode .outliner-tools-btn:hover,
+body.light-mode .outliner-tools-btn.active {
+    color: #2563eb;
+    background: rgba(37,99,235,0.10);
+}
+.outliner-tools-btn.kf-active {
+    color: #a855f7 !important;
+    background: rgba(168,85,247,0.12);
+    border-radius: 4px;
+}
+.outliner-tools-menu {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    min-width: 150px;
+    background: rgba(15,23,42,0.96);
+    border: 1px solid rgba(59,130,246,0.28);
+    border-radius: 12px;
+    padding: 6px 0;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.48);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 50;
+}
+body.light-mode .outliner-tools-menu {
+    background: var(--bg-dropdown);
+    border-color: rgba(0,0,0,0.10);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+}
+.outliner-tools-menu.open { display: block; }
+.outliner-tools-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: background 0.10s, color 0.10s;
+    white-space: nowrap;
+}
+body.light-mode .outliner-tools-menu-item { color: #1e293b; }
+.outliner-tools-menu-item:hover {
+    background: rgba(59,130,246,0.15);
+    color: #fff;
+}
+body.light-mode .outliner-tools-menu-item:hover {
+    background: rgba(37,99,235,0.10);
+    color: #1e293b;
+}
+/* ★图标槽：固定 18px 居中（单色描边 SVG，currentColor 跟随条目文字色 / 悬停 / 浅色主题）。
+   2026-10-04：原来的彩色 emoji（✅🔓👁🔄🦴🔢）已全部换成 SVG；固定槽宽照旧，防各条目标签左缘左右跳。 */
+.outliner-tools-menu-item .tm-ico {
+    flex: 0 0 18px;
+    width: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: inherit;
+}
+.outliner-tools-menu-item .tm-ico svg { display: block; }
+.outliner-tools-menu-item .tm-label { flex: 1 1 auto; min-width: 0; }
+/* ★2026-10-04 视觉重构：**取消逐行分隔线**。
+   原来 `.item + .item { border-top }` 让每两行之间都有一条淡线，再加下面的分组线，
+   菜单里就同时存在「6 条弱线 + 1 条强线」⇒ 又碎又脏（用户「有点丑」）。
+   现在只在**分组之间**画线，共 2 条，且规格完全一致。 */
+.outliner-tools-menu .side-block-all { border-bottom: none; margin-bottom: 0; }
+/* 分组线：贯穿整个菜单宽度的 1px 实线（不是缩进短线），分组感清晰又不抢眼 */
+.outliner-tools-menu-divider {
+    height: 1px;
+    margin: 5px 0;
+    background: rgba(59,130,246,0.28);
+}
+body.light-mode .outliner-tools-menu-divider { background: rgba(0,0,0,0.10); }
+/* 全项目级操作的说明小字：左缩进对齐条目标签列（14 内边距 + 18 图标槽 + 8 间距 = 40px），
+   看起来是上面两条的脚注，而不是一行游离的灰字。 */
+.outliner-tools-menu-subtitle {
+    padding: 1px 14px 8px 40px;
+    font-size: 10.5px;
+    color: #94a3b8;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    pointer-events: none;
+}
+body.light-mode .outliner-tools-menu-subtitle { color: #64748b; }
+
+/* 组标题 */
+.side-block-group-header {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+}
+.side-block-group-header:hover {
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.3);
+}
+/* 选中骨骼（文件夹）时持续高亮，与方块选中（.side-block-item.selected）视觉一致 */
+.side-block-group-header.selected {
+    background: rgba(59,130,246,0.2);
+    border-color: #3b82f6;
+    color: #e2e8f0;
+}
+body.light-mode .side-block-group-header.selected {
+    background: rgba(59,130,246,0.12);
+    color: #1e293b;
+}
+.side-block-group-header[draggable="true"] { cursor: grab; }
+.side-block-group-header.dragging { opacity: 0.45; }
+.side-block-group-header.drag-over {
+    position: relative;
+    background: rgba(59,130,246,0.18);
+    border-color: rgba(59,130,246,0.55);
+}
+/* 拖拽目标指示：文件夹左侧蓝色竖线，右上角/右下角倒角，清晰标示“将放入此文件夹” */
+.side-block-group-header.drag-over::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: calc(100% - 10px);
+    background: #3b82f6;
+    box-shadow: 0 0 7px rgba(59,130,246,0.75);
+    /* 右上角与右下角倒角（右侧竖边顶部/底部各切 45°），形成指向内容的标记 */
+    clip-path: polygon(
+        0 0,
+        calc(100% - 5px) 0,
+        100% 5px,
+        100% calc(100% - 5px),
+        calc(100% - 5px) 100%,
+        0 100%
+    );
+}
+body.light-mode .side-block-group-header {
+    color: #64748b;
+}
+body.light-mode .side-block-group-header.drag-over {
+    background: rgba(59,130,246,0.10);
+    border-color: rgba(59,130,246,0.4);
+}
+.side-block-group-toggle {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin-right: 4px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+.side-block-group-toggle:hover {
+    background: rgba(148,163,184,0.18);
+    color: #e2e8f0;
+}
+body.light-mode .side-block-group-toggle { color: #64748b; }
+body.light-mode .side-block-group-toggle:hover { color: #334155; background: rgba(100,116,139,0.12); }
+.side-block-group-name {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.folder-chevron { display: block; transition: transform 0.15s; }
+.folder-icon { flex: 0 0 auto; }
+.side-block-group-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.side-block-group-header:hover .side-block-group-actions {
+    opacity: 1;
+}
+.side-block-group-actions button {
+    background: rgba(0,0,0,0.3);
+    border: none;
+    color: #cbd5e6;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+body.light-mode .side-block-group-actions button {
+    background: rgba(0,0,0,0.06);
+    color: #0f172a;
+}
+.side-block-group-actions button:hover {
+    background: #3b82f6;
+    color: white;
+}
+.side-block-group-actions .side-block-group-delete:hover {
+    background: #f43f5e;
+}
+.folder-delete-tip {
+    position: fixed;
+    background: rgba(15, 23, 42, 0.96);
+    color: #f43f5e;
+    border: 1px solid rgba(244, 63, 94, 0.45);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+}
+body.light-mode .folder-delete-tip {
+    background: rgba(228, 234, 241, 0.97);
+    border-color: rgba(244, 63, 94, 0.4);
+}
+.folder-delete-tip b { color: #f43f5e; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.folder-delete-confirm, .folder-delete-cancel {
+    cursor: pointer;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    user-select: none;
+}
+.folder-delete-confirm {
+    color: #f43f5e;
+    border: 1px solid rgba(244, 63, 94, 0.55);
+    background: rgba(244, 63, 94, 0.12);
+}
+.folder-delete-confirm:hover { background: rgba(244, 63, 94, 0.22); }
+.folder-delete-cancel {
+    color: var(--color-text-muted, #94a3b8);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+body.light-mode .folder-delete-cancel { color: #64748b; border-color: rgba(100,116,139,0.3); }
+.folder-delete-cancel:hover { background: rgba(148, 163, 184, 0.15); }
+.side-block-group-actions .side-block-group-eye {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.side-block-group-actions .side-block-group-eye:hover {
+    background: #10b981;
+}
+/* 组内容 */
+.side-block-group-content {
+    display: block;
+    transition: display 0.1s;
+    /* 树形层级引导线：用左侧虚线表达“以下内容均属于上方文件夹/骨骼”，避免被误解为结束线 */
+    position: relative;
+    margin-left: 12px;
+    padding-left: 8px;
+    border-left: 1px dashed rgba(59,130,246,0.18);
+}
+body.light-mode .side-block-group-content {
+    border-left-color: rgba(59,130,246,0.14);
+}
+.side-block-group-content.collapsed {
+    display: none;
+}
+/* 本级文件夹内容底部横线：位于方块与子文件夹之后，明确标记“本级文件夹到此结束”，
+   不插在子级与父文件夹之间，避免误以为横线处是骨骼结束点 */
+.side-block-group-divider {
+    height: 1px;
+    background: rgba(59,130,246,0.28);
+    margin: 4px 8px 2px 0;
+}
+body.light-mode .side-block-group-divider {
+    background: rgba(59,130,246,0.22);
+}
+

@@ -1,0 +1,1184 @@
+/* 11-keyframe-timeline-and-window.css · 源 测试版v.6b79.html 第 4859-6041 行（原样搬运，仅 url 路径退两级） */
+/* ========== 多轨道时间轴 ========== */
+.keyframe-timeline-container {
+    position: relative;
+    width: 100%;
+    /* ★【2026-10-22】原来 8px 底边距在去掉数据表后变成一条空白；网格改由 JS 铺满区域底部 */
+    margin-bottom: 0;
+    cursor: pointer;
+    touch-action: pan-y;
+    --kf-gutter: 96px;
+}
+@media (max-width: 430px) {
+    .keyframe-timeline-container { --kf-gutter: 66px; }
+}
+/* 【2026-10-24】轨道名右侧新增「隐藏 / 锁定」图标，桌面端轨道名列 96 → 116px，
+   保证图标不挤掉方块名（手机上图标隐藏，宽度维持 66px 不变）。 */
+@media (min-width: 431px) {
+    .keyframe-timeline-container { --kf-gutter: 116px; }
+}
+/* 【2026-10-22 优化】左列轨道名整条灰底（深色用极淡白，浅色由 --lm-alt 覆盖），
+   覆盖行间空隙，让「左列」与「轨道区」在视觉上真正分成两块。 */
+.keyframe-timeline-container::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: var(--kf-gutter);
+    background: rgba(255,255,255,0.028);
+    border-right: 1px solid rgba(148,163,184,0.16);
+    border-radius: 3px 0 0 3px;
+    z-index: 4;
+    pointer-events: none;
+}
+/* 左侧轨道名列：与时间轴分离，关键帧永远不会压到名字上（专业时间轴做法） */
+.kf-track-head {
+    position: absolute;
+    left: 0;
+    top: 24px;   /* 与刻度尺 24px 高度对齐（2026-10-22 优化） */
+    width: var(--kf-gutter);
+    z-index: 5;
+    pointer-events: none;
+}
+.kf-track-head-item {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px 0 5px;
+    box-sizing: border-box;
+    /* 【2026-10-22 优化】9px → 10.5px：轨道名原来比刻度字还小，长时间看很吃力 */
+    font-size: 10.5px;
+    color: #94a3b8;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    pointer-events: auto;
+    cursor: pointer;
+    border-right: 1px solid rgba(148,163,184,0.10);
+}
+body.light-mode .kf-track-head-item {
+    color: #64748b;
+    border-right-color: rgba(15,23,42,0.07);
+}
+.kf-track-head-item.active {
+    background: rgba(148,163,184,0.09);
+}
+body.light-mode .kf-track-head-item.active {
+    background: rgba(15,23,42,0.045);
+}
+.kf-track-head-item:hover {
+    background: rgba(148,163,184,0.13);
+}
+body.light-mode .kf-track-head-item:hover {
+    background: rgba(15,23,42,0.06);
+}
+.kf-track-head-item.kf-label-sel {
+    font-style: normal;
+}
+.kf-track-head-item .kf-track-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kf-track-head-item img {
+    flex: 0 0 auto;
+    image-rendering: pixelated;
+}
+/* 【2026-10-24】轨道名右侧的「隐藏 / 锁定」小图标：与侧栏方块行同语义（隐藏=不显示且不可选，锁定=禁止选中仍显示）。
+   常态半透明，悬停/已生效时提亮；≤430px 的窄屏轨道列只有 66px，放不下两个图标 → 隐藏（手机上仍可用侧栏的眼睛/锁）。 */
+.kf-track-head-item .kf-th-ico {
+    flex: 0 0 auto;
+    width: 13px;
+    height: 13px;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.45;
+    border-radius: 2px;
+    transition: opacity 0.1s, background 0.1s;
+}
+.kf-track-head-item .kf-th-ico svg {
+    width: 11px;
+    height: 11px;
+}
+.kf-track-head-item .kf-th-ico:hover {
+    opacity: 1;
+    background: rgba(148,163,184,0.22);
+}
+.kf-track-head-item .kf-th-ico.is-on {
+    opacity: 0.95;
+    color: #f59e0b;
+}
+.kf-track-head-item .kf-th-ico.kf-th-ico-lock.is-on {
+    color: #fbbf24;
+}
+@media (max-width: 430px) {
+    .kf-track-head-item .kf-th-ico { display: none; }
+}
+.keyframe-timeline-container::-webkit-scrollbar {
+    width: 4px;
+}
+.keyframe-timeline-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.keyframe-timeline-container::-webkit-scrollbar-thumb {
+    background: rgba(59,130,246,0.3);
+    border-radius: 2px;
+}
+/* 轨道底：棋盘网格（深色=深灰/深蓝交替，浅色=灰白/白交替）。
+   --kf-grid-w 为「一个刻度格的宽度」，--kf-row-h 为轨道行高，由 renderKeyframeTimeline 写入。 */
+.keyframe-timeline-bg {
+    position: relative;
+    width: calc(100% - var(--kf-gutter));
+    margin-left: var(--kf-gutter);
+    height: 40px;
+    --kf-grid-w: 40px;
+    --kf-row-h: 20px;
+    --kf-cell-a: #141821;
+    --kf-cell-b: #1d283a;
+    --kf-grid-line: rgba(148,163,184,0.08);
+    background-color: var(--kf-cell-a);
+    background-image:
+        repeating-linear-gradient(90deg, var(--kf-grid-line) 0 1px, transparent 1px var(--kf-grid-w)),
+        repeating-linear-gradient(0deg, var(--kf-grid-line) 0 1px, transparent 1px var(--kf-row-h)),
+        conic-gradient(var(--kf-cell-b) 0 25%, transparent 0 50%, var(--kf-cell-b) 0 75%, transparent 0);
+    background-size: auto, auto, calc(var(--kf-grid-w) * 2) calc(var(--kf-row-h) * 2);
+    border-radius: 3px;
+    border: none;
+    overflow: hidden;
+}
+body.light-mode .keyframe-timeline-bg {
+    /* ★【2026-10-22】浅色棋盘跟随全局灰度体系：灰白 + 灰撞色 */
+    --kf-cell-a: var(--lm-grid-a, #ffffff);
+    --kf-cell-b: var(--lm-grid-b, #edf1f6);
+    --kf-grid-line: rgba(15,23,42,0.09);
+    border: none;
+}
+.keyframe-track-row {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+/* 【2026-10-19】轨道名默认 = 未选中态：灰色 + 斜体；只有真正选中的方块轨道才由内联色上色并转正体 */
+.keyframe-track-row-label {
+    position: absolute;
+    left: 4px;
+    font-size: 9px;
+    color: #94a3b8;
+    font-style: italic;
+    white-space: nowrap;
+    pointer-events: auto;
+    z-index: 1;
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body.light-mode .keyframe-track-row-label {
+    color: #64748b;
+}
+.keyframe-track-row-label.kf-label-sel {
+    font-style: normal;
+}
+/* 轨道选中/悬停只做极淡的明度变化，不加色块、不加描边 */
+.keyframe-track-row:nth-child(odd) {
+    background: transparent;
+}
+.keyframe-track-row.active-track {
+    background: rgba(148,163,184,0.09);
+}
+body.light-mode .keyframe-track-row.active-track {
+    background: rgba(15,23,42,0.045);
+}
+.keyframe-track-row:hover {
+    background: rgba(148,163,184,0.13) !important;
+}
+body.light-mode .keyframe-track-row:hover {
+    background: rgba(15,23,42,0.06) !important;
+}
+.keyframe-track-row-label:hover {
+    color: #e2e8f0;
+}
+body.light-mode .keyframe-track-row-label:hover {
+    color: #0f172a;
+}
+/* 空轨道（尚未录帧的文件夹）：斜纹灰显，无虚线描边 */
+.keyframe-track-row.pending-track {
+    opacity: 0.55;
+    background: repeating-linear-gradient(45deg, rgba(148,163,184,0.05), rgba(148,163,184,0.05) 5px, transparent 5px, transparent 10px) !important;
+}
+body.light-mode .keyframe-track-row.pending-track {
+    opacity: 0.6;
+    background: repeating-linear-gradient(45deg, rgba(15,23,42,0.04), rgba(15,23,42,0.04) 5px, transparent 5px, transparent 10px) !important;
+}
+.keyframe-marker-group {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    z-index: 3;
+    cursor: pointer;
+    pointer-events: auto;
+}
+/* 【2026-10-22 优化】把菱形的可点/可拖热区扩到 22×22，视觉仍是 10px 小菱形 */
+.keyframe-marker-group::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: -6px;
+    right: -6px;
+    bottom: -6px;
+    border-radius: 4px;
+}
+/* 关键帧菱形：默认低饱和轨道色，无描边、无外发光；
+   选中/当前帧只提高亮度与饱和度，并给一点内高光。 */
+.keyframe-diamond {
+    /* 【2026-10-22 优化】9px → 10px，配 24px 行高更居中 */
+    width: 10px;
+    height: 10px;
+    transform: rotate(45deg);
+    border: none;
+    transition: transform 0.12s, filter 0.12s;
+    box-sizing: border-box;
+}
+.keyframe-diamond:hover {
+    transform: rotate(45deg) scale(1.2);
+    filter: brightness(1.18);
+}
+.keyframe-diamond.active {
+    border: none;
+    filter: saturate(1.55) brightness(1.4);
+    box-shadow: none;
+    transform: rotate(45deg) scale(1.1);
+}
+.keyframe-vert-line {
+    position: absolute;
+    top: 0;
+    width: 1px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ========== 关键帧动画窗口 ========== */
+.keyframe-window {
+    position: fixed;
+    z-index: 500;
+    background: rgba(10,15,26,0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid #2d3a5e;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+    display: none;
+    flex-direction: column;
+    min-width: 280px;
+    min-height: 180px;
+    max-width: 96vw;
+    max-height: 96vh;
+    overflow: hidden;
+    pointer-events: auto;
+    touch-action: pan-y;
+}
+body.light-mode .keyframe-window {
+    /* ★【2026-10-22】跟随浅色灰度体系（灰白面板），不再接近纯白 */
+    background: var(--lm-panel, #e9eef5);
+    border-color: rgba(15,23,42,0.12);
+    box-shadow: 0 8px 30px rgba(15,23,42,0.18);
+}
+.keyframe-window-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 30px;
+    padding: 0 10px;
+    /* 【2026-10-22 优化】标题与工具行合并为浮窗顶部的整条「栏带」，
+       与下方轨道区分开；分隔线只画在栏带底部一次。 */
+    background: rgba(255,255,255,0.03);
+    border-bottom: none;
+    cursor: move;
+    user-select: none;
+    touch-action: none;
+}
+body.light-mode .keyframe-window-header {
+    background: transparent;
+    border-bottom-color: rgba(15,23,42,0.06);
+}
+/* 拖拽把手：2×2 点阵，比标题文字更省视觉噪音 */
+.kf-drag-grip {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+    opacity: 0.5;
+    background-image: radial-gradient(circle, #94a3b8 1px, transparent 1.1px);
+    background-size: 5px 5px;
+    background-position: 3px 3px;
+}
+body.light-mode .kf-drag-grip {
+    opacity: 0.55;
+    background-image: radial-gradient(circle, #64748b 1px, transparent 1.1px);
+}
+.keyframe-window-title {
+    display: none;
+}
+.keyframe-window-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+.keyframe-window-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    background: none;
+    border: 1px solid rgba(148,163,184,0.24);
+    color: #cbd5e6;
+    border-radius: 3px;
+    transition: color 0.15s, border-color 0.15s;
+    font-family: inherit;
+}
+.keyframe-window-btn:hover {
+    border-color: rgba(148,163,184,0.5);
+    color: #fff;
+}
+body.light-mode .keyframe-window-btn {
+    background: none;
+    border-color: rgba(15,23,42,0.16);
+    color: #334155;
+}
+body.light-mode .keyframe-window-btn:hover {
+    background: none;
+    border-color: rgba(15,23,42,0.34);
+    color: #0f172a;
+}
+/* 标题栏按钮：纯文字，无框无底 */
+.kf-header-btn {
+    padding: 3px 0;
+    border: none;
+    color: #94a3b8;
+}
+.kf-header-btn:hover {
+    border: none;
+    color: #e2e8f0;
+}
+body.light-mode .kf-header-btn {
+    border: none;
+    color: #64748b;
+}
+body.light-mode .kf-header-btn:hover {
+    border: none;
+    color: #0f172a;
+}
+.keyframe-window-close {
+    padding: 3px 0;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    border-radius: 0;
+    transition: color 0.15s;
+}
+.keyframe-window-close:hover {
+    color: #f43f5e;
+    background: transparent;
+}
+.keyframe-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    touch-action: none;
+    background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.4) 40%, rgba(59,130,246,0.4) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.4) 55%, rgba(59,130,246,0.4) 65%, transparent 65%);
+    z-index: 10;
+}
+.keyframe-resize-handle:hover {
+    background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%);
+}
+.keyframe-resize-handle-l {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nesw-resize;
+    touch-action: none;
+    background: linear-gradient(225deg, transparent 0%, transparent 40%, rgba(59,130,246,0.4) 40%, rgba(59,130,246,0.4) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.4) 55%, rgba(59,130,246,0.4) 65%, transparent 65%);
+    z-index: 10;
+}
+.keyframe-resize-handle-l:hover {
+    background: linear-gradient(225deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%);
+}
+.keyframe-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(59,130,246,0.15);
+    flex-wrap: wrap;
+}
+.keyframe-block-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    max-height: 140px;
+    overflow-y: auto;
+    padding: 4px 8px;
+}
+.kf-folder-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #cbd5e6;
+    min-height: 24px;
+    border: 1px solid transparent;
+}
+body.light-mode .kf-folder-row {
+    color: #334155;
+}
+.kf-folder-row:hover {
+    background: rgba(59,130,246,0.15);
+}
+.kf-folder-row.active {
+    background: rgba(59,130,246,0.25);
+    border-color: rgba(96,165,250,0.5);
+}
+.kf-folder-row-toggle {
+    display: inline-flex;
+    transition: transform 0.2s;
+    color: #60a5fa;
+    flex-shrink: 0;
+}
+.kf-folder-row-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+.kf-folder-row-placeholder {
+    width: 10px;
+    flex-shrink: 0;
+}
+.kf-folder-row-icon {
+    flex-shrink: 0;
+}
+.kf-folder-row-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.kf-folder-row-count {
+    font-size: 10px;
+    color: #94a3b8;
+    background: rgba(59,130,246,0.15);
+    padding: 1px 5px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.kf-folder-row-remove {
+    color: #f43f5e;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0 4px;
+    flex-shrink: 0;
+}
+.kf-folder-row-remove:hover {
+    color: #fb7185;
+}
+.keyframe-block-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.3);
+    border-radius: 4px;
+    font-size: 11px;
+    color: #cbd5e6;
+    cursor: pointer;
+}
+body.light-mode .keyframe-block-tag {
+    color: #1e293b;
+}
+.keyframe-block-tag:hover {
+    background: rgba(59,130,246,0.3);
+}
+.keyframe-block-tag .remove-tag {
+    margin-left: 2px;
+    cursor: pointer;
+    color: #f43f5e;
+    font-size: 12px;
+}
+.keyframe-block-tag.active {
+    border-color: #60a5fa;
+    background: rgba(59,130,246,0.3);
+}
+/* ★【2026-10-18】❒ 选择器多选标记态：点击方块标签=勾选（可多选），再由「加入所选」批量入列 */
+.keyframe-block-tag.kf-pick-marked {
+    border-color: #34d399;
+    background: rgba(16,185,129,0.28);
+    color: #d1fae5;
+}
+.keyframe-block-tag.kf-pick-marked::before {
+    content: '✓ ';
+    color: #34d399;
+    font-weight: 700;
+}
+.kf-picker-foot {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+}
+.kf-picker-count {
+    margin-right: auto;
+    font-size: 11px;
+    color: #94a3b8;
+}
+.kf-picker-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.kf-folder-section {
+    border: 1px solid rgba(59,130,246,0.18);
+    border-radius: 6px;
+    overflow: hidden;
+}
+body.light-mode .kf-folder-section {
+    border-color: rgba(59,130,246,0.12);
+}
+.kf-folder-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: rgba(59,130,246,0.1);
+    cursor: pointer;
+    user-select: none;
+}
+body.light-mode .kf-folder-header {
+    background: rgba(59,130,246,0.06);
+}
+.kf-folder-header:hover {
+    background: rgba(59,130,246,0.2);
+}
+.kf-folder-toggle {
+    display: inline-flex;
+    transition: transform 0.2s;
+    color: #60a5fa;
+    flex-shrink: 0;
+}
+.kf-folder-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+.kf-folder-name {
+    flex: 1;
+    font-size: 12px;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.light-mode .kf-folder-name {
+    color: #334155;
+}
+.kf-folder-addall {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(59,130,246,0.4);
+    background: rgba(59,130,246,0.2);
+    color: #bfdbfe;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.kf-folder-addall:hover:not(:disabled) {
+    background: rgba(59,130,246,0.35);
+}
+.kf-folder-addall:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.kf-folder-content {
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.kf-folder-content.collapsed {
+    display: none;
+}
+.kf-folder-content .kf-folder-section {
+    width: 100%;
+    margin-top: 4px;
+}
+.kf-folder-empty {
+    font-size: 11px;
+    color: #64748b;
+    padding: 2px 4px;
+}
+.kf-picker-ungrouped-title {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 8px 0 4px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(59,130,246,0.15);
+}
+body.light-mode .kf-picker-ungrouped-title {
+    color: #64748b;
+    border-top-color: rgba(0,0,0,0.08);
+}
+.kf-picker-ungrouped-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.keyframe-timeline-area {
+    /* ★【2026-10-22】底部不再留 10px 内边距：棋盘网格要一直铺到窗口底边 */
+    padding: 6px 10px 0;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+.keyframe-timeline-ruler {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* 【2026-10-22 优化】22 → 24：刻度字放大到 10px 后需要更多呼吸空间 */
+    height: 24px;
+    width: calc(100% - var(--kf-gutter));
+    margin-left: var(--kf-gutter);
+    pointer-events: auto;
+    touch-action: none;
+    cursor: grab;
+    border-bottom: 1px solid rgba(148,163,184,0.16);
+    background: #101828;
+    z-index: 6;
+    border-radius: 0;
+}
+body.light-mode .keyframe-timeline-ruler {
+    background: #e3e9f1;
+}
+.keyframe-timeline-ruler:active {
+    cursor: grabbing;
+}
+.keyframe-timeline-tick {
+    position: absolute;
+    top: 16px;
+    width: 1px;
+    height: 8px;
+    background: rgba(148,163,184,0.22);
+}
+body.light-mode .keyframe-timeline-tick {
+    background: rgba(15,23,42,0.16);
+}
+.keyframe-timeline-tick-label {
+    position: absolute;
+    top: 3px;
+    font-size: 10px;
+    color: #7c8aa0;
+    transform: translateX(-50%);
+    font-variant-numeric: tabular-nums;
+}
+body.light-mode .keyframe-timeline-tick-label {
+    color: #64748b;
+}
+/* 播放头：1px 细线 + 顶部小方块把手，不用荧光 */
+.keyframe-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: #94a3b8;
+    z-index: 10;
+    pointer-events: none;
+}
+.keyframe-playhead::before {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: -3px;
+    /* 【2026-10-22 优化】把手 5×5 → 7×7，小窗口里也能一眼看到播放头 */
+    width: 7px;
+    height: 7px;
+    background: #94a3b8;
+    border-radius: 1px;
+}
+body.light-mode .keyframe-playhead {
+    background: #475569;
+}
+body.light-mode .keyframe-playhead::before {
+    background: #475569;
+}
+/* 吸附到关键帧：只提高明度，不加光晕 */
+.keyframe-playhead.kf-snapped {
+    width: 1px;
+    background: #e2e8f0;
+    box-shadow: none;
+}
+.keyframe-playhead.kf-snapped::before {
+    background: #e2e8f0;
+}
+body.light-mode .keyframe-playhead.kf-snapped {
+    background: #0f172a;
+    box-shadow: none;
+}
+body.light-mode .keyframe-playhead.kf-snapped::before {
+    background: #0f172a;
+}
+#kfTimeLabel.kf-snapped { color: #e2e8f0; }
+body.light-mode #kfTimeLabel.kf-snapped { color: #0f172a; }
+/* 「多选」锁定：开启态用低饱和蓝灰实心，和主按钮区分层级 */
+.kf-msel-btn.on {
+    color: #dbeafe !important;
+    background: rgba(59,130,246,0.32) !important;
+    font-weight: 600;
+}
+body.light-mode .kf-msel-btn.on {
+    color: #ffffff !important;
+    background: #3b82f6 !important;
+}
+/* 时长拖曳条：中性灰，不用紫色 */
+.keyframe-duration-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 3px;
+    background: rgba(148,163,184,0.35);
+    cursor: ew-resize;
+    z-index: 11;
+    pointer-events: auto;
+    opacity: 0.8;
+    transition: opacity 0.15s, background 0.15s;
+    border-radius: 0;
+}
+.keyframe-duration-handle:hover {
+    opacity: 1;
+    background: rgba(148,163,184,0.7);
+}
+.keyframe-duration-handle {
+    touch-action: none;
+}
+/* 桌面端：主操作（播放 / 当前时间 / +关键帧）靠左成组，辅助组（缩放 / 滚动 / 多选）靠右 */
+.kf-ctrl-spacer { flex: 1; }
+.keyframe-timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* 【2026-10-22 优化】工具行作为顶部栏带的第二行，负 margin 出血到浮窗左右边缘 */
+    margin: -6px -10px 8px;
+    padding: 6px 10px 8px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(148,163,184,0.16);
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+@media (max-width: 430px) {
+    .keyframe-timeline-controls {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        align-items: center;
+        row-gap: 6px;
+    }
+    /* 手机：数据表单列由下方基础规则后的媒体查询负责 */
+
+    .kf-ctrl-spacer { display: none; }
+    #kfPlayBtn { grid-column: 1; grid-row: 1; }
+    #kfTimeLabel { grid-column: 2; grid-row: 1; }
+    #kfAddKeyframeBtn { order: 0; grid-column: 4; grid-row: 1; justify-self: end; }
+    .kf-ctrl-group:has(#kfZoomOutBtn) { grid-column: 1 / span 2; grid-row: 2; justify-self: start; }
+    .kf-ctrl-group:has(#kfScrollLeftBtn) { grid-column: 3; grid-row: 2; justify-self: center; }
+    #kfMselBtn { grid-column: 4; grid-row: 2; justify-self: end; }
+}
+/* 控制条分组：连体分段条（内部按钮共享直角）；外轮廓沿用项目既有的切角语言
+   （与 .molang-head-btn 一致：左上 + 右下各切一刀），不用圆角、也不留呆板直角 */
+.kf-ctrl-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 2px;
+    border-radius: 0;
+    clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+    background: rgba(148,163,184,0.09);
+}
+body.light-mode .kf-ctrl-group {
+    background: rgba(15,23,42,0.05);
+}
+.kf-ctrl-group .keyframe-fps-label {
+    min-width: 36px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-size: 10px;
+}
+.kf-ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border: none;
+    border-radius: 0;
+    clip-path: polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px);
+    background: transparent;
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s, background 0.15s;
+}
+.kf-ctrl-btn:hover {
+    color: #e2e8f0;
+    background: rgba(148,163,184,0.14);
+}
+body.light-mode .kf-ctrl-btn {
+    color: #64748b;
+}
+body.light-mode .kf-ctrl-btn:hover {
+    color: #0f172a;
+    background: rgba(15,23,42,0.06);
+}
+/* 主操作按钮：切角实色块（左上/右下斜切），不用胶囊、也不做呆板圆角方框 */
+.kf-primary-btn {
+    padding: 5px 13px;
+    border: none;
+    border-radius: 0;
+    /* 切角：左上与右下各切 5px，方中带棱；渐变给一点纵向质感 */
+    clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+    background: linear-gradient(180deg, #41699b, #35577f);
+    color: #f8fafc;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter 0.15s;
+    white-space: nowrap;
+}
+.kf-primary-btn:hover {
+    filter: brightness(1.14);
+}
+body.light-mode .kf-primary-btn {
+    background: linear-gradient(180deg, #3a6391, #2c4d70);
+}
+body.light-mode .kf-primary-btn:hover {
+    filter: brightness(1.1);
+}
+.keyframe-play-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    /* 【2026-10-22 用户要求】不要胶囊、也不要呆板方底：默认无底，只有 ▶ 图标；
+       hover/激活时才浮出切角底色 */
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+    color: #cbd5e6;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+}
+.keyframe-play-btn:hover {
+    background: rgba(148,163,184,0.18);
+    color: #fff;
+}
+.keyframe-play-btn.on {
+    background: rgba(148,163,184,0.2);
+    color: #fff;
+}
+body.light-mode .keyframe-play-btn {
+    background: transparent;
+    color: #475569;
+}
+body.light-mode .keyframe-play-btn:hover,
+body.light-mode .keyframe-play-btn.on {
+    background: rgba(15,23,42,0.07);
+    color: #0f172a;
+}
+.keyframe-fps-label {
+    font-size: 11px;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+}
+body.light-mode .keyframe-fps-label {
+    color: #64748b;
+}
+/* 当前时间：等宽数字 + 高对比，是控制条里的信息焦点 */
+#kfTimeLabel {
+    color: #e2e8f0;
+    /* 【2026-10-22 优化】12 → 13px：播放中要能一眼读到当前时刻 */
+    font-size: 13px;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0.2px;
+}
+body.light-mode #kfTimeLabel {
+    color: #0f172a;
+}
+.keyframe-data-panel {
+    margin-top: 6px;
+    padding: 6px 0 2px;
+    background: transparent;
+    border: none;
+    border-top: 1px solid rgba(148,163,184,0.10);
+    border-radius: 0;
+    font-size: 12px;
+    max-height: 220px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0 20px;
+    align-content: start;
+}
+body.light-mode .keyframe-data-panel {
+    background: transparent;
+    border-top-color: rgba(15,23,42,0.07);
+}
+.keyframe-empty-state {
+    grid-column: 1 / -1;
+    padding: 6px 4px;
+}
+.kf-data-head {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px 6px;
+    margin-bottom: 2px;
+    border-bottom: none;
+    font-size: 11px;
+    color: #94a3b8;
+}
+body.light-mode .kf-data-head {
+    color: #64748b;
+}
+.kf-data-time {
+    color: #e2e8f0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+body.light-mode .kf-data-time {
+    color: #0f172a;
+}
+.kf-data-target {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.kf-data-del {
+    flex: 0 0 auto;
+    cursor: pointer;
+    color: #64748b;
+    padding: 0;
+    border-radius: 0;
+    transition: color 0.15s;
+}
+.kf-data-del:hover {
+    color: #f43f5e;
+    background: none;
+}
+.keyframe-data-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    min-height: 22px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #cbd5e6;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(148,163,184,0.06);
+}
+.keyframe-data-row:hover {
+    background: transparent;
+    border-bottom-color: rgba(148,163,184,0.18);
+}
+body.light-mode .keyframe-data-row {
+    color: #1e293b;
+    border-bottom-color: rgba(15,23,42,0.05);
+}
+body.light-mode .keyframe-data-row:hover {
+    background: transparent;
+    border-bottom-color: rgba(15,23,42,0.16);
+}
+/* 数值：只留一条底线，去掉圆角框 */
+.keyframe-data-row input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: #e2e8f0;
+    padding: 2px 2px;
+    border-radius: 0;
+    width: 62px;
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    text-align: right;
+    transition: border-color 0.15s;
+}
+.keyframe-data-row input:hover {
+    border-bottom-color: rgba(148,163,184,0.3);
+}
+.keyframe-data-row input:focus {
+    outline: none;
+    border-bottom-color: #7c9ec4;
+    background: transparent;
+}
+.keyframe-data-row input:disabled {
+    opacity: 0.5;
+}
+body.light-mode .keyframe-data-row input {
+    background: transparent;
+    color: #0f172a;
+    border-bottom-color: transparent;
+}
+body.light-mode .keyframe-data-row input:hover {
+    border-bottom-color: rgba(15,23,42,0.25);
+}
+body.light-mode .keyframe-data-row input:focus {
+    border-bottom-color: #33587f;
+}
+.keyframe-data-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #7c8aa0;
+}
+body.light-mode .keyframe-data-label {
+    color: #64748b;
+}
+/* 手机：数据表单列，避免变量名被截断（须写在基础规则之后才生效） */
+@media (max-width: 430px) {
+    .keyframe-data-panel { grid-template-columns: 1fr; }
+}
+.keyframe-import-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.keyframe-import-content {
+    background: rgba(10,15,26,0.95);
+    border: 1px solid #3b82f6;
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+body.light-mode .keyframe-import-content {
+    background: var(--bg-card);
+    border-color: #cbd5e1;
+}
+.keyframe-import-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #60a5fa;
+    margin-bottom: 12px;
+}
+body.light-mode .keyframe-import-title {
+    color: #1e293b;
+}
+.keyframe-import-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(59,130,246,0.3);
+    background: rgba(15,23,42,0.8);
+    color: white;
+    font-family: monospace;
+    font-size: 12px;
+    margin-bottom: 12px;
+    resize: vertical;
+}
+body.light-mode .keyframe-import-textarea {
+    background: var(--color-input-bg);
+    color: #0f172a;
+    border-color: rgba(0,0,0,0.12);
+}
+.keyframe-import-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.keyframe-import-time-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: rgba(59,130,246,0.08);
+    border-radius: 8px;
+}
+.keyframe-import-time-input label {
+    font-size: 12px;
+    color: #cbd5e6;
+}
+body.light-mode .keyframe-import-time-input label {
+    color: #1e293b;
+}
+.keyframe-import-time-input input {
+    width: 80px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(59,130,246,0.3);
+    background: rgba(15,23,42,0.8);
+    color: white;
+    font-size: 12px;
+}
+body.light-mode .keyframe-import-time-input input {
+    background: white;
+    color: #0f172a;
+}
+.keyframe-empty-state {
+    text-align: center;
+    color: #64748b;
+    padding: 20px;
+    font-size: 12px;
+}
+

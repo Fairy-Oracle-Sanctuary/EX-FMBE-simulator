@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EX fmbe模拟器</title>
+    <link rel="icon" href="ex_logo.png">
+<!-- 样式已拆分到 modules/css/（按原始书写顺序排列，级联顺序与原文件一致） -->
+<link rel="stylesheet" href="modules/css/01-theme-vars.css">
+<link rel="stylesheet" href="modules/css/02-batch-edit-and-reset.css">
+<link rel="stylesheet" href="modules/css/03-ai-window.css">
+<link rel="stylesheet" href="modules/css/04-loom.css">
+<link rel="stylesheet" href="modules/css/05-virtual-modifiers-and-point-shapes.css">
+<link rel="stylesheet" href="modules/css/06-molang-and-keyframe-timeline.css">
+<link rel="stylesheet" href="modules/css/07-import-export-and-tech-bubble.css">
+<link rel="stylesheet" href="modules/css/08-changelog-and-new-layout.css">
+<link rel="stylesheet" href="modules/css/09-mobile-layout-and-transform-toolbar.css">
+<link rel="stylesheet" href="modules/css/10-sidebar-and-view-buttons.css">
+<link rel="stylesheet" href="modules/css/11-keyframe-timeline-and-window.css">
+<link rel="stylesheet" href="modules/css/12-project-manager.css">
+<link rel="stylesheet" href="modules/css/13-light-mode.css">
+<style id="exTutRoundFont">
+/* 教程专用圆体 · 寒蝉全圆体（Chill Round F，免费商用 / 开源）
+   子集化后为独立文件 Fonts/ChillRoundF-sub.woff2（约 258KB，含本页出现过的全部文字字符）。
+   笔画横竖收笔均为 R 角圆头，柔和可爱、不带锋利折角，降低教程的「正式压迫感」。
+   必须随 HTML 一起分发（与 Textures/ 同级），并经由本地 HTTP 服务加载。 */
+@font-face{
+  font-family:'EXRoundTut';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url('Fonts/ChillRoundF-sub.woff2') format('woff2');
+}
+/* 同一份字体再声明一次，且【不给字重区间】——寒蝉全圆体只有一个字重，
+   若声明成 100 900 浏览器会认为「800 字重已经有了」，于是完全不做加粗；
+   声明成 400 后，对 700/800 的请求浏览器才会走合成加粗（笔画描边加厚）。
+   只给「自动 / 菜单 / 记录」这类需要显粗的短标签用，正文仍走上面那个，避免整体变糊。 */
+@font-face{
+  font-family:'EXRoundTutB';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url('Fonts/ChillRoundF-sub.woff2') format('woff2');
+}
+</style>
+</head>
+<body>
+<script>
+/* 在浏览器绘制前同步设置主题 class，避免浅色模式闪黑 */
+(function(){
+  try {
+    var v = localStorage.getItem('ui_light_mode');
+    var isLight = (v === null) ? true : (v === '1');
+    if (isLight) document.body.classList.add('light-mode');
+  } catch(e) {}
+})();
+</script>
+
+<!-- ========== 项目管理器 ========== -->
+<div id="projectManager">
+    <div class="pm-header">
+        <div class="pm-header-left">
+            <img class="pm-logo" src="ex_logo.jpg" alt="EX" onerror="this.style.display='none'">
+            <div class="pm-title-wrap">
+                <div class="pm-title">FMBE 模拟器</div>
+                <div class="pm-subtitle">快捷折磨狐狸工具</div>
+            </div>
+        </div>
+        <div class="pm-header-actions">
+            <button class="pm-theme-btn" id="pmThemeBtn" title="切换明暗主题">☀</button>
+            <span class="pm-version">v 5.00</span>
+        </div>
+    </div>
+    <div class="pm-body">
+        <div class="pm-section-head">
+            <div class="pm-section-title">项目</div>
+            <span class="pm-project-count" id="pmProjectCount">0</span>
+        </div>
+        <div class="pm-grid" id="pmProjectGrid">
+            <!-- project cards injected here -->
+        </div>
+    </div>
+</div>
+
+<!-- ========== 项目加载遮罩 ========== -->
+<div id="projectLoading" class="project-loading">
+    <div class="pl-spinner"></div>
+    <div class="pl-text" id="plText">正在加载项目…</div>
+    <div class="pl-progress"><div class="pl-progress-bar" id="plProgressBar"></div></div>
+    <div class="pl-percent" id="plPercent">0%</div>
+</div>
+
+<div id="canvas-container"></div>
+<div id="uiScaleTarget">
+<div class="top-bar">
+    <button class="skew-btn" id="fullscreenBtn"><span>⛶ 全屏</span></button>
+    <button class="skew-btn" id="exitFullscreenBtn" style="display:none;"><span>✕ 退出全屏</span></button>
+    <button class="skew-btn" id="undoBtn"><span>↩ 撤销</span></button>
+    <button class="skew-btn" id="redoBtn"><span>↪ 重做</span></button>
+</div>
+<div class="top-left-bar">
+    <button class="skew-btn" id="blockListTopBtn" title="方块列表"><span>📦 方块列表</span></button>
+</div>
+<!-- 新布局工具栏 -->
+<div class="new-top-bar" id="newTopBar" style="display:none;">
+    <div class="new-top-bar-left">
+        <div class="top-dropdown-wrapper">
+            <button class="skew-btn top-menu-btn" id="fileMenuBtn"><span>文件</span></button>
+            <div class="top-dropdown-menu" id="fileDropdown">
+                <div class="top-dropdown-item" id="fileImportBtn"><span>导入命令</span></div>
+                <div class="top-dropdown-item" id="fileOverwriteImportBtn"><span>覆盖型导入</span></div>
+                <div class="top-dropdown-item" id="fileTempOverwriteImportBtn"><span>临时覆盖型导入</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" id="fileExportBtn"><span>输出命令</span></div>
+            </div>
+        </div>
+        <div class="top-dropdown-wrapper">
+            <button class="skew-btn top-menu-btn" id="viewMenuBtn"><span>视图</span></button>
+            <div class="top-dropdown-menu" id="viewDropdown">
+                <div class="top-dropdown-item" data-view-action="showAxes"><span>显示轴线</span></div>
+                <div class="top-dropdown-item" data-view-action="showGrid"><span>显示平面</span></div>
+                <div class="top-dropdown-item" data-view-action="showTicks"><span>显示刻度</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" data-view-action="material"><span>add材质</span></div>
+                <div class="top-dropdown-item" data-view-action="resetView"><span>重置视角</span></div>
+                <div class="top-dropdown-item" data-view-action="hideNames"><span>隐藏</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" data-view-action="ortho"><span>正交视图</span></div>
+                <div class="top-dropdown-item" data-view-action="viewFront"><span>正前视</span></div>
+                <div class="top-dropdown-item" data-view-action="viewBack"><span>正后视</span></div>
+                <div class="top-dropdown-item" data-view-action="viewLeft"><span>正左视</span></div>
+                <div class="top-dropdown-item" data-view-action="viewRight"><span>正右视</span></div>
+                <div class="top-dropdown-item" data-view-action="viewTop"><span>正俯视</span></div>
+            </div>
+        </div>
+        <div class="top-dropdown-wrapper">
+            <button class="skew-btn top-menu-btn" id="actionMenuBtn"><span>操作</span></button>
+            <div class="top-dropdown-menu" id="actionDropdown">
+                <div class="top-dropdown-item" data-action="settings"><span>设置</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" data-action="fullscreen"><span>⛶ 全屏</span></div>
+                <div class="top-dropdown-item" data-action="undo"><span>↩ 撤销</span></div>
+                <div class="top-dropdown-item" data-action="redo"><span>↪ 重做</span></div>
+                <div class="top-dropdown-divider"></div>
+                <div class="top-dropdown-item" data-action="changelog"><span>📋 网站日志</span></div>
+            </div>
+        </div>
+        <div class="brush-length-toolbar" id="brushLengthToolbar" style="display:none; align-items:center; gap:8px; margin-left:10px; padding-left:10px; border-left:1px solid rgba(100,116,139,0.25);">
+            <span class="brush-length-label">画笔长度(米)</span>
+            <input class="brush-length-range" id="brushLengthRange" type="range" min="0.1" max="5" step="0.1" value="1.0">
+            <span class="brush-length-value" id="brushLengthLabel">1.0</span>
+            <span class="pt-sep"></span>
+            <button class="pt-top-btn on" id="ptModeDrawBtn" title="描点：选颜色后在网格上点击放点（拖拽视角不会放点）">✏️描点</button>
+            <button class="pt-top-btn" id="ptModeBuildBtn" title="生成方块：点选 2 / 3 个点后自动生成矩形 / 平行四边形 / 三角形；🚩按钮切换为旗帜">▦生成方块</button>
+            <span class="pt-sep"></span>
+            <span class="pt-color-row" id="ptColorRow"></span>
+            <button class="pt-top-btn" id="ptDeleteSelBtn" title="删除选中的点">🗑删除选中</button>
+            <button class="pt-top-btn" id="ptShapeToggle" style="display:none;" title="点击切换：矩形 / 平行四边形 / 三角形（选够点后自动生成）"></button>
+            <button class="pt-top-btn" id="ptFlagToggle" style="display:none;" title="切换：普通方块 / 旗帜（矩形 / 平行四边形 / 三角形 都用旗帜生成）">方块</button>
+            <button class="pt-top-btn" id="ptImportTopBtn" title="粘贴外部点集（如 red(0.48,0.77)，每行一个）">📋导入点集</button>
+        </div>
+        <div class="top-toolbar-divider" id="herToolbarDivider"></div>
+        <!-- 变换模式工具栏（手机屏幕比例下由 CSS+JS 停靠到屏幕右侧、方块列表之上） -->
+        <div class="her-transform-toolbar" id="herTransformToolbar">
+            <button class="her-mode-btn icon-only" data-mode="origin" title="枢轴"><span class="hmb-icon" data-icon="pivot"></span></button>
+            <button class="her-mode-btn icon-only" id="folderRotBtn" data-mode="rotate" title="旋转" style="display:none;"><span class="hmb-icon" data-icon="rotate"></span></button>
+            <button class="her-mode-btn icon-only" data-mode="base" title="位移"><span class="hmb-icon" data-icon="move"></span></button>
+            <button class="her-mode-btn icon-only" data-mode="scale" title="缩放"><span class="hmb-icon" data-icon="scale"></span></button>
+            <!-- 顶点捕捉（X）：点按钮展开两种对齐方式；选中任一项即进入捕捉流程 -->
+            <div class="top-dropdown-wrapper">
+                <button class="her-mode-btn rot-btn" id="vtxSnapMenuBtn" title="顶点捕捉（X）"><span class="hmb-icon" data-icon="snap" aria-hidden="true"></span><span class="hmb-fn-wrap" id="vtxSnapFnWrap" data-mode="base" aria-hidden="true"><span class="hmb-fn-icon" id="vtxSnapFnIcon" data-fn="base"></span><span class="hmb-fn-edge"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><line class="fn-normal" x1="9.6" y1="4" x2="15.6" y2="16" stroke-width="2.1"/><line class="fn-purple" x1="4.2" y1="8" x2="10.2" y2="20" stroke-width="2.1"/><path class="fn-purple" d="M10.36 17.4 L10.2 20 L8.03 18.57" stroke-width="1.2"/></svg></span><span class="hmb-fn-cut"></span></span><span class="hmb-caret">▾</span></button>
+                <div class="top-dropdown-menu" id="vtxSnapDropdown">
+                    <div class="top-dropdown-item has-icon" data-vtx="base"><span class="hmb-icon" data-icon="move"></span><span>位移移动型对齐</span></div>
+                    <div class="top-dropdown-item has-icon" data-vtx="pivot"><span class="hmb-icon" data-icon="pivot"></span><span>枢轴移动型对齐</span></div>
+                    <div class="top-dropdown-item has-icon" data-vtx="edge"><span class="hmb-icon" data-icon="snap-edge"></span><span>沿边对齐</span></div>
+                    <div class="top-dropdown-item has-icon" data-vtx="pivotpt"><span class="hmb-icon" data-icon="snap-pivotpt"></span><span>枢轴改到顶点</span></div>
+                    <div class="top-dropdown-item has-icon" data-vtx="len"><span class="hmb-icon" data-icon="snap-len"></span><span>测长</span></div>
+                    <div class="top-dropdown-item has-icon" data-vtx="ang"><span class="hmb-icon" data-icon="snap-ang"></span><span>测角</span></div>
+                </div>
+            </div>
+            <!-- 镜像不是 Gizmo 子模式，入口放在方块列表的扳手「工具」菜单里 -->
+            <div class="top-dropdown-wrapper" style="margin-left:6px;">
+                <button class="her-mode-btn rot-btn" id="localRotMenuBtn" title="局部旋转"><span class="hmb-icon" data-icon="rotate-local"></span><span class="hmb-caret">▾</span></button>
+                <div class="top-dropdown-menu" id="localRotDropdown">
+                    <div class="top-dropdown-item has-icon" data-her-mode="rotate"><span class="hmb-icon" data-icon="rotate-local"></span><span>局部旋转</span></div>
+                    <div class="top-dropdown-item has-icon" data-her-mode="centerRotate"><span class="hmb-icon" data-icon="rotate-center"></span><span>模型旋转</span></div>
+                </div>
+            </div>
+            <div class="top-dropdown-wrapper">
+                <button class="her-mode-btn rot-btn" id="globalRotMenuBtn" title="全局旋转"><span class="hmb-icon" data-icon="rotate-global"></span><span class="hmb-caret">▾</span></button>
+                <div class="top-dropdown-menu" id="globalRotDropdown">
+                    <div class="top-dropdown-item has-icon" data-her-mode="globalRotate"><span class="hmb-icon" data-icon="rotate-global"></span><span>全局旋转</span></div>
+                    <div class="top-dropdown-item has-icon" data-her-mode="globalCenterRotate"><span class="hmb-icon" data-icon="rotate-global-center"></span><span>全局模型旋转</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 关键帧模式：常态化贴在屏幕右侧的「编辑/动画」两个互斥按钮（不受选中状态影响，动画模式不再隐藏方块列表） -->
+<div class="kf-mode-group" id="kfModeGroup">
+    <button class="kf-mode-btn" id="kfEditModeBtn" type="button" title="编辑模式（普通搭建）">编辑模式</button>
+    <button class="kf-mode-btn" id="brushModeBtn" type="button" title="画笔模式（描点 / 生成方块）">画笔模式</button>
+    <button class="kf-mode-btn" id="kfAnimModeBtn" type="button" title="动画模式（关键帧编辑）">动画模式</button>
+</div>
+<!-- 画笔长度滑动条：仅「生成方块·矩形」模式时浮在形状切换按钮正下方 -->
+<div id="ptBrushLenPop" class="pt-len-pop" style="display:none;">
+    <span class="pt-len-pop-label">矩形宽</span>
+    <input class="brush-length-range" id="ptBrushLenRange" type="range" min="0.1" max="5" step="0.1" value="1.0">
+    <span class="brush-length-value" id="ptBrushLenValue">1.0</span>
+</div>
+<!-- 新布局侧面方块列表 -->
+<div class="side-block-list" id="sideBlockList" style="display:none;"></div>
+<!-- 浮动文件夹数值面板（由底部 ≠ 按钮切换显示） -->
+<div id="folderValuesFloat" class="inspector-panel" style="display:none; position:fixed; right:10px; bottom:56px; z-index:31; width:248px; max-height:62vh; overflow:auto; box-shadow:0 8px 30px rgba(0,0,0,0.4);"></div>
+<div id="sideListResizeHandle" style="display:none;position:fixed;left:0;right:0;height:14px;z-index:26;cursor:ns-resize;touch-action:none;"></div>
+<div class="data-panel" id="dataPanel">
+    <div class="resize-handle" id="resizeHandle"></div>
+        <!-- ★【2026-10-17 r14】「全屏 / 撤销 / 重做」按钮行（.panel-header）**移出滚动容器 .panel-content**，
+             改为 #dataPanel 的独立一行 —— 原先它在 .panel-content 内部用 position:absolute 悬浮在
+             变量列表之上（靠 padding-top:72px 让位），一旦滚动列表内容就钻到按钮底下被遮住（用户投诉）。
+             现在它是面板的固定首行，列表在它下方**自己的滚动区**里滚，永不叠压，也不再需要 72px 占位。 -->
+        <div class="panel-header">
+            <button class="skew-btn panel-control-btn" id="fullscreenBtnSide"><span>⛶ 全屏</span></button>
+            <button class="skew-btn panel-control-btn" id="undoBtnSide"><span>↩ 撤销</span></button>
+            <button class="skew-btn panel-control-btn" id="redoBtnSide"><span>↪ 重做</span></button>
+        </div>
+        <div class="panel-content" id="panelContent">
+        <!-- ★【2026-10-16 r13c】旧操作模式「窄」档（<340px）：把平铺按钮折叠进「文件 / 操作 / 视图」三栏（仿新操作模式顶部菜单）。
+             折叠栏里的条目均为**代理控件**：点击后转调原按钮 .click() / 同步原复选框，不复制任何业务逻辑（见 setupOldNarrowGroups）。 -->
+        <div class="ong-wrap" id="oldNarrowGroups" style="display:none;">
+            <div class="ong-group" data-g="file">
+                <button class="ong-head" type="button" aria-expanded="false"><span class="ong-caret">▶</span><span class="ong-title">文件</span></button>
+                <div class="ong-body">
+                    <button class="ong-item" type="button" data-target="importBtn"><span>导入命令</span></button>
+                    <button class="ong-item" type="button" data-target="exportBtn"><span>输出命令</span></button>
+                    <button class="ong-item" type="button" data-target="addBlockBtn"><span>新建模型</span></button>
+                </div>
+            </div>
+            <div class="ong-group" data-g="action">
+                <button class="ong-head" type="button" aria-expanded="false"><span class="ong-caret">▶</span><span class="ong-title">操作</span></button>
+                <div class="ong-body">
+                    <button class="ong-item" type="button" data-target="fullscreenBtnSide"><span>⛶ 全屏</span></button>
+                    <button class="ong-item" type="button" data-target="undoBtnSide"><span>↩ 撤销</span></button>
+                    <button class="ong-item" type="button" data-target="redoBtnSide"><span>↪ 重做</span></button>
+                    <button class="ong-item" type="button" data-target="changelogBtn"><span>📋 网站日志</span></button>
+                    <button class="ong-item" type="button" data-target="uiSettingsBtn"><span>⚙ 设置</span></button>
+                </div>
+            </div>
+            <div class="ong-group" data-g="view">
+                <button class="ong-head" type="button" aria-expanded="false"><span class="ong-caret">▶</span><span class="ong-title">视图</span></button>
+                <div class="ong-body">
+                    <label class="ong-check"><input type="checkbox" data-sync="showAxesCheckbox"><span>显示轴线</span></label>
+                    <label class="ong-check"><input type="checkbox" data-sync="showGridCheckbox"><span>显示平面</span></label>
+                    <label class="ong-check"><input type="checkbox" data-sync="showTicksCheckbox"><span>显示刻度</span></label>
+                    <button class="ong-item" type="button" data-target="materialPresetBtn"><span>add材质</span></button>
+                    <button class="ong-item" type="button" data-target="resetViewBtn"><span>重置视角</span></button>
+                    <button class="ong-item" type="button" data-target="hideNameBtn"><span>隐藏</span></button>
+                </div>
+            </div>
+        </div>
+        <div class="toolbar-integrated">
+    <button class="tool-btn" id="importBtn"><span>导入命令</span></button>
+    <button class="tool-btn" id="exportBtn"><span>输出命令</span></button>
+    <button class="tool-btn" id="materialPresetBtn"><span>add材质</span></button>
+    <button class="tool-btn" id="modeSwitchBtn" style="display:none;"><span>深色模式</span></button>
+    <button class="tool-btn" id="addBlockBtn"><span>新建模型</span></button>
+    <button class="tool-btn" id="hideNameBtn"><span>隐藏</span></button>
+    <button class="tool-btn" id="resetViewBtn"><span>重置视角🎥</span></button>
+    <button class="tool-btn" id="changelogBtn"><span>📋 网站日志</span></button>
+</div>
+        <div class="axis-controls">
+            <div class="control-item"><input type="checkbox" id="showAxesCheckbox" checked><label for="showAxesCheckbox">显示轴线</label></div>
+            <div class="control-item"><input type="checkbox" id="showGridCheckbox" checked><label for="showGridCheckbox">显示平面</label></div>
+            <div class="control-item"><input type="checkbox" id="showTicksCheckbox" checked><label for="showTicksCheckbox">显示刻度</label></div>
+            <button class="settings-toggle-btn" id="uiSettingsBtn" type="button"><span>⚙</span></button>
+        </div>
+        <button class="block-menu-btn" id="blockMenuBtn" style="display:none;"><span>📦 方块列表 ▼</span></button>
+                <div class="ui-settings-panel" id="uiSettingsPanel" style="display:none;">
+            <div class="ui-settings-head"><span>设置</span><span class="ui-settings-close" title="关闭设置">✕</span></div>
+            <!-- 分类导航（2026-10-17 第 18 轮，用户要求「分类导航二级页」）：
+                 桌面 = 左侧竖列分类栏；手机/触摸 = 顶部横排胶囊。下方内容区一次只显示一个分类，
+                 分组用 data-cat 归属分类，非当前分类的加 .ui-settings-cat-off 隐藏。 -->
+            <div class="ui-settings-main">
+                <div class="ui-settings-nav" id="uiSettingsNav">
+                    <button class="ui-settings-tab active" type="button" data-cat="ui">界面</button>
+                    <button class="ui-settings-tab" type="button" data-cat="edit">编辑</button>
+                    <button class="ui-settings-tab" type="button" data-cat="view">视图</button>
+                    <button class="ui-settings-tab" type="button" data-cat="project">项目</button>
+                    <button class="ui-settings-tab" type="button" data-cat="help">帮助</button>
+                </div>
+            <div class="ui-settings-scroll">
+                <div class="ui-settings-group" data-group="layout" data-cat="ui">
+                    <div class="ui-settings-group-head"><span>界面布局</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="blockListTopLeftSetting">
+                            <span>方块列表 UI 布局在左上角</span>
+                            <button class="ui-checkbox checked" id="blockListPositionCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                        <div class="ui-settings-item" id="themeSetting" style="margin-top:8px;">
+                            <span>浅色模式</span>
+                            <button class="ui-checkbox" id="themeToggleCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <!-- ★【2026-10-22 用户要求】浅色灰度可调控：统一驱动 UI 灰白层次与 3D 棋盘地面 -->
+                        <div class="ui-settings-item" id="lightGraySetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span>浅色灰度</span><span id="lightGrayValueLabel">55%</span></div>
+                            <input id="lightGrayRange" type="range" min="0" max="100" value="55" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="sidePanelSetting" style="margin-top:8px;">
+                            <span>数据面板侧边显示</span>
+                            <button class="ui-checkbox" id="sidePanelCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="sidePanelWidthSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>数据面板宽度</span><span id="sidePanelWidthLabel">360px</span></div>
+                            <!-- max 由 JS 按视口动态写入（侧边最多占屏宽 80%），此处的 1400 只是初始占位 -->
+                            <input id="sidePanelWidthRange" type="range" min="5" max="1400" value="360" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="uiScaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span>UI缩放</span><span id="uiScaleLabel">100%</span></div>
+                            <input id="uiScaleRange" type="range" min="50" max="200" value="100" style="width:100%;">
+                            <div id="uiScaleTicks" style="position:relative; width:100%; height:20px; margin-top:1px; box-sizing:border-box;"></div>
+                            <div id="uiScaleRevert" style="display:none; justify-content:flex-end; align-items:center; gap:6px;">
+                                <span id="uiScaleRevertTimer" style="font-size:11px; color:#f87171;"></span>
+                                <button id="uiScaleRevertBtn" style="padding:3px 10px; border:none; border-radius:4px; background:#ef4444; color:#fff; font-size:11px; cursor:pointer;">↩ 撤销缩放</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group ui-settings-cat-off" data-group="display" data-cat="view">
+                    <div class="ui-settings-group-head"><span>显示细节</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="grayscaleSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span>灰度强度</span><span id="grayscaleValueLabel">0%</span></div>
+                            <input id="grayscaleRange" type="range" min="0" max="100" value="0" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="collapseBtnSizeSetting" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span>折叠按钮大小</span><span id="collapseBtnSizeLabel">14px</span></div>
+                            <input id="collapseBtnSizeRange" type="range" min="10" max="30" value="14" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-item" id="localAxesSetting" style="margin-top:8px;">
+                            <span>渲染局部坐标系</span>
+                            <button class="ui-checkbox checked" id="localAxesCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                        <div class="ui-settings-item" id="baseposAxisSetting" style="margin-top:8px; flex-direction:column; align-items:stretch; gap:6px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>关闭basepos局部位移轴显示</span>
+                                <button class="ui-checkbox" id="baseposAxisCheckbox" type="button" aria-pressed="false"></button>
+                            </div>
+                            <div id="baseposAxisSubs" style="display:none; flex-direction:column; gap:6px; padding-left:14px; padding-right:12px; margin-top:2px;">
+                                <div class="ui-settings-subrow" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="color:#ef4444;">X 轴</span>
+                                    <button class="ui-checkbox checked" id="baseposAxisXCheckbox" type="button" aria-pressed="true"></button>
+                                </div>
+                                <div class="ui-settings-subrow" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="color:#22c55e;">Y 轴</span>
+                                    <button class="ui-checkbox checked" id="baseposAxisYCheckbox" type="button" aria-pressed="true"></button>
+                                </div>
+                                <div class="ui-settings-subrow" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="color:#3b82f6;">Z 轴</span>
+                                    <button class="ui-checkbox checked" id="baseposAxisZCheckbox" type="button" aria-pressed="true"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group ui-settings-cat-off" data-group="new-op" data-cat="edit">
+                    <div class="ui-settings-group-head"><span>新操作模式</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-cat-title">Gizmo 操作</div>
+                        <div class="ui-settings-item" id="worldAxisDispSetting" style="margin-top:8px; display:none;">
+                            <span>世界轴位移</span>
+                            <button class="ui-checkbox" id="worldAxisDispCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="pivotLinkSetting" style="margin-top:8px; display:none;">
+                            <span>枢轴联动模型</span>
+                            <button class="ui-checkbox checked" id="pivotLinkCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                        <div class="ui-settings-item" id="gizmoSubMemorySetting" style="margin-top:8px; display:none; flex-direction:column; gap:6px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>Gizmo子控件记忆</span>
+                                <button class="ui-checkbox" id="gizmoSubMemoryCheckbox" type="button" aria-pressed="false"></button>
+                            </div>
+                            <div style="font-size:11px; color:var(--color-text-muted,#94a3b8); line-height:1.4;">开启后会记住上次使用的 Gizmo 子控件及其子选项（如顶点捕捉的对齐方式、旋转的子类型），打开其他项目后选中方块时自动恢复</div>
+                        </div>
+                        <div class="ui-settings-cat-title">捕捉与测量</div>
+                        <div class="ui-settings-item" id="flagPoleSnapSetting" style="margin-top:8px; flex-direction:column; gap:6px; align-items:flex-start; display:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>关闭旗杆顶点捕捉</span>
+                                <button class="ui-checkbox" id="flagPoleSnapCheckbox" type="button" aria-pressed="false"></button>
+                            </div>
+                            <div style="font-size:11px; color:var(--color-text-muted,#94a3b8); line-height:1.4;">开启后，顶点捕捉只显示旗面自带的顶点，旗杆方块上的顶点不再出现</div>
+                        </div>
+                        <div class="ui-settings-item" id="measurePrecisionSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>测量工具显示精度(小数位)</span><span id="measurePrecisionLabel">2</span></div>
+                            <input id="measurePrecisionRange" type="range" min="0" max="10" step="1" value="2" style="width:100%;">
+                            <div style="font-size:11px; color:var(--color-text-muted,#94a3b8); line-height:1.4;">测长 / 测角数值的显示位数；0 = 四舍五入为整数、不显示小数点（不改变实际测量值）</div>
+                        </div>
+                        <div class="ui-settings-item" id="measureBoxSizeSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>度量显示框大小</span><span id="measureBoxSizeLabel">100%</span></div>
+                            <input id="measureBoxSizeRange" type="range" min="11.25" max="150" step="0.25" value="100" style="width:100%;">
+                            <div style="font-size:11px; color:var(--color-text-muted,#94a3b8); line-height:1.4;">数值显示框与删除 × 的基础尺寸倍率；只改观感，不改变测量值（屏幕尺寸仍随相机距离保持恒定）</div>
+                        </div>
+                        <div class="ui-settings-cat-title">画笔</div>
+                        <div class="ui-settings-item" id="brushModeSetting" style="margin-top:8px; display:none;">
+                            <span>画笔模式</span>
+                            <button class="ui-checkbox" id="brushModeCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="brushThicknessSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>画笔粗细(米)</span><span id="brushThicknessLabel">1.0</span></div>
+                            <input id="brushThicknessRange" type="range" min="0.1" max="5" step="0.1" value="1.0" style="width:100%;">
+                        </div>
+                        <div class="ui-settings-cat-title">点与计算式</div>
+                        <div class="ui-settings-item" id="ptPrecisionSetting" style="margin-top:8px; display:none; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><span>点显示精度(小数位)</span><span id="ptPrecisionLabel">3</span></div>
+                            <input id="ptPrecisionRange" type="range" min="0" max="6" step="1" value="3" style="width:100%;">
+                            <div style="font-size:11px; color:var(--color-text-muted,#94a3b8); line-height:1.4;">仅影响点的显示（列表 / 标签），不改变实际数值</div>
+                        </div>
+                        <div class="ui-settings-item" id="ptKeepExprSetting" style="margin-top:8px; flex-direction:column; gap:6px; align-items:flex-start; display:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>保留通用计算式</span>
+                                <button class="ui-checkbox" id="ptKeepExprCheckbox" type="button" aria-pressed="false"></button>
+                            </div>
+                            <div style="font-size:11px; color:var(--color-text-muted,#94a3b8); line-height:1.4;">开启后生成的方块 / 旗帜使用预设的完整计算式（两边一角 + 位置直接赋值、yrot 追加增量），可自主改参数重算；关闭则只生成核心变量=常量的指令</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group ui-settings-cat-off" data-group="precision" data-cat="edit">
+                    <div class="ui-settings-group-head"><span>控件精度设置</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="gp-note">拖动 Gizmo 时，实时产生的增量先按步长取整再写入方块（对所有 Gizmo 操作生效）。精度越细，同样的鼠标位移换算出的增量也越小（倍率 = 步长，便于精确调整；约 83px 走一个步长）。填 0 表示该档不取整、并保持原本的拖拽灵敏度。</div>
+                        <div class="gp-grid">
+                            <label class="gp-cell"><span>无按键</span><input id="gpNoneInput" type="number" min="0" step="any" inputmode="decimal" value="1"></label>
+                            <label class="gp-cell"><span>Shift</span><input id="gpShiftInput" type="number" min="0" step="any" inputmode="decimal" value="0.5"></label>
+                            <label class="gp-cell"><span>Ctrl</span><input id="gpCtrlInput" type="number" min="0" step="any" inputmode="decimal" value="0.1"></label>
+                            <label class="gp-cell"><span>Shift+Ctrl</span><input id="gpShiftCtrlInput" type="number" min="0" step="any" inputmode="decimal" value="0.001"></label>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group ui-settings-cat-off" data-group="camera" data-cat="view">
+                    <div class="ui-settings-group-head"><span>摄像机</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="cameraCoordSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
+                            <span>摄像机坐标 (X, Y, Z)</span>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <label style="font-size:11px; color:var(--color-text-muted,#64748b);">X</label>
+                                <input id="camPosX" type="number" step="0.5" style="flex:1; min-width:0; width:100%; padding:4px 6px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(255,255,255,0.08); color: var(--color-input-text); font-size:12px;">
+                                <label style="font-size:11px; color:var(--color-text-muted,#64748b);">Y</label>
+                                <input id="camPosY" type="number" step="0.5" style="flex:1; min-width:0; width:100%; padding:4px 6px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(255,255,255,0.08); color: var(--color-input-text); font-size:12px;">
+                                <label style="font-size:11px; color:var(--color-text-muted,#64748b);">Z</label>
+                                <input id="camPosZ" type="number" step="0.5" style="flex:1; min-width:0; width:100%; padding:4px 6px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(255,255,255,0.08); color: var(--color-input-text); font-size:12px;">
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button id="camPosApplyBtn" class="modal-btn" type="button" style="flex:1; border:1px solid var(--bg-settings-toggle-border, rgba(255,255,255,0.2)); border-radius:6px; padding:6px;">应用坐标</button>
+                                <button id="camPosReadBtn" class="modal-btn" type="button" style="flex:1; border:1px solid var(--bg-settings-toggle-border, rgba(255,255,255,0.2)); border-radius:6px; padding:6px;">读取当前</button>
+                            </div>
+                        </div>
+                        <div class="ui-settings-item" id="cameraFovSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>摄像机视场角 (FOV)</span>
+                                <span id="cameraFovLabel">45°</span>
+                            </div>
+                            <div>
+                                <input id="cameraFovRange" type="range" min="20" max="120" step="1" value="45" style="width:100%;">
+                            </div>
+                        </div>
+                        <div class="ui-settings-item" id="orthoViewSetting" style="margin-top:8px;">
+                            <span>正交视图（去透视）</span>
+                            <button class="ui-checkbox" id="orthoViewCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="axisViewSetting" style="margin-top:8px; flex-direction:column; align-items:stretch; gap:8px;">
+                            <span>轴向视角</span>
+                            <div class="axis-view-row">
+                                <button class="axis-view-btn" type="button" data-axis-view="front">正前</button>
+                                <button class="axis-view-btn" type="button" data-axis-view="back">正后</button>
+                                <button class="axis-view-btn" type="button" data-axis-view="left">正左</button>
+                                <button class="axis-view-btn" type="button" data-axis-view="right">正右</button>
+                                <button class="axis-view-btn" type="button" data-axis-view="top">正俯</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group ui-settings-cat-off" data-group="edit" data-cat="edit">
+                    <div class="ui-settings-group-head"><span>编辑 / 高级</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="ui-settings-item" id="newLayoutSetting" style="margin-top:8px;">
+                            <span>启用新布局&amp;操作方案</span>
+                            <button class="ui-checkbox" id="newLayoutCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="autoBakeBoneSetting" style="margin-top:8px;">
+                            <span>骨骼自动烘焙</span>
+                            <button class="ui-checkbox" id="autoBakeBoneCheckbox" type="button" aria-pressed="false"></button>
+                        </div>
+                        <div class="ui-settings-item" id="molangTakeoverSetting" style="margin-top:8px; flex-direction:column; gap:8px; align-items:stretch;">
+                            <span>molang 表达式接管</span>
+                            <button class="modal-btn" id="molangTakeoverBtn" type="button" style="width:100%;">使用 molang 表达式完全接管当前方块</button>
+                            <div style="font-size:11px; color:var(--color-text-muted,#64748b);">仅对当前选中的方块生效（支持多选）；开启后不可逆，变量区将变为只读数值并生成 molang 基线。</div>
+                        </div>
+                        <div class="ui-settings-item" id="queryUpdateSetting" style="margin-top:8px;">
+                            <span>查询函数更新</span>
+                            <button class="ui-checkbox checked" id="queryUpdateCheckbox" type="button" aria-pressed="true"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="ui-settings-group collapsible collapsed ui-settings-cat-off" data-group="shortcuts" data-cat="help">
+                    <div class="ui-settings-group-head"><span>快捷键</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="kbd-sub">通用</div>
+                        <div class="kbd-list">
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>N</span></kbd></span><span class="kbd-desc">打开「新建模型」面板</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Alt</span></kbd><span class="kbd-plus">+</span><kbd><span>S</span></kbd></span><span class="kbd-desc">打开 / 收起设置面板</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Ctrl</span></kbd><span class="kbd-plus">+</span><kbd><span>Z</span></kbd></span><span class="kbd-desc">撤销</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Ctrl</span></kbd><span class="kbd-plus">+</span><kbd><span>Y</span></kbd></span><span class="kbd-desc">重做</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Ctrl</span></kbd><span class="kbd-plus">+</span><kbd><span>D</span></kbd></span><span class="kbd-desc">复制选中方块</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Ctrl</span></kbd><span class="kbd-plus">+</span><kbd><span>C</span></kbd></span><span class="kbd-desc">复制选中方块到剪贴板（原方块保持选中）</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Ctrl</span></kbd><span class="kbd-plus">+</span><kbd><span>V</span></kbd></span><span class="kbd-desc">从剪贴板粘贴方块</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Del</span></kbd></span><span class="kbd-desc">删除选中方块</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>F11</span></kbd></span><span class="kbd-desc">全屏切换</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Esc</span></kbd></span><span class="kbd-desc">依次：关关键帧 → 保存退出项目 → 退出全屏</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Ctrl</span></kbd><span class="kbd-plus">+</span><kbd><span>Shift</span></kbd><span class="kbd-plus">+</span><kbd><span>0</span></kbd></span><span class="kbd-desc">UI 缩放恢复 100%</span></div>
+                        </div>
+                        <div class="kbd-sub">操作模式切换</div>
+                        <div class="kbd-list">
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Alt</span></kbd><span class="kbd-plus">+</span><kbd><span>N</span></kbd></span><span class="kbd-desc">切换到新操作模式</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Alt</span></kbd><span class="kbd-plus">+</span><kbd><span>O</span></kbd></span><span class="kbd-desc">切换到旧操作模式（Ctrl+O 同效）</span></div>
+                        </div>
+                        <div class="kbd-sub">Gizmo 模式（仅新操作模式）</div>
+                        <div class="kbd-list">
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>P</span></kbd></span><span class="kbd-desc">枢轴</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>V</span></kbd></span><span class="kbd-desc">位移</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>S</span></kbd></span><span class="kbd-desc">缩放</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>R</span></kbd></span><span class="kbd-desc">局部旋转（rot 变量）</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><kbd><span>Shift</span></kbd><span class="kbd-plus">+</span><kbd><span>R</span></kbd></span><span class="kbd-desc">全局旋转（rotation 变量）</span></div>
+                        </div>
+                        <div class="kbd-sub">触摸 / 手机操作</div>
+                        <div class="kbd-list is-gesture">
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>单指轻触</span></span></span><span class="kbd-desc">选中方块（画笔模式下为放置方块）</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>单指拖动</span></span></span><span class="kbd-desc">旋转视角</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>双指捏合 / 张开</span></span></span><span class="kbd-desc">缩放视角</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>双指拖动</span></span></span><span class="kbd-desc">平移视角</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>拖动 Gizmo 手柄</span></span></span><span class="kbd-desc">位移 / 旋转 / 缩放 / 枢轴</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>长按</span></span></span><span class="kbd-desc">方块或文件夹多选（＝电脑 Ctrl+左键，带震动反馈）</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>长按 ▲ / ▼</span></span></span><span class="kbd-desc">数值连续增减（按住越久越快）</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>数值区上下拖动</span></span></span><span class="kbd-desc">数值连续增减</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>双击</span></span></span><span class="kbd-desc">「绑定父级方块」选项中确认绑定</span></div>
+                            <div class="kbd-row"><span class="kbd-keys"><span class="gkbd"><span>双击</span></span></span><span class="kbd-desc">关键帧时间轴：在双击位置定位播放头（创建关键帧请点「+关键帧」按钮）</span></div>
+                        </div>
+                        <div class="kbd-note">画笔模式下：单指用于绘制（旋转被禁用），双指仍可缩放 + 平移。</div>
+                    </div>
+                </div>
+                <div class="ui-settings-group ui-settings-cat-off" data-group="project" data-cat="project">
+                    <div class="ui-settings-group-head"><span>项目</span></div>
+                    <div class="ui-settings-group-body">
+                        <div class="prj-info">
+                            <span class="prj-label">当前项目</span>
+                            <input id="projectNameInput" type="text" placeholder="未打开项目">
+                            <button id="projectNameApplyBtn" class="prj-btn prj-btn-plain" type="button" style="flex:0 0 auto;"><span class="prj-face">重命名</span></button>
+                        </div>
+                        <div class="prj-btn-row">
+                            <button class="prj-btn prj-btn-primary" id="projectSaveNowBtn" type="button"><span class="prj-face">保存</span></button>
+                            <button class="prj-btn" id="projectBackBtn" type="button"><span class="prj-face">退出项目</span></button>
+                        </div>
+                        <div id="projectSaveStatus" class="prj-status"></div>
+                        <div class="prj-divider"></div>
+                        <button class="prj-btn prj-btn-danger" id="projectClearBtn" type="button"><span class="prj-face">清空项目</span></button>
+                    </div>
+                </div>
+            </div><!-- /设置面板分类内容区 .ui-settings-scroll -->
+            </div><!-- /设置面板分类主体 .ui-settings-main -->
+            </div><!-- /设置面板 uiSettingsPanel -->
+        <!-- dataTableInspector 移出 panel-content，使其在「新布局模式」下不被隐藏的旧面板内容一起吞掉 -->
+        <div id="varsContainer" class="variables-container"></div>
+        <div id="newVarContainer" style="margin-top: 12px;"></div>
+        <div class="info-note">✨ 反馈: 3155929574@qq.com<br></div>
+    </div>
+    <!-- 数据视图头部细条：左侧「切回方块列表」图形按钮（与方块列表头部的切换按钮同一套 .view-toggle-btn 样式） -->
+    <div id="dataViewHeader" class="data-view-header" style="display:none;">
+        <button type="button" class="view-toggle-btn" id="quickViewToggleBtnData" title="切换到方块列表">
+            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="3" height="2" rx="0.7"/><rect x="6.5" y="3" width="7.5" height="2" rx="0.7"/><rect x="2" y="7" width="3" height="2" rx="0.7"/><rect x="6.5" y="7" width="7.5" height="2" rx="0.7"/><rect x="2" y="11" width="3" height="2" rx="0.7"/><rect x="6.5" y="11" width="7.5" height="2" rx="0.7"/></svg>
+        </button>
+    </div>
+    <div id="dataTableInspector" class="inspector-panel" style="margin-top:10px; display:none;"></div>
+    <div id="virtModKeybar" class="virt-mod-keybar">
+        <span class="virt-mod-label">模拟修饰键</span>
+        <button type="button" class="virt-mod-key" id="virtModShift" data-key="shift">⇧ Shift</button>
+        <button type="button" class="virt-mod-key" id="virtModCtrl" data-key="ctrl">Ctrl</button>
+    </div>
+</div>
+</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
+    }
+}
+</script>
+
+<!-- 唯一的 module 入口：加载 three 全局 + 按顺序串行加载 modules/js/ 下全部功能脚本 -->
+<script type="module" src="modules/js/00-bootstrap.js"></script>
+
+
+<!-- file:// 跨源提示：直接双击打开时 WebGL 无法加载本地贴图（方块变黑），引导改用本地服务器 -->
+<script>
+(function () {
+  function showBanner() {
+    if (location.protocol !== 'file:') return;
+    var b = document.createElement('div');
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;' +
+      'font:14px/1.6 -apple-system,Microsoft YaHei,sans-serif;padding:10px 16px;text-align:center;' +
+      'box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    b.innerHTML = '⚠️ 检测到你以 <b>file://</b> 方式直接打开本文件。浏览器（Chrome 等）出于安全限制，' +
+      'WebGL 无法加载本地 <b>Textures/</b> 贴图，方块会显示为<b>黑色</b>。请改用本地服务器：双击同目录的' +
+      '「启动本地服务器.bat」，再用 <b>http://localhost:8000/</b> 打开即可正常显示贴图。';
+    (document.body || document.documentElement).appendChild(b);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
+  else showBanner();
+})();
+</script>
+</body>
+</html>

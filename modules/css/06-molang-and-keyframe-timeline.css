@@ -1,0 +1,847 @@
+/* 06-molang-and-keyframe-timeline.css · 源 测试版v.6b79.html 第 1594-2443 行（原样搬运，仅 url 路径退两级） */
+/* ========== molang 编辑器顶部：帮助按钮（折叠按钮左侧，左上角） ========== */
+.molang-header-actions { display: inline-flex; align-items: center; gap: 8px; }
+/* 组头按钮：沿用全局「切角矩形」造型（同 .virt-mod-key / .kbd-list kbd）。
+   四角各切 6px 的矩形、无边框、无圆角、无渐变、无光晕，只用填充色表达形状与层级。 */
+.molang-head-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 14px; border-radius: 0; cursor: pointer;
+  font-size: 12px; font-weight: 600; line-height: 1.45; white-space: nowrap;
+  color: var(--color-text); background: var(--bg-group-header); border: none;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  transition: background .15s ease, color .15s ease;
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.molang-head-btn:hover { color: #93c5fd; background: rgba(59,130,246,.16); }
+.molang-head-btn:active { filter: brightness(1.18); }
+/* 主操作（转回普通方块）：淡蓝填充，切角造型下靠填充浓度区分层级 */
+.molang-head-btn.primary { color: #bfdbfe; background: rgba(59,130,246,.3); }
+.molang-head-btn.primary:hover { background: rgba(59,130,246,.44); color: #dbeafe; }
+
+/* ===== 【2026-10-13】关键帧时间表面板（关键帧模式下取代方块列表）===== */
+.kf-tl-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* ★【2026-10-31 用户要求「按钮东一个西一个、风格还不一样、背景完全不透明」】
+   面板头统一整理成一条按钮栏：主操作（+关键帧 / 播放）在左，辅助操作（数据 / 变量 / 浮动窗 / 工具）
+   在右，全部共用同一套尺寸 / 圆角 / 半透明填充；名称与播放头信息单独一行、不再夹按钮。 */
+.kf-tl-hbtnbar {
+  margin-left: 0; display: flex; align-items: center; justify-content: space-between;
+  gap: 6px 8px; width: 100%; flex: 1 1 100%; flex-wrap: wrap;
+}
+.kf-tl-bgrp { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.kf-tl-bgrp-aux { margin-left: auto; }
+/* 统一按钮：26px 高、6px 圆角、半透明填充；不用切角、不用实心底 */
+.kf-tl-btn {
+  height: 26px; padding: 0 9px; border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid rgba(148,163,184,.18);
+  background: rgba(148,163,184,.10);
+  color: #94a3b8;
+  font-size: 12px; font-weight: 600; line-height: 1;
+  white-space: nowrap; cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.kf-tl-btn:hover { background: rgba(148,163,184,.2); color: #e2e8f0; border-color: rgba(148,163,184,.32); }
+/* 按下态（「数据」视图）：同一形状，只换成蓝色调 */
+.kf-tl-btn.on { background: rgba(59,130,246,.26); color: #bfdbfe; border-color: rgba(59,130,246,.5); }
+.kf-tl-btn.on:hover { background: rgba(59,130,246,.34); }
+/* 主操作：与辅助按钮同一套造型，只换色调（半透明蓝） */
+.kf-tl-btn-primary { background: rgba(59,130,246,.18); border-color: rgba(96,165,250,.36); color: #bfdbfe; }
+.kf-tl-btn-primary:hover { background: rgba(59,130,246,.3); border-color: rgba(96,165,250,.6); color: #eff6ff; }
+/* 浅色主题：文字与填充同步换色，保持同样的半透明质感 */
+body.light-mode .kf-tl-btn { background: rgba(148,163,184,.16); border-color: rgba(148,163,184,.32); color: #475569; }
+body.light-mode .kf-tl-btn:hover { background: rgba(148,163,184,.28); color: #1e293b; border-color: rgba(100,116,139,.42); }
+body.light-mode .kf-tl-btn.on { background: rgba(59,130,246,.16); color: #1d4ed8; border-color: rgba(59,130,246,.42); }
+body.light-mode .kf-tl-btn.on:hover { background: rgba(59,130,246,.24); }
+body.light-mode .kf-tl-btn-primary { background: rgba(37,99,235,.12); color: #1d4ed8; border-color: rgba(37,99,235,.32); }
+body.light-mode .kf-tl-btn-primary:hover { background: rgba(37,99,235,.22); color: #1e40af; border-color: rgba(37,99,235,.5); }
+/* 折叠状态且数值表为空 ⇒ 块头下方没有任何内容，去掉其底边线，避免留下一条多余边框 */
+.kf-tl-bhead-bare { border-bottom: none; }
+.kf-tl-targets {
+  font-size: 11px; font-weight: 600; color: #93c5fd;
+  flex: 0 1 auto; min-width: 0; max-width: 46%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 1px 7px; border-radius: 3px;
+  background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.28);
+}
+.kf-tl-empty { padding: 10px 12px; font-size: 12px; color: var(--color-text-soft); }
+/* ★【2026-10-20 用户要求】原「空态说明」一行（该方块暂无…自定义变量 + 小问号）及其展开说明已整体删除：
+   没有自定义变量时数据表一个字都不显示。故 .kf-tl-empty-bar / .kf-tl-ehint 两条规则随之移除。 */
+/* 折叠栏（与数值表互斥） */
+.kf-tl-fold {
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  margin: 6px 8px; padding: 5px 8px; border-radius: 4px;
+  font-size: 12px; font-weight: 600; color: var(--color-text);
+  background: var(--bg-card); border: 1px solid var(--border-soft);
+}
+.kf-tl-fold:hover { border-color: rgba(59,130,246,.5); }
+.kf-tl-fold.open { color: #93c5fd; background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.45); }
+.kf-tl-fold-arrow { font-size: 10px; opacity: .8; }
+.kf-tl-fold-count { margin-left: auto; font-size: 10px; font-weight: 400; color: var(--color-text-soft); }
+/* 数值表：时间 × 变量 × 数值 */
+.kf-tl-table { padding: 0 8px 8px; }
+/* ★【2026-10-22 修复】原来这里按「时间 | 变量 | 数值」三列写死 52px 1fr 84px，
+   但现在行内只有「变量名 | 数值」两格 ⇒ 数值被塞进 52px 后的第二列、最右侧 84px 列恒空着，
+   看起来就是「可修改框跟左边变量名挤在一起，右边一大片空位」。
+   改成 flex：变量名吃满剩余宽度，数值固定 84px 靠右（分段徽标仍可插在中间，不会被挤到下一行）。 */
+.kf-tl-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 6px; border-radius: 4px; font-size: 12px;
+}
+.kf-tl-row .mv-name { width: auto; min-width: 0; flex: 1 1 auto; }
+.kf-tl-row .kf-tl-val { flex: 0 0 84px; }
+.kf-tl-row:nth-child(odd) { background: var(--bg-card); }
+.kf-tl-time { color: var(--color-text-soft); font-variant-numeric: tabular-nums; }
+.kf-tl-var { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kf-tl-val {
+  text-align: right; font-weight: 700; color: var(--color-text-strong);
+  font-variant-numeric: tabular-nums; cursor: ns-resize;
+  padding: 1px 5px; border-radius: 4px; border: 1px solid transparent;
+}
+.kf-tl-val:hover { border-color: rgba(59,130,246,.55); background: rgba(59,130,246,.12); }
+.kf-tl-multi { font-style: normal; font-size: 9px; color: #f59e0b; }
+/* 分段表达式区 */
+.kf-tl-expr-body { padding: 0 8px 8px; }
+.kf-tl-seg {
+  margin-top: 6px; padding: 6px 8px; border-radius: 4px;
+  background: var(--bg-card); border: 1px solid var(--border-soft);
+}
+.kf-tl-seg-range { font-size: 11px; font-weight: 600; color: #60a5fa; font-variant-numeric: tabular-nums; }
+.kf-tl-seg-none { display: block; margin-top: 4px; font-size: 11px; color: var(--color-text-soft); }
+.kf-tl-seg-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.kf-tl-seg-input {
+  flex: 1; min-width: 0; padding: 3px 6px; border-radius: 4px; font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--color-input-text); background: var(--color-input-bg); border: 1px solid var(--color-input-border);
+}
+.kf-tl-seg-input:focus { outline: none; border-color: rgba(59,130,246,.75); }
+.kf-tl-seg-add { margin-top: 5px; }
+/* 区间表达式行里的变量名：按内容撑开（--mv-name-w 默认 100px 在这里会截断 v.extend_scale 这类长名） */
+.kf-tl-seg-row .mv-name { width: auto; min-width: 92px; max-width: 168px; }
+/* 多选表达式：一致 / 不一致 / 逐块 */
+.kf-tl-seg-shared { font-size: 10px; color: var(--color-text-soft); padding: 0 4px; }
+.kf-tl-seg-diff { font-size: 10px; color: #f59e0b; padding: 0 4px; white-space: nowrap; }
+.kf-tl-seg-multi { background: rgba(245,158,11,.06); }
+.kf-tl-seg-blk { padding-left: 12px; border-left: 2px solid var(--border-soft); }
+.kf-tl-hint { margin-top: 8px; font-size: 11px; color: var(--color-text-soft); line-height: 1.5; }
+/* ★【2026-10-13】旧操作模式 = 只读回放 */
+.kf-readonly-tag {
+  margin-left: 6px; padding: 1px 6px; border-radius: 3px; font-size: 10px; white-space: nowrap;
+  color: var(--color-text-soft); border: 1px dashed var(--color-input-border, rgba(148,163,184,.5));
+}
+.kf-readonly-hint { font-size: 10px; color: var(--color-text-soft); }
+.kf-tl-note {
+  margin: 6px 10px 8px; padding: 6px 8px; border-radius: 4px; font-size: 11px; line-height: 1.5;
+  color: var(--color-text-muted); background: var(--bg-card); border: 1px solid var(--border-soft);
+}
+/* ===== v2 时间块（时间 → 变量数值列表 ⇄ 分段表达式，两者互斥）===== */
+/* 面板头第二行：名称胶囊 + 播放头信息（不再放任何按钮，宽度够时同一行、窄了自然换行） */
+.kf-tl-subbar {
+  display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap;
+  padding: 2px 12px 8px; border-bottom: 1px solid var(--border-soft);
+}
+.kf-tl-curtime { margin-left: auto; font-size: 11px; color: var(--color-text-soft); font-variant-numeric: tabular-nums; }
+.kf-tl-curtime b { color: #60a5fa; }
+/* 「工具」按钮沿用 .kf-tl-btn 的统一造型，这里只补图标尺寸与展开态 */
+.kf-tl-toolbtn svg { flex: 0 0 auto; width: 16px; height: 16px; }
+.kf-tl-toolbtn.open { background: rgba(59,130,246,.26); color: #bfdbfe; border-color: rgba(59,130,246,.5); }
+/* ★【2026-10-24】菜单挂在 body 上做 fixed 浮层（时间表是 200px 高的底部面板，
+   内联菜单向上弹会被面板顶边裁掉、向下弹会溢出底边）。位置由 kfTlOpenToolsMenu 按按钮实际位置算出。 */
+.kf-tl-toolsmenu {
+  display: flex; position: fixed; z-index: 900;
+  flex-direction: column; padding: 3px 0; min-width: 168px;
+  background: #14181f; border-left: 1px solid rgba(100,116,139,.45);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  animation: topCardDropIn .16s ease-out;
+}
+body.light-mode .kf-tl-toolsmenu { background: #f2f5f9; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
+.kf-tl-toolitem {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  padding: 6px 12px 6px 10px; border: none; border-left: 1px solid rgba(100,116,139,.45);
+  background: transparent; color: var(--color-text-muted); font-size: 12px; text-align: left; cursor: pointer;
+}
+.kf-tl-toolitem:hover { background: rgba(59,130,246,.14); color: #60a5fa; }
+.kf-tl-toolitem svg { flex: 0 0 auto; opacity: .85; }
+.kf-tl-blocks { padding: 0 8px 8px; display: flex; flex-direction: column; gap: 10px; }
+/* ★【2026-10-20 用户要求】时间块不再用「灰蓝底 + 描边」的卡片形态：去掉边框/底色/圆角，
+   块与块之间靠留白区分（用户：「这些卡片的灰蓝色背景描边能去掉吗？换成更简约的线条或者干脆不要」）。 */
+.kf-tl-block { border: none; background: transparent; border-radius: 0; }
+.kf-tl-bhead { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: transparent; border-bottom: none; flex-wrap: wrap; }
+/* 分段表达式编辑区：去掉灰蓝底 + 描边，只留一条极淡的左侧竖线作为可编辑区域的边界提示 */
+.kf-tl-bexpr { border-left: 2px solid rgba(148,163,184,.16); margin-left: 8px; padding-left: 6px; }
+.kf-seg-editor .molang-highlight,
+.kf-seg-editor .molang-textarea { border: none; background: transparent; border-radius: 0; }
+.kf-tl-bt { font-size: 13px; font-weight: 700; color: #60a5fa; font-variant-numeric: tabular-nums; }
+/* ★【2026-10-20 用户要求】时间文字后面的小横线装饰：一条渐隐细线，把「时间」与「时长」隔开 */
+.kf-tl-bdash { display: inline-block; width: 16px; height: 1px; border-radius: 1px; background: linear-gradient(90deg, rgba(96,165,250,.55), rgba(148,163,184,.12)); flex: 0 0 auto; }
+.kf-tl-bd { font-size: 10px; color: var(--color-text-soft); }
+/* ★【2026-10-20】去掉 margin-left:auto：动作组本身已右对齐，此处再把折叠按钮推右
+   会把紧邻它左侧的「?」说明按钮推远 —— 用户要求「?」紧挨分段表达式切换按钮。 */
+.kf-tl-bfold.on { color: #93c5fd; background: rgba(59,130,246,.3); }
+/* ★【2026-10-18 用户要求】块内说明文字不再常显：改成一个「?」小按钮（无边框），按下才弹出 */
+.kf-tl-bhelp {
+  border: none; background: transparent; color: var(--color-text-soft);
+  font-size: 11px; font-weight: 700; line-height: 1; width: 16px; height: 16px;
+  border-radius: 50%; padding: 0; cursor: pointer; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.kf-tl-bhelp:hover, .kf-tl-bhelp.on { color: #93c5fd; background: rgba(59,130,246,.16); }
+.kf-tl-vars, .kf-tl-bexpr { padding: 5px 8px 7px; }
+.kf-tl-sp { font-style: normal; font-size: 9px; color: #a855f7; border: 1px solid rgba(168,85,247,.45); border-radius: 3px; padding: 0 3px; margin-left: 2px; }
+.kf-tl-val.dim { color: var(--color-text-soft); font-weight: 400; }
+.kf-tl-val.drv { border-color: rgba(59,130,246,.35); }
+.kf-tl-code { display: flex; align-items: baseline; gap: 4px; padding: 2px 6px; border-radius: 3px; font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--color-text-muted); }
+.kf-tl-code:nth-child(odd) { background: rgba(148,163,184,.06); }
+.kf-tl-code-t { overflow-wrap: anywhere; }
+/* 本块 molang 截断代码编辑窗 */
+.kf-bce-box { width: min(720px, 94vw); }
+.kf-bce-target { margin-left: auto; font-size: 11px; font-weight: 400; color: var(--color-text-soft); }
+.kf-bce-sub { padding: 6px 12px; font-size: 11px; line-height: 1.6; color: var(--color-text-soft); border-bottom: 1px solid var(--border-soft); }
+.kf-bce-sub code { font-family: ui-monospace, Consolas, monospace; color: #93c5fd; }
+.kf-bce-row { display: flex; align-items: center; gap: 6px; padding: 4px 4px; }
+.kf-bce-row .mv-name { width: auto; min-width: 96px; max-width: 190px; }
+.kf-bce-eq { color: var(--color-text-soft); font-family: ui-monospace, Consolas, monospace; }
+.kf-bce-input {
+  flex: 1; min-width: 0; padding: 4px 6px; border-radius: 4px; font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--color-input-text); background: var(--color-input-bg); border: 1px solid var(--color-input-border);
+}
+.kf-bce-input:focus { outline: none; border-color: rgba(59,130,246,.75); }
+/* 本块 molang 表达式框（复用 molang 编辑模式的透明 textarea + 高亮层方案） */
+.kf-seg-editor { margin: 2px 0 4px; }
+.kf-seg-editor .molang-highlight,
+.kf-seg-editor .molang-textarea { min-height: 92px; font-size: 12px; line-height: 18px; border-radius: 4px; }
+.kf-tl-bexpr .molang-error { margin-top: 4px; }
+/* 派生量分组：说明「这些由表达式算出来，不该打关键帧」 */
+.kf-vp-derived { padding: 4px 6px; font-size: 11px; color: var(--color-text-soft); line-height: 1.7; }
+.kf-vp-derived code { font-family: ui-monospace, Consolas, monospace; color: var(--color-text-muted); }
+/* 变量候选面板 */
+.kf-var-picker {
+  position: fixed; inset: 0; z-index: 760; display: flex; align-items: center; justify-content: center;
+  background: rgba(2,6,23,.55);
+}
+.kf-var-picker.fullscreen { align-items: stretch; justify-content: stretch; }
+.kf-var-picker.fullscreen .kf-vp-box { width: 100%; height: 100%; max-height: none; border-radius: 0; }
+.kf-vp-box {
+  width: min(560px, 92vw); max-height: 76vh; display: flex; flex-direction: column;
+  border-radius: 4px; background: var(--bg-panel); border: 1px solid var(--border-soft);
+  box-shadow: 0 18px 48px rgba(2,6,23,.45);
+}
+.kf-vp-head {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  font-size: 13px; font-weight: 600; color: var(--color-text);
+  border-bottom: 1px solid var(--border-soft);
+}
+.kf-vp-head > span:first-child { margin-right: auto; }
+.kf-vp-body { overflow-y: auto; padding: 6px 8px; flex: 1; }
+.kf-vp-group { padding: 6px 4px 3px; font-size: 11px; font-weight: 600; color: var(--color-text-muted); }
+.kf-vp-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 4px; cursor: pointer;
+}
+.kf-vp-row:hover { background: var(--bg-card); }
+.kf-vp-row.on { background: rgba(59,130,246,.12); }
+/* 核心变量行：勾选框锁定为已选用（不可取消），视觉上区别于可自由勾选的候选变量 */
+.kf-vp-row.locked { cursor: default; }
+.kf-vp-row.locked:hover { background: none; }
+.kf-vp-row.locked .mv-name { opacity: .85; }
+.kf-vp-row.locked input { cursor: default; }
+/* 变量名按内容撑开（默认 --mv-name-w:100px 会把 v.extend_scale 截断） */
+.kf-vp-row .mv-name { width: auto; min-width: 96px; max-width: 190px; }
+.kf-vp-why { margin-left: auto; font-size: 11px; color: var(--color-text-soft); }
+.kf-vp-empty { padding: 12px; font-size: 12px; color: var(--color-text-soft); }
+.kf-vp-foot { padding: 8px 12px; font-size: 11px; color: var(--color-text-soft); border-top: 1px solid var(--border-soft); }
+/* 禁用态：程序含条件分支 / q. 查询 / 循环赋值，转回会改变行为 */
+.molang-head-btn:disabled {
+  opacity: .45; cursor: not-allowed; color: #94a3b8; background: rgba(148,163,184,.14);
+}
+.molang-head-btn:disabled:hover { background: rgba(148,163,184,.14); color: #94a3b8; }
+body.light-mode .molang-head-btn { color: var(--color-text); }
+body.light-mode .molang-head-btn:hover { color: #1d4ed8; background: rgba(59,130,246,.14); }
+body.light-mode .molang-head-btn.primary { color: #1d4ed8; background: rgba(59,130,246,.2); }
+body.light-mode .molang-head-btn.primary:hover { background: rgba(59,130,246,.32); color: #1e3a8a; }
+/* ========== molang 帮助弹窗 ========== */
+.molang-help-modal { position: fixed; inset: 0; z-index: 1003; display: flex; align-items: center; justify-content: center; background: rgba(2,6,23,0.62); backdrop-filter: blur(4px); animation: mhFade .18s ease; }
+@keyframes mhFade { from { opacity: 0; } to { opacity: 1; } }
+.molang-help-modal .mh-box { width: min(740px, 93vw); max-height: 86vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: linear-gradient(160deg, rgba(20,30,54,0.99), rgba(10,16,32,0.99)); border: 1px solid rgba(96,165,250,0.4); box-shadow: 0 26px 70px rgba(0,0,0,0.6), 0 0 44px rgba(59,130,246,0.2); }
+.molang-help-modal .mh-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, rgba(59,130,246,0.28), rgba(139,92,246,0.22)); border-bottom: 1px solid rgba(96,165,250,0.3); }
+.molang-help-modal .mh-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: #eef2ff; letter-spacing: .5px; }
+.molang-help-modal .mh-close { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.2); color: #e2e8f0; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 15px; line-height: 1; }
+.molang-help-modal .mh-close:hover { background: rgba(239,68,68,0.28); border-color: #ef4444; }
+.molang-help-modal .mh-body { overflow-y: auto; padding: 14px 18px 6px; color: #cbd5e1; }
+.molang-help-modal .mh-sec-title { font-size: 14px; font-weight: 700; color: #60a5fa; margin: 10px 0 8px; padding-left: 8px; border-left: 3px solid #3b82f6; }
+.molang-help-modal .mh-sec-title.q { color: #c084fc; border-color: #a855f7; }
+.molang-help-modal .mh-fn { background: rgba(15,23,42,0.6); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; padding: 10px 12px; margin-bottom: 9px; }
+.molang-help-modal .mh-fn-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.molang-help-modal .mh-name { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; font-weight: 700; color: #93c5fd; word-break: break-all; }
+.molang-help-modal .mh-name.q { color: #d8b4fe; }
+.molang-help-modal .mh-copy { flex: 0 0 auto; padding: 3px 10px; border-radius: 7px; cursor: pointer; font-size: 11px; color: #e2e8f0; background: rgba(59,130,246,0.18); border: 1px solid rgba(96,165,250,0.4); transition: background .15s, box-shadow .15s; }
+.molang-help-modal .mh-copy:hover { background: rgba(59,130,246,0.42); box-shadow: 0 0 12px rgba(59,130,246,0.4); }
+.molang-help-modal .mh-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.molang-help-modal .mh-reset { flex: 0 0 auto; padding: 3px 10px; border-radius: 7px; cursor: pointer; font-size: 11px; color: #fde68a; background: rgba(251,191,36,0.16); border: 1px solid rgba(251,191,36,0.5); transition: background .15s, box-shadow .15s; }
+.molang-help-modal .mh-reset:hover { background: rgba(251,191,36,0.34); box-shadow: 0 0 12px rgba(251,191,36,0.4); }
+.molang-help-modal .mh-row { font-size: 12.5px; margin-top: 5px; line-height: 1.55; }
+.molang-help-modal .mh-row b { color: #e2e8f0; font-weight: 600; }
+.molang-help-modal .mh-k { color: #94a3b8; }
+.molang-help-modal .mh-foot { margin: 14px 0 16px; text-align: center; font-size: 13px; color: #fbbf24; font-weight: 700; letter-spacing: .3px; }
+/* ========== 批量改写 molang 表达式（多选一键改） ==========
+   用途：多个方块各自引用自己的父骨名（t.Cube_yrot / t.Hand_yrot…），
+   把同一处写法批量换成新写法。面板 = 作用范围 + 改写方式 + 查找替换 + 逐块预览 + 一次撤销。
+   按钮一律沿用全局「切角矩形」（同 .molang-head-btn / .virt-mod-key）：四角各切 6px、
+   无边框/圆角/渐变/光晕，只用填充色表达层级。颜色全部走 CSS 变量以兼容浅色模式。 */
+.molang-batch-modal { position: fixed; inset: 0; z-index: 1004; display: flex; align-items: center; justify-content: center; background: rgba(2,6,23,0.62); backdrop-filter: blur(4px); animation: mhFade .18s ease; }
+.mbr-box { width: min(760px, 95vw); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 14px; background: var(--bg-panel, rgba(18,25,45,0.98)); border: 1px solid rgba(96,165,250,0.35); box-shadow: 0 24px 64px rgba(0,0,0,0.55); }
+.mbr-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px;
+  background: rgba(59,130,246,0.14); border-bottom: 1px solid rgba(96,165,250,0.25); }
+.mbr-head h2 { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--color-text-strong); letter-spacing: .3px; }
+.mbr-close { width: 28px; height: 28px; flex: 0 0 auto; border: none; border-radius: 0; cursor: pointer; font-size: 14px; line-height: 1; color: var(--color-text);
+  background: rgba(148,163,184,0.16); clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+.mbr-close:hover { background: rgba(239,68,68,0.3); color: #fff; }
+/* 面板头部右侧操作区：教程入口 + 关闭（同 .mbr-close 的切角语言） */
+.mbr-head-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.mbr-tut { padding: 4px 11px; border: none; border-radius: 0; cursor: pointer; font-size: 12px; font-weight: 600; line-height: 1.5;
+  color: #fde68a; background: rgba(251,191,36,0.16); transition: background .15s ease, color .15s ease;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+.mbr-tut:hover { background: rgba(251,191,36,0.34); color: #fff; }
+.mbr-body { overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 9px; }
+.mbr-rowline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mbr-label { font-size: 12px; color: var(--color-text-muted); flex: 0 0 auto; min-width: 52px; }
+/* 分段选择器：整组套一条「轨道」，灰归轨道、不归按钮。
+   ★旧写法是每个选项各自一块灰底 —— 而灰底是通用「禁用」信号，未选中项会被读成「不可点」。
+   现在：轨道是灰的（说明这是一组控件），未选中项透明底 + 正常文字色（可点，只是没选），
+   选中项实蓝 + 白字（与 .kf-mode-btn.active 同一套语言：暗 #3b82f6 / 浅 #2563eb）。 */
+.mbr-seg { display: inline-flex; gap: 2px; flex-wrap: wrap; padding: 3px; background: rgba(148,163,184,0.16); }
+.mbr-seg button { padding: 4px 12px; border: none; border-radius: 0; cursor: pointer; font-size: 12px; font-weight: 600; line-height: 1.5;
+  color: var(--color-text); background: transparent; transition: background .15s ease, color .15s ease;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+.mbr-seg button:hover { background: rgba(59,130,246,0.22); color: #93c5fd; }
+/* 选中态用 #2563eb 而非 #3b82f6：白字压在后者上只有 3.68，达不到 AA 的 4.5（实测值见探针） */
+.mbr-seg button.on { background: #2563eb; color: #fff; }
+.mbr-input { flex: 1 1 320px; min-width: 0; padding: 6px 9px; border-radius: 0; outline: none; resize: vertical;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.5;
+  color: var(--color-input-text); background: var(--color-input-bg); border: 1px solid var(--color-input-border); }
+.mbr-input:focus { box-shadow: var(--color-focus-shadow); }
+/* 查找 / 替换框：内容驱动高度（mbrAutosize），禁用拖拽 resize */
+.mbr-input.mbr-grow { resize: none; overflow-y: hidden; }
+.mbr-hint { font-size: 11.5px; color: var(--color-text-soft); line-height: 1.6; }
+.mbr-hint b { color: #fbbf24; font-weight: 700; }
+.mbr-parse { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.55; color: #93c5fd;
+  background: rgba(59,130,246,0.1); padding: 5px 8px; word-break: break-all; }
+.mbr-parse .ref { color: #fbbf24; font-weight: 700; }
+.mbr-warn { font-size: 11.5px; color: #fbbf24; }
+.mbr-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--color-text-muted); }
+.mbr-preview { max-height: 34vh; min-height: 44px; overflow: auto; background: var(--bg-var-details); padding: 2px 0; }
+.mbr-pv { padding: 4px 8px; border-bottom: 1px solid rgba(148,163,184,0.1); }
+.mbr-pv:last-child { border-bottom: none; }
+.mbr-pv-head { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-text-muted); font-family: ui-monospace, Menlo, Consolas, monospace; }
+.mbr-pv-badge { font-size: 10px; font-weight: 700; padding: 0 5px; color: #0f172a; background: #4ade80; }
+.mbr-pv-badge.skip { background: #94a3b8; }
+.mbr-pv-badge.err { background: #f87171; }
+.mbr-pv-badge.new { background: #c084fc; }
+.mbr-pv-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+.mbr-pv-code.old { color: var(--color-text-soft); }
+.mbr-pv-code.new { color: var(--color-text-strong); }
+/* 「语法存疑」的具体原因：徽章只说有几条，这里给出到底是哪一条，避免用户面对一个
+   无法行动的数字。多条时只列前 2 条（完整列表在徽章 title 里）。 */
+.mbr-pv-note { font-size: 10.5px; line-height: 1.5; color: #fca5a5; padding: 1px 0 3px; }
+mark.mbr-hit { background: rgba(251,191,36,0.26); color: #fde68a; }
+mark.mbr-ins { background: rgba(34,197,94,0.26); color: #bbf7d0; }
+.mbr-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid rgba(148,163,184,0.16); }
+.mbr-btn { padding: 6px 16px; border: none; border-radius: 0; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--color-text);
+  background: rgba(148,163,184,0.16); transition: background .15s ease, color .15s ease;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+.mbr-btn:hover { background: rgba(59,130,246,0.24); color: #93c5fd; }
+/* 主按钮：实蓝 + 白字。旧写法 rgba(59,130,246,.34) 配 #dbeafe 在浅色下文字与底色同色系，
+   实测对比度只有 1.14~1.43，等于看不见字。 */
+.mbr-btn.primary { background: #2563eb; color: #fff; }
+.mbr-btn.primary:hover { background: #1d4ed8; color: #fff; }
+/* 禁用态：改用「灰底 + 弱化文字」，不再靠整体 opacity（opacity .45 会把字直接糊掉，
+   浅色下实测对比度 1.14 —— 用户既看不出它禁用、也读不出它写的是什么）。
+   注：灰=禁用现在是唯一含义（选择器里已不再用灰表达「未选中」），语义不冲突。 */
+.mbr-btn:disabled, .mbr-btn.primary:disabled {
+  background: rgba(148,163,184,0.16); color: var(--color-text-muted); opacity: 1; cursor: not-allowed; }
+body.light-mode .mbr-parse { color: #1d4ed8; background: rgba(59,130,246,0.12); }
+/* 浅色主题下这组控件原先没有任何覆盖 → 直接沿用暗色配色（灰底灰字 + 浅蓝字压浅蓝底）。
+   补齐：轨道更淡、未选中文字用正常正文色、悬浮/选中用蓝，和 kf-mode-btn 一致。 */
+body.light-mode .mbr-seg { background: rgba(15,23,42,0.08); }
+body.light-mode .mbr-seg button { color: var(--color-text); }
+body.light-mode .mbr-seg button:hover { background: rgba(37,99,235,0.12); color: #1d4ed8; }
+body.light-mode .mbr-seg button.on { background: #2563eb; color: #fff; }
+body.light-mode .mbr-btn { color: var(--color-text); }
+body.light-mode .mbr-btn:hover { background: rgba(37,99,235,0.12); color: #1d4ed8; }
+body.light-mode .mbr-btn.primary { background: #2563eb; color: #fff; }
+body.light-mode .mbr-btn.primary:hover { background: #1d4ed8; color: #fff; }
+/* ★必须单独写：上面 `body.light-mode .mbr-btn.primary` 的特异性(0,3,1) 高于
+   基础 `.mbr-btn.primary:disabled`(0,2,0)，不补这条浅色下禁用按钮会保留实蓝底 → 与可用态无法区分 */
+body.light-mode .mbr-btn:disabled,
+body.light-mode .mbr-btn.primary:disabled {
+  background: rgba(15,23,42,0.10); color: #475569; opacity: 1; cursor: not-allowed; }
+body.light-mode .mbr-parse .ref { color: #b45309; }
+body.light-mode .mbr-pv-badge { color: #fff; }
+body.light-mode .mbr-pv-note { color: #b91c1c; }
+body.light-mode mark.mbr-hit { background: rgba(251,191,36,0.45); color: #78350f; }
+body.light-mode mark.mbr-ins { background: rgba(34,197,94,0.34); color: #14532d; }
+/* 通配符 / 正则教程窗：复用 .molang-help-modal 的暗色视觉（同 mh，浅色下也保持暗色），只加内容层。
+   ★z-index 必须高于 .molang-batch-modal(1004)，否则被批量面板整屏遮罩盖住、点不到。 */
+.mbrt-modal { z-index: 1005; }
+.mbrt-item { background: rgba(15,23,42,0.6); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; padding: 9px 12px; margin-bottom: 9px; }
+.mbrt-k { display: inline-block; font-size: 11px; font-weight: 700; color: #93c5fd; margin-right: 8px; }
+.mbrt-d { display: inline; font-size: 12.5px; line-height: 1.6; color: #cbd5e1; }
+.mbrt-d b { color: #fbbf24; font-weight: 700; }
+.mbrt-code { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; }
+.mbrt-code code { flex: 1 1 auto; min-width: 0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5;
+  color: #dbeafe; background: rgba(2,6,23,0.55); border: 1px solid rgba(148,163,184,0.2); padding: 4px 8px; white-space: pre-wrap; word-break: break-all; }
+.mbrt-tag { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: #fde68a; background: rgba(251,191,36,0.16); padding: 4px 6px; }
+.mbrt-tag.ins { color: #bbf7d0; background: rgba(34,197,94,0.18); }
+.mbrt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mbrt-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 9px; background: rgba(15,23,42,0.6); border: 1px solid rgba(148,163,184,0.16); border-radius: 8px; }
+.mbrt-chip code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #93c5fd; font-weight: 700; }
+.mbrt-chip i { font-style: normal; font-size: 11px; color: #94a3b8; }
+/* 浅色模式下头部「📖 教程」入口键（教程窗本身保持暗色，同 mh） */
+body.light-mode .mbr-tut { color: #92400e; background: rgba(251,191,36,0.22); }
+body.light-mode .mbr-tut:hover { background: rgba(251,191,36,0.42); color: #78350f; }
+/* ★2026-10-04：原先标题下方的「molang 接管计数条」(.batch-molang-bar) 已按用户要求**整条移除** ——
+   ⇄ 替换 / ⇦ 转普通 两个入口都已在标题栏做图标键，「表达式查找替换」与「已接管 N / 选中 M」文字均不再需要。
+   相关类（.batch-molang-bar / -info / -count / -warn）的样式一并删除，避免留下空壳。 */
+/* 图标键（标题栏内，无文字）：切角造型，见下 */
+
+.batch-molang-btn { flex: 0 0 auto; padding: 4px 12px; border: none; border-radius: 0; cursor: pointer; font-size: 11.5px; font-weight: 600;
+  color: var(--color-text-strong);
+  background: rgba(59,130,246,0.28); transition: background .15s ease, color .15s ease;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+.batch-molang-btn:hover { background: rgba(59,130,246,0.46); }
+.batch-molang-btn:disabled { opacity: .4; cursor: not-allowed; background: rgba(59,130,246,0.12); }
+@media (max-width: 640px) {
+  .mbr-box { width: 96vw; max-height: 92vh; }
+  .mbr-body { padding: 10px 12px; }
+  .mbr-rowline .mbr-label { min-width: 100%; }
+  .mbr-input { flex: 1 1 100%; font-size: 13px; }
+  .mbr-preview { max-height: 38vh; }
+  .mbr-foot .mbr-btn { flex: 1 1 auto; padding: 8px 12px; }
+}
+/* ========== molang 数字常量泡泡（自增/自减 + 常显固定） ========== */
+.molang-num-bubble {
+  position: fixed; z-index: 99999;
+  display: flex; flex-direction: column; gap: 8px;
+  width: 224px; max-width: 88vw; padding: 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-strong, #e2e8f0);
+  background: linear-gradient(160deg, rgba(30,42,74,0.97), rgba(13,20,38,0.99));
+  border: 1px solid rgba(59,130,246,0.6);
+  border-radius: 14px;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
+  user-select: none; -webkit-user-select: none;
+  backdrop-filter: blur(7px);
+  animation: mnbPop .16s cubic-bezier(.22,.9,.32,1.2), mnbGlow 2.6s ease-in-out .35s infinite;
+}
+/* 现代科技主义：弹出 = 浅蓝发光展开（亮度闪一下再归位） */
+@keyframes mnbPop {
+  0%   { opacity: 0; transform: translateY(7px) scale(.78); filter: brightness(2.4) saturate(.7); }
+  60%  { opacity: 1; transform: translateY(0) scale(1.045); filter: brightness(1.15); }
+  100% { opacity: 1; transform: none; filter: brightness(1); }
+}
+/* toast/科技泡泡复用该动画，但它基类有 translateX(-50%) 居中，100% 必须保留，否则动画结束后会飘到视口中心右侧 */
+@keyframes tbPop {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(7px) scale(.78); filter: brightness(2.4) saturate(.7); }
+  60%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.045); filter: brightness(1.15); }
+  100% { opacity: 1; transform: translateX(-50%); filter: brightness(1); }
+}
+/* 现代科技主义：整卡浅蓝呼吸辉光 */
+@keyframes mnbGlow {
+  0%, 100% { box-shadow: 0 14px 44px rgba(0,0,0,.6), 0 0 0 1px rgba(59,130,246,.16), inset 0 1px 0 rgba(255,255,255,.08), 0 0 9px rgba(56,189,248,.10); }
+  50%      { box-shadow: 0 14px 44px rgba(0,0,0,.6), 0 0 0 1px rgba(125,211,252,.4),  inset 0 1px 0 rgba(255,255,255,.1),  0 0 26px rgba(56,189,248,.32); }
+}
+.molang-num-bubble.pinned { z-index: 999999; }
+/* 关闭/炸开：简单淡出（已取消爆闪效果，2026-08-30 用户要求） */
+.molang-num-bubble.mnb-burst,
+.tech-bubble.tb-burst { animation: mnbFadeOut .18s ease-out forwards; pointer-events: none; }
+@keyframes mnbFadeOut { from { opacity: 1; } to { opacity: 0; } }
+/* 现代科技主义：标题栏左侧浅蓝菱形呼吸灯（闪烁） */
+.molang-num-bubble .mnb-diamond {
+  flex: 0 0 auto; width: 7px; height: 7px;
+  border-radius: 1.5px;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #d9f3ff, #38bdf8);
+  box-shadow: 0 0 6px rgba(56,189,248,.95), 0 0 14px rgba(56,189,248,.5);
+  animation: mnbDiamondBlink 1.7s ease-in-out infinite;
+}
+@keyframes mnbDiamondBlink {
+  0%, 100% { opacity: .5;  transform: rotate(45deg) scale(.8);  box-shadow: 0 0 4px rgba(56,189,248,.55), 0 0 10px rgba(56,189,248,.28); }
+  50%      { opacity: 1;   transform: rotate(45deg) scale(1.12); box-shadow: 0 0 10px rgba(125,211,252,1),  0 0 24px rgba(56,189,248,.65); }
+}
+/* 标题栏：变量名 + 方块名 + 固定/关闭（常显模式可拖动） */
+.molang-num-bubble .mnb-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.26), rgba(168,85,247,0.2));
+  border-bottom: 1px solid rgba(59,130,246,0.4);
+  border-radius: 14px 14px 0 0;
+  cursor: default;
+  -webkit-touch-callout: none;
+  touch-action: none;   /* 触屏拖动标题栏：交给 pointer 事件，禁止浏览器把手势识别成滚动/缩放（否则拖一点就被 pointercancel 打断） */
+}
+.molang-num-bubble.pinned .mnb-head { cursor: grab; }
+.molang-num-bubble.pinned.dragging .mnb-head { cursor: grabbing; }
+.molang-num-bubble .mnb-var {
+  font-weight: 700; font-size: 12px; color: #c084fc;
+  text-shadow: 0 0 9px rgba(168,85,247,0.6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px;
+}
+.molang-num-bubble .mnb-block {
+  flex: 1; font-size: 10px; color: var(--color-text-muted, #94a3b8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.molang-num-bubble .mnb-ico {
+  cursor: pointer; border: none; background: transparent; color: var(--color-text-strong, #e2e8f0);
+  font-size: 14px; line-height: 1; padding: 3px 5px; border-radius: 7px; opacity: .82;
+  transition: background .12s, opacity .12s, transform .12s;
+}
+.molang-num-bubble .mnb-ico:hover { background: rgba(255,255,255,0.14); opacity: 1; }
+.molang-num-bubble .mnb-ico:active { transform: scale(.88); }
+.molang-num-bubble .mnb-pin.active { color: #fbbf24; text-shadow: 0 0 9px rgba(251,191,36,0.8); }
+/* 数值 + 单步进按钮（▲/▼ 合一） */
+.molang-num-bubble .mnb-body { display: flex; align-items: stretch; gap: 8px; padding: 6px 12px 2px; }
+.molang-num-bubble .mnb-stepper {
+  flex: 0 0 auto; display: flex; flex-direction: column;
+  border-radius: 11px; overflow: hidden;
+  border: 1px solid rgba(59,130,246,0.55);
+  background: linear-gradient(135deg, #21345c, #0f1a30);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.molang-num-bubble .mnb-stepper span {
+  width: 38px; height: 21px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--color-text-strong, #e2e8f0); font-size: 13px; line-height: 1;
+  transition: background .12s, transform .07s; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; touch-action: none;
+}
+.molang-num-bubble .mnb-stepper span:first-child { border-bottom: 1px solid rgba(59,130,246,0.4); }
+.molang-num-bubble .mnb-stepper span:hover { background: rgba(59,130,246,0.25); }
+.molang-num-bubble .mnb-stepper span:active { transform: scale(.9); background: rgba(59,130,246,0.4); }
+.molang-num-bubble .mnb-val {
+  flex: 1; min-width: 0; text-align: center; font-weight: 800; font-size: 18px;
+  padding: 9px 6px; border-radius: 9px; cursor: ns-resize;
+  color: #7dd3fc; background: rgba(59,130,246,0.13);
+  text-shadow: 0 0 11px rgba(96,165,250,0.6);
+  border: 1px solid rgba(59,130,246,0.28);
+  overflow-wrap: anywhere; word-break: break-all; line-height: 1.15;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
+}
+/* 步长区 */
+/* ★2026-10-04 第十四轮：新增 0.01 步长快捷按钮；步长显示（标签+输入框）与快捷按钮分在不同行，
+   避免「步长」标签占宽后 10 被挤到第二行。 */
+.molang-num-bubble .mnb-foot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 2px 12px 11px; }
+.molang-num-bubble .mnb-stepwrap { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-text-muted, #94a3b8); }
+.molang-num-bubble .mnb-quickrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.molang-num-bubble .mnb-stepinput {
+  width: 66px; padding: 3px 5px; border-radius: 7px; font-size: 11px;
+  background: var(--bg-var-range-input, #0f172a); color: #fff;
+  border: 1px solid rgba(59,130,246,0.55); font-family: inherit;
+  overflow: hidden; text-overflow: clip;
+}
+.molang-num-bubble .mnb-stepinput:focus { outline: none; box-shadow: var(--color-focus-shadow, 0 0 0 2px rgba(59,130,246,0.3)); }
+.molang-num-bubble .mnb-q {
+  cursor: pointer; padding: 3px 9px; border-radius: 7px; font-size: 11px;
+  border: 1px solid rgba(59,130,246,0.42); background: rgba(59,130,246,0.08);
+  color: var(--color-text-strong, #e2e8f0);
+  transition: background .12s, border-color .12s;
+}
+.molang-num-bubble .mnb-q:hover { background: rgba(59,130,246,0.22); }
+.molang-num-bubble .mnb-q.active { background: rgba(59,130,246,0.38); border-color: #60a5fa; }
+.molang-num-bubble .mnb-hint { font-size: 10px; color: #64748b; text-align: center; padding: 0 10px 10px; line-height: 1.4; }
+/* ========== molang 自动补全泡泡（v./t./q./math. 触发） ========== */
+#molangAutocomplete {
+  position: fixed; z-index: 100001; display: none;
+  max-width: 360px; max-height: 252px; overflow-y: auto; overflow-x: hidden;
+  padding: 6px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+  color: var(--color-text-strong, #e2e8f0);
+  background: linear-gradient(160deg, rgba(30,42,74,0.98), rgba(13,20,38,0.99));
+  border: 1px solid rgba(59,130,246,0.6);
+  border-radius: 12px;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.62), 0 0 0 1px rgba(59,130,246,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(7px);
+  user-select: none; -webkit-user-select: none;
+  animation: acPop .12s ease-out;
+}
+@keyframes acPop { from { opacity: 0; transform: translateY(6px) scale(.97); } to { opacity: 1; transform: none; } }
+#molangAutocomplete .ac-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px; border-radius: 8px; cursor: pointer;
+  white-space: nowrap; overflow: hidden;
+}
+#molangAutocomplete .ac-item .ac-name {
+  font-weight: 700; color: #7dd3fc; text-shadow: 0 0 9px rgba(96,165,250,0.5);
+  overflow: hidden; text-overflow: ellipsis;
+}
+#molangAutocomplete .ac-item .ac-tag {
+  flex: 0 0 auto; margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 6px;
+  color: #cbd5e1; background: rgba(148,163,184,0.16); border: 1px solid rgba(148,163,184,0.3);
+}
+#molangAutocomplete .ac-item .ac-tag.var { color: #c084fc; background: rgba(168,85,247,0.16); border-color: rgba(168,85,247,0.4); }
+#molangAutocomplete .ac-item .ac-tag.func { color: #fcd34d; background: rgba(251,191,36,0.14); border-color: rgba(251,191,36,0.4); }
+#molangAutocomplete .ac-item .ac-tag.q { color: #6ee7b7; background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.4); }
+#molangAutocomplete .ac-item.active, #molangAutocomplete .ac-item:hover { background: rgba(59,130,246,0.26); }
+#molangAutocomplete .ac-empty { padding: 8px 10px; color: #94a3b8; font-size: 12px; }
+#molangAutocomplete .ac-hint {
+  padding: 6px 9px 2px; margin-top: 4px; color: #64748b; font-size: 10px; line-height: 1.5;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+/* 指向数值的小三角（仅锚定/瞬时模式显示，泡泡在数值上方） */
+.molang-num-bubble:not(.pinned)::before,
+.molang-num-bubble:not(.pinned)::after {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0; border: 9px solid transparent;
+}
+.molang-num-bubble:not(.pinned)::before { bottom: -11px; border-top-color: rgba(59,130,246,0.6); }
+.molang-num-bubble:not(.pinned)::after  { bottom: -9px;  border-top-color: rgba(13,20,38,0.99); }
+/* 泡泡被挤到锚点下方时，三角翻到顶部指回变量行 */
+.molang-num-bubble.mnb-below:not(.pinned)::before { bottom: auto; top: -11px; border-top-color: transparent; border-bottom-color: rgba(59,130,246,0.6); }
+.molang-num-bubble.mnb-below:not(.pinned)::after  { bottom: auto; top: -9px;  border-top-color: transparent; border-bottom-color: rgba(13,20,38,0.99); }
+/* 只读数值显示 */
+/* ---- molang 只读数值：并入编辑器组尾部的紧凑网格 ----
+   旧行为 = 一行一个变量整宽铺开（13 变量要滚一屏半），信息密度极低。
+   现为 auto-fill 多列网格：名称左、数值右对齐，按容器宽度自动 2~4 列。 */
+.molang-vals { margin-top: 6px; }
+.molang-vals-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 9px; cursor: pointer; user-select: none;
+  font-size: 11px; font-weight: 600; line-height: 1.4; color: var(--color-text-muted, #94a3b8);
+  background: rgba(148,163,184,.08);
+  transition: background .15s ease, color .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.molang-vals-head:hover { color: #93c5fd; background: rgba(59,130,246,.14); }
+.molang-vals-head .group-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; flex: 0 0 auto;
+  background: transparent; border: none; margin: 0; padding: 0;
+  font-size: 12px; line-height: 1; color: var(--color-text-muted, #64748b);
+  user-select: none;
+}
+/* 真网格（非 flex）：auto-fill 等宽列 → 所有格子恒等宽、列边界刚性对齐（行齐列正）。
+   末行项数不足时由 fitMolangValsGrid() 给最后一格跨列补到行尾：底边齐平、无残行空地。
+   ★值必须紧跟自己的名字（flex-start），绝不能 space-between 推到格子右缘——
+   否则数值离自己的名字 150px、离下一格的名字只有 12px，读起来「字符挤到一起」。
+   名字统一宽度（JS 实测最长名 → --mv-name-w）→ 各列数值起点相同、纵向成列。 */
+.molang-vals-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0 4px; padding: 4px 2px;
+  background: var(--bg-var-details);
+}
+.molang-vals-grid.folded { display: none; }
+
+/* ========== 折叠 / 展开动画（2026-10-04）==========
+   `display:none` 不可过渡（浏览器直接跳变），所以折叠分两段走：
+     ① 先给外壳加 .sec-folded：grid-template-rows 第二行 1fr → 0fr，
+        0.24s 缓动收拢，多余内容由子元素的 overflow:hidden 裁掉（不会溢出边框）；
+     ② 动画结束后再加 .folded（display:none），彻底移出渲染树（省布局、语义不变）。
+   展开反向：先摘 .folded 恢复 display（此时父级仍 0fr ⇒ 不可见、不闪），
+   强制重排提交起始值，再摘 .sec-folded 触发 0fr → 1fr 的过渡。
+   ★ 外壳必须变 grid：只有 grid 容器才能按行高动画；head/grid 两个子元素在同一列堆叠，
+     视觉与原来的 block 布局完全一致。 */
+.molang-vals {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  transition: grid-template-rows .24s cubic-bezier(.4, 0, .2, 1);
+}
+.molang-vals.sec-folded { grid-template-rows: auto 0fr; }
+/* 网格项的自动最小尺寸是 auto（会被内容顶住不肯缩）→ 必须显式 min-height:0 才能收到 0。
+   ★内边距也要一起收：网格项在 grid 里是 stretch 的，行高给到 0 时它的 border-box 仍被
+     padding 顶住 4+4=8px ⇒ 动画会「收到 41px 就停住、挂 display:none 时再跳 8px」。
+     （实测折叠曲线 110.8→105→74→51→41→33，最后那 8px 就是 padding。） */
+.molang-vals > .molang-vals-grid {
+  min-height: 0; overflow: hidden;
+  transition: padding-top .24s cubic-bezier(.4, 0, .2, 1), padding-bottom .24s cubic-bezier(.4, 0, .2, 1);
+}
+.molang-vals.sec-folded > .molang-vals-grid { padding-top: 0; padding-bottom: 0; }
+/* 系统开启「减少动态效果」时不做动画（无障碍） */
+@media (prefers-reduced-motion: reduce) {
+  .molang-vals { transition: none; }
+}
+.mv-row {
+  display: flex; justify-content: flex-start; align-items: center; gap: 10px;
+  min-width: 0;
+  padding: 3px 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11.5px; line-height: 1.5;
+}
+.mv-name {
+  color: var(--color-var-name, #a855f7); flex: 0 0 auto; width: var(--mv-name-w, 100px);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mv-val {
+  color: var(--color-text-strong); font-weight: 600; flex: 0 1 auto; min-width: 0;
+  text-align: left; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+/* molang 接管视图：隐藏冗长分组标题，折叠按钮简约化（无背景、仅三角形、两组高度一致、对齐） */
+.var-group[data-group="molang-values"] .group-title,
+.var-group[data-group="molang"] .group-title { display: none; }
+/* ========== molang 浮层面板浅色模式适配：数值泡泡 / Tab 补全 / 语法着色 / 帮助与错误 ========== */
+/* 数值修改泡泡 */
+body.light-mode .molang-num-bubble {
+  color: var(--color-text-strong, #0f172a);
+  background: linear-gradient(160deg, rgba(230,236,242,0.98), rgba(214,222,231,0.99));
+  border: 1px solid rgba(59,130,246,0.45);
+  box-shadow: 0 14px 44px rgba(15,23,42,0.18), 0 0 0 1px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.55);
+}
+body.light-mode .molang-num-bubble .mnb-head {
+  background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(168,85,247,0.12));
+  border-bottom: 1px solid rgba(59,130,246,0.3);
+}
+body.light-mode .molang-num-bubble .mnb-var { color: #7c3aed; text-shadow: none; }
+body.light-mode .molang-num-bubble .mnb-block { color: var(--color-text-muted, #64748b); }
+body.light-mode .molang-num-bubble .mnb-ico { color: var(--color-text-strong, #0f172a); }
+body.light-mode .molang-num-bubble .mnb-ico:hover { background: rgba(15,23,42,0.08); }
+body.light-mode .molang-num-bubble .mnb-pin.active { color: #d97706; text-shadow: none; }
+body.light-mode .molang-num-bubble .mnb-stepper {
+  background: linear-gradient(135deg, #eef3f9, #d4e0ee);
+  border: 1px solid rgba(59,130,246,0.4);
+  box-shadow: 0 3px 10px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.5);
+}
+body.light-mode .molang-num-bubble .mnb-stepper span { color: var(--color-text-strong, #0f172a); }
+body.light-mode .molang-num-bubble .mnb-stepper span:hover { background: rgba(59,130,246,0.18); }
+body.light-mode .molang-num-bubble .mnb-stepper span:active { background: rgba(59,130,246,0.3); }
+body.light-mode .molang-num-bubble .mnb-val {
+  color: #0369a1; background: rgba(59,130,246,0.1); text-shadow: none;
+  border: 1px solid rgba(59,130,246,0.25);
+}
+body.light-mode .molang-num-bubble .mnb-stepinput { color: var(--bg-var-range-input-text, #0f172a); }
+body.light-mode .molang-num-bubble .mnb-q { color: var(--color-text-strong, #0f172a); border-color: rgba(59,130,246,0.35); background: rgba(59,130,246,0.06); }
+body.light-mode .molang-num-bubble .mnb-q:hover { background: rgba(59,130,246,0.16); }
+body.light-mode .molang-num-bubble .mnb-q.active { background: rgba(59,130,246,0.28); border-color: #2563eb; }
+body.light-mode .molang-num-bubble .mnb-hint { color: var(--color-text-muted, #64748b); }
+/* 指向数值的小三角：箭头填色随面板底色变化（深/浅两套） */
+body.light-mode .molang-num-bubble:not(.pinned)::before { border-top-color: rgba(59,130,246,0.45); }
+body.light-mode .molang-num-bubble:not(.pinned)::after  { border-top-color: rgba(214,222,231,0.99); }
+/* 浅色模式：呼吸辉光换浅色调；菱形灯保持浅蓝可见 */
+body.light-mode .molang-num-bubble { animation: mnbPop .16s cubic-bezier(.22,.9,.32,1.2), mnbGlowL 2.6s ease-in-out .35s infinite; }
+/* 浅色模式关闭：必须显式覆盖基础 animation（body.light-mode 特异性更高，否则淡出不生效） */
+body.light-mode .molang-num-bubble.mnb-burst,
+body.light-mode .tech-bubble.tb-burst { animation: mnbFadeOut .18s ease-out forwards; }
+@keyframes mnbGlowL {
+  0%, 100% { box-shadow: 0 14px 44px rgba(15,23,42,.18), 0 0 0 1px rgba(59,130,246,.12), inset 0 1px 0 rgba(255,255,255,.55), 0 0 9px rgba(56,189,248,.12); }
+  50%      { box-shadow: 0 14px 44px rgba(15,23,42,.18), 0 0 0 1px rgba(125,211,252,.45), inset 0 1px 0 rgba(255,255,255,.55), 0 0 22px rgba(56,189,248,.3); }
+}
+body.light-mode .molang-num-bubble .mnb-diamond {
+  background: linear-gradient(135deg, #7dd3fc, #0284c7);
+  box-shadow: 0 0 6px rgba(56,189,248,.6), 0 0 12px rgba(56,189,248,.35);
+}
+/* Tab 自动补全面板 */
+body.light-mode #molangAutocomplete {
+  color: var(--color-text-strong, #0f172a);
+  background: linear-gradient(160deg, rgba(230,236,242,0.98), rgba(214,222,231,0.99));
+  border: 1px solid rgba(59,130,246,0.45);
+  box-shadow: 0 14px 44px rgba(15,23,42,0.18), 0 0 0 1px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.55);
+}
+body.light-mode #molangAutocomplete .ac-item .ac-name { color: #0369a1; text-shadow: none; }
+body.light-mode #molangAutocomplete .ac-item .ac-tag { color: #475569; background: rgba(100,116,139,0.12); border-color: rgba(100,116,139,0.25); }
+body.light-mode #molangAutocomplete .ac-item .ac-tag.var { color: #7c3aed; background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.35); }
+body.light-mode #molangAutocomplete .ac-item .ac-tag.func { color: #b45309; background: rgba(251,191,36,0.14); border-color: rgba(251,191,36,0.4); }
+body.light-mode #molangAutocomplete .ac-item .ac-tag.q { color: #047857; background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); }
+body.light-mode #molangAutocomplete .ac-item.active,
+body.light-mode #molangAutocomplete .ac-item:hover { background: rgba(59,130,246,0.14); }
+body.light-mode #molangAutocomplete .ac-empty { color: var(--color-text-muted, #64748b); }
+body.light-mode #molangAutocomplete .ac-hint { color: var(--color-text-muted, #64748b); border-top: 1px solid rgba(15,23,42,0.08); }
+/* molang 编辑面板：帮助按钮 / 错误面板 / 语法着色 浅色模式适配 */
+body.light-mode .molang-help-btn { color: var(--color-text-strong, #0f172a); }
+body.light-mode .molang-error { color: #b91c1c; background: rgba(239,68,68,0.1); border-color: #ef4444; }
+body.light-mode .molang-err-token { background: rgba(239,68,68,0.14); box-shadow: inset 0 0 0 1px rgba(220,38,38,0.65); }
+/* 语法着色：浅色背景上使用更深的同色系，保证对比度（深色主题仍用原来的亮色） */
+body.light-mode .tok-global { color: #b45309; }
+body.light-mode .tok-local  { color: #7c3aed; }
+body.light-mode .tok-query  { color: #7c3aed; }
+body.light-mode .tok-math   { color: #b45309; }
+body.light-mode .tok-logic  { color: #dc2626; }
+body.light-mode .tok-num    { color: #2563eb; }
+body.light-mode .tok-arith  { color: #15803d; }
+body.light-mode .tok-str    { color: #0f766e; }
+body.light-mode .tok-comment{ color: #64748b; }
+/* 逻辑分支运行态着色：浅色背景用更深的绿，保持对比度（灰沿用全局 #64748b） */
+body.light-mode .molang-branch-on, body.light-mode .molang-branch-on * { color: #15803d !important; }
+/* 两组分组头使用同一套简约样式：透明背景、无边框、固定行高 → 三角形高度与垂直对齐完全一致 */
+.var-group[data-group="molang-values"] .group-header,
+.var-group[data-group="molang"] .group-header {
+  background: transparent; border: none; padding: 6px 4px; margin-bottom: 4px;
+  min-height: 28px;
+  justify-content: flex-end; font-weight: 600;
+}
+/* 折叠三角形本身：去除按钮化外观（无背景/边框/内边距盒），仅保留字形；固定宽高 → 折叠/展开时 ▼↔▶ 字形宽度不同也不会让按钮位置或尺寸跳动 */
+.var-group[data-group="molang"] .group-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; flex: 0 0 auto;
+  background: transparent; border: none; margin: 0; padding: 0;
+  font-size: 12px; line-height: 1; color: var(--color-text-muted, #64748b);
+  user-select: none;
+}
+/* molang 面板手机端适配：数值已并入编辑器组（紧凑网格），只需保证触控区域与不溢出 */
+@media (max-width: 640px) {
+  .molang-editor .molang-highlight,
+  .molang-editor .molang-textarea {
+    min-height: 160px;
+    font-size: 14px;
+    line-height: 21px;
+    padding: 10px 12px;
+  }
+  .molang-editor .molang-textarea { font-size: 14px; }
+  .molang-vals-head { padding: 8px 9px; }
+  /* 窄屏 2 列：实测手机底部面板仅 ~280px 宽（内容区 276px，非整屏宽），
+     minmax 下限必须 ≤132px 才放得下两列（(276+6)/138=2.04→2；136 时=1.98→1 差 2px）；
+     132 也装得下最长名（99px）+ 间距 + 数值。行高 24px → 13 变量约 7 行 ≈ 176px */
+  .molang-vals-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 0 6px; }
+  .mv-row { font-size: 12px; padding: 3px 6px; }
+  .molang-error { font-size: 12px; padding: 8px 10px; }
+  .var-group[data-group="molang"] .group-header { padding: 8px 6px; }
+}
+.info-note { font-size: 11px; text-align: center; margin: 16px 0 8px; padding: 6px; transform: skewX(-6deg); border-radius: 12px; }
+
+/* 滑块 */
+.slider-container { margin: 8px 0; }
+input[type="range"] { width: 100%; height: 8px; appearance: none; -webkit-appearance: none; background: var(--bg-range-track); border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; background: #3b82f6; cursor: pointer; border-radius: 50%; box-shadow: 0 0 6px #3b82f6; transition: 0.1s; }
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.range-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.range-item { padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; transform: skewX(-8deg); border-radius: 20px; background: var(--bg-range-item); color: var(--color-text); }
+.range-item input { background: var(--bg-var-range-input); border: var(--bg-var-range-input-border); color: var(--bg-var-range-input-text); padding: 4px 6px; text-align: center; border-radius: 8px; width: 80px; font-size: 12px; }
+.delete-var { background: linear-gradient(135deg, #9f1239, #e11d48); transform: skewX(-12deg); padding: 6px 16px; cursor: pointer; color: white; border: none; margin-top: 10px; border-radius: 20px; font-size: 12px; transition: 0.1s; }
+
+/* 模态框 */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+.modal-content { background: var(--modal-bg-grayscale, var(--bg-modal)); border-radius: 24px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; border: var(--bg-modal-border); box-shadow: 0 20px 35px rgba(0,0,0,0.5); color: var(--color-text-strong); }
+body.light-mode .modal-content { background: var(--bg-modal); }
+:root { --modal-bg-grayscale: #162136; }
+
+/* data panel 背景覆盖层，不影响面板内控件颜色 */
+#dataPanelBgOverlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; border-radius: 0; }
+.data-panel > .panel-content { position: relative; z-index: 1; }
+
+/* Canvas 背景与工具栏背景覆盖层 */
+#canvasBgOverlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; background-size: cover; background-position: center; }
+.toolbar-bg-overlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; border-radius: inherit; background-size: cover; background-position: center; }
+.toolbar-integrated, .top-bar { position: relative; }
+.toolbar-integrated > .toolbar-bg-overlay, .top-bar > .toolbar-bg-overlay { z-index: 0; }
+.toolbar-integrated * , .top-bar * { position: relative; z-index: 1; }
+
+/* 过渡动画 */
+#canvasBgOverlay, #dataPanelBgOverlay, .toolbar-bg-overlay { transition: opacity 320ms ease, filter 320ms ease, background 320ms ease; opacity: 0; }
+.modal-content { transition: background 320ms ease, color 200ms ease; }
+.ui-settings-panel { transition: opacity 220ms ease, transform 220ms ease; }
+
+/* 灰度滑块禁用时样式（深色模式下显示为黑色不可拖动） */
+#grayscaleRange.grayscale-disabled { opacity: 0.85; }
+#grayscaleRange.grayscale-disabled::-webkit-slider-thumb { background: #000; border: 2px solid #111; }
+#grayscaleRange.grayscale-disabled::-moz-range-thumb { background: #000; border: 2px solid #111; }
+#grayscaleRange::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: 2px solid #0f172a; }
+#grayscaleRange::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: 2px solid #0f172a; }
+.command-card { background: var(--bg-range-item); border-radius: 16px; margin-bottom: 16px; padding: 12px; border-left: 4px solid var(--color-primary); }
+.command-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.block-id-badge { font-weight: bold; background: var(--bg-block-id-badge); color: var(--color-block-id-badge); padding: 4px 14px; border-radius: 40px; font-size: 12px; border: var(--bg-block-id-badge-border); }
+.copy-cmd-btn { background: var(--bg-copy-cmd-btn); border: none; color: var(--color-text-inverse, white); padding: 5px 14px; border-radius: 30px; cursor: pointer; font-size: 12px; }
+.color-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 10px 0; }
+.color-swatch { width: 32px; height: 32px; border-radius: 12px; cursor: pointer; border: 2px solid #334155; transition: 0.1s; }
+.empty-state { text-align: center; color: var(--color-text-soft); padding: 24px; font-size: 13px; }
+.modal-input-text { width: 100%; padding: 10px; border-radius: 4px; border: var(--color-input-border); background: var(--bg-modal-input); color: var(--color-input-text); margin-bottom: 12px; transform: skewX(-5deg); font-size: 14px; }
+.modal-input-text::placeholder { color: var(--color-text-muted); }
+.modal-btn { padding: 8px 16px; background: transparent; border: none; color: var(--color-modal-btn); cursor: pointer; font-size: 13px; outline: none; }
+.modal-btn:hover { color: var(--color-modal-btn-hover); }
+.modal-btn:focus { outline: none; }
+

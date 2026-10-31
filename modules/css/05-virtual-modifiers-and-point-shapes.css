@@ -1,0 +1,308 @@
+/* 05-virtual-modifiers-and-point-shapes.css · 源 测试版v.6b79.html 第 1287-1593 行（原样搬运，仅 url 路径退两级） */
+/* ===== 手机端虚拟修饰键（无键盘时模拟 Shift / Ctrl；双键同亮 = Shift+Ctrl）===== */
+/* 仅「非侧边栏（底部）显示」时显示 —— 这正是手机端主用模式；侧边栏（桌面）模式不显示，避免冗余。 */
+.virt-mod-keybar { display: none; align-items: center; gap: 6px; padding: 8px 12px 9px; border-top: 1px solid rgba(59,130,246,0.18); background: transparent; }
+/* 显隐由 JS 切类名（vmk-on）而非写内联 display —— 这样窄屏/宽屏可以各自用 flex / grid 两套布局 */
+.virt-mod-keybar.vmk-on { display: flex; }
+/* 虚拟键条显隐由 JS（syncVirtModKeybarVisibility）按「新布局 + 非侧边」条件统一控制：
+   仅手机端底部数据视图显示，侧边（桌面）与旧布局模式一律隐藏。
+   不再用 .data-panel:not(.side-panel) 后代选择器——新布局下 side-panel 类在侧边/非侧边都被移除，
+   该选择器会在侧边模式也误显示虚拟键。 */
+.virt-mod-label { font-size: 10px; color: var(--color-text-muted, #94a3b8); white-space: nowrap; margin-right: 2px; letter-spacing: 0.5px; }
+/* 模拟修饰键：沿用全局「切角矩形」造型，只用填充色表达形状——无边框、无圆角、无光晕。
+   点亮 = 实心蓝填充，保持简约。 */
+.virt-mod-key {
+    padding: 6px 13px; font-size: 12px; font-weight: 600; cursor: pointer;
+    border: none; border-radius: 0;
+    background: rgba(148,163,184,0.14);
+    color: var(--color-text-strong, #e2e8f0);
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    transition: background .15s ease, color .15s ease;
+    user-select: none; -webkit-user-select: none; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.virt-mod-key:hover { background: rgba(148,163,184,0.26); }
+.virt-mod-key.lit { background: #3b82f6; color: #fff; }
+body.light-mode .virt-mod-keybar { border-top-color: rgba(0,0,0,0.08); }
+body.light-mode .virt-mod-key { background: rgba(37,99,235,0.10); color: #1e293b; }
+body.light-mode .virt-mod-key:hover { background: rgba(37,99,235,0.20); }
+body.light-mode .virt-mod-key.lit { background: #2563eb; color: #fff; }
+
+/* ============ 点 / 形状工具（创建点 + 两点矩形 / 三点平行四边形 / 三角形） ============
+   入口按钮复用全局「切角矩形」造型（无边框、无圆角、只用填充色表达状态）。
+   ★★导入点集的输入框已并入侧边「点集」列表（见 .pt-side-import-box），
+     原来的浮动面板 #ptPanel / .pt-panel 已删除，不要再把它加回来。 */
+.pt-points { max-height: 148px; overflow-y: auto; margin: 2px 0 8px; border-top: 1px solid rgba(59,130,246,0.18); }
+.pt-point {
+    display: flex; align-items: center; gap: 6px; padding: 3px 4px; cursor: pointer;
+    font-family: ui-monospace, monospace; font-size: 11px;
+}
+.pt-point:hover { background: rgba(148,163,184,0.12); }
+/* 选中＝左侧细高亮条 + 极淡底色，避免出现整行蓝色胶囊 */
+.pt-point.on { box-shadow: inset 3px 0 0 #3b82f6; background: rgba(59,130,246,0.10); }
+body.light-mode .pt-point.on { color: #1e293b; }
+/* 色块沿用「切角矩形」的无圆角语言：方角小色片 */
+.pt-dot { flex: 0 0 auto; width: 11px; height: 11px; border-radius: 0; }
+ .pt-idx { width: 15px; text-align: right; color: var(--color-text-muted, #94a3b8); } .pt-coord { flex: 1; }.pt-del {
+    flex: 0 0 auto; padding: 0 5px; font-size: 11px; cursor: pointer;
+    border: none; border-radius: 0; background: transparent; color: var(--color-text-muted, #94a3b8);
+}
+.pt-empty { padding: 4px 2px; font-size: 11px; color: var(--color-text-muted, #94a3b8); }
+/* 画布里的点标签＝点击热区，给一点悬停反馈（只在画笔模式下才可点，pointer-events 由 JS 切） */
+.pt-tag:hover { outline: 1px solid rgba(255, 255, 255, 0.55); }
+body.light-mode .pt-tag:hover { outline-color: rgba(30, 41, 59, 0.55); }
+
+/* 画笔模式顶部工具栏：描点 / 生成方块 切换 + 色板 + 删除 + 生成（沿用切角矩形语言） */
+.pt-top-btn {
+    padding: 5px 9px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    border: none; border-radius: 0; background: rgba(148,163,184,0.14); color: var(--color-text-strong, #e2e8f0);
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    transition: background .15s ease, color .15s ease;
+}
+.pt-top-btn:hover:not(:disabled) { background: rgba(148,163,184,0.28); }
+.pt-top-btn.on { background: #3b82f6; color: #fff; }
+.pt-top-btn:disabled { opacity: .45; cursor: not-allowed; }
+.pt-top-btn.pt-primary { background: linear-gradient(0deg,#2563eb,#3b82f6); color: #fff; }
+body.light-mode .pt-top-btn.pt-primary { background: #2563eb; }
+body.light-mode .pt-top-btn { background: rgba(37,99,235,0.10); color: #1e293b; }
+body.light-mode .pt-top-btn:hover:not(:disabled) { background: rgba(37,99,235,0.20); }
+.pt-sep { width: 1px; height: 22px; background: rgba(100,116,139,0.3); margin: 0 2px; }
+.pt-color-row { display: inline-flex; gap: 4px; align-items: center; }
+.pt-swatch {
+    width: 17px; height: 17px; padding: 0; cursor: pointer; border: 2px solid transparent; border-radius: 0;
+    clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px));
+}
+.pt-swatch.on { border-color: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+body.light-mode .pt-swatch.on { border-color: #1e293b; }
+.pt-build-ctl { display: inline-flex; gap: 6px; align-items: center; }
+.pt-textarea {
+    flex: 1 1 100%; min-height: 52px; padding: 5px 6px; font-size: 11px; box-sizing: border-box; resize: vertical;
+    font-family: ui-monospace, monospace; line-height: 1.4;
+    border: 1px solid rgba(100,116,139,0.45); border-radius: 0;
+    background: var(--color-input-bg, rgba(15,23,42,0.85)); color: var(--color-input-text, #e2e8f0);
+}
+/* ★★浅色下这个输入域【必须比周围更深】，不能直接吃 --color-input-bg。
+   原因：侧边列表是「玻璃层」——`rgba(10,15,26,.35)` + `backdrop-filter: blur(16px) saturate(1.4)`
+   叠在浅色画布上，渲染出来 ≈ #dce5f1（实测），比全站面板（--bg-settings-panel ≈ #fafcff）暗得多。
+   而 --color-input-bg(#eef3f9) 是按「浅面板」标定的（比 #fafcff 暗 8 级 = 凹陷感），
+   放到这层玻璃上就【反过来比周围更亮】→ 用户报「比周围白太多」。
+   ⇒ 这里改成比列表底再暗一档的 #d4dde9（与 --color-input-bg 相对 #fafcff 的 8 级差同口径），
+     保持「输入框 = 比所在面板凹陷」的全站约定；边框仍用 --color-input-border(#c3d2e3)。
+   注意：全局 --color-input-bg 不要改（设置面板/弹窗等浅底面板上的输入框仍靠它）。 */
+body.light-mode .pt-textarea { background: #d4dde9; color: var(--color-input-text); border-color: var(--color-input-border); }
+/* 侧边点集列表底部说明（生成方块模式提示选点进度） */
+.pt-side-foot { padding: 6px 8px; font-size: 11px; color: var(--color-text-muted, #94a3b8);
+    border-top: 1px solid rgba(100,116,139,0.2); background: rgba(59,130,246,0.06); }
+/* 点集列表内的文字：深色/浅色下都要清晰可见（原实现继承到暗色 → 深色模式看不见坐标） */
+.pt-point { color: var(--color-text-strong, #e2e8f0); }
+.pt-point .pt-coord { color: var(--color-text-strong, #e2e8f0); }
+.pt-point .pt-idx { color: var(--color-text-muted, #94a3b8); }
+body.light-mode .pt-point, body.light-mode .pt-point .pt-coord { color: #1e293b; }
+body.light-mode .pt-point .pt-idx { color: #64748b; }
+/* 点集列表内联「导入点集」区（原浮动面板已并入列表）
+   ★整块随列表一起滚动、不再是浮在面板之上的独立窗口；
+     sticky bottom:0 让它在点很多、列表需要滚动时【仍常驻可见】（点集列表 max-height 146px，
+     否则导入按钮会被挤到视口外）；底色取不透明，避免点集行透到文字下面。
+     导入成功后文本框会被清空（见 ptImportPointsInline），避免二次重复导入。 */
+.pt-side-import-box {
+    border-top: 1px solid rgba(100,116,139,0.25);
+    padding: 7px 8px 8px;
+    background: rgba(15,23,42,0.94);
+}
+/* ★sticky（JS 按内容高度决定，见 ptRenderSideList）：点很少时导入框常驻可见；
+   点很多、列表超过容器高度时退回普通流式，避免 sticky-bottom 盖住上方内容。 */
+.pt-side-import-box.pt-import-sticky {
+    position: sticky; bottom: 0; z-index: 2;
+    box-shadow: 0 -6px 12px rgba(0,0,0,0.22);
+}
+.pt-side-import-head { font-size: 11px; font-weight: 600; color: var(--color-text-muted, #94a3b8); margin-bottom: 5px; }
+.pt-side-import-box .pt-textarea { display: block; width: 100%; min-height: 54px; margin-bottom: 6px; }
+.pt-side-import {
+    display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 8px 10px;
+    border: none; border-radius: 0; cursor: pointer; font-size: 12px; font-weight: 600; text-align: center;
+    background: rgba(59,130,246,0.14); color: var(--color-text-strong, #e2e8f0);
+}
+.pt-side-import:hover { background: rgba(59,130,246,0.26); }
+body.light-mode .pt-side-import { background: rgba(37,99,235,0.10); color: #1e293b; }
+body.light-mode .pt-side-import:hover { background: rgba(37,99,235,0.20); }
+/* ★浅色：导入区底色 = 侧边列表【实测渲染色 #dce5f1】（不透明，sticky 才能挡住滚动经过的点集行），
+   这样它读起来就是列表的一部分，而不是浮在列表之上的一条更亮的带子；
+   原来的浅色投影会造成一道「上深下浅」的渐变带，一并去掉，只留 border-top 做分隔。 */
+body.light-mode .pt-side-import-box { background: #dce5f1; box-shadow: none; }
+/* 点集列表头部的「取消选择」文字按钮（.outliner-header-btn 固定 22px 装不下文字） */
+.outliner-header-btn.pt-side-unsel { width: auto; padding: 0 6px; font-size: 11px; }
+/* 窄屏：把「删除选中 / 形状切换」等动作按钮移到点集列表标题【上方】整行显示 */
+.pt-side-actions { display: none; }
+@media (max-width: 700px) {
+    .pt-side-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 8px; border-bottom: 1px solid rgba(100,116,139,0.25); }
+    .pt-side-actions .pt-top-btn { flex: 1 1 auto; }
+}
+/* 窄屏内联「矩形宽」滑动条 */
+.pt-side-len { display: inline-flex; align-items: center; gap: 6px; flex: 1 1 100%; padding: 0 2px; }
+.pt-side-len input[type=range] { flex: 1 1 auto; min-width: 0; }
+/* 画笔长度滑动条浮层（贴形状切换按钮正下方） */
+.pt-len-pop {
+    position: fixed; z-index: 60; display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; background: var(--color-panel-bg, rgba(15,23,42,0.96));
+    border: 1px solid rgba(100,116,139,0.4); box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+.pt-len-pop-label { font-size: 11px; color: var(--color-text-muted, #94a3b8); white-space: nowrap; }
+.pt-len-pop input[type=range] { width: 110px; }
+.pt-len-pop .brush-length-value { font-size: 11px; color: var(--color-text-strong, #e2e8f0); min-width: 24px; text-align: right; }
+body.light-mode .pt-len-pop { background: #ffffff; border-color: rgba(100,116,139,0.35); }
+body.light-mode .pt-len-pop .brush-length-value { color: #1e293b; }
+
+/* 宽屏（屏幕空间充足）：「模拟修饰键」不再横铺一整行占着面板底部 →
+   整块移到底部数值区【右侧的空白区】，与数值行顶部对齐（不贴面板最右边缘）。
+   ★内部排布＝**一列竖排**：『模拟修饰键』在最上，下面 ⇧Shift、再下面 Ctrl，三者左对齐成一小列。
+   （曾做过的「左列文字 + 右列两键上下叠」双列方案、"文字 + 两键同一行"单行方案均已被否决。）
+   数值区 #dataTableInspector 的 max-width 恒为 320px、顶部距面板顶 47px（见探针断言），故用固定偏移。 */
+@media (min-width: 600px) {
+    .virt-mod-keybar.vmk-on {
+        position: absolute;
+        left: 344px;          /* 320（数值区右边缘）+ 24 间距 */
+        top: 47px;            /* 数值区顶部 */
+        z-index: 3;
+        width: auto;
+        padding: 0;
+        border-top: none;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    /* 同一列里两个键等宽（不齐宽会显得参差），文字居中 */
+    .virt-mod-keybar #virtModShift,
+    .virt-mod-keybar #virtModCtrl { min-width: 68px; text-align: center; }
+}
+
+/* 工具栏 */
+.toolbar-integrated { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(59,130,246,0.2); align-items: center; }
+.tool-btn { padding: 4px 11px; font-size: 12px; cursor: pointer; transform: skewX(-12deg); border-radius: 6px; font-weight: 600; letter-spacing: .3px; transition: all 0.2s; }
+.tool-btn span { display: inline-flex; align-items: center; gap: 5px; transform: skewX(12deg); }
+.tool-btn-icon { width: 16px; height: 16px; image-rendering: pixelated; transform: skewX(0deg); }
+
+/* 轴线控件 */
+.axis-controls { position: relative; display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding: 7px 11px; border-radius: 12px; transform: skewX(-4deg); }
+.control-item { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-control-item); padding: 3px 8px; border-radius: 6px; transform: skewX(4deg); font-size: 11px; color: var(--color-control-item); }
+.control-item input { accent-color: #3b82f6; }
+.block-menu-btn { transform: skewX(-12deg); padding: 6px 16px; cursor: pointer; font-weight: 600; letter-spacing: .3px; display: inline-flex; align-items: center; gap: 8px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; transition: 0.2s; }
+
+/* 下拉菜单（第二套独立样式已合并至上方统一） */
+.block-dropdown-item { padding: 8px 16px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: 0.1s; color: var(--color-text-strong); }
+.block-dropdown-item.selected { background: var(--color-primary); color: var(--color-text-inverse); border-radius: 0; }
+.dropdown-actions { display: flex; gap: 8px; }
+
+/* 变量布局 */
+.variables-container { display: flex; flex-wrap: wrap; gap: 24px; position: relative; }
+.variables-left { flex: 1; min-width: 0; border-right: var(--bg-var-divider-right); padding-right: 20px; }
+.variables-right { flex: 1; min-width: 0; }
+/* molang 接管模式下，#varsContainer 的直接子元素就是 .var-group（数值组 + 编辑器组）。
+   动态布局：面板足够宽时数值组在左、编辑器组在右并排；不够宽时自动换行堆叠（数值在上）。
+   只命中 molang 托管的这两个组，不影响普通模式的 .variables-left / .variables-right 分栏。 */
+.variables-container > .var-group[data-group="molang-values"] { flex: 0 1 240px; min-width: 180px; align-self: flex-start; overflow: auto; max-height: 70vh; }
+.variables-container > .var-group[data-group="molang"] { flex: 1 1 380px; min-width: 280px; align-self: flex-start; }
+@media (max-width: 768px) {
+    .variables-container { flex-direction: column; gap: 16px; }
+    .variables-left { border-right: none; padding-right: 0; }
+    /* ★手机竖屏必修：.variables-container 一旦变成 column，molang 编辑器组原本的
+       两条规则会双双失效 ——
+       ① align-self:flex-start ⇒ 交叉轴不拉伸，宽度退化为「按最长一行的收缩宽度」
+          （被 min-width:280px 顶住），实测面板 366px 只占 280px、右侧空 86px
+          （即用户反馈的「右边空一大堆」）；
+       ② flex:1 1 380px 在 column 方向里 flex-basis 是**高度**基准 ⇒ 凭空撑出一个
+          380px 高的大空盒（实测 group_h = 380）。
+       故窄屏下改为：宽度撑满、高度按内容（flex:0 0 auto）。 */
+    .variables-container > .var-group[data-group="molang"] {
+        align-self: stretch; width: 100%; min-width: 0; flex: 0 0 auto;
+    }
+}
+
+/* 变量卡片 */
+.section-title { font-size: 14px; font-weight: bold; margin: 18px 0 10px; padding-left: 10px; border-left: 4px solid var(--color-primary); color: var(--color-title-text); letter-spacing: 0.5px; }
+.var-card { margin-bottom: 12px; border-left-width: 4px; border-left-style: solid; border-radius: 12px; overflow: hidden; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.var-card.constant { border-left-color: #3b82f6; }
+.var-card.non-constant { border-left-color: #a78bfa; }
+.var-card.global { background: var(--bg-header); border-left-color: #3b82f6; }
+.var-header { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.assignment-input { flex: 1; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; outline: none; margin-right: 8px; border-radius: 10px; border: none; color: white; }
+.var-expand { font-size: var(--collapse-btn-size, 14px); color: #3b82f6; font-weight: bold; padding: 4px 6px; cursor: pointer; }
+.var-details { padding: 12px; border-top: var(--bg-var-details-border-top); display: none; background: var(--bg-var-details); }
+.auto-inc-btns { display: flex; gap: 10px; margin-bottom: 12px; }
+.inc-btn { transform: skewX(-12deg); padding: 6px 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 10px; font-size: 13px; transition: 0.1s; }
+.inc-btn.active { background: linear-gradient(135deg, #3b82f6, #8b5cf6); box-shadow: 0 0 8px #3b82f6; color: #0f172a; }
+.new-var-row { margin-top: 16px; padding-top: 12px; border-top: 2px solid #3b82f6; display: flex; gap: 10px; }
+.new-var-input { flex: 2; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border: none; color: white; font-weight: bold; padding: 8px 14px; font-size: 14px; transform: skewX(-12deg); font-family: monospace; border-radius: 12px; outline: none; }
+.new-var-input::placeholder { color: rgba(255,255,240,0.7); }
+.program-help { font-size: 11px; color: var(--color-text-muted, #64748b); margin-top: 6px; line-height: 1.5; }
+/* molang 编辑器：透明 textarea 叠加在彩色高亮层之上 */
+.molang-editor { position: relative; }
+.molang-editor .molang-highlight,
+.molang-editor .molang-textarea {
+    margin: 0; border: 1px solid var(--bg-card-border); border-radius: 8px;
+    padding: 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 19.5px; letter-spacing: 0; tab-size: 4;
+    white-space: pre-wrap; overflow-wrap: break-word;
+    box-sizing: border-box; width: 100%; min-height: 132px;
+    /* 关键：高亮层与文本框**都隐藏自己的滚动条**（滚动仍可用滚轮/键盘/输入时自动跟随，
+       位置由 textarea 的 scroll 事件同步给高亮层）⇒ 两层可用文字宽度恒等，彩色高亮与真实字符
+       永不因滚动条占位而错位。
+       原先给两层加 scrollbar-gutter: stable 的做法不可靠：高亮层已 scrollbar-width:none，
+       该保留位为 0；而文本框一旦出现真实滚动条就会占掉约 15px 文字宽度、换行点与高亮层不一致
+       （开启「当前数值（只读）」后编辑器变矮、文本溢出出滚动条即触发 → 显示文本与实际缩进不统一）。 */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* 强制两层使用完全一致的文本渲染引擎参数，消除 <pre> 与 <textarea> 的排版差异 */
+    font-variant-ligatures: none;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeSpeed;
+    transform: none;
+}
+.molang-editor .molang-highlight {
+    position: absolute; inset: 0; z-index: 0; overflow: auto;
+    background: var(--bg-var-details); color: var(--color-text-strong);
+    pointer-events: none;
+    /* 隐藏高亮层自己的滚动条（与文本框一致，见上方共用规则注释）：两层文字宽度恒等 */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.molang-editor .molang-highlight::-webkit-scrollbar,
+.molang-editor .molang-textarea::-webkit-scrollbar { display: none; }
+.molang-editor .molang-textarea {
+    position: relative; z-index: 1; display: block;
+    background: transparent; color: transparent; caret-color: var(--color-text-strong);
+    resize: vertical; outline: none; overflow: auto;
+    /* 文本框同样隐藏滚动条：避免它溢出时用真实滚动条挤掉约 15px 文字宽度，
+       导致与高亮层换行点不一致（滚轮/键盘/输入自动跟随仍可滚动，scroll 事件同步高亮层） */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+/* 语法着色：全局变量=橙 局部变量=紫 查询函数=紫 math函数=黄 逻辑判断符=红 常量数值=蓝 加减乘数=绿 */
+.tok-global, .tok-local, .tok-query, .tok-math, .tok-logic,
+.tok-num, .tok-arith, .tok-comment, .tok-str, .tok-fn {
+    /* 强制所有 token span 不引入任何额外布局偏移 */
+    display: inline;
+    margin: 0; padding: 0;
+    border: none; background: none;
+    line-height: inherit; font-size: inherit;
+    vertical-align: baseline;
+}
+.tok-global { color: #f59e0b; }
+.tok-local  { color: #a855f7; }
+.tok-query  { color: #a855f7; }
+.tok-math   { color: #eab308; }
+.tok-logic  { color: #ef4444; }
+.tok-num    { color: #3b82f6; }
+.tok-arith  { color: #16a34a; }
+.tok-comment{ color: #64748b; font-style: italic; }
+.tok-str    { color: #14b8a6; }
+.tok-fn     { color: var(--color-text-strong); }
+/* molang 错误定位：按「表达式字段」精确标红到字符区间（★不再整行标红 —— 程序常写成一行，
+   display:block 的整行标红会把整个编辑框染红，用户完全看不出是哪一条出问题）。 */
+.molang-err-token { background: rgba(239,68,68,0.20); border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(239,68,68,0.5); }
+/* molang 逻辑分支「运行态」着色：三元条件式里正在执行的部分=绿、未执行的部分=灰。
+   用 `*` + !important 压过内层 .tok-* 各自的 color（否则内层 token 色会把分支色盖掉）。 */
+.molang-branch-on, .molang-branch-on * { color: #22c55e !important; }
+.molang-branch-off, .molang-branch-off * { color: #64748b !important; }
+/* molang 错误面板 */
+.molang-error { display: none; margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(239,68,68,0.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; line-height: 1.5; }
+.molang-error.show { display: block; }

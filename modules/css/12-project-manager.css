@@ -1,0 +1,381 @@
+/* 12-project-manager.css · 源 测试版v.6b79.html 第 6042-6421 行（原样搬运，仅 url 路径退两级） */
+/* ========== 项目管理器 ========== */
+#projectManager {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: #f0f4f8;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+    color: #1e293b;
+}
+.pm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.04);
+}
+.pm-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.pm-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.pm-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.pm-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.2px;
+}
+.pm-subtitle {
+    font-size: 12px;
+    color: #64748b;
+}
+.pm-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.pm-theme-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    color: #f59e0b;
+    transition: background 0.15s;
+}
+.pm-theme-btn:hover { background: #f8fafc; }
+.pm-version {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    font-size: 12px;
+    color: #64748b;
+    background: #fff;
+}
+.pm-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 24px 48px;
+}
+.pm-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.pm-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.pm-section-title::before {
+    content: "";
+    display: inline-block;
+    width: 3px;
+    height: 16px;
+    background: #3b82f6;
+    border-radius: 2px;
+}
+.pm-project-count {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+}
+.pm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+    align-items: start;
+}
+.pm-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+}
+.pm-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15,23,42,0.10);
+}
+.pm-card-thumb {
+    width: 100%;
+    /* 用 padding-bottom 百分比强制 4:3 横向比例（75% = 3/4 宽度），比 aspect-ratio 更可靠 */
+    padding-bottom: 75%;
+    height: 0;
+    background: #e2e8f0;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    line-height: 0;
+    overflow: hidden;
+}
+.pm-card-thumb-img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.pm-card-thumb-empty { padding-bottom: 75%; height: 0; }
+.pm-card-title-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 28px 14px 10px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.pm-card-meta {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.pm-card-update-label {
+    font-size: 12px;
+    color: #94a3b8;
+}
+.pm-card-update-time {
+    font-size: 12px;
+    color: #475569;
+    font-weight: 500;
+}
+.pm-card-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.pm-card:hover .pm-card-actions { opacity: 1; }
+.pm-card-action {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.pm-card-action:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+.pm-new-card {
+    border-style: dashed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 180px;
+    color: #64748b;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.pm-new-card:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    background: #f8fafc;
+}
+.pm-new-icon {
+    font-size: 32px;
+    font-weight: 300;
+    line-height: 1;
+}
+.pm-new-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+.pm-footer {
+    text-align: center;
+    padding: 18px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+.pm-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 50px 20px;
+    color: #94a3b8;
+    font-size: 13px;
+}
+.pm-rename-input {
+    position: absolute;
+    left: 10px;
+    right: 34px;
+    bottom: 6px;
+    padding: 4px 8px;
+    border: 1px solid #3b82f6;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    background: rgba(255,255,255,0.95);
+}
+.pm-delete-confirm {
+    position: fixed;
+    inset: 0;
+    z-index: 10002;
+    background: rgba(15,23,42,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pm-delete-confirm-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    width: 320px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+}
+.pm-delete-confirm-box h4 {
+    margin: 0 0 10px;
+    font-size: 16px;
+}
+.pm-delete-confirm-box p { margin: 0 0 18px; font-size: 13px; color: #64748b; }
+.pm-delete-confirm-btns { display: flex; justify-content: flex-end; gap: 10px; }
+.pm-delete-confirm-btns button {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+.pm-delete-confirm-btns button.pm-confirm-del {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+}
+@media (max-width: 600px) {
+    .pm-grid { grid-template-columns: 1fr; }
+    .pm-body { padding: 20px 16px 40px; }
+}
+
+/* 暗色模式：跟随 body.light-mode 开关 */
+body:not(.light-mode) #projectManager {
+    background: #0a0f1a;
+    color: #cbd5e6;
+}
+body:not(.light-mode) .pm-header {
+    background: #0f172a;
+    border-bottom-color: #1e293b;
+}
+body:not(.light-mode) .pm-title { color: #e2e8f0; }
+body:not(.light-mode) .pm-subtitle { color: #94a3b8; }
+body:not(.light-mode) .pm-theme-btn,
+body:not(.light-mode) .pm-version {
+    background: #162136;
+    border-color: #2a3a5a;
+    color: #cbd5e6;
+}
+body:not(.light-mode) .pm-theme-btn:hover { background: #1e293b; }
+body:not(.light-mode) .pm-section-title { color: #e2e8f0; }
+body:not(.light-mode) .pm-project-count { color: #94a3b8; }
+body:not(.light-mode) .pm-card {
+    background: #162136;
+    border-color: #2a3a5a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+body:not(.light-mode) .pm-card:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+}
+body:not(.light-mode) .pm-card-thumb { background-color: #1e293b; }
+body:not(.light-mode) .pm-card-update-label { color: #94a3b8; }
+body:not(.light-mode) .pm-card-update-time { color: #cbd5e6; }
+body:not(.light-mode) .pm-card-action {
+    background: #162136;
+    border-color: #2a3a5a;
+    color: #94a3b8;
+}
+body:not(.light-mode) .pm-card-action:hover {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+body:not(.light-mode) .pm-new-card { color: #94a3b8; }
+body:not(.light-mode) .pm-new-card:hover {
+    border-color: #3b82f6;
+    color: #60a5fa;
+    background: #111827;
+}
+body:not(.light-mode) .pm-empty { color: #64748b; }
+body:not(.light-mode) .pm-rename-input {
+    background: #162136;
+    color: #e2e8f0;
+    border-color: #3b82f6;
+}
+body:not(.light-mode) .pm-delete-confirm { background: rgba(0,0,0,0.55); }
+body:not(.light-mode) .pm-delete-confirm-box {
+    background: #162136;
+    color: #e2e8f0;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+}
+body:not(.light-mode) .pm-delete-confirm-box p { color: #94a3b8; }
+body:not(.light-mode) .pm-delete-confirm-btns button {
+    background: #162136;
+    border-color: #2a3a5a;
+    color: #cbd5e6;
+}
+
+/* ===== 项目加载遮罩（打开大项目时显示，等待材质纹理下载完成） ===== */
+.project-loading {
+    position: fixed; inset: 0; z-index: 11000;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; background: rgba(8, 12, 22, 0.82);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.pl-spinner {
+    width: 54px; height: 54px; border-radius: 50%;
+    border: 5px solid rgba(255,255,255,0.18);
+    border-top-color: #3b82f6;
+    animation: pl-spin 0.9s linear infinite;
+}
+@keyframes pl-spin { to { transform: rotate(360deg); } }
+.pl-text { color: #e2e8f0; font-size: 16px; letter-spacing: 0.05em; }
+.pl-progress { width: 240px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; }
+.pl-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg,#3b82f6,#60a5fa); transition: width 0.2s ease; }
+.pl-percent { color: #94a3b8; font-size: 13px; font-variant-numeric: tabular-nums; }
+body.light-mode .project-loading { background: rgba(240,244,248,0.86); }
+body.light-mode .pl-text { color: #1e293b; }
+body.light-mode .pl-percent { color: #64748b; }
+body.light-mode .pl-spinner { border-color: rgba(0,0,0,0.12); border-top-color: #2563eb; }
+body.light-mode .pl-progress { background: rgba(0,0,0,0.1); }
+

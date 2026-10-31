@@ -1,0 +1,629 @@
+
+/* ========== 导入/导出面板：照抄本项目「设置面板」的材质语言 ==========
+ * 血泪史：2026-10-02 这天被连否三版 —— 圆角药丸（丑）→ 全站切角 22px（呆）→ 纯直角扁平（生硬）。
+ * 三次都在改「角」，三次都没解决，因为方向错了：**我在凭空造造型，没照抄这个 app 已有的材质**。
+ * 正确答案就在本文件里 —— 设置面板（.ui-settings-panel）是项目最成熟的面板，它的语言是：
+ *   14px 外壳圆角 + 0 20px 60px 柔和投影 + backdrop-filter 玻璃模糊
+ *   12px 内容卡 + rgba(148,163,184,0.18) 细边 + 半透明卡片底（--bg-settings-item）
+ *   12px/700 字母间距的分组标题 + 底部细分隔线；8px 小控件圆角
+ * 「直角 + 硬细线 + 零投影」= 生硬；「卡片分层 + 柔和投影 + 玻璃」= 这个 app 的样子。
+ *
+ * ★ 同时治「底下字太多排太满」（用户 2026-10-02 原话）：
+ *   底栏一律 ≤2 项、**取消竖线分隔符**（`|` 本身就是生硬的来源），把次要动作降级成字段行右侧的小文字链。
+ *
+ * ★ 深/浅取色口径（默认浅色，必须逐项达标，别眼估）：
+ *   小字用 --color-text-muted（深 #94a3b8=6.26 / 浅 #5b6b80=4.88），
+ *   正文用 --color-text-strong；⚠ 别用 --color-text-soft（两主题都写死 #64748b，浅底只有 4.19，不达 AA）。
+ *   功能性描边（输入框/图标键，非文本元素需 ≥3:1）：深 rgba(148,163,184,0.66)=3.54 / 浅 rgba(100,116,139,0.85)=3.30。 */
+
+/* ① 外壳：直接取项目设置面板的三个令牌，别自创 */
+.modal-content.io-shell {
+    background: var(--bg-settings-panel);
+    border: var(--bg-settings-panel-border);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    backdrop-filter: blur(12px);
+    padding: 0;
+    overflow: hidden;
+}
+/* body.light-mode .modal-content(0,2,1) 会盖掉上面的 background ⇒ 必须再写一条浅色覆盖 */
+body.light-mode .modal-content.io-shell { background: var(--bg-settings-panel); }
+
+/* 头部：内边距交给它自己（外壳 padding:0），底部细分隔线 + 上方两角跟着圆角走 */
+.io-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin: 0; padding: 12px 16px;
+    font-size: 15px; font-weight: 600; color: var(--color-text-strong);
+    border-bottom: 1px solid rgba(148,163,184,0.22);
+}
+
+/* 主体：与头部同样自成一段（同 .ui-settings-scroll 的结构） */
+.io-body { padding: 14px 16px 16px; }
+
+/* 字段标签行：左边标签、右边次要动作的小文字链 —— 次要动作别再塞进底栏 */
+.io-labelrow {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    margin: 0 0 6px;
+}
+.io-link {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-size: 11.5px; font-family: inherit; white-space: nowrap;
+    color: var(--color-primary-soft);
+    transition: color .15s ease;
+}
+body.light-mode .io-link { color: #2563eb; }
+.io-link:hover { color: #93c5fd; text-decoration: underline; }
+body.light-mode .io-link:hover { color: #1d4ed8; }
+
+/* ② 分段切换：两个纯文字页签 + 一枚「向下三角指示器」，切换时三角左右滑动。
+ * 不再用导轨 / 滑块 / 胶囊 —— 选中态靠「品牌色文字 + 加粗」+ 三角指向表达。 */
+.seg-group {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding-bottom: 10px;   /* 给三角指示器留空间 */
+}
+.seg-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 14px 6px; font-size: 12px; cursor: pointer;
+    border: none; background: transparent;
+    color: var(--color-text-muted);
+    font-family: inherit; white-space: nowrap;
+    transition: color .18s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+/* ★ 浅色下未选中页签要单独加深：深 #5b6b80 在浅底只有 4.88，差一点；#475569 = 6.21 保 AA。
+   它(0,2,1)会压过 .seg-btn.active(0,2,0)，故浅色选中态必须单独写。 */
+body.light-mode .seg-btn { color: #475569; }
+.seg-btn:hover { color: var(--color-text-strong); }
+.seg-btn.active { color: #60a5fa; font-weight: 600; }            /* 深色：浅蓝字 6.6:1 */
+body.light-mode .seg-btn.active,
+body.light-mode .seg-btn.active:hover { color: #2563eb; }        /* 浅色：品牌蓝 6.5:1 */
+.seg-btn.active:hover { color: #60a5fa; }
+.seg-btn .seg-ico { width: 14px; height: 14px; image-rendering: pixelated; flex: none; }
+/* ★ 三角指示器：border 画的实心向下三角，绝对定位在 seg-group 底部；
+   切换时由 JS 设置 left（居中于活动页签），transition 做左右滑动。 */
+.seg-tri {
+    position: absolute; bottom: 0; left: 0;
+    width: 0; height: 0; pointer-events: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 6px solid #60a5fa;
+    transform: translateX(-50%);
+    transition: left .22s cubic-bezier(.4,0,.2,1);
+}
+body.light-mode .seg-tri { border-bottom-color: #2563eb; }
+
+/* ③ 结构导入落点：一张 12px 圆角的卡片（照 .ui-settings-group），蓝色只出现在图标徽章上。
+      卡片靠「底色 + 图标 + 文案」识别，描边是同 .ui-settings-group 的装饰性细线。 */
+.struct-drop {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; cursor: pointer;
+    border: 1px solid rgba(148,163,184,0.22);
+    border-radius: 12px;
+    background: rgba(148,163,184,0.07);
+    transition: background .18s ease, border-color .18s ease;
+}
+.struct-drop:hover { background: rgba(59,130,246,0.10); border-color: rgba(59,130,246,0.50); }
+.struct-drop.drag { background: rgba(59,130,246,0.18); border-color: #3b82f6; }
+.struct-drop img {
+    width: 36px; height: 36px; image-rendering: pixelated; flex: none;
+    border-radius: 9px; background: rgba(59,130,246,0.16);
+}
+.struct-drop-txt { min-width: 0; }
+.struct-drop-txt b { display: block; font-size: 12.5px; font-weight: 600; color: var(--color-text-strong); }
+.struct-drop-txt span { display: block; font-size: 11px; color: var(--color-text-muted); margin-top: 3px; }
+body.light-mode .struct-drop { background: rgba(100,116,139,0.06); border-color: rgba(100,116,139,0.20); }
+body.light-mode .struct-drop:hover { background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.45); }
+body.light-mode .struct-drop.drag { background: rgba(37,99,235,0.14); border-color: #2563eb; }
+body.light-mode .struct-drop img { background: rgba(37,99,235,0.10); }
+
+/* OBJ 拖放区：已载入模型时的「文件名 + 右下角勾勾」态 */
+.struct-drop .drop-name { display: none; font-size: 11px; color: var(--color-text-muted); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.struct-drop .drop-check { display: none; position: absolute; right: -7px; bottom: -7px;
+    width: 22px; height: 22px; border-radius: 50%; background: #22c55e;
+    box-shadow: 0 2px 6px rgba(34,197,94,0.45), 0 0 0 2px var(--color-bg-panel, #1e293b);
+    align-items: center; justify-content: center; }
+.struct-drop .drop-check svg { width: 14px; height: 14px; display: block; }
+.struct-drop.is-loaded { position: relative; cursor: default;
+    background: rgba(34,197,94,0.10); border-color: rgba(34,197,94,0.55); }
+.struct-drop.is-loaded:hover { background: rgba(34,197,94,0.13); border-color: rgba(34,197,94,0.65); }
+.struct-drop.is-loaded .drop-emoji { background: rgba(34,197,94,0.18); }
+.struct-drop.is-loaded .drop-emoji svg { fill: #22c55e; }
+.struct-drop.is-loaded .drop-emoji svg line { stroke: #22c55e; }
+.struct-drop.is-loaded .struct-drop-txt b { color: #22c55e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.struct-drop.is-loaded .struct-drop-txt span:not(.drop-name) { display: none; }
+.struct-drop.is-loaded .drop-name { display: block; }
+.struct-drop.is-loaded .drop-check { display: flex; }
+body.light-mode .struct-drop.is-loaded { background: rgba(22,163,74,0.08); border-color: rgba(22,163,74,0.50); }
+body.light-mode .struct-drop.is-loaded .struct-drop-txt b { color: #16a34a; }
+body.light-mode .struct-drop.is-loaded .drop-check { box-shadow: 0 2px 6px rgba(22,163,74,0.40), 0 0 0 2px #fff; }
+
+/* ④ 面板内的次级说明文字（原 .label-hint 根本没写规则，浏览器按正文渲染，字大色重）
+ * ★ 用 --color-text-muted（随主题变：深 #94a3b8 = 6.26 / 浅 #5b6b80 = 4.88，都达 AA） */
+.label-hint { font-size: 11.5px; color: var(--color-text-muted); margin: 0 0 6px; line-height: 1.5; }
+.io-labelrow .label-hint { margin: 0; }
+
+/* 输入框（命令文本框 + 导出面板两个输入框）：圆角 10px，取消全站 .modal-input-text 的 skew 斜切。
+   描边是「功能性边界」（非文本 UI 元素 ≥3:1）：深 3.54 / 浅 3.30。 */
+.io-field { border: 1px solid rgba(148,163,184,0.66); border-radius: 10px; overflow: hidden; }
+body.light-mode .io-field { border-color: rgba(100,116,139,0.85); }
+.io-textarea {
+    width: 100%; padding: 12px; border: none; outline: none; box-sizing: border-box;
+    resize: vertical; font-family: monospace; font-size: 12px;
+    background: rgba(15,23,42,0.55); color: #fff;
+}
+body.light-mode .io-textarea { background: #e6eef6; color: #0f172a; }
+.io-textarea::placeholder { color: var(--color-text-muted); opacity: 0.8; }
+/* 命令模式载入文件后的回显态（原先是 JS 写一堆内联样式，改成 class 让深浅色自动跟随） */
+.io-textarea.is-loaded { text-align: center; font-size: 15px; font-weight: 600; color: #4ade80; }
+body.light-mode .io-textarea.is-loaded { color: #15803d; }
+/* 导出面板前缀/后缀：恢复全站 .modal-input-text 的平行四边形语言（低R角 4px + skewX(-5deg)） */
+.io-shell .modal-input-text {
+    border: 1px solid rgba(148,163,184,0.66);
+    border-radius: 4px; transform: skewX(-5deg);
+    background: rgba(15,23,42,0.55);
+    margin-bottom: 12px;
+}
+body.light-mode .io-shell .modal-input-text {
+    border-color: rgba(100,116,139,0.85);
+    background: #e6eef6;
+}
+/* 前缀/后缀是长命令文本，改成 textarea：默认单行高，聚焦编辑时 JS 按内容自动纵向长开（≤140px），失焦收回 */
+.io-shell textarea.modal-input-text {
+    height: 36px; min-height: 36px;
+    padding: 7px 12px; resize: none; overflow: hidden;
+    line-height: 1.5; font-size: 12.5px; font-family: monospace;
+    white-space: pre-wrap; word-break: break-all;
+    transition: height .2s ease;
+}
+
+/* ⑤ 导出面板标题栏的贴图图标键：照 .settings-toggle-btn 的做法 —— 用 app 自己的图标键令牌
+      （--bg-settings-toggle / --bg-settings-toggle-border）。★ 不要做成「无底色纯图标」：
+      结构方块贴图本身是暗色像素图，在深色面板上没有底色会几乎看不见（实测踩过）。 */
+.modal-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0;
+    border-radius: 8px; cursor: pointer;
+    background: var(--bg-settings-toggle);
+    border: var(--bg-settings-toggle-border);
+    transition: background .15s ease, border-color .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.modal-icon-btn:hover { background: rgba(59,130,246,0.24); border-color: rgba(59,130,246,0.5); }
+body.light-mode .modal-icon-btn:hover { background: rgba(37,99,235,0.10); border-color: rgba(37,99,235,0.35); }
+.modal-icon-btn img { width: 16px; height: 16px; image-rendering: pixelated; display: block; }
+
+/* 头部关闭键：与图标键同款（导出面板原先没有 ✕，只有底栏「取消」，现已把取消下沉到这里） */
+.io-close {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; flex: none;
+    border: none; border-radius: 8px; background: transparent;
+    color: var(--color-text-muted); font-size: 15px; line-height: 1; cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+}
+.io-close:hover { background: rgba(148,163,184,0.22); color: var(--color-text-strong); }
+
+/* ⑥ 底栏：≤2 项、无竖线分隔。主操作实心圆角块（白字压底 ≥4.5：绿 #15803d=4.60 / 蓝 #2563eb=5.17） */
+.io-actions {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    margin-top: 14px;
+}
+/* ⑥ 面板底部主操作：低 R 角平行四边形（skew 出斜边形 + 3px 圆角；内部文字反向 skew 保持正立）。
+ * 不再用大 R 圆角实心块。取色按「白字压底 ≥4.5」：绿 #15803d=4.60 / 蓝 #2563eb=5.17。 */
+.io-chip {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 8px 20px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    border: none; color: #fff;
+    background: #2563eb;
+    border-radius: 3px;
+    transform: skewX(-11deg);
+    transition: background .18s ease, box-shadow .18s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.io-chip > span { display: inline-block; transform: skewX(11deg); }
+.io-chip-green { background: #15803d; box-shadow: 0 2px 8px rgba(21,128,61,0.30); }
+.io-chip-green:hover { background: #166534; }
+.io-chip-blue { background: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,0.38); }
+.io-chip-blue:hover { background: #1d4ed8; }
+
+/* ⑥b 骨骼绑定向导：复用 .io-shell / .io-head 的卡片语言，卡片尺寸恒定，仅内容切换 */
+.modal-content.bb-shell {
+    width: 460px; max-width: calc(100vw - 28px);
+    display: flex; flex-direction: column;
+}
+.bb-head { padding-right: 10px; }
+.bb-steps {
+    position: relative;
+    display: inline-flex; align-items: flex-end; gap: 14px;
+    padding-bottom: 10px;
+}
+/* 页签三态：future（未到，透明占位）→ active（大、亮、带三角）→ done（缩小变暗、仍在） */
+.bb-step {
+    font-size: 12px; white-space: nowrap;
+    color: var(--color-text-strong);
+    opacity: 0; transform: translateX(16px) scale(.8);
+    transition: opacity .26s ease, transform .28s cubic-bezier(.4,0,.2,1),
+                color .26s ease, font-size .26s ease;
+    pointer-events: none;
+}
+.bb-step.active { opacity: 1; transform: none; font-size: 14px; font-weight: 600; color: #60a5fa; }
+body.light-mode .bb-step.active { color: #2563eb; }
+.bb-step.done { opacity: .38; transform: translateX(-2px) scale(.92); font-size: 11px; font-weight: 500; }
+.bb-step.fresh { animation: bbStepIn .32s cubic-bezier(.4,0,.2,1) both; }
+@keyframes bbStepIn {
+    from { opacity: 0; transform: translateX(18px) scale(.78); }
+    to   { opacity: 1; transform: none; }
+}
+.bb-tri {
+    position: absolute; bottom: 0; left: 0;
+    width: 0; height: 0; pointer-events: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 6px solid #60a5fa;
+    transform: translateX(-50%);
+    transition: left .24s cubic-bezier(.4,0,.2,1);
+}
+body.light-mode .bb-tri { border-bottom-color: #2563eb; }
+
+/* 内容区固定高度 → 卡片长宽不随步骤改变；两个 stage 叠放做右侧滑入 + 放大 */
+.bb-body { position: relative; height: clamp(216px, 32vh, 286px); padding: 0; }
+.bb-stage {
+    position: absolute; inset: 12px 14px 14px;
+    display: flex; flex-direction: column;
+    opacity: 0; transform: translateX(22px) scale(.96);
+    transition: opacity .24s ease, transform .28s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+}
+.bb-stage.active { opacity: 1; transform: none; pointer-events: auto; }
+
+/* 第一步：绑定方式（纯选项，不加任何说明文字）
+   简约风：无底色、无边框、无圆角；两行等高等分、整体垂直居中（上下留白对称，
+   不出现单侧大空洞）；仅以细分隔线分行；右侧小箭头给出「可点击」暗示，hover 只变色 */
+.bb-opts { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.bb-opt {
+    position: relative; flex: 1 1 0; min-height: 0; max-height: 96px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2px;
+    font-size: 14px; font-family: inherit; text-align: left;
+    color: var(--color-text-strong); cursor: pointer;
+    background: transparent; border: none; border-radius: 0;
+    border-bottom: 1px solid rgba(148,163,184,0.14);
+    transition: color .16s ease, opacity .16s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.bb-opt::after {
+    content: '›'; font-size: 16px; line-height: 1; color: var(--color-text-muted);
+    opacity: .5; transition: color .16s ease, opacity .16s ease, transform .16s ease;
+}
+.bb-opts .bb-opt:last-child { border-bottom: none; }
+.bb-opt:hover { color: #60a5fa; }
+.bb-opt:hover::after { color: #60a5fa; opacity: 1; transform: translateX(2px); }
+body.light-mode .bb-opt:hover { color: #2563eb; }
+body.light-mode .bb-opt:hover::after { color: #2563eb; }
+.bb-opt:active { opacity: .6; }
+
+/* 第二步：左 70% 方块列表 + 右侧「在视图中选中」 */
+.bb-parent-row { flex: 1; display: flex; gap: 10px; min-height: 0; }
+.bb-plist {
+    flex: 0 0 70%; min-width: 0;
+    overflow-y: auto; padding: 2px;
+    border: 1px solid rgba(148,163,184,0.16); border-radius: 4px;
+    background: transparent;
+    scrollbar-gutter: stable;
+}
+.bb-pitem {
+    padding: 8px 8px;
+    font-size: 12.5px; color: var(--color-text-strong);
+    border-radius: 3px; cursor: pointer; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    transition: background .14s ease, color .14s ease;
+}
+.bb-pitem:hover { background: rgba(59,130,246,0.12); color: #93c5fd; }
+body.light-mode .bb-pitem:hover { color: #1d4ed8; }
+.bb-pempty { padding: 10px; font-size: 12px; color: var(--color-text-muted); }
+.bb-pside { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.bb-pick {
+    padding: 9px 8px; font-size: 12.5px; font-family: inherit;
+    color: #fff; background: #2563eb; border: none; border-radius: 4px;
+    cursor: pointer;
+    transition: background .16s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.bb-pick:hover { background: #1d4ed8; }
+.bb-fix {
+    padding: 7px 8px; font-size: 11.5px; font-family: inherit;
+    color: var(--color-text-muted); background: transparent;
+    border: 1px dashed rgba(148,163,184,0.3); border-radius: 4px;
+    cursor: pointer; transition: color .15s ease, border-color .15s ease;
+}
+.bb-fix:hover { color: #34d399; border-color: rgba(52,211,153,0.5); }
+
+/* ⑦ 导出面板底栏文字键：照 .top-menu-btn（文件/视图/操作）的简约文字样式——
+      无底无框、小字号、悬停淡底；字号压小以突出上方的导出命令文本 */
+.io-textbtn {
+    padding: 6px 10px; font-size: 12px; font-weight: 500; cursor: pointer;
+    background: transparent; border: none; border-radius: 6px;
+    transition: background .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.io-tb-green  { color: #34d399; }
+.io-tb-green:hover  { background: rgba(52,211,153,0.14); }
+.io-tb-orange { color: #fbbf24; }
+.io-tb-orange:hover { background: rgba(251,191,36,0.14); }
+.io-tb-blue   { color: #60a5fa; font-weight: 600; }
+.io-tb-blue:hover   { background: rgba(59,130,246,0.16); }
+body.light-mode .io-tb-green  { color: #15803d; }
+body.light-mode .io-tb-green:hover  { background: rgba(21,128,61,0.10); }
+body.light-mode .io-tb-orange { color: #c2410c; }
+body.light-mode .io-tb-orange:hover { background: rgba(194,65,12,0.10); }
+body.light-mode .io-tb-blue   { color: #2563eb; }
+body.light-mode .io-tb-blue:hover   { background: rgba(37,99,235,0.10); }
+
+/* ⑧ 导入/导出弹窗不再压黑幕：只留极淡 scrim，卡片自身缓动进场 */
+.modal.io-soft { background: rgba(15,23,42,0.25); backdrop-filter: none; }
+.modal.io-soft .modal-content { animation: ioCardIn .32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes ioCardIn {
+    from { opacity: 0; transform: translateY(22px) scale(0.96); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ⑨ OBJ 模型导入（导入面板「模型」页签内）：沿用 .io-chip 的切角语言，容器圆角上限 4px */
+.obj-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.obj-row .label-hint { margin: 0; }
+.obj-tog {
+    padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    border: 1px solid rgba(148,163,184,0.40); background: transparent;
+    color: var(--color-text-muted); border-radius: 3px; transform: skewX(-11deg);
+    transition: background .16s ease, border-color .16s ease, color .16s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.obj-tog > span { display: inline-block; transform: skewX(11deg); }
+.obj-tog.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+.obj-num {
+    width: 76px; padding: 4px 7px; font-size: 12px; border-radius: 3px;
+    background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.40);
+    color: var(--color-text-strong); outline: none;
+}
+.obj-num:focus { border-color: #2563eb; }
+.obj-num:disabled { opacity: 0.5; }
+/* 「法线朝向」开关 = 老式货车换轨拨杆（用户 2026-10-09）：两个选项在左右上方，底下是一根拨杆，
+   拨杆朝被选中一侧倾斜。向右 = 向外（默认），向左 = 向内。
+   右侧 .normal-anim 为示意动画：3D 透视正方形 + 紫色法线向量（无 R 角）指向红色中心点。 */
+.obj-lever { position: relative; width: 88px; height: 50px; flex: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.obj-lever .lever-opt { position: absolute; top: 0; font-size: 10.5px; font-weight: 600; letter-spacing: .2px; color: var(--color-text-muted); transition: color .18s ease; user-select: none; }
+.obj-lever .lever-opt.lever-l { left: 1px; }
+.obj-lever .lever-opt.lever-r { right: 1px; }
+.obj-lever .lever-opt.on { color: #7c3aed; }
+.obj-lever .lever-base { position: absolute; left: 50%; bottom: 1px; width: 16px; height: 5px; margin-left: -8px; background: #64748b; }
+.obj-lever .lever-stick { position: absolute; left: 50%; bottom: 5px; width: 1px; height: 22px; margin-left: -0.5px; background: #7c3aed; transform-origin: 50% 100%; transform: rotate(0deg); transition: transform .3s cubic-bezier(.4,0,.2,1); }
+/* 杆头 = 开口 V 形箭头（不要三角/圆角）：杆顶内嵌 SVG，V 的两脚与杆顶重叠 ⇒ 无缝连成一根箭，随杆一起倾斜 */
+.obj-lever .lever-stick svg { position: absolute; top: -8px; left: 50%; width: 13px; height: 12px; margin-left: -6.5px; display: block; }
+.obj-lever.on-r .lever-stick { transform: rotate(32deg); }
+.obj-lever.on-l .lever-stick { transform: rotate(-32deg); }
+body.light-mode .obj-lever .lever-base { background: #475569; }
+.normal-anim {
+    flex: none; margin-left: auto; width: 118px; height: 88px; border-radius: 8px;
+    background: rgba(37,99,235,0.06); border: 1px solid rgba(148,163,184,0.28);
+    overflow: hidden; align-self: center;
+}
+body.light-mode .normal-anim { background: rgba(37,99,235,0.05); border-color: rgba(100,116,139,0.30); }
+.normal-anim svg { display: block; width: 100%; height: 100%; }
+.normal-anim #naShadow { transition: opacity .28s ease; }
+.normal-anim #naArrow { transform-origin: 39px 35px; animation: naPulse 1.6s ease-in-out infinite; }
+@keyframes naPulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+/* 拖放区的 emoji 图标位（.struct-drop img 的等价物，尺寸/圆角完全一致） */.struct-drop .drop-emoji {
+    width: 60px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center;
+    font-size: 19px; border-radius: 8px; background: rgba(59,130,246,0.16);
+}
+body.light-mode .obj-tog { color: #475569; border-color: rgba(100,116,139,0.45); }
+body.light-mode .obj-tog.on { color: #fff; border-color: #2563eb; }
+body.light-mode .obj-num { background: #fff; }
+body.light-mode .struct-drop .drop-emoji { background: rgba(37,99,235,0.10); }
+
+/* ⑩ OBJ 包围盒预览（归一化开启时）：
+   ① 导入面板切「预览态」——遮罩几乎透明（.modal 默认 0.85 黑 + blur，场景根本看不见），
+      并把面板靠左，让场景中心（模型预计落位处）露出来；
+   ② 右下角一个小泡泡显示包围盒三边尺寸（UI 取自 .molang-num-bubble 的铭牌语言，可拖动）；
+   ③ 场景里用 Box3Helper 画包围盒线框。
+   ★泡泡默认贴右下、面板靠左，二者与右侧方块列表互不重叠；面板一关泡泡即消失。 */
+.modal.io-soft.obj-bbox-preview {
+    background: rgba(4,8,18,0.14);
+    backdrop-filter: none;
+    justify-content: flex-start;
+}
+.modal.io-soft.obj-bbox-preview .modal-content.io-shell { margin-left: 2.5vw; }
+body.light-mode .modal.io-soft.obj-bbox-preview { background: rgba(226,232,240,0.30); }
+
+.obj-bbox-bubble {
+    position: fixed; right: 20px; bottom: 20px; z-index: 10060;
+    min-width: 176px; max-width: 252px;
+    background: linear-gradient(160deg, rgba(30,42,74,0.97), rgba(13,20,38,0.99));
+    border: 1px solid rgba(59,130,246,0.55);
+    border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,130,246,0.14);
+    backdrop-filter: blur(7px);
+    color: var(--color-text-strong, #e2e8f0);
+    font-size: 12px;
+    overflow: hidden;
+    animation: tbPop .16s cubic-bezier(.22,.9,.32,1.2);
+    user-select: none;
+}
+.obj-bbox-bubble .obb-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 10px;
+    background: linear-gradient(135deg, rgba(59,130,246,0.26), rgba(168,85,247,0.2));
+    border-bottom: 1px solid rgba(59,130,246,0.4);
+    cursor: grab;
+}
+.obj-bbox-bubble.dragging .obb-head { cursor: grabbing; }
+.obj-bbox-bubble .obb-diamond {
+    flex: 0 0 auto; width: 7px; height: 7px; border-radius: 1.5px;
+    transform: rotate(45deg);
+    background: linear-gradient(135deg, #d9f3ff, #38bdf8);
+    box-shadow: 0 0 6px rgba(56,189,248,.95), 0 0 14px rgba(56,189,248,.5);
+}
+.obj-bbox-bubble .obb-title { font-weight: 700; font-size: 12px; color: #93c5fd; }
+.obj-bbox-bubble .obb-x {
+    margin-left: auto; cursor: pointer; border: none; background: transparent;
+    color: var(--color-text-strong, #e2e8f0); font-size: 13px; line-height: 1;
+    padding: 2px 4px; border-radius: 6px; opacity: .8;
+}
+.obj-bbox-bubble .obb-x:hover { background: rgba(255,255,255,0.14); opacity: 1; }
+.obj-bbox-bubble .obb-body { padding: 8px 10px 10px; }
+.obj-bbox-bubble .obb-dim {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    font-size: 12px; line-height: 1.7;
+}
+.obj-bbox-bubble .obb-dim span { color: var(--color-text-muted, #94a3b8); }
+.obj-bbox-bubble .obb-dim b { color: #7dd3fc; font-weight: 700; font-variant-numeric: tabular-nums; }
+.obj-bbox-bubble .obb-hint { margin-top: 7px; font-size: 10.5px; color: #64748b; line-height: 1.45; }
+body.light-mode .obj-bbox-bubble {
+    background: linear-gradient(160deg, #ffffff, #f1f5f9);
+    border-color: rgba(37,99,235,0.45);
+    color: #0f172a;
+    box-shadow: 0 12px 36px rgba(15,23,42,0.18), 0 0 0 1px rgba(37,99,235,0.12);
+}
+body.light-mode .obj-bbox-bubble .obb-title { color: #1d4ed8; }
+body.light-mode .obj-bbox-bubble .obb-dim span { color: #64748b; }
+body.light-mode .obj-bbox-bubble .obb-dim b { color: #0369a1; }
+body.light-mode .obj-bbox-bubble .obb-hint { color: #94a3b8; }
+
+/* ========== 通用科技泡泡管线（所有"提示/单按钮/双按钮"轻量气泡都走这里） ==========
+ * 复用 .molang-num-bubble 的关键帧（mnbPop/mnbGlow/mnbGlowL/mnbFadeOut/mnbDiamondBlink），
+ * 新增或修改提示型泡泡只需改本节 + showTechBubble()，所有调用方自动同步。
+ * 浅蓝菱形呼吸灯 + 呼吸辉光 + 爆闪炸开 = 与项目整体科技主义风格一致。
+ */
+.tech-bubble {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  z-index: 20000;
+  display: flex; align-items: flex-start; gap: 12px;
+  max-width: min(420px, 92vw);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--color-text-strong, #e2e8f0);
+  background: linear-gradient(160deg, rgba(30,42,74,0.97), rgba(13,20,38,0.99));
+  border: 1px solid rgba(59,130,246,0.55);
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.55), 0 0 0 1px rgba(59,130,246,0.14), inset 0 1px 0 rgba(255,255,255,0.06);
+  backdrop-filter: blur(7px);
+  animation: tbPop .16s cubic-bezier(.22,.9,.32,1.2), mnbGlow 2.6s ease-in-out .35s infinite;
+}
+/* 关闭：简单淡出（已取消爆闪效果）—— 基础规则在 .mnb-burst 定义处统一 */
+/* 浅蓝菱形呼吸灯（管线统一标识） */
+.tech-bubble .tb-diamond {
+  flex: 0 0 auto;
+  width: 9px; height: 9px;
+  margin-top: 5px;
+  border-radius: 1.5px;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #d9f3ff, #38bdf8);
+  box-shadow: 0 0 6px rgba(56,189,248,0.95), 0 0 14px rgba(56,189,248,0.5);
+  animation: mnbDiamondBlink 1.7s ease-in-out infinite;
+}
+/* 主题色变体：菱形灯色调随之变化（info 蓝 / success 绿 / warn 黄 / danger 红） */
+.tech-bubble.tb-success .tb-diamond { background: linear-gradient(135deg, #bbf7d0, #22c55e); box-shadow: 0 0 6px rgba(34,197,94,0.95), 0 0 14px rgba(34,197,94,0.5); }
+.tech-bubble.tb-warn    .tb-diamond { background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 0 6px rgba(245,158,11,0.95), 0 0 14px rgba(245,158,11,0.5); }
+.tech-bubble.tb-danger  .tb-diamond { background: linear-gradient(135deg, #fecaca, #ef4444); box-shadow: 0 0 6px rgba(239,68,68,0.95), 0 0 14px rgba(239,68,68,0.5); }
+.tech-bubble .tb-body { flex: 1; min-width: 0; line-height: 1.5; }
+.tech-bubble .tb-title { font-weight: 700; color: #93c5fd; margin-bottom: 2px; }
+.tech-bubble .tb-content { font-size: 12.5px; color: var(--color-text, #cbd5e1); }
+.tech-bubble .tb-body.tb-no-title .tb-title { display: none; }
+.tech-bubble .tb-btns { display: flex; gap: 6px; flex-shrink: 0; padding-top: 1px; }
+.tech-bubble button {
+  border: 1px solid transparent; border-radius: 8px;
+  padding: 5px 12px; font-size: 12px; cursor: pointer;
+  background: transparent; color: var(--color-text, #cbd5e1);
+  transition: background .12s, border-color .12s, transform .12s; outline: none;
+}
+.tech-bubble button:hover { background: rgba(148,163,184,0.18); }
+.tech-bubble button:active { transform: scale(.94); }
+.tech-bubble button.tb-confirm { color: #fbbf24; border-color: rgba(251,191,36,0.4); font-weight: 600; }
+.tech-bubble button.tb-confirm:hover { background: rgba(251,191,36,0.16); }
+.tech-bubble button.tb-danger { color: #f87171; border-color: rgba(248,113,113,0.4); font-weight: 600; }
+.tech-bubble button.tb-danger:hover { background: rgba(248,113,113,0.14); }
+.tech-bubble button.tb-cancel { color: var(--color-text, #cbd5e1); }
+/* ===== 顶点捕捉：对齐完成泡泡里的 X/Y/Z 三轴开关（关闭某轴 = 该世界轴分量不应用） ===== */
+.tech-bubble .vtx-axis-row { display: flex; gap: 6px; margin-top: 7px; }
+.tech-bubble .vtx-axis-btn {
+  flex: 0 0 auto; min-width: 32px; padding: 3px 9px; border-radius: 4px;
+  border: 1px solid rgba(100,116,139,0.55); background: transparent;
+  color: #94a3b8; font-size: 11.5px; font-weight: 600; line-height: 1.5; cursor: pointer;
+}
+.tech-bubble .vtx-axis-btn.on { border-color: #38bdf8; color: #38bdf8; background: rgba(56,189,248,0.14); }
+body.light-mode .tech-bubble .vtx-axis-btn { color: #64748b; border-color: rgba(100,116,139,0.45); }
+body.light-mode .tech-bubble .vtx-axis-btn.on { color: #0284c7; border-color: #0284c7; background: rgba(2,132,199,0.1); }
+/* 浅色模式：呼吸辉光换浅色调；菱形/按钮色调保持可见 */
+body.light-mode .tech-bubble {
+  background: linear-gradient(160deg, rgba(230,236,242,0.98), rgba(214,222,231,0.99));
+  border-color: rgba(59,130,246,0.45);
+  box-shadow: 0 12px 36px rgba(15,23,42,0.16), 0 0 0 1px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.55);
+  animation: tbPop .16s cubic-bezier(.22,.9,.32,1.2), mnbGlowL 2.6s ease-in-out .35s infinite;
+}
+body.light-mode .tech-bubble .tb-title { color: #1d4ed8; }
+body.light-mode .tech-bubble .tb-content { color: var(--color-text, #334155); }
+body.light-mode .tech-bubble button.tb-confirm { color: #b45309; border-color: rgba(180,83,9,0.4); }
+body.light-mode .tech-bubble button.tb-danger { color: #dc2626; border-color: rgba(220,38,38,0.4); }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-scroll-track); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: var(--bg-scroll-thumb); border-radius: 10px; }
+
+/* 变量分组 */
+.var-group { margin-bottom: 20px; border-radius: 12px; overflow: hidden; }
+.group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-group-header); border: var(--bg-group-header-border); border-radius: 12px; cursor: pointer; transition: 0.1s; margin-bottom: 6px; font-weight: bold; }
+.group-header .group-title { font-size: 14px; letter-spacing: 0.5px; color: var(--color-title-text); }
+.group-header .group-toggle { font-size: var(--collapse-btn-size, 14px); color: #3b82f6; padding: 4px 6px; cursor: pointer; }
+.group-content { display: block; }
+.group-content.collapsed { display: none; }
+
+/* 批量修改面板 */
+.batch-panel { background: transparent; border-radius: 16px; padding: 0; margin-bottom: 16px; border: none; }
+.batch-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: var(--color-title-text); display: flex; justify-content: space-between; align-items: center; padding-left: 10px; border-left: 4px solid var(--color-primary); }
+/* ★2026-10-04 第十三轮：把「⇄ 替换」图标键从 molang 条移到标题栏、紧贴「重置全部」左侧；
+   标题用 actions 容器把两个按钮收在右侧，span 靠左（仍走 space-between）。 */
+.batch-title-actions { display: flex; align-items: center; gap: 8px; }
+/* 图标键（无文字）：复用 .batch-molang-btn 的切角造型，只收成近似方形 */
+.batch-icon-btn { padding: 5px 11px; font-size: 14px; line-height: 1; }
+.batch-reset-all { background: var(--bg-batch-reset); border: var(--bg-batch-reset-border); color: var(--bg-btn-color); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; transition: 0.1s; }
+/* 变量行直接复用 .var-card / .var-header（与 molang 变量面板卡片一致），此处不再覆盖 */
+
+/* 响应式 */
+@media (min-width: 1024px) {
+    .assignment-input { padding: 10px 16px; font-size: 15px; }
+    .inc-btn { padding: 8px 18px; font-size: 14px; }
+    .section-title { font-size: 16px; }
+    .group-header .group-title { font-size: 15px; }
+    .var-expand { font-size: var(--collapse-btn-size, 15px); }
+    .new-var-input { padding: 10px 16px; font-size: 15px; }
+    .range-item { font-size: 13px; }
+    .range-item input { width: 90px; font-size: 13px; }
+    .delete-var { padding: 8px 18px; font-size: 13px; }
+    .tool-btn { padding: 4px 11px; font-size: 12px; }
+    .skew-btn { padding: 10px 24px; font-size: 15px; }
+}
+   /* 预设菜单专用样式：紧凑行间距 */
+.preset-item {
+    line-height: 1.2;
+}
+.preset-item + .preset-item {
+    border-top: none;
+}
+.modal-content .preset-item:last-child {
+    border-bottom: none;
+}
+  .color-palette {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+}
+.menu-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: 0.1s;
+    font-size: 13px;
+}

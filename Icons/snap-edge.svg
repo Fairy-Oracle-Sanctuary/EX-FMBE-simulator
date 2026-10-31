@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 沿边对齐：两条反斜线（源边 / 目标边）；左边一条末端一枚细细的箭头，表示「被旋转的那条边」 -->
+  <line x1="9.6" y1="4" x2="15.6" y2="16"/>
+  <line x1="4.2" y1="8" x2="10.2" y2="20"/>
+  <path d="M10.36 17.4 L10.2 20 L8.03 18.57" stroke-width="1.2"/>
+</svg>

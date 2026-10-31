@@ -1,0 +1,305 @@
+/* 02-batch-edit-and-reset.css · 源 测试版v.6b79.html 第 250-528 行（原样搬运，仅 url 路径退两级） */
+/* ========== 批量修改：可折叠变量列表 ==========
+   ★★★「几乎完全改成 molang 编辑模式的形式」⇒ 直接复用 molang 只读数值区那一整套
+   （.molang-vals / .molang-vals-head / .molang-vals-grid / .mv-row / .mv-name / .mv-val），
+   这里只补两处：分类计数、待推进量徽标。绝不另起造型 ——
+   本项目自创造型（圆胶囊 / 全局切角矩形 / 蓝灰卡）在 2026-10-03 被连否 5 版，
+   真正的原因就是「凭空造造型，没去问这个 app 自己长什么样」。 */
+/* ★2026-10-04 第十二轮：折叠项目（位移 / 缩放 / 旋转 / 自定义变量）改为**横向流式多列** ——
+   宽度够就并排，装不下才换行纵向堆叠；而**组内变量恒为单列、值紧跟名字（左对齐）**，
+   绝不把同一组的变量横向摊开（那样值离自己的名字很远、离下一格的名字只有几像素）。
+   列数由 auto-fill 按容器实宽自动决定，不需要 JS 参与。
+   ★实测用户面板内容宽 ≈599px（截图 2.02× 缩放反解）：minmax 下限取 250px 时正好排 2 列；
+     下限一旦 ≥300px 就会掉回单列 ⇒ 等于「什么都没改」，所以上限必须压住。 */
+.batch-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+  align-items: start;   /* 各组变量条数不同 → 卡片按内容定高，不被同行拉齐 */
+}
+/* ★2026-10-03 第九轮：每个分类重新包成一张卡片。
+   纯复用 .molang-vals 之后仍然被判「浅色下不好看」，量出来的病灶是——
+   行右侧空白占掉整行约一半（实测 valRightPad 103px / 行宽 211px），
+   加上「零投影 + 硬细线 + 直角」＝项目记忆里定义的「生硬」。
+   材质一律照抄本项目自己的设置面板（.ui-settings-panel 那一套）：
+   12px 圆角 + 1px 淡描边 + 极小柔和投影 + 分组头细分隔线。绝不新造材质。 */
+.batch-sec {
+  margin-bottom: 0;             /* 间距交给 .batch-groups 的 gap（卡片之间不能同时有 margin + gap） */
+  background: var(--bg-settings-item);
+  border: 1px solid rgba(148,163,184,0.22);
+  border-radius: 4px;           /* ★低 R 角：用户明确要求「不要大圆角」，本项目容器也不用大圆角 */
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.05);
+}
+/* 分组头：在卡内做标题栏（细分隔线收口），去掉铺满面板的灰带感 */
+.batch-sec > .molang-vals-head {
+  background: rgba(148,163,184,0.10);
+  border-bottom: 1px solid rgba(148,163,184,0.16);
+  padding: 7px 10px;
+}
+.batch-sec > .molang-vals-grid { background: transparent; padding: 4px 10px; }
+/* 分类计数：跟在标题后的小灰字，和数值同色系，不抢视线 */
+.batch-sec-count { margin-left: 6px; font-size: 10.5px; font-weight: 500; color: var(--color-text-muted); }
+/* ★★组内变量**恒为单列**：一名一行、名字定宽成列、值紧跟名字（左对齐）。
+   两条都不许破：① 不横向排变量（同一组的变量摊成多列 ⇒ 值离自己的名字很远、
+   离下一格的名字只有几像素，读不出归属 —— .molang-vals-grid 原注释已写明的禁忌）；
+   ② 不把值推到行尾（那会让每行右侧空掉一半，正是上一轮判「浅色下不好看」的病灶）。
+   特异性 (0,2,0) 压过 .molang-vals-grid 与窄屏媒体查询里的 (0,1,0) 规则。
+   molang 只读数值区（#molangValsGrid）不在 .batch-groups 里，仍保持多列。 */
+.batch-groups .molang-vals-grid { grid-template-columns: 1fr; }
+/* 待推进量徽标：紧跟当前值之后；未改动时内容为空但保留盒子，避免整行宽度跳动 */
+.batch-mv-delta { flex: 0 0 auto; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; font-weight: 700; color: var(--color-primary); white-space: nowrap; }
+/* 整行可点 → 点开增量泡泡。悬停强度与 molang 数值区一致（同一套 .molang-vals-head:hover 色） */
+.batch-mv-row { cursor: pointer; }
+.batch-mv-row.changed { background: rgba(59,130,246,0.10); }
+.batch-mv-row:hover { background: rgba(59,130,246,0.16); }
+.batch-mv-row.changed:hover { background: rgba(59,130,246,0.20); }
+body .batch-reset-all {   /* 提高特异性，压过后面同级的 .batch-reset-all 圆角规则 */
+  border-radius: 0; border: none;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+}
+
+/* ========== 全局重置 ========== */
+* { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif; transition: background 0.2s, color 0.2s; background: var(--bg-body); }
+body .data-panel { background: var(--bg-panel); backdrop-filter: blur(12px); border-top: var(--bg-panel-border-top); }
+body .panel-content { background: transparent; }
+body .var-card { background: var(--bg-card); border: var(--bg-card-border); }
+body .var-header { background: var(--bg-header); }
+body .info-note { background: var(--bg-info); color: var(--color-text); }
+body .tool-btn, body .skew-btn, body .inc-btn, body .block-menu-btn { background: var(--bg-btn); border: var(--bg-btn-border); color: var(--bg-btn-color); }
+body .block-dropdown-item:hover { background: var(--color-primary); color: var(--color-text-inverse); }
+body .assignment-input.constant-input { background: linear-gradient(135deg, #1e3a8a, #3b82f6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; }
+body .assignment-input.non-constant-input { background: linear-gradient(135deg, #5b21b6, #8b5cf6), repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 2px, transparent 8px); background-blend-mode: overlay; }
+body .axis-controls { background: var(--bg-axis-controls); border: var(--bg-axis-controls-border); }
+
+/* 浅色模式特殊补充（渐变、图标颜色等需要单独覆盖的） */
+body.light-mode .tool-btn:hover, body.light-mode .skew-btn:hover, body.light-mode .inc-btn:hover, body.light-mode .block-menu-btn:hover { background: var(--bg-skew-btn-hover); transform: skewX(-12deg) translateY(-1px); }
+body.light-mode .modal-btn { background: transparent; border: none; color: var(--color-modal-btn); }
+body.light-mode .modal-btn:hover { color: var(--color-modal-btn-hover); }
+body.light-mode .control-item { background: var(--bg-control-item); color: var(--color-control-item); }
+body .settings-toggle-btn, body.light-mode .settings-toggle-btn { width: 34px; height: 34px; border-radius: 10px; border: var(--bg-settings-toggle-border); background: var(--bg-settings-toggle); color: var(--color-settings-toggle); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transform: skewX(-5deg); transition: background 0.2s, transform 0.2s; }
+body .settings-toggle-btn span, body.light-mode .settings-toggle-btn span { display:inline-block; transform: skewX(5deg); }
+.panel-content { position: relative; }
+.ui-settings-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(600px, 92vw); background: var(--bg-settings-panel); border: var(--bg-settings-panel-border); border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.45); backdrop-filter: blur(12px); z-index: 1010; max-height: 86vh; display: flex; flex-direction: column; overflow: hidden; }
+.ui-settings-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-weight: 600; font-size: 15px; color: var(--color-text-strong); border-bottom: 1px solid rgba(148,163,184,0.25); background: var(--bg-settings-panel); border-radius: 14px 14px 0 0; }
+.ui-settings-close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin: -6px -6px -6px 0; border-radius: 8px; cursor: pointer; font-size: 16px; opacity: 0.8; transition: opacity .12s, background .12s; }
+.ui-settings-close:hover { opacity: 1; background: rgba(148,163,184,0.22); }
+/* ★ align-content: start 必留：grid 默认 align-content 为 stretch，面板高度写死 660px 后，
+   卡片少的分类（如「帮助」只有 3 张卡）剩余高度会被平均摊进各行 ⇒ 卡片之间出现上百 px 大空隙。
+   align-content:start 让各行按内容高度靠上排列，行间距只由 gap 决定。 */
+.ui-settings-scroll { flex: 1 1 auto; min-height: 0; padding: 14px 16px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; align-items: start; align-content: start; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    /* 隐藏内容区滚动条（用户要求：展开后右侧不要出现蓝条）；滚轮 / 触控板 / 键盘仍可滚动 */
+    scrollbar-width: none; -ms-overflow-style: none; }
+.ui-settings-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+/* ---- 设置面板分类导航（2026-10-17 第 18 轮，用户要求「分类导航二级页 / 功能清晰」）----
+   桌面 = 左侧竖列分类栏；手机 / 触摸 = 顶部横排胶囊（见下方窄屏媒体查询）。
+   内容区一次只显示一个分类，分组用 data-cat 归属分类。 */
+/* ★ flex-basis 用 auto（不是 0%）：面板在桌面是「自动高度 + max-height:86vh」，
+   若这里用 flex:1 1 0% / min-height:0，自动高度容器没有可分配的自由空间 ⇒ 内容区塌成 0（只剩 padding），
+   表现为桌面端设置面板打开后内容整片不可见（第 18 轮实测 scrollH 仅 32px 的真因）。
+   用 auto 让内容自然撑高面板，超出 86vh 时再由 scroll 的 min-height:0 + overflow 接管滚动。 */
+.ui-settings-main { flex: 1 1 auto; min-height: 0; display: flex; }
+.ui-settings-nav { flex: 0 0 132px; display: flex; flex-direction: column; gap: 4px; padding: 12px 8px; overflow-y: auto; border-right: 1px solid rgba(148,163,184,0.18); }
+.ui-settings-tab { display: block; width: 100%; padding: 9px 12px; border: none; border-radius: 8px; background: transparent; color: var(--color-text-soft, #94a3b8); font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; transition: background .12s, color .12s; }
+.ui-settings-tab:hover { background: rgba(148,163,184,0.16); color: var(--color-text-strong); }
+.ui-settings-tab.active { background: rgba(59,130,246,0.18); color: #60a5fa; }
+body.light-mode .ui-settings-tab.active { background: rgba(37,99,235,0.14); color: #2563eb; }
+/* 非当前分类的分组：用 !important 压过「新/旧操作模式」直接写进 style 的 display，
+   否则切到别的分类后，new-op 等分组仍会因模式逻辑的 inline display 而露出来。 */
+.ui-settings-group.ui-settings-cat-off { display: none !important; }
+/* 「编辑」分类里 DOM 顺序是「新操作模式」「控件精度设置」在前、「编辑 / 高级」在后，用 order 校正为后者在前 */
+.ui-settings-group[data-group="edit"] { order: -1; }
+.ui-settings-group { background: var(--bg-settings-item); border: 1px solid rgba(148,163,184,0.18); border-radius: 12px; padding: 10px 12px 12px; margin-bottom: 0; }
+.ui-settings-group:last-child { margin-bottom: 0; }
+.ui-settings-group-head { display: block; padding: 2px 2px 8px; margin-top: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.4px; color: var(--color-text-strong); border-bottom: 1px solid rgba(148,163,184,0.18); }
+.ui-settings-group-body { padding-top: 8px; }
+/* 新操作模式分组内的小类目标题：字号略大、淡灰、左倾，类目之间以灰线隔开 */
+.ui-settings-group[data-group="new-op"] .ui-settings-cat-title {
+    display: block;
+    margin-top: 10px;
+    padding: 10px 2px 3px;
+    border-top: 1px solid var(--border-soft);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    transform: skewX(8deg);
+    transform-origin: left center;
+    user-select: none;
+}
+.ui-settings-group[data-group="new-op"] .ui-settings-cat-title:first-child {
+    margin-top: 0;
+    padding-top: 4px;
+    border-top: none;
+}
+.ui-settings-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 2px; background: transparent; border-radius: 8px; cursor: pointer; }
+.ui-settings-item span { display: inline-block; color: var(--color-text-strong); font-size: 13px; line-height: 1.35; }
+/* ---- 桌面端卡片长宽恒定（2026-10-17 第 19 轮，用户要求「电脑端设置卡片长宽固定，不要乱变」）----
+   ① 内容区改单列：每张卡片都占满内容区宽度 ⇒ 切分类不再出现「半宽卡 / 满宽卡」混排；
+   ② 面板高度写死（原为自动高度 + max-height，切分类会随内容伸缩导致外框乱变）。
+   手机 / 触摸端由 820px 媒体查询整屏接管，以下两条不生效。 */
+.ui-settings-panel { height: min(660px, 86vh); }
+.ui-settings-scroll { grid-template-columns: 1fr; }
+/* 设置项悬停：与新手教程「目题」悬停同语言 —— 光亮、不改尺寸。
+   光环用 inset box-shadow 画（不用 border / transform / padding），保证卡片长宽恒定。 */
+.ui-settings-item { transition: background .14s ease, box-shadow .16s ease; }
+.ui-settings-item:hover {
+    background: rgba(96,165,250,0.12);
+    box-shadow: inset 0 0 0 1px rgba(96,165,250,0.42), 0 4px 16px rgba(59,130,246,0.22);
+}
+.ui-settings-item:hover span { text-shadow: 0 0 8px rgba(120,180,255,0.5); }
+body.light-mode .ui-settings-item:hover {
+    background: rgba(37,99,235,0.10);
+    box-shadow: inset 0 0 0 1px rgba(37,99,235,0.35), 0 4px 14px rgba(37,99,235,0.18);
+}
+body.light-mode .ui-settings-item:hover span { text-shadow: 0 0 8px rgba(37,99,235,0.35); }
+/* 项目设置分组紧凑排版：减少大段说明文字的间距 */
+/* 「项目」分组跨满整宽（双列网格中占两列），避免「当前项目」输入框被挤成半列而被截断 */
+.ui-settings-group[data-group="project"] { grid-column: 1 / -1; }
+.ui-settings-group[data-group="project"] .prj-info { flex-wrap: wrap; }
+.ui-settings-group[data-group="project"] .ui-settings-group-body { display: flex; flex-direction: column; gap: 2px; }
+.ui-settings-group[data-group="project"] .ui-settings-item { flex-direction: column; align-items: stretch; gap: 3px; padding: 4px 2px; }
+.ui-settings-group[data-group="project"] .ui-settings-item > span { font-size: 13px; }
+.ui-settings-group[data-group="project"] .ui-settings-item > div { font-size: 11px; color: var(--color-text-muted); line-height: 1.4; }
+/* 「项目」分组新版式（2026-08-31）：信息区 / 操作区 / 危险区分区卡片 */
+/* 按钮造型语言：切角六边形（右上+左下切角）+ hover 辉光，贴合项目科技主义风格 */
+.ui-settings-group[data-group="project"] .prj-info {
+    display: flex; align-items: center; gap: 8px; margin: 8px 0 2px;
+}
+.ui-settings-group[data-group="project"] .prj-info .prj-label {
+    font-size: 13px; color: var(--color-text-strong); white-space: nowrap; flex: 0 0 auto;
+}
+.ui-settings-group[data-group="project"] .prj-info input {
+    flex: 1; min-width: 0; width: 100%; padding: 7px 10px; font-size: 12px;
+    border: none; outline: none; color: var(--color-input-text);
+    background: rgba(148,163,184,0.14);
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    transition: background .18s, filter .18s;
+}
+.ui-settings-group[data-group="project"] .prj-info input:focus {
+    background: rgba(59,130,246,0.14);
+    filter: drop-shadow(0 0 5px rgba(59,130,246,0.6));
+}
+/* 项目保存状态提示：默认未保存（临时项目）用琥珀色强调，正式项目用次要文字色 */
+.ui-settings-group[data-group="project"] .prj-status {
+    font-size: 12px; color: #f59e0b; min-height: 16px; margin: 2px 0 4px; line-height: 1.4;
+}
+.ui-settings-group[data-group="project"] .prj-status.saved {
+    color: var(--color-text-muted, #94a3b8);
+}
+/* 按钮造型语言：切角矩形（右上 + 左下切角）。
+   clip-path 会裁掉 border 与 box-shadow，故用「外层描边层 + 内层填充层」双层模拟切角描边，
+   辉光用 drop-shadow（它跟随 clip-path 裁剪后的可见形状）。
+   ⚠ 这是一套全局造型语言（「项目」「新手教程」等分组共用），故不加 .ui-settings-group 作用域前缀，
+     否则位于分组之外的按钮拿不到样式、退化成浏览器默认方框。 */
+.prj-btn {
+    display: block; padding: 1.5px; border: none; cursor: pointer;
+    background: rgba(148,163,184,0.45);
+    clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+    transition: filter .18s, transform .1s;
+    -webkit-tap-highlight-color: transparent;
+}
+/* 内层 = 填充层（同样切角，比外层小 1px 让描边露出） */
+.prj-face {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 14px; font-size: 13px; white-space: nowrap;
+    background: rgba(148,163,184,0.07); color: var(--color-text-strong);
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    transition: background .18s, color .18s;
+}
+.prj-btn:hover { filter: drop-shadow(0 0 6px rgba(148,163,184,0.55)); }
+.prj-btn:hover > .prj-face { background: rgba(148,163,184,0.2); }
+.prj-btn:active { transform: translateY(1px); }
+/* 主操作：蓝色渐变实心 + 白字 */
+.prj-btn-primary { background: #2f6fe0; }
+.prj-btn-primary > .prj-face {
+    background: linear-gradient(135deg, #5a9bff 0%, #3b82f6 55%, #2f6fe0 100%);
+    color: #fff; font-weight: 600; letter-spacing: .5px;
+}
+.prj-btn-primary:hover > .prj-face {
+    background: linear-gradient(135deg, #6ca8ff 0%, #4a8ef7 55%, #3b7ce8 100%);
+}
+.prj-btn-primary:hover { filter: drop-shadow(0 0 9px rgba(59,130,246,0.85)); }
+/* 危险操作：红色渐变实心 + 白字（与「保存」蓝实心对称） */
+.prj-btn-danger { background: #b91c1c; }
+.prj-btn-danger > .prj-face {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 55%, #dc2626 100%);
+    color: #fff; font-weight: 600; letter-spacing: .5px;
+}
+.prj-btn-danger:hover > .prj-face {
+    background: linear-gradient(135deg, #fb8585 0%, #f25656 55%, #e03030 100%);
+}
+.prj-btn-danger:hover { filter: drop-shadow(0 0 9px rgba(239,68,68,0.8)); }
+/* 纯文字按钮：无背景框（重命名），只在 hover 时透出切角淡底 */
+.prj-btn-plain { background: transparent; }
+.prj-btn-plain > .prj-face {
+    background: transparent; color: var(--color-text-strong); padding: 6px 10px;
+}
+.prj-btn-plain:hover { filter: none; }
+.prj-btn-plain:hover > .prj-face {
+    background: rgba(148,163,184,0.16); color: #3b82f6;
+}
+/* 新手教程：紫罗兰渐变实心 + 白字。切角造型与「项目」按钮完全同源，
+   仅换主题色以呼应教程系统自身的紫色引导样式（.ex-tut-*）。 */
+.prj-btn-tut { background: #7c3aed; }
+.prj-btn-tut > .prj-face {
+    background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 55%, #7c3aed 100%);
+    color: #fff; font-weight: 600; letter-spacing: .5px;
+}
+.prj-btn-tut:hover > .prj-face {
+    background: linear-gradient(135deg, #bba6ff 0%, #9d72fb 55%, #8b46f0 100%);
+}
+.prj-btn-tut:hover { filter: drop-shadow(0 0 9px rgba(139,92,246,0.9)); }
+.prj-btn-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;
+}
+.prj-divider {
+    height: 1px; margin: 10px 0 2px;
+    background: linear-gradient(90deg, transparent, rgba(148,163,184,0.5) 18%, rgba(148,163,184,0.5) 82%, transparent);
+}
+/* ---- 新手教程入口卡片：与「项目」分组同构，跨满整宽 ---- */
+.ui-settings-group[data-group="tutorial"] { grid-column: 1 / -1; }
+.ui-settings-group[data-group="tutorial"] .ui-settings-group-head {
+    display: flex; align-items: center; gap: 6px;
+}
+.extut-prog { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+/* 进度条降权（第 18 轮）：5px 紫色渐变整条 → 3px 低饱和细线 */
+.extut-bar {
+    height: 3px; border-radius: 2px; background: rgba(148,163,184,0.22); overflow: hidden;
+}
+.extut-bar > i {
+    display: block; height: 100%; width: 0;
+    background: rgba(139,92,246,0.72);
+    border-radius: 2px; transition: width .35s cubic-bezier(.2,.7,.3,1);
+}
+/* 「紧凑单行」教程入口（第 18 轮，用户要求降权）：一行 = 说明 + 右侧小号描边按钮，
+   与普通设置项同量级；不再用通栏紫罗兰实心大按钮抢视觉。
+   ⚠必须写 `.ui-settings-item .extut-row-tx`（0,2,0）才压得过 `.ui-settings-item span`（0,1,1）。 */
+.extut-row { gap: 10px; }
+.ui-settings-item .extut-row-tx { flex: 1 1 auto; min-width: 0; font-size: 11.5px; line-height: 1.45; color: var(--color-text-muted); }
+.extut-mini-btn { flex: 0 0 auto; padding: 6px 12px; border: 1px solid rgba(139,92,246,0.55); border-radius: 8px; background: rgba(139,92,246,0.14); color: #a78bfa; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .12s, border-color .12s; }
+.extut-mini-btn:hover { background: rgba(139,92,246,0.26); border-color: rgba(139,92,246,0.85); }
+body.light-mode .extut-mini-btn { color: #6d28d9; border-color: rgba(109,40,217,0.45); background: rgba(124,58,237,0.10); }
+/* 教程音效开关行（2026-10-16）：与「项目」卡片里的设置项同款排布 */
+.extut-sfx-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px; padding-top: 9px;
+    border-top: 1px solid var(--bg-settings-toggle-border, rgba(148,163,184,0.20));
+    cursor: pointer; user-select: none;
+}
+.extut-sfx-row > input[type="checkbox"] {
+    flex: 0 0 auto; width: 14px; height: 14px; margin: 0; cursor: pointer;
+    accent-color: #7c3aed;
+}
+.extut-sfx-tx { font-size: 11.5px; font-weight: 600; color: var(--color-text-soft, #94a3b8); }
+.extut-sfx-hint { font-size: 10.5px; color: var(--color-text-muted); margin-left: auto; }
+/* ---- 快捷键查看：跨满整宽，键帽徽章 + 说明列表 ---- */
+.ui-settings-group[data-group="shortcuts"] { grid-column: 1 / -1; }
+/* ---- AI 服务入口卡片：与「项目」「新手教程」分组同构，跨满整宽 ---- */
+.ui-settings-group[data-group="ai-service"] { grid-column: 1 / -1; }
+/* 可折叠设置分组：点击标题栏展开/收起（箭头 ▾ 收起时旋转 -90°） */
+.ui-settings-group.collapsible > .ui-settings-group-head { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.ui-settings-group.collapsible > .ui-settings-group-head::after { content: '\25BE'; font-size: 11px; opacity: .65; transition: transform .2s ease; }
+.ui-settings-group.collapsible.collapsed > .ui-settings-group-head::after { transform: rotate(-90deg); }
+.ui-settings-group.collapsible.collapsed > .ui-settings-group-body { display: none; }

@@ -1,0 +1,433 @@
+
+/* ===== 织布机 / 旗帜生成器（r37d：独立浮动窗 + 分类结构；r37f：横排分类栏 + 固定尺寸可拽大）=====
+   用户四轮纠正后定稿：不再塞进 .material-menu（每个材质子面板共用同一容器，
+   必然被“铺满 / 折行 / 定位被 positionMaterialMenu 覆盖”反复折磨，这是历次失败根因），
+   改为 document.body 上的独立浮动窗 .loom-window：
+     窗体外壳对齐关键帧浮动窗（深色玻璃 / 蓝描边 / 标题栏即拖拽把手 / 斜纹缩放手柄）；
+     内部结构 = 左列常驻预览旗帜 + 右列（分类栏在上、内容区在下）。
+   ★r37f：面板长宽固定（默认 320×360，不随内容伸缩），仅由右下/左下斜纹手柄手动拽大
+     —— 与动画关键帧浮动窗完全一致（loomMakeResizable 照搬 makeKeyframeResizable）。
+   内部控件仍沿用 bnr- 前缀，避免与模拟器既有类名冲突。 */
+.loom-window {
+  /* ★r37h：z-index 由 500 提到 1002 —— 移动端铺满整屏时，`.kf-mode-group`
+     （编辑模式/画笔模式/动画模式，fixed top:12px right:12px, z-index:1000）
+     会盖住本窗标题栏右侧的 ✕，导致「手机端无法退出织布机」。
+     取值落在 kfModeGroup(1000) 之上、设置面板(1010)/AI 面板(1015) 之下。 */
+  position: fixed; z-index: 1002;
+  background: rgba(10,15,26,0.92);
+  backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid #3b82f6; border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  display: none; flex-direction: column;
+  /* ★r37h：最小尺寸随默认尺寸一起下调（用户「做小点啊」），否则 min-width 会把小默认值顶回去 */
+  min-width: 260px; min-height: 200px;
+  max-width: 96vw; max-height: 96vh;
+  overflow: hidden; color: #e2e8f0;
+}
+body.light-mode .loom-window { background: var(--bg-panel); border-color: #cbd5e1; color: var(--color-text-strong); }
+.loom-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px;
+  background: rgba(59,130,246,0.15); border-bottom:1px solid rgba(59,130,246,0.3);
+  cursor:move; user-select:none; touch-action:none; }
+body.light-mode .loom-head { background: rgba(59,130,246,0.08); border-bottom-color: rgba(0,0,0,0.08); }
+.loom-head-title { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:bold; color:#60a5fa; }
+body.light-mode .loom-head-title { color:#1e293b; }
+/* ★r37f：标题图标改用织布机方块的真实材质贴图（用户：有材质贴图就直接引用，别用 emoji） */
+.loom-ico { width:16px; height:16px; flex:none; border-radius:3px; image-rendering:pixelated; }
+.loom-grip { letter-spacing:2px; opacity:.65; font-size:14px; }
+.loom-close { padding:4px 8px; font-size:14px; cursor:pointer; background:transparent; border:none; color:#94a3b8; border-radius:4px; }
+.loom-close:hover { color:#f43f5e; background: rgba(244,63,94,0.1); }
+/* ★r37h：左右两栏（「各项目的具体内容放到栏目选项框下面，旗帜预览图片的右边」）——
+   结构 = 左列【预览旗帜（整列，不随分类切换隐藏）】 + 右列【分类栏(上) → 内容区(下)】。
+   取代 r37g 的「顶带（预览+分类并排）→ 下方通栏内容」。 */
+.loom-body { flex:1 1 auto; min-height:0; display:flex; flex-direction:row; gap:12px;
+  padding:10px 12px 12px; }
+.loom-pv { flex:0 0 auto; align-self:flex-start; display:flex; align-items:center; }
+.loom-right { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:10px; }
+.loom-nav { flex:0 0 auto; display:flex; flex-direction:row; flex-wrap:wrap; gap:6px; padding:0; }
+.loom-tab { display:block; width:auto; white-space:nowrap; padding:6px 14px; border:none; border-radius:999px;
+  background:transparent; color:#94a3b8; font-size:12.5px; font-weight:600; text-align:center;
+  cursor:pointer; transition: background .12s, color .12s; }
+.loom-tab:hover { background: rgba(148,163,184,0.16); color:#e2e8f0; }
+.loom-tab.active { background: rgba(59,130,246,0.18); color:#60a5fa; }
+body.light-mode .loom-tab { color: #64748b; }
+body.light-mode .loom-tab.active { background: rgba(37,99,235,0.14); color:#2563eb; }
+/* 内容区：右列下半，自身滚动（窗口尺寸固定不伸缩，超出只在此处滚） */
+.loom-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  display:flex; flex-direction:column; gap:12px; padding:0 2px 2px 0; }
+.loom-cat { flex:0 0 auto; background: var(--bg-settings-item, rgba(30,41,59,0.6));
+  border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:10px 12px 12px; display:none; }
+.loom-cat.on { display:block; }
+.loom-cat h2 { font-size:11.5px; margin:0 0 8px; color:#8fa0b8; text-transform:uppercase;
+  letter-spacing:.05em; font-weight:600; display:flex; align-items:center; gap:8px; }
+body.light-mode .loom-cat h2 { color:#6b7280; }
+/* ★r37g：预览区**只保留旗帜 canvas** —— 徽标「已载入旗帜 / 新旗帜」与「绿色底」色块+名称
+   已按用户要求（「不显示这些」）整体删除（底色本就是「底色」栏目，无需在预览旁重复）。
+   预览仍**常态化显示**（常驻顶部左侧，不随分类切换隐藏）。 */
+.loom-pv { flex:0 0 auto; display:flex; align-items:center; }
+/* ★r37f：斜纹缩放手柄（右下 / 左下），与 .keyframe-resize-handle 同款视觉；移动端媒体查询里隐藏。
+   ★教训：r37e 曾按「缩放是啥意思啊，没用就删了」把手柄整块删掉，随后被用户第二次纠正
+   （「长宽固定…但是用户可以手动拽大，跟动画关键帧的面板一样」）⇒ 用户否定一个「术语」≠ 否定那项「能力」。 */
+.loom-resize { position:absolute; bottom:0; right:0; width:20px; height:20px; cursor:nwse-resize; touch-action:none; z-index:10;
+  background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.4) 40%, rgba(59,130,246,0.4) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.4) 55%, rgba(59,130,246,0.4) 65%, transparent 65%); }
+.loom-resize:hover { background: linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%); }
+.loom-resize-l { position:absolute; bottom:0; left:0; width:20px; height:20px; cursor:nesw-resize; touch-action:none; z-index:10;
+  background: linear-gradient(225deg, transparent 0%, transparent 40%, rgba(59,130,246,0.4) 40%, rgba(59,130,246,0.4) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.4) 55%, rgba(59,130,246,0.4) 65%, transparent 65%); }
+.loom-resize-l:hover { background: linear-gradient(225deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%); }
+/* 通用按钮样式；排除分类标签与关闭按钮（它们自带透明/无边框外观，否则会被套上蓝色药丸底） */
+.loom-window button:not(.loom-tab):not(.loom-close), .bnr-root button { cursor:pointer; border:none; border-radius:8px; padding:8px 12px; font-size:12.5px; font-weight:600; background: rgba(59,130,246,0.22); color:#dbeafe; transition: filter .15s, background .15s; }
+.loom-window button:not(.loom-tab):not(.loom-close):hover, .bnr-root button:hover { filter:brightness(1.15); }
+body.light-mode .loom-window button:not(.loom-tab):not(.loom-close) { background: rgba(37,99,235,0.12); color:#1e40af; }
+/* 织布机内容控件（作用域 bnr-，避免与模拟器现有类名冲突；配色随 .loom-window 深色/浅色主题） */
+/* r37e 结构定稿（用户指令）：「只有底色和图层是设栏目的，预览的旗帜常态化显示。
+   图片中这些不必要的东西单独建一个栏目」⇒
+     · 旗帜预览 = 常驻区（标题栏下方，永远可见，不是分类栏目）；
+     · 左竖列分类栏 = 底色 / 图层 / 操作 三个栏目（内容区一次只显示一个）。 */
+.bnr-root { display:flex; flex-direction:column; gap:10px; }
+
+/* ★★r37c 切角矩形色块（图四样式：左上 / 右下两角 45° 切角）——
+   clip-path 同时打在外层（兼作描边与选中环）与内层 <i>（承载颜色）上；
+   两层用同一份百分比 clip-path ⇒ 得到一圈沿着切角走的细描边，选中时外层转深色。 */
+.bnr-chn { position:relative; aspect-ratio:1/1; flex:none; cursor:pointer;
+  clip-path: polygon(28% 0, 100% 0, 100% 72%, 72% 100%, 0 100%, 0 28%);
+  background: rgba(148,163,184,0.3); transition: transform .1s; }
+.bnr-chn > i { position:absolute; inset:2px; display:block; clip-path:inherit; }
+.bnr-chn:hover { transform: scale(1.08); }
+.bnr-chn.sel { background:#60a5fa; }
+
+/* 预览 canvas 显示尺寸（★r37f：原先那个大号 h2「旗帜预览」已删 —— 它是裸 h2，不在 .loom-cat 内
+   ⇒ 继承 UA 默认 1.5em 粗体，在预览条里渲成一大块字最占地方；canvas 本身就是预览，无需标题。
+   ★r37g：.bnr-badge / .bnr-pvinfo / .bnr-pvbase / .bnr-basechip 已随「不显示这些」一并删除。） */
+.bnr-preview { width:56px; max-width:56px; height:auto; image-rendering:pixelated; border:1px solid rgba(148,163,184,0.3); border-radius:6px; flex:none; background: repeating-conic-gradient(#2a3242 0% 25%, #1a2130 0% 50%) 50% / 12px 12px; }
+.bnr-scalerow { display:flex; align-items:center; gap:6px; font-size:12px; color:#aab8cc; }
+.bnr-scalerow input { width:56px; padding:4px 8px; border:1px solid rgba(148,163,184,0.55); border-radius:7px; font-size:12px; outline:none; background: rgba(10,15,26,0.5); color:#e2e8f0; }
+.bnr-scalerow input:focus { border-color:#3b82f6; }
+/* 「操作」栏目内的按钮横排 */
+.loom-opsrow { display:flex; gap:8px; flex-wrap:wrap; }
+.loom-opsrow button { flex:1 1 auto; }
+
+/* ★★r38【旗帜库】栏目样式 —— 分组 + 条目的设置列表式紧凑结构（对齐「分组折叠列表」语言）：
+   一组 = 可折叠的标题行（▼ 三角 + 名称 + 计数 + ⋯ 菜单）+ 条目列表；条目 = 缩略图 + 名称 + ⋯ 菜单。 */
+.loom-libbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.loom-libgrp { border:1px solid rgba(148,163,184,0.18); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+.loom-libgrp-head { display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer;
+  background: rgba(148,163,184,0.10); font-size:12.5px; font-weight:600; color:#e2e8f0; transition: background .12s; }
+.loom-libgrp-head:hover { background: rgba(59,130,246,0.16); }
+body.light-mode .loom-libgrp-head { color:#1e293b; }
+.loom-libgrp-tri { flex:0 0 auto; font-size:10px; opacity:.75; transition: transform .15s; }
+.loom-libgrp.collapsed .loom-libgrp-tri { transform: rotate(-90deg); }
+.loom-libgrp-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.loom-libgrp-cnt { flex:0 0 auto; font-size:11px; font-weight:400; color:#94a3b8; }
+.loom-libgrp-body { display:flex; flex-direction:column; gap:3px; padding:6px; }
+.loom-libgrp.collapsed .loom-libgrp-body { display:none; }
+.loom-libitem { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:8px; cursor:pointer;
+  border:1px solid transparent; transition: background .12s, border-color .12s;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.loom-libitem:hover { background: rgba(59,130,246,0.14); border-color: rgba(59,130,246,0.35); }
+.loom-libthumb { width:18px; height:36px; flex:0 0 auto; image-rendering:pixelated; border-radius:2px;
+  background: repeating-conic-gradient(#2a3242 0% 25%, #1a2130 0% 50%) 50% / 6px 6px; }
+.loom-libitem-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:12.5px; color:#e2e8f0; }
+body.light-mode .loom-libitem-name { color:#1e293b; }
+/* ⋯ 菜单按钮：做成无边框图标按钮。★必须 !important —— 通用按钮规则
+   `.loom-window button:not(.loom-tab):not(.loom-close)` 的权重(0,3,1)高于本类，否则会套上蓝色药丸底。 */
+.bnr-root .loom-libmore { flex:0 0 auto; padding:2px 7px !important; font-size:14px !important; line-height:1 !important;
+  background:transparent !important; color:#94a3b8 !important; box-shadow:none !important; }
+.bnr-root .loom-libmore:hover { filter:none !important; color:#60a5fa !important; background: rgba(148,163,184,0.18) !important; }
+.bnr-root .loom-libmore.danger:hover { color:#fb7185 !important; background: rgba(244,63,94,0.14) !important; }
+.loom-libempty { font-size:11.5px; color:#8b9cb2; padding:6px 4px; line-height:1.5; }
+body.light-mode .loom-libempty { color:#8b939e; }
+/* ★★r40：删除确认改为「就地两按钮」，不再用居中 modal ——
+   原 showConfirmModal 的遮罩 z-index:900 低于织布机窗体（z-index:1002），窗体打开时会把整个询问框
+   压住、只在窗体边缘露出一块（用户报障「层级不对，显示到旗帜列表下面」）。
+   现改为复用 ⋯ 菜单的共用弹窗（.bnr-patpopup，z-index:9999，位于窗体之上），点「删除」后内容就地
+   换成「取消 / 确认删除」两个小按钮，位置紧贴 ⋯ 按钮旁，并带一次轻微的浮现动画。 */
+.bnr-confirm { display:flex; flex-direction:column; gap:8px; min-width:170px; animation: bnrConfirmIn .12s ease-out; }
+@keyframes bnrConfirmIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+.bnr-confirm-msg { font-size:12px; line-height:1.5; color:#e2e8f0; }
+body.light-mode .bnr-confirm-msg { color:#1e293b; }
+.bnr-confirm-msg small { display:block; margin-top:2px; color:#94a3b8; font-size:11px; }
+body.light-mode .bnr-confirm-msg small { color:#64748b; }
+.bnr-confirm-row { display:flex; gap:6px; justify-content:flex-end; }
+/* 两个按钮用 div 而非 button（与 .bnr-dyerow 同理）：规避通用 button 规则套上的蓝色药丸底 */
+.bnr-confirm-btn { flex:0 0 auto; padding:3px 10px; border-radius:7px; font-size:12px; line-height:1.5; cursor:pointer;
+  border:1px solid transparent; transition: background .12s, border-color .12s; }
+.bnr-confirm-btn.no { color:#cbd5e1; background:rgba(148,163,184,0.16); border-color:rgba(148,163,184,0.35); }
+.bnr-confirm-btn.no:hover { background:rgba(148,163,184,0.3); }
+.bnr-confirm-btn.yes { color:#fca5a5; background:rgba(244,63,94,0.16); border-color:rgba(244,63,94,0.6); }
+.bnr-confirm-btn.yes:hover { background:rgba(244,63,94,0.32); }
+body.light-mode .bnr-confirm-btn.no { color:#334155; background:rgba(148,163,184,0.2); }
+body.light-mode .bnr-confirm-btn.yes { color:#be123c; background:rgba(244,63,94,0.12); }
+
+/* ★★r39 拖拽（排序 / 拖入分组）的视觉反馈 —— 由 loomAttachDrag 统一驱动 */
+/* 抓取块：行首抓手（点阵由 CSS 画，避免依赖字体对 ⋮/⠿ 这类符号的渲染尺寸），
+   鼠标 grab / 触屏长按；纯视觉提示，抓取判定仍由整行承担 */
+.bnr-grab { flex:0 0 auto; width:12px; height:18px; cursor:grab; opacity:.85;
+  background-image: radial-gradient(circle, #7c8aa0 1.3px, transparent 1.7px);
+  background-size: 5px 5px; background-position: 1px 1px; background-repeat: repeat; }
+.bnr-grab:hover { opacity:1; background-image: radial-gradient(circle, #93c5fd 1.3px, transparent 1.7px); }
+.bnr-grab:active { cursor:grabbing; }
+/* 拖拽中的行：虚线 + 半透明，明确“正在被拎起来” */
+.loom-drag-row { opacity:.45; border-style:dashed !important; border-color:#3b82f6 !important; }
+/* 拖拽期间全局光标 */
+.loom-dragging, .loom-dragging * { cursor:grabbing !important; }
+/* 拖入分组时的目标高亮（drop 模式） */
+.loom-libgrp.dragover { border-color:#3b82f6; box-shadow:0 0 0 1px rgba(59,130,246,0.5) inset; }
+.loom-libgrp.dragover > .loom-libgrp-head { background: rgba(59,130,246,0.32); }
+/* 跟随指针的拖拽浮动卡片（两种模式共用；由 loomGhostFrom 克隆节点后叠加上去）
+   ★margin:0 必须重置：被克隆的 .bnr-layer 自带 margin:6px 0，而 fixed 元素的 margin 会真实偏移位置 */
+.loom-drag-ghost { position:fixed; z-index:10060; pointer-events:none; opacity:.95; border-radius:9px; margin:0 !important;
+  background: rgba(30,41,59,0.94); border:1px solid #3b82f6; box-shadow:0 10px 28px rgba(0,0,0,0.5); }
+body.light-mode .loom-drag-ghost { background: rgba(255,255,255,0.96); }
+
+/* ②底色栏目：16 色 8×2 */
+.bnr-swatches { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; }
+
+/* ③图层栏目：每行 = 抓取块 + 图案选择器（点击弹出图案网格）+ 颜色选择器（切角色块＋中文名）+ 上/下/删
+   ★r39：行支持拖拽排序（鼠标直接拖 / 触屏长按抓起）⇒ 禁掉长按系统菜单与文字选中，避免抢手势 */
+.bnr-layer { display:flex; gap:6px; align-items:center; padding:6px 7px; border:1px solid rgba(148,163,184,0.2); border-radius:9px; margin:6px 0; cursor:pointer; transition: border-color .12s, background .12s;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.bnr-layer:hover { background: rgba(148,163,184,0.1); }
+.bnr-layer.active { border-color:#3b82f6; box-shadow: 0 0 0 1px rgba(59,130,246,0.4) inset; background: rgba(59,130,246,0.1); }
+.bnr-patpicker { display:flex; align-items:center; gap:6px; cursor:pointer; border:1px solid rgba(148,163,184,0.2); border-radius:7px; padding:2px 6px; background: rgba(10,15,26,0.4); flex:1 1 auto; min-width:0; }
+.bnr-patpicker:hover { background: rgba(148,163,184,0.14); }
+.bnr-patpicker .bnr-patthumb { flex:none; }
+.bnr-dyesel { display:flex; align-items:center; gap:5px; cursor:pointer; border:1px solid rgba(148,163,184,0.2); border-radius:7px; padding:2px 6px; background: rgba(10,15,26,0.4); flex:0 0 auto; }
+.bnr-dyesel:hover { background: rgba(148,163,184,0.14); }
+.bnr-dyesel .bnr-chn { width:16px; }
+.bnr-dyesel-name { font-size:11.5px; color:#cbd5e6; white-space:nowrap; }
+.bnr-dyesel-caret { font-size:9px; color:#94a3b8; }
+.bnr-dyelist { display:flex; flex-direction:column; gap:2px; max-height:320px; overflow-y:auto; min-width:140px; }
+.bnr-dyerow { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px; color:#e2e8f0; }
+.bnr-dyerow:hover { background: rgba(148,163,184,0.16); }
+.bnr-dyerow.sel { background: rgba(59,130,246,0.2); font-weight:600; }
+.bnr-dyerow .bnr-chn { width:18px; }
+/* 图层行内的小按钮收紧（否则 8px 内边距在窄行里会溢出） */
+.bnr-root .bnr-layer button { padding:4px 8px; font-size:11px; flex:none; }
+
+/* 图案选择弹窗（图层行的图案选择器点击后弹出） */
+.bnr-patgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; max-height:320px; overflow-y:auto; padding:4px; }
+.bnr-patcell { display:flex; flex-direction:column; align-items:center; cursor:pointer; padding:4px; border-radius:7px; border:2px solid transparent; transition: background .12s; }
+.bnr-patcell:hover { background: rgba(148,163,184,0.16); }
+.bnr-patcell.sel { border-color:#3b82f6; background: rgba(59,130,246,0.16); }
+.bnr-patthumb { width:28px; height:56px; image-rendering:pixelated; display:block; border-radius:3px; background: repeating-conic-gradient(#2a3242 0% 25%, #1a2130 0% 50%) 50% / 8px 8px; }
+
+.bnr-hint { font-size:11.5px; color:#8b9cb2; margin:0; line-height:1.55; }
+/* ★r37e：`.bnr-sub` 曾随旧版 CSS 一并丢失定义，此处按新深色主题补回（图层计数等内联副标题用） */
+.bnr-sub { color:#8b9cb2; font-weight:normal; font-size:12px; }
+.bnr-root button { cursor:pointer; border:none; border-radius:8px; padding:8px 12px; font-size:12.5px; font-weight:600; background: rgba(59,130,246,0.22); color:#dbeafe; transition:filter .15s, background .15s; }
+.bnr-root button:hover { filter:brightness(1.15); }
+
+/* 悬浮窗拖拽（仅桌面端；顶栏作为拖拽把手） */
+@media (min-width: 769px) { .material-menu .mm-head { cursor: move; touch-action: none; } }
+.material-menu.mm-dragging { user-select: none; }
+.material-menu.mm-dragging .mm-head { cursor: grabbing; }
+
+/* 移动端：织布机浮动窗铺满整屏（.loom-window，见文件上方定义） */
+@media (max-width: 768px) {
+  /* 普通材质菜单：移动端居中显示为浮动小窗口（不依赖内联定位，
+     避免被钉在按钮附近、在窄屏上变成“左边一整条”） */
+  .material-menu {
+    left: 50%;
+    right: auto;
+    top: 70px;
+    transform: translateX(-50%);
+    width: min(94vw, 340px);
+  }
+  /* ---- 织布机浮动窗：移动端铺满整屏 ----
+     （与关键帧浮动窗一致的退化策略；窗口本体仍在 body 上，与材质菜单无关） */
+  .loom-window {
+    inset: 0 !important;
+    width: auto !important; height: auto !important;
+    max-width: none !important; max-height: none !important;
+    border-radius: 0 !important; border-width: 0 !important;
+    transform: none !important;
+  }
+  /* ★r37f：铺满整屏时无需手动缩放，隐藏两个斜纹手柄 */
+  .loom-resize, .loom-resize-l { display: none !important; }
+  /* ★r37h：窄屏左右两栏放不下时允许换行；关闭按钮加大触摸热区（手机上原 4px 内边距太难点） */
+  .loom-body { flex-wrap: wrap; gap: 10px; }
+  .loom-close { padding: 8px 12px; font-size: 16px; }
+  .loom-tab { padding: 7px 14px; }
+  /* ★r37f：预览恒常驻，窄屏略放大 */
+  .bnr-preview { width: 64px; max-width: 64px; }
+}
+.bnr-ghost { background: rgba(148,163,184,0.18) !important; color:#cbd5e6 !important; }
+.bnr-danger { background: rgba(244,63,94,0.18) !important; color:#fb7185 !important; }
+.bnr-fr { float:right; padding:4px 10px !important; }
+.bnr-patpopup { position:fixed; z-index:9999; background: rgba(15,23,42,0.97); color:#e2e8f0; border:1px solid rgba(59,130,246,0.5); border-radius:10px; padding:8px; box-shadow:0 8px 28px rgba(0,0,0,.5); backdrop-filter: blur(8px); }
+body.light-mode .bnr-ghost { background: rgba(100,116,139,0.13) !important; color:#334155 !important; }
+body.light-mode .bnr-danger { background:#fdecef !important; color:#b3283b !important; }
+body.light-mode .bnr-patpopup { background:#fff; color:#222; border-color:#cbd5e1; }
+body.light-mode .bnr-patthumb, body.light-mode .bnr-preview { background: repeating-conic-gradient(#eef0f2 0% 25%, #fff 0% 50%) 50% / 12px 12px; }
+/* 浅色主题下的内容控件补偿（深色基底值放到白底上会糊成一片，必须逐项换回浅色可读配色） */
+body.light-mode .bnr-scalerow { color:#5b6472; }
+body.light-mode .bnr-scalerow input { background:#fff; color:#1f2430; border-color:#cbd5e1; }
+body.light-mode .bnr-patpicker, body.light-mode .bnr-dyesel { background:#fff; border-color:#e5e8ec; }
+body.light-mode .bnr-dyesel-name, body.light-mode .bnr-dyerow { color:#1f2430; }
+body.light-mode .bnr-chn { background: rgba(16,24,40,0.16); }
+body.light-mode .bnr-chn.sel { background:#20242b; }
+body.light-mode .bnr-layer { border-color:#e5e8ec; }
+body.light-mode .bnr-layer:hover { background:#fafbfc; }
+body.light-mode .bnr-layer.active { border-color:#2b2f36; box-shadow:0 0 0 2px rgba(43,47,54,.12) inset; background:#fafbff; }
+body.light-mode .bnr-hint { color:#8b939e; }
+body.light-mode .bnr-sub { color:#8b939e; }
+body.light-mode .mm-cat, body.light-mode .mm-btn { background: rgba(100,116,139,0.13); }
+
+/* 命令预览 */
+body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-preview); padding: 12px; border-radius: 16px; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border: var(--bg-cmd-preview-border); }
+
+
+#canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
+.top-bar { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; }
+/* 退出全屏按钮：全屏时在手机端显示 */
+#exitFullscreenBtn { display: none; }
+#exitFullscreenBtn span { font-size: 13px; }
+:-webkit-full-screen #exitFullscreenBtn,
+:fullscreen #exitFullscreenBtn { display: inline-flex; }
+@media (max-width: 480px) {
+    #exitFullscreenBtn { order: -1; }
+    :-webkit-full-screen #exitFullscreenBtn,
+    :fullscreen #exitFullscreenBtn { display: inline-flex; }
+    :-webkit-full-screen #fullscreenBtn,
+    :fullscreen #fullscreenBtn { display: none; }
+}
+
+/* 左上角方块列表按钮 */
+.top-left-bar { position: fixed; top: 16px; left: 16px; z-index: 20; display: flex; gap: 8px; pointer-events: auto; }
+.top-left-bar .skew-btn { padding: 8px 14px; font-size: 13px; }
+/* ★教程进行时（2026-10-17）：顶部两条工具行去掉 16px 空隙、贴上屏幕上边缘，
+   把纵向显示范围整体向上抬高，为底部固定的教程卡片让出空旷显示空间。 */
+body.ex-tut-on .top-bar, body.ex-tut-on .top-left-bar { top: 0; }
+
+/* 下拉折叠头部 */
+.block-dropdown { position: fixed; background: var(--bg-dropdown); border-radius: 16px; padding: 6px 0; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); z-index: 300; max-height: 300px; overflow-y: auto; border: var(--bg-dropdown-border); backdrop-filter: blur(4px); }
+.block-dropdown-header { padding: 8px 12px; font-weight: bold; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.block-dropdown-content { max-height: 260px; overflow-y: auto; }
+
+/* 下拉项样式（深/浅色自适应） */
+.block-dropdown .block-dropdown-item {
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--color-text-strong);
+}
+.block-dropdown .block-dropdown-item:hover { background: var(--bg-dropdown-item-hover); }
+.block-dropdown .dropdown-actions button {
+    background: var(--bg-dropdown-btn);
+    border: none;
+    color: var(--color-dropdown-btn);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    /* 同上：按钮上的触摸不当成滚动，确保手指微移也能触发点击 */
+    touch-action: none;
+}
+.block-dropdown .dropdown-actions button span { font-family: Inter, 'PingFang SC','Microsoft YaHei', Arial, sans-serif; }
+.block-dropdown .dropdown-actions .action-para { box-shadow: none; }
+.block-dropdown .dropdown-actions button:hover { opacity: 0.95; }
+
+.block-dropdown .divider { height: 1px; background: var(--bg-dropdown-divider); margin: 6px 0; }
+.skew-btn { padding: 8px 20px; font-size: 14px; cursor: pointer; transform: skewX(-12deg); border-radius: 12px; transition: all 0.15s ease; font-weight: bold; }
+.skew-btn span { display: inline-block; transform: skewX(12deg); }
+.skew-btn:hover { background: var(--bg-skew-btn-hover); border-color: var(--bg-skew-btn-border-hover); transform: skewX(-12deg) translateY(-1px); box-shadow: var(--bg-skew-shadow-hover); }
+.skew-btn:active { transform: skewX(-12deg) translateY(1px) scale(0.96); transition: all 0.05s ease; }
+
+/* 底部面板 */
+.data-panel { position: fixed; bottom: var(--tut-band); left: 0; right: 0; z-index: 15; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-height: 140px; border-radius: 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.3); transition: height 0.05s linear, width 0.05s linear; }
+/* ★【2026-10-17 r14】侧栏模式改回 **column**：原为 `row`，但那只是为了给早期"在流内"的
+   .resize-handle 让出行位置；自 r* 起 .resize-handle 在侧栏下已是 position:absolute（见下一条），
+   行向布局已无实际作用。而它会让移出滚动容器的 .panel-header 变成 **面板左侧的竖列**（与
+   .panel-content 并排重叠，正是用户看到的按钮浮在变量列表上）。改 column 后：
+   .panel-header = 面板固定首行，.panel-content = 其下方的独立滚动区，永不叠压。 */
+.data-panel.side-panel { top: 0; bottom: var(--tut-band); left: auto; right: 0; width: 360px; max-width: 92vw; min-width: 5px; height: calc(100% - var(--tut-band)); min-height: auto; border-radius: 20px 0 0 20px; flex-direction: column; box-shadow: -8px 0 30px rgba(0,0,0,0.3); overflow: visible; }
+.data-panel.side-panel[data-collapsed="true"] .panel-content { display: none; }
+.resize-handle { background: linear-gradient(135deg, #1e4a76, #3b82f6); cursor: ns-resize; touch-action: none; position: relative; border-radius: 0; z-index: 16; flex-shrink: 0; width: 100%; height: 10px; }
+.data-panel.side-panel .resize-handle { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; height: auto; cursor: ew-resize; border-radius: 20px 0 0 20px; }
+.resize-handle::after { content: "︽"; position: absolute; left: 50%; top: -10px; transform: translateX(-50%); color: white; font-size: 16px; letter-spacing: 6px; font-weight: bold; text-shadow: 0 0 2px #000; pointer-events: none; }
+.data-panel.side-panel .resize-handle::after { content: "╎"; top: 50%; left: 50%; transform: translate(-50%, -50%); letter-spacing: 0; font-size: 18px; }
+/* ★★★【2026-10-16 r12】数据面板滚动容器：去掉 `scrollbar-width: thin` + 固定滚动条槽位。
+   两个问题都出在这一行：
+   ① **白色滚动条**：一旦声明 `scrollbar-width`，Chromium 就放弃 `::-webkit-scrollbar`
+      主题样式、改用**系统默认滚动条**（Windows 浅色 = 白/浅灰），于是全项目只有这里
+      露出一条"意外的白色滑动条"（其余滚动区都走全局 `::-webkit-scrollbar` 的 5px 蓝拇指）。
+      去掉 `thin` ⇒ 自动回到全局主题滚动条（蓝拇指 + 5px，与其它面板一致）。
+   ② **缩进短暂变化**：真实滚动条会**吃掉 5px 布局宽度** ⇒ molang 编辑器（width:100%）
+      随之变窄 ⇒ 那条单行的编译产物**换行点变化**，看起来像"缩进跳了一下"。
+      展开/折叠「当前数值（只读）」恰好切换本容器的溢出状态 ⇒ 触发该宽度突变。
+      `scrollbar-gutter: stable` 让槽位**恒定预留**：无论是否溢出，内容宽度都不再变化，
+      编辑器换行点因此恒定（人眼看不到预留槽，溢满时才在其中画出主题滚动条）。 */
+.panel-content { flex: 1; overflow-y: auto; padding: 12px; min-width: 0; scrollbar-gutter: stable; }
+/* ★【2026-10-17 r14】按钮行改为面板固定首行（不再 absolute 悬浮、不再需要 .panel-content 顶部 72px 占位）。
+   内边距与 .panel-content 的 12px 对齐；padding-bottom 留 0 让内容自己的 12px 顶距充当间隔。 */
+.panel-header { display: none; flex-wrap: wrap; gap: 10px; flex: 0 0 auto; padding: 12px 12px 0; }
+.data-panel.side-panel .panel-header { display: flex; }
+.panel-header .panel-control-btn { padding: 5px 13px; font-size: 12px; border-radius: 6px; font-weight: 600; letter-spacing: .3px; }
+/* ★★★【2026-10-16 r13】窄宽度下不再出现「蓝色胶囊式横向滚动条」（用户投诉）。
+   原做法：data-narrow="true" 时把工具行设为 flex-wrap:nowrap + overflow-x:auto + width:max-content，
+   于是 ① 行宽(max-content)比面板宽，内容（含 skew 变换的按钮）再溢出数 px ⇒ 在行底部画出全局
+   主题的 5px 蓝色圆角横条（::-webkit-scrollbar-thumb = #3b82f6 + border-radius:10px）；
+   ② .panel-header(absolute) 同理在更窄的面板下也溢出，横条出现在面板顶部。
+   改为 **换行**（与 data-narrow="false" 分支一致）：按钮整体折到下一行、内容不再横向溢出 ⇒
+   既不丢按钮、也没有横向滚动条。★【2026-10-17 r14】按钮行已移出滚动容器成为面板固定首行，
+   原先“absolute→sticky + .panel-content 留白 72→12px”的配套改动全部撤回（见上方 r14 注释）。 */
+.data-panel.side-panel[data-narrow="true"] .panel-header { flex-wrap: wrap !important; }
+.data-panel.side-panel[data-narrow="true"] .panel-header .panel-control-btn { flex: 0 0 auto !important; white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .toolbar-integrated { flex-wrap: wrap !important; }
+.data-panel.side-panel[data-narrow="true"] .toolbar-integrated .tool-btn { flex: 0 0 auto !important; white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .toolbar-integrated .tool-btn span { white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .axis-controls { flex-wrap: wrap !important; }
+.data-panel.side-panel[data-narrow="true"] .axis-controls .control-item { flex: 0 0 auto !important; white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .section-title { white-space: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .var-card { min-width: 0 !important; }
+.data-panel.side-panel[data-narrow="true"] .var-header { white-space: nowrap !important; flex-wrap: nowrap !important; }
+.data-panel.side-panel[data-narrow="true"] .var-header .var-expand { flex: 0 0 auto !important; }
+.data-panel.side-panel[data-narrow="true"] .var-details { white-space: normal !important; }
+.data-panel.side-panel[data-narrow="true"] .var-details .assignment-input { white-space: nowrap !important; min-width: auto !important; flex: 0 0 auto !important; }
+/* 批量面板组内恒为单列（见 .batch-groups .molang-vals-grid），这里只需让行内三项不折行 */
+.data-panel.side-panel[data-narrow="true"] .batch-mv-row { flex-wrap: nowrap !important; }
+
+/* ★★★【2026-10-16 r13c】侧栏「窄」（< 340px，由 ResizeObserver 打 data-narrow-lv="true"）时，
+   把平铺按钮**折叠进「文件 / 操作 / 视图」三栏**（仿新操作模式的顶部菜单），原三行（panel-header /
+   toolbar-integrated / axis-controls）整体隐藏。折叠栏里的条目是**代理控件**：点击后转调原按钮的
+   .click() / 原复选框的 change，不复制任何业务逻辑（见 setupOldNarrowGroups）。 */
+.data-panel.side-panel[data-narrow-lv="true"] .panel-header,
+.data-panel.side-panel[data-narrow-lv="true"] .toolbar-integrated,
+.data-panel.side-panel[data-narrow-lv="true"] .axis-controls { display: none !important; }
+.data-panel.side-panel[data-narrow-lv="true"] .ong-wrap { display: block !important; }
+/* 左右各留 6px：`.ong-head`/`.ong-item` 的 `skewX(-12deg)` 会让上/下角各外扩 ~4px，
+   这点内边距正好把外扩吃进 padding 区（padding 区不计入 scrollWidth）⇒ 永不产生横向溢出。 */
+.ong-wrap { display: none; padding: 0 6px; }
+/* ★【2026-10-16 r13c-7】折叠栏继承旧操作模式的「平行四边形」语言：与 `.tool-btn`/`.skew-btn` 对齐 ——
+   外层 `skewX(-12deg)`，内部文本/复选框 `skewX(12deg)` 反向抵消，保证文字正立不斜。 */
+.ong-group { margin-bottom: 8px; }
+.ong-group:last-child { margin-bottom: 0; }
+.ong-head { display: flex; align-items: center; gap: 7px; width: 100%; padding: 7px 12px; font-size: 12px; font-weight: 600; letter-spacing: .3px; font-family: inherit; cursor: pointer; color: var(--bg-btn-color); background: var(--bg-btn); border: var(--bg-btn-border); border-radius: 6px; text-align: left; transform: skewX(-12deg); transition: background .12s, border-color .12s; }
+.ong-head:hover { background: var(--bg-skew-btn-hover); border-color: var(--bg-skew-btn-border-hover); }
+.ong-head > span { display: inline-block; transform: skewX(12deg); }
+.ong-caret { font-size: 9px; opacity: .7; }
+.ong-group.open .ong-caret { transform: skewX(12deg) rotate(90deg); }
+/* ★【2026-10-16 r13c-8】展开方式 = **飞出到侧栏左侧的画布上**（浮层，不再内联把方块列表往下挤）。
+   `.ong-body` 在 JS 里被搬到 `#dataPanel` 之下（不再是 `.ong-group` 的子元素）：
+   这样它成为「面板」的绝对定位子元素 —— ① 不受 `.panel-content` 的 `overflow-y:auto` 裁剪（能飞到面板外）；
+   ② 坐标直接相对面板算（`.data-panel` 本身 `position:fixed`）。竖向 `top` 由 JS 对齐到对应栏头。 */
+/* ★【2026-10-16 r13c-9】去掉浮层容器的「背景板」（用户「不需要按钮下的背景板」）——
+   `.ong-body` 不再画背景/边框/圆角/阴影/内边距，只保留定位与列布局；条目各自是平行四边形小按钮，直接浮在画布上。
+   ★顺便加展开动画：从面板侧（右）滑出 + 淡入；display:none→flex 时由 JS 强制 reflow 保证每次都播放。 */
+@keyframes ongFlyIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+.ong-body { position: absolute; right: calc(100% + 8px); top: 0; z-index: 40; display: none; flex-direction: column; align-items: stretch; gap: 6px; width: max-content; max-width: min(64vw, 280px); animation: ongFlyIn .18s cubic-bezier(.2, .8, .3, 1); }
+.ong-item, .ong-check { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; font-size: 11.5px; font-family: inherit; border-radius: 6px; cursor: pointer; border: var(--bg-btn-border); background: var(--bg-btn); color: var(--bg-btn-color); transform: skewX(-12deg); transition: background .12s, border-color .12s; }
+.ong-item:hover, .ong-check:hover { background: var(--bg-skew-btn-hover); border-color: var(--bg-skew-btn-border-hover); }
+.ong-item > span, .ong-check > span { display: inline-block; transform: skewX(12deg); }
+.ong-check input { transform: skewX(12deg); accent-color: #3b82f6; margin: 0; }
+
+.data-panel.side-panel[data-narrow="false"] .panel-header,
+.data-panel.side-panel[data-narrow="false"] .toolbar-integrated,
+.data-panel.side-panel[data-narrow="false"] .axis-controls,
+.data-panel.side-panel:not([data-narrow]) .panel-header,
+.data-panel.side-panel:not([data-narrow]) .toolbar-integrated,
+.data-panel.side-panel:not([data-narrow]) .axis-controls { flex-wrap: wrap !important; }
+

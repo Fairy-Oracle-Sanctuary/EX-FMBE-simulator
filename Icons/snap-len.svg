@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 测长：一条斜向尺寸线 + 两端垂直端线 + 两个端点钉 -->
+  <line x1="5" y1="19" x2="19" y2="5"/>
+  <line x1="2.6" y1="16.6" x2="7.4" y2="21.4"/>
+  <line x1="16.6" y1="2.6" x2="21.4" y2="7.4"/>
+  <circle cx="5" cy="19" r="1.6" fill="#fff" stroke="none"/>
+  <circle cx="19" cy="5" r="1.6" fill="#fff" stroke="none"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 测角：顶点 + 两条射线 + 靠近顶点的量角弧 -->
+  <path d="M5 18 L5 5"/>
+  <path d="M5 18 L19.5 10.5"/>
+  <path d="M5 11 A7 7 0 0 1 11.2 14.7" stroke-width="1.7"/>
+  <circle cx="5" cy="18" r="1.5" fill="#fff" stroke="none"/>
+</svg>

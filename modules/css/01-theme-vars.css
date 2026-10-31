@@ -1,0 +1,242 @@
+/* 01-theme-vars.css · 源 测试版v.6b79.html 第 9-249 行（原样搬运，仅 url 路径退两级） */
+/* ========== 主题CSS变量（深色模式默认 / 浅色模式覆盖） ========== */
+:root {
+    /* 教程底部预留带高度（0=未进教程，UI 与既有布局完全一致；教程进行时由 tutSyncBand() 写入） */
+    --tut-band: 0px;
+    --bg-body: #0a0f1a;
+    --bg-body-alt: #030617;
+    --bg-panel: rgba(18, 25, 45, 0.94);
+    --bg-panel-border-top: 1px solid #2d3a5e;
+    --bg-card: #162136;
+    --bg-card-border: 1px solid #2a3a5a;
+    --bg-header: #0f172a;
+    --bg-info: #0f172a;
+    --bg-btn: linear-gradient(135deg, #1e2a4a, #0f172a);
+    --bg-btn-border: 1px solid #3b82f6;
+    --bg-btn-color: #cbd5e6;
+    --bg-axis-controls: #0f172a;
+    --bg-axis-controls-border: 1px solid #2a3a5a;
+    --bg-settings-panel: rgba(10,15,26,0.95);
+    --bg-settings-panel-border: 1px solid #3b82f6;
+    --bg-settings-item: rgba(15,23,42,0.8);
+    --color-text: #cbd5e6;
+    --color-text-strong: #e2e8f0;
+    --color-text-muted: #94a3b8;
+    --color-text-soft: #64748b;
+    --color-var-name: #c084fc;   /* 变量名（.mv-name）。旧值 #a855f7 在深色网格底只有 4.51、浅色 3.81（不达 AA） */
+    --color-warn: #fbbf24;       /* 提示/警告文字（浅色下需换深琥珀，见浅色块） */
+    --color-text-inverse: #0f172a;
+    --color-label: #cbd5e6;
+    --color-primary: #3b82f6;
+    --color-primary-soft: #60a5fa;
+    --color-primary-shadow: rgba(59,130,246,0.3);
+    --color-title-text: #60a5fa;
+    --color-input-bg: #0f172a;
+    --color-input-border: #3b82f6;
+    --color-input-text: white;
+    --color-focus-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+    --border-soft: rgba(148,163,184,0.22);
+    --bg-settings-toggle: rgba(15,23,42,0.85);
+    --bg-settings-toggle-border: 1px solid rgba(255,255,255,0.12);
+    --color-settings-toggle: #cbd5e6;
+    --bg-checkbox-border: #cbd5e6;
+    --bg-checkbox-bg: rgba(255,255,255,0.03);
+    --bg-material-menu: #0f172a;
+    --bg-material-menu-border: 1px solid #3b82f6;
+    --color-material-menu: #e2e8f0;
+    --bg-material-option-hover: #1e293b;
+    --bg-cmd-preview: #0a0f1a;
+    --color-cmd-preview: #4ade80;
+    --bg-cmd-preview-border: 1px solid #2a3a5a;
+    --bg-dropdown: #162136;
+    --bg-dropdown-border: 1px solid #3b82f6;
+    --bg-dropdown-item-hover: rgba(59,130,246,0.08);
+    --bg-dropdown-divider: rgba(51,65,85,0.6);
+    --bg-dropdown-btn: rgba(0,0,0,0.45);
+    --color-dropdown-btn: white;
+    --bg-skew-btn-hover: linear-gradient(135deg, #2a3f6a, #1a2a4a) !important;
+    --bg-skew-btn-border-hover: #5a9afe !important;
+    --bg-skew-shadow-hover: 0 4px 14px rgba(59,130,246,0.25);
+    --bg-control-item: rgba(59,130,246,0.15);
+    --color-control-item: #e2e8f0;
+    --bg-range-track: #334155;
+    --bg-range-item: #1e293b;
+    --bg-var-details: #0f172a;
+    --bg-var-details-border-top: 1px solid #2a3a5a;
+    --bg-var-range-input: #0f172a;
+    --bg-var-range-input-border: 1px solid #3b82f6;
+    --bg-var-range-input-text: white;
+    --bg-modal: #162136;
+    --bg-modal-border: 1px solid #3b82f6;
+    --bg-modal-input: #1e293b;
+    --color-modal-btn: #94a3b8;
+    --color-modal-btn-hover: #fff;
+    --bg-scroll-track: #0f172a;
+    --bg-scroll-thumb: #3b82f6;
+    --bg-var-divider-right: 1px solid rgba(100,116,139,0.3);
+    --bg-group-header: #0f172a;
+    --bg-group-header-border: 1px solid #2a3a5a;
+    --bg-batch-reset: linear-gradient(135deg, #1e2a4a, #0f172a);
+    --bg-batch-reset-border: 1px solid #3b82f6;
+    --bg-batch-card: #162136;
+    --bg-batch-card-border: 1px solid #2a3a5a;
+    --bg-batch-details: #0f172a;
+    --bg-batch-details-border-top: 1px solid #2a3a5a;
+    /* ⚠ 已废止：--bg-batch-head* / --color-batch-head-* / --bg-batch-tile* / --shadow-batch-*
+       那一整套「切角卡片专用底色」随自创造型一起删除。批量面板现已直接复用 .molang-vals 系列，
+       底色走 --bg-var-details，无需自己的 token。 */
+    --color-changelog-text: #e2e8f0;
+    --color-changelog-close: #94a3b8;
+    --color-changelog-close-hover: #f43f5e;
+    --bg-changelog-item-border: 1px solid rgba(100,116,139,0.2);
+    --bg-changelog-date-hover: rgba(59,130,246,0.08);
+    --bg-block-id-badge: #0f172a;
+    --bg-block-id-badge-border: 1px solid #3b82f6;
+    --color-block-id-badge: #60a5fa;
+    --bg-copy-cmd-btn: linear-gradient(135deg, #0f2b3d, #1e4a76);
+    --bg-block-list: #162136;
+}
+body.light-mode {
+    --bg-body: #eef2f8;
+    --bg-body-alt: #e6ecf4;
+    --bg-panel: rgba(248, 251, 254, 0.95);
+    --bg-panel-border-top: 1px solid rgba(15,23,42,0.08);
+    --bg-card: rgba(250, 252, 255, 0.97);
+    --bg-card-border: 1px solid rgba(15,23,42,0.08);
+    --bg-header: rgba(248, 251, 254, 0.95);
+    --bg-info: rgba(240, 244, 249, 0.95);
+    --bg-btn: linear-gradient(135deg, #ffffff, #e6eef6);
+    --bg-btn-border: 1px solid #c3d2e3;
+    --bg-btn-color: #0f172a;
+    --bg-axis-controls: #e8eef5;
+    --bg-axis-controls-border: 1px solid #cdd9e6;
+    --bg-settings-panel: rgba(249, 252, 255, 0.97);
+    --bg-settings-panel-border: 1px solid #cdd9e6;
+    --bg-settings-item: rgba(249, 252, 255, 0.95);
+    --color-text: #1e293b;
+    --color-text-strong: #0f172a;
+    --color-text-muted: #5b6b80;
+    --color-text-soft: #64748b;
+    --color-var-name: #7c3aed;   /* 变量名（.mv-name）。旧值 #a855f7 压浅色网格底只有 3.81（不达 AA） */
+    --color-warn: #92400e;       /* #fbbf24 压浅色底只有 1.37 ⇒ 浅色必须换深琥珀（5.96） */
+    --color-text-inverse: #f1f5f9;
+    --color-label: #1e293b;
+    --color-primary: #3b82f6;
+    --color-primary-soft: #1e293b;
+    --color-primary-shadow: rgba(59,130,246,0.22);
+    --color-title-text: #1e293b;
+    --color-input-bg: #eef3f9;
+    --color-input-border: #c3d2e3;
+    --color-input-text: #0f172a;
+    --color-focus-shadow: 0 0 0 2px rgba(59,130,246,0.22);
+    --bg-settings-toggle: rgba(240, 245, 251, 0.92);
+    --bg-settings-toggle-border: 1px solid rgba(15,23,42,0.08);
+    --color-settings-toggle: #0f172a;
+    --bg-checkbox-border: #94a6ba;
+    --bg-checkbox-bg: rgba(240, 245, 251, 0.95);
+    --bg-material-menu: #f2f6fb;
+    --bg-material-menu-border: 1px solid #cdd9e6;
+    --color-material-menu: #0f172a;
+    --bg-material-option-hover: #e3ebf4;
+    --bg-cmd-preview: #e6eef6;
+    --color-cmd-preview: #15803d;
+    --bg-cmd-preview-border: 1px solid #cdd9e6;
+    --bg-dropdown: #f2f6fb;
+    --bg-dropdown-border: 1px solid #cdd9e6;
+    --bg-dropdown-item-hover: rgba(59,130,246,0.12);
+    --bg-dropdown-divider: rgba(15,23,42,0.07);
+    --bg-dropdown-btn: rgba(15,23,42,0.04);
+    --color-dropdown-btn: #0f172a;
+    --bg-skew-btn-hover: linear-gradient(135deg, #f2f6fb, #e3ebf4);
+    --bg-skew-btn-border-hover: #9fb0c4;
+    --bg-skew-shadow-hover: 0 2px 8px rgba(15,23,42,0.10);
+    --bg-control-item: #dbe4ee;
+    --color-control-item: #0f172a;
+    --bg-range-track: #cdd9e6;
+    --bg-range-item: #e6ecf4;
+    --bg-var-details: rgba(248, 251, 254, 0.96);
+    --bg-var-details-border-top: 1px solid #dbe4ee;
+    --bg-var-range-input: #f2f6fb;
+    --bg-var-range-input-border: 1px solid #94a6ba;
+    --bg-var-range-input-text: #0f172a;
+    --bg-modal: #f0f4f9;
+    --bg-modal-border: 1px solid #cdd9e6;
+    --bg-modal-input: #e6eef6;
+    --color-modal-btn: #5b6b80;
+    --color-modal-btn-hover: #1e293b;
+    --bg-scroll-track: #e6ecf4;
+    --bg-scroll-thumb: #3b82f6;
+    --bg-var-divider-right: 1px solid rgba(100,116,139,0.30);
+    --bg-group-header: #e8eef5;
+    --bg-group-header-border: 1px solid #cdd9e6;
+    --bg-batch-reset: linear-gradient(135deg, #cfe0f5, #aacbf0);
+    --bg-batch-reset-border: 1px solid #475569;
+    --bg-batch-card: #eef3f9;
+    --bg-batch-card-border: 1px solid #dbe4ee;
+    --bg-batch-details: #e9eff6;
+    --bg-batch-details-border-top: 1px solid #dbe4ee;
+    /* ⚠ 已废止：浅色那套 --bg-batch-head* / --color-batch-head-* / --bg-batch-tile* / --shadow-batch-*
+       随自创造型一起删除（批量面板现已复用 .molang-vals 系列，底色走 --bg-var-details）。 */
+    --color-changelog-text: #0f172a;
+    --color-changelog-close: #5b6b80;
+    --color-changelog-close-hover: #e11d48;
+    --bg-changelog-item-border: 1px solid rgba(15,23,42,0.08);
+    --bg-changelog-date-hover: rgba(59,130,246,0.06);
+    --bg-block-id-badge: #e3ebf4;
+    --bg-block-id-badge-border: 1px solid #cdd9e6;
+    --color-block-id-badge: #1e293b;
+    --bg-copy-cmd-btn: linear-gradient(135deg, #eef3f9, #d4e0ee);
+    --bg-block-list: #f0f4f9;
+    --bg-command-card: #f2f6fb;
+}
+
+/* ★★【2026-10-22 用户要求】浅色模式整体改为「灰白 / 白」撞色，且灰度可由设置里的
+   「浅色灰度」滑条实时调控（JS 在 documentElement 上写 --lm-* 变量，这里只做引用）。
+   层次：body 灰 → 面板灰白 → 卡片白 → 分组头/输入框再压灰 → 边框深灰蓝。 */
+body.light-mode {
+    --bg-body: var(--lm-body, #eef2f8);
+    --bg-body-alt: var(--lm-alt, #e6ecf4);
+    --bg-panel: var(--lm-panel, rgba(248, 251, 254, 0.95));
+    --bg-card: var(--lm-card, rgba(250, 252, 255, 0.97));
+    --bg-header: var(--lm-head, rgba(248, 251, 254, 0.95));
+    --bg-info: var(--lm-alt, rgba(240, 244, 249, 0.95));
+    --bg-btn: linear-gradient(135deg, var(--lm-card, #fff), var(--lm-btn2, #e6eef6));
+    --bg-btn-border: 1px solid var(--lm-border, #c3d2e3);
+    --bg-axis-controls: var(--lm-alt, #e8eef5);
+    --bg-axis-controls-border: 1px solid var(--lm-border, #cdd9e6);
+    --bg-settings-panel: var(--lm-panel, rgba(249, 252, 255, 0.97));
+    --bg-settings-panel-border: 1px solid var(--lm-border, #cdd9e6);
+    --bg-settings-item: var(--lm-card, rgba(249, 252, 255, 0.95));
+    --bg-settings-toggle: var(--lm-card, rgba(240, 245, 251, 0.92));
+    --bg-settings-toggle-border: 1px solid var(--lm-border, rgba(15,23,42,0.08));
+    --bg-block-list: var(--lm-alt, #f0f4f9);
+    --bg-material-menu: var(--lm-panel, #f2f6fb);
+    --bg-material-menu-border: 1px solid var(--lm-border, #cdd9e6);
+    --bg-material-option-hover: var(--lm-alt, #e3ebf4);
+    --bg-dropdown: var(--lm-panel, #f2f6fb);
+    --bg-dropdown-border: 1px solid var(--lm-border, #cdd9e6);
+    --bg-modal: var(--lm-panel, #f0f4f9);
+    --bg-modal-border: 1px solid var(--lm-border, #cdd9e6);
+    --bg-modal-input: var(--lm-input, #e6eef6);
+    --bg-var-details: var(--lm-panel, rgba(248, 251, 254, 0.96));
+    --bg-var-details-border-top: 1px solid var(--lm-border, #dbe4ee);
+    --bg-var-range-input: var(--lm-input, #f2f6fb);
+    --bg-var-range-input-border: 1px solid var(--lm-border, #94a6ba);
+    --bg-batch-card: var(--lm-card, #eef3f9);
+    --bg-batch-card-border: 1px solid var(--lm-border, #dbe4ee);
+    --bg-batch-details: var(--lm-alt, #e9eff6);
+    --bg-batch-details-border-top: 1px solid var(--lm-border, #dbe4ee);
+    --bg-group-header: var(--lm-alt, #e8eef5);
+    --bg-group-header-border: 1px solid var(--lm-border, #cdd9e6);
+    --bg-command-card: var(--lm-panel, #f2f6fb);
+    --bg-range-track: var(--lm-border, #cdd9e6);
+    --bg-range-item: var(--lm-alt, #e6ecf4);
+    --bg-scroll-track: var(--lm-alt, #e6ecf4);
+    --bg-checkbox-bg: var(--lm-card, rgba(240, 245, 251, 0.95));
+    --bg-checkbox-border: var(--lm-border, #94a6ba);
+    --bg-block-id-badge: var(--lm-alt, #e3ebf4);
+    --bg-block-id-badge-border: 1px solid var(--lm-border, #cdd9e6);
+    --color-input-bg: var(--lm-input, #eef3f9);
+    --color-input-border: var(--lm-border, #c3d2e3);
+}
+

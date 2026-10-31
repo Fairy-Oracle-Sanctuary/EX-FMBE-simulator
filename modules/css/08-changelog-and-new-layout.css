@@ -1,0 +1,526 @@
+/* 08-changelog-and-new-layout.css · 源 测试版v.6b79.html 第 3072-3483 行（原样搬运，仅 url 路径退两级） */
+/* ========== 更新日志弹窗 ========== */
+.changelog-modal .modal-content {
+    max-width: 640px;
+    max-height: 75vh;
+    padding: 20px 24px 24px;
+}
+.changelog-modal .modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--color-primary);
+    color: var(--color-title-text);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.changelog-modal .modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--color-changelog-close);
+    transition: color 0.2s;
+    padding: 0 4px;
+}
+.changelog-modal .modal-close-btn:hover {
+    color: var(--color-changelog-close-hover);
+}
+.changelog-list {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.changelog-item {
+    border-bottom: var(--bg-changelog-item-border);
+    border-radius: 0;
+}
+.changelog-item:last-child {
+    border-bottom: none;
+}
+.changelog-date-header {
+    cursor: pointer;
+    padding: 10px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px;
+    transition: background 0.15s;
+    user-select: none;
+}
+.changelog-date-header:hover {
+    background: var(--bg-changelog-date-hover);
+}
+.changelog-date-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+/* 日期：灰字弱化，不抢版本号 */
+.changelog-date-text {
+    font-weight: 500;
+    font-size: 14px;
+    color: #94a3b8;
+    letter-spacing: 0.01em;
+}
+body.light-mode .changelog-date-text {
+    color: #64748b;
+}
+/* 版本号：左侧色条 + 等宽字，数字加粗、颜色放淡，无底色、无胶囊 */
+.changelog-version-tag {
+    font-size: 12px;
+    color: #9cc7f5;
+    background: none;
+    border-left: 2px solid rgba(147,197,253,0.5);
+    border-radius: 0;
+    padding: 1px 0 1px 7px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: nowrap;
+}
+body.light-mode .changelog-version-tag {
+    color: #6b9fe0;
+    border-left-color: rgba(107,159,224,0.45);
+}
+/* 版本号之外的说明文字（内测版 / 正式版 / 主题名）：灰色小字，不占胶囊 */
+.changelog-entry-label {
+    font-size: 12px;
+    color: var(--color-text-soft);
+}
+.changelog-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.changelog-detail-btn {
+    font-size: 12px;
+    color: #60a5fa;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.changelog-detail-btn:hover {
+    background: rgba(96,165,250,0.15);
+}
+body.light-mode .changelog-detail-btn {
+    color: #2563eb;
+}
+body.light-mode .changelog-detail-btn:hover {
+    background: rgba(37,99,235,0.1);
+}
+.changelog-details {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(59,130,246,0.05);
+    border-radius: 10px;
+    border-left: 3px solid #3b82f6;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #cbd5e1;
+}
+body.light-mode .changelog-details {
+    background: rgba(37,99,235,0.06);
+    color: #334155;
+}
+.changelog-toggle-icon {
+    font-size: 14px;
+    color: #94a3b8;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+.changelog-toggle-icon.open {
+    transform: rotate(180deg);
+}
+.changelog-body {
+    padding: 0 8px 12px 8px;
+    display: none;
+    animation: fadeSlide 0.2s ease;
+}
+.changelog-body.open {
+    display: block;
+}
+@keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.changelog-body ul {
+    margin: 4px 0 0 0;
+    padding-left: 22px;
+    list-style-type: disc;
+}
+.changelog-body li {
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 2px 0;
+    color: #cbd5e6;
+}
+body.light-mode .changelog-body li {
+    color: #1e293b;
+}
+.changelog-empty {
+    text-align: center;
+    padding: 30px 0;
+    color: #94a3b8;
+    font-size: 14px;
+}
+.changelog-modal .modal-footer {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(100,116,139,0.2);
+    display: flex;
+    justify-content: flex-end;
+}
+body.light-mode .changelog-modal .modal-footer {
+    border-top-color: rgba(0,0,0,0.08);
+}
+.changelog-modal .modal-footer .modal-btn {
+    padding: 6px 24px;
+    font-size: 13px;
+}
+/* ========== 新布局样式 ========== */
+.new-top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    height: 48px;
+    background: rgba(10,15,26,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #2d3a5e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    pointer-events: auto;
+}
+body.light-mode .new-top-bar {
+    background: var(--bg-header);
+    border-bottom-color: rgba(0,0,0,0.08);
+}
+.new-top-bar-left {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.new-top-bar-right {
+    display: flex;
+    align-items: center;
+}
+.top-dropdown-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.top-dropdown-wrapper + .top-dropdown-wrapper::before {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 18px;
+    background: rgba(100,116,139,0.35);
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+body.light-mode .top-dropdown-wrapper + .top-dropdown-wrapper::before {
+    background: rgba(0,0,0,0.12);
+}
+/* 变换模式工具栏 */
+.her-transform-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 6px;
+}
+.her-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: #94a3b8;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    font-family: inherit;
+}
+/* 纯图标按钮（枢轴/位移/缩放/旋转）：收窄内边距，靠图标+悬浮提示表达含义 */
+.her-mode-btn.icon-only {
+    padding: 4px 6px;
+}
+/* 旋转按钮：图标 + 展开箭头（无文字），间距收紧 */
+.her-mode-btn.rot-btn {
+    gap: 3px;
+    padding: 4px 7px;
+}
+.her-mode-btn:hover {
+    color: #e2e8f0;
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.2);
+}
+.her-mode-btn.active {
+    color: #60a5fa;
+    background: rgba(59,130,246,0.15);
+    border-color: rgba(59,130,246,0.35);
+}
+body.light-mode .her-mode-btn {
+    color: #64748b;
+}
+body.light-mode .her-mode-btn:hover {
+    color: #0f172a;
+    background: rgba(59,130,246,0.06);
+}
+body.light-mode .her-mode-btn.active {
+    color: #2563eb;
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.25);
+}
+/* Gizmo 按钮图标：以 Icons/ 下的 SVG 作遮罩，颜色随按钮（currentColor）→ 自动跟随主题/悬浮/激活态 */
+.hmb-icon {
+    display: inline-block;
+    position: relative;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+.hmb-icon[data-icon="pivot"] { -webkit-mask-image: url('../../Icons/pivot.svg'); mask-image: url('../../Icons/pivot.svg'); }
+.hmb-icon[data-icon="move"] { -webkit-mask-image: url('../../Icons/move.svg'); mask-image: url('../../Icons/move.svg'); }
+.hmb-icon[data-icon="scale"] { -webkit-mask-image: url('../../Icons/scale.svg'); mask-image: url('../../Icons/scale.svg'); }
+.hmb-icon[data-icon="snap"] { -webkit-mask-image: url('../../Icons/snap.svg'); mask-image: url('../../Icons/snap.svg'); }
+.hmb-icon[data-icon="snap-edge"] { -webkit-mask-image: url('../../Icons/snap-edge.svg'); mask-image: url('../../Icons/snap-edge.svg'); }
+.hmb-icon[data-icon="snap-pivotpt"] { -webkit-mask-image: url('../../Icons/snap-pivotpt.svg'); mask-image: url('../../Icons/snap-pivotpt.svg'); }
+.hmb-icon[data-icon="snap-len"] { -webkit-mask-image: url('../../Icons/snap-len.svg'); mask-image: url('../../Icons/snap-len.svg'); }
+.hmb-icon[data-icon="snap-ang"] { -webkit-mask-image: url('../../Icons/snap-ang.svg'); mask-image: url('../../Icons/snap-ang.svg'); }
+.hmb-icon[data-icon="mirror"] { -webkit-mask-image: url('../../Icons/mirror.svg'); mask-image: url('../../Icons/mirror.svg'); }
+/* 旋转图标是「双色」的（颜色取自各模式 Gizmo 圆环的 x 环 / z 环配色），
+   因此不走遮罩上色，而是直接以彩色 SVG 作背景图呈现，每个模式一种配色。
+   注意：旋转循环箭头的朝向（含所需的 90° 转角）已烘焙在各自 SVG 内部
+   （文件坐标 = 屏幕坐标），这里不再做任何 transform，以免「文件里的左下角」
+   与「屏幕上的左下角」错位。
+   「模型旋转 / 全局模型旋转」两个图标同样满幅显示（contain），但其 SVG 内部
+   已把整组箭头缩放 0.74 并平移到右上（x≈48%~96%、y≈8%~55%），左下角天然留白
+   给勾线方块徽标 —— 方块与箭头是「并排」关系，不叠在一起。 */
+.hmb-icon[data-icon="rotate"],
+.hmb-icon[data-icon="rotate-local"],
+.hmb-icon[data-icon="rotate-center"],
+.hmb-icon[data-icon="rotate-global"],
+.hmb-icon[data-icon="rotate-global-center"] {
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+.hmb-icon[data-icon="rotate"] { background-image: url('../../Icons/rotate.svg'); }
+.hmb-icon[data-icon="rotate-local"] { background-image: url('../../Icons/rotate-local.svg'); }
+.hmb-icon[data-icon="rotate-center"] { background-image: url('../../Icons/rotate-center.svg'); }
+.hmb-icon[data-icon="rotate-global"] { background-image: url('../../Icons/rotate-global.svg'); }
+.hmb-icon[data-icon="rotate-global-center"] { background-image: url('../../Icons/rotate-global-center.svg'); }
+/* 「模型旋转 / 全局模型旋转」左下角的勾线方块徽标（正六边形等轴测投影，见 Icons/cube.svg）。
+   颜色不取箭头配色、也不取 currentColor，而是跟随主题取纯白 / 纯黑：
+   深色主题白描线、浅色主题黑描线。用伪元素 + mask 上色，无需任何额外 DOM，
+   故按钮与下拉列表里的图标自动同时生效。
+   尺寸：52% 见方的正方形盒（16px 图标下约 8.3px），方块在盒内上下正好占满，
+   故实际六边形高约 7px、宽约 6.1px（高/宽 = 1.155，真等轴测比例）。
+   位置：贴左下角，与右上方的循环箭头构成斜向并排、互不重叠。 */
+.hmb-icon::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 52%;
+    height: 52%;
+    display: none;
+    background-color: #ffffff;
+    -webkit-mask-image: url('../../Icons/cube.svg');
+    mask-image: url('../../Icons/cube.svg');
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+.hmb-icon[data-icon="rotate-center"]::after,
+.hmb-icon[data-icon="rotate-global-center"]::after { display: block; }
+body.light-mode .hmb-icon::after { background-color: #0f172a; }
+.her-mode-btn .hmb-caret { font-size: 9px; line-height: 1; opacity: 0.6; margin-left: -1px; }
+/* 顶点捕捉按钮右侧的「对齐方式」功能图标（替代原来的文字）：
+   紫色遮罩图标；左上角用 clip-path 切掉一块三角，一条短白色斜线压在这道裁口上。
+   白线带投影、图标本体也带轻投影 → 读作「白线压在图标上、截断了它的左上角」，
+   与左侧本就斜向的顶点捕捉图标连成同一条斜线视觉。
+   ★ 图标本体画在 18×18（外扩 1px）的盒里：16px 居中图标的左上角是空白的，
+     白线会看起来"悬空"；外扩后描边探进裁口，白线才真正压在图形上。 */
+.hmb-fn-wrap {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    --vtx-fn: #a855f7;
+    /* 白斜线颜色：不跟按钮文字色（深色主题下是 #94a3b8 的灰蓝，偏灰不锐利），
+       固定取近白 / 近黑，才读得出「刀切」感 */
+    --vtx-cut: #f1f5f9;
+}
+body.light-mode .hmb-fn-wrap { --vtx-fn: #7c3aed; --vtx-cut: #0f172a; }
+/* 裁口：左上角三角。两条直角边 12px（18px 盒的 66.7%），斜边从左边 1/3 处一直切到上边 1/3 处：
+   切得比原来（8.4px，只擦过图标左上角空白）明显更深，白斜线真正横穿图形本体，才有分割感。 */
+.hmb-fn-icon {
+    position: absolute;
+    inset: -1px;
+    background-color: var(--vtx-fn);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+    filter: drop-shadow(0.7px 1px 1.2px rgba(0,0,0,0.55));
+}
+body.light-mode .hmb-fn-icon { filter: drop-shadow(0.6px 0.9px 1px rgba(15,23,42,0.3)); }
+.hmb-fn-icon[data-fn="base"] { -webkit-mask-image: url('../../Icons/move.svg'); mask-image: url('../../Icons/move.svg'); }
+.hmb-fn-icon[data-fn="pivot"] { -webkit-mask-image: url('../../Icons/pivot.svg'); mask-image: url('../../Icons/pivot.svg'); }
+.hmb-fn-icon[data-fn="edge"] { -webkit-mask-image: url('../../Icons/snap-edge.svg'); mask-image: url('../../Icons/snap-edge.svg'); }
+.hmb-fn-icon[data-fn="pivotpt"] { -webkit-mask-image: url('../../Icons/snap-pivotpt.svg'); mask-image: url('../../Icons/snap-pivotpt.svg'); }
+.hmb-fn-icon[data-fn="len"] { -webkit-mask-image: url('../../Icons/snap-len.svg'); mask-image: url('../../Icons/snap-len.svg'); }
+.hmb-fn-icon[data-fn="ang"] { -webkit-mask-image: url('../../Icons/snap-ang.svg'); mask-image: url('../../Icons/snap-ang.svg'); }
+/* 沿边对齐是双色图：左斜线 + 细箭头紫色（被旋转边），右斜线跟随按钮色（正常白/深色字） */
+.hmb-fn-edge {
+    position: absolute;
+    inset: -1px;
+    display: none;
+    clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+    filter: drop-shadow(0.7px 1px 1.2px rgba(0,0,0,0.55));
+}
+body.light-mode .hmb-fn-edge { filter: drop-shadow(0.6px 0.9px 1px rgba(15,23,42,0.3)); }
+.hmb-fn-edge svg { display: block; width: 100%; height: 100%; }
+.hmb-fn-edge .fn-normal { stroke: currentColor; }
+.hmb-fn-edge .fn-purple { stroke: var(--vtx-fn); }
+.hmb-fn-wrap[data-mode="edge"] .hmb-fn-icon { display: none; }
+.hmb-fn-wrap[data-mode="edge"] .hmb-fn-edge { display: block; }
+/* 白斜线：不再用「旋转矩形 + box-shadow」，改成 45° 硬边渐变。
+   旋转过的矩形会被整层重采样，1.5px 的细线因此发虚；硬边渐变直接由光栅器按像素覆盖绘制，
+   白线与内侧暗边都是刀切般的直边。
+   几何：裁口线 x+y=12（18px 盒）→ 渐变轴上位置 = 12/(2*18) = 33.33%，
+         线厚 1.5px（沿渐变轴 1.5/25.456 ≈ 5.9%）→ 白带 30.39% ~ 36.28%；
+         白带内侧再跟一条 0.6px 暗带（36.28% ~ 38.64%），读作切口里的阴影/断层。
+         线要细但不能虚：粗细由渐变断点控制，边缘仍是像素级直边。 */
+.hmb-fn-cut {
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    background: linear-gradient(135deg,
+        transparent 0 30.39%,
+        var(--vtx-cut) 30.39% 36.28%,
+        rgba(0, 0, 0, 0.42) 36.28% 38.64%,
+        transparent 38.64% 100%);
+    filter: drop-shadow(0.7px 0.7px 0.25px rgba(0,0,0,0.5));
+}
+body.light-mode .hmb-fn-cut { filter: drop-shadow(0.6px 0.6px 0.25px rgba(15,23,42,0.3)); }
+/* 顶点捕捉下拉里「当前生效」的那一项：蓝字 + 右侧对勾 */
+#vtxSnapDropdown .top-dropdown-item.active { color: #60a5fa; background: rgba(59,130,246,0.12); }
+#vtxSnapDropdown .top-dropdown-item.active::after { content: '✓'; margin-left: auto; padding-left: 10px; font-size: 11px; }
+body.light-mode #vtxSnapDropdown .top-dropdown-item.active { color: #2563eb; background: rgba(37,99,235,0.08); }
+/* 带图标的顶部下拉项：图文横向对齐 */
+.top-dropdown-item.has-icon { display: flex; align-items: center; gap: 8px; }
+.top-dropdown-item.has-icon .hmb-icon { width: 15px; height: 15px; opacity: 0.85; }
+.top-toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(100,116,139,0.25);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+body.light-mode .top-toolbar-divider {
+    background: rgba(0,0,0,0.08);
+}
+/* 关键帧模式：贴在屏幕右侧的「编辑/动画」两个互斥按钮（简约分段控件：单竖线分隔 + 选中蓝底）
+   ★ 该控件只应在「新操作模式」下出现；旧操作模式由 body.new-layout-active 控制隐藏，
+     避免和旧模式顶栏的全屏/撤销/重做按钮并存。 */
+#kfModeGroup { display: none; }
+body.new-layout-active #kfModeGroup { display: inline-flex; }
+.kf-mode-group {
+    position: fixed; right: 12px; top: 12px; z-index: 1000;
+    align-items: stretch; gap: 0;
+    padding: 3px; border-radius: 7px;
+    background: rgba(15,23,42,0.72); border: 1px solid rgba(59,130,246,0.22);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35); backdrop-filter: blur(6px);
+}
+body.light-mode .kf-mode-group {
+    background: rgba(255,255,255,0.82); border-color: rgba(59,130,246,0.3);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.kf-mode-btn {
+    position: relative;
+    padding: 5px 13px; font-size: 11px; cursor: pointer;
+    border: none; border-radius: 5px;
+    background: transparent; color: #94a3b8;
+    font-family: inherit; white-space: nowrap; transition: all 0.15s ease;
+}
+/* 仅第二个按钮左侧画一条竖线，作为两按钮间的分隔（单线，告别每个按钮各自的描边框） */
+.kf-mode-btn + .kf-mode-btn::before {
+    content: ""; position: absolute; left: 0; top: 18%; height: 64%; width: 1px;
+    background: rgba(148,163,184,0.4);
+}
+body.light-mode .kf-mode-btn + .kf-mode-btn::before { background: rgba(100,116,139,0.4); }
+.kf-mode-btn:hover { color: #e2e8f0; background: rgba(59,130,246,0.1); }
+.kf-mode-btn.active { color: #ffffff; background: #3b82f6; }   /* 选中态：蓝色底色 */
+body.light-mode .kf-mode-btn { color: #64748b; }
+body.light-mode .kf-mode-btn:hover { color: #0f172a; background: rgba(59,130,246,0.08); }
+body.light-mode .kf-mode-btn.active { color: #ffffff; background: #2563eb; }
+/* ===== 轴向视角按钮（设置 - 摄像机） =====
+   正前 / 正后 / 正左 / 正右 / 正俯 五个等分小按钮：灰底描边、小圆角，浅色模式换成浅灰底深字。
+   与既有设置项一致——无胶囊、无 emoji、只用撞色分区区分层次。 */
+.axis-view-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+}
+.axis-view-btn {
+    flex: 1 1 0;
+    min-width: 44px;
+    padding: 6px 4px;
+    font-size: 12px;
+    font-family: inherit;
+    color: #cbd5e1;
+    background: rgba(100,116,139,0.16);
+    border: 1px solid rgba(100,116,139,0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.axis-view-btn:hover {
+    color: #e2e8f0;
+    background: rgba(59,130,246,0.16);
+    border-color: rgba(59,130,246,0.35);
+}
+.axis-view-btn:active {
+    background: rgba(59,130,246,0.26);
+}
+body.light-mode .axis-view-btn {
+    color: #0f172a;
+    background: #e9eef5;
+    border-color: #c9d4e2;
+}
+body.light-mode .axis-view-btn:hover {
+    background: #dbe6f5;
+    border-color: #93b4d8;
+}
+
