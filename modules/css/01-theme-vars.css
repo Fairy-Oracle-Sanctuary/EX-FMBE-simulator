@@ -229,11 +229,13 @@ body.light-mode {
     --bg-group-header: var(--lm-alt, #e8eef5);
     --bg-group-header-border: 1px solid var(--lm-border, #cdd9e6);
     --bg-command-card: var(--lm-panel, #f2f6fb);
-    --bg-range-track: var(--lm-border, #cdd9e6);
+    /* ★ 控件边框/轨道：脱离随「浅色灰度」滑块变浅的 --lm-border，改用固定浅色灰，
+       保证任何灰度档下复选框边框、滑杆轨道都清晰可见（55% 档时 --lm-border≈rgb(200,200,205) 与面板底几乎同色） */
+    --bg-range-track: #a6b2c4;
     --bg-range-item: var(--lm-alt, #e6ecf4);
     --bg-scroll-track: var(--lm-alt, #e6ecf4);
     --bg-checkbox-bg: var(--lm-card, rgba(240, 245, 251, 0.95));
-    --bg-checkbox-border: var(--lm-border, #94a6ba);
+    --bg-checkbox-border: #7c8aa0;
     --bg-block-id-badge: var(--lm-alt, #e3ebf4);
     --bg-block-id-badge-border: 1px solid var(--lm-border, #cdd9e6);
     --color-input-bg: var(--lm-input, #eef3f9);
