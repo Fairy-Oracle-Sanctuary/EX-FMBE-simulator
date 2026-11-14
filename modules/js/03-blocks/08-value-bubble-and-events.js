@@ -331,7 +331,7 @@ function renderVariablesForBlock(block) {
     //     · 末端块：v.ik_tx / v.ik_ty / v.ik_tz（目标位置）、v.ikShape（造型 −1~1）
     //     · 各关节块：v.ikW（该关节活动权重 0~1）
     //   内部量（v.ik_g*/rx0/wz/arc/w*/haspar/par*/shape/p*/db*/…) 仍留在折叠的 v.ik_ 组里。
-    const IK_KNOB_VARS = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ikShape', 'v.ikW'];
+    const IK_KNOB_VARS = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ikMode', 'v.ikShape', 'v.ikWave', 'v.ikW'];
     const ikKnobItems = [];
     {
         const rest = [];
@@ -389,6 +389,21 @@ function renderVariablesForBlock(block) {
         const kOpen = expandedVars.has('ik_knobs') || !expandedVars.has('ik_knobs_closed');
         knobHtml = `<div class="var-group" data-group="ik_knobs"><div class="group-header" data-group-toggle="ik_knobs"><span class="group-title">🎛 IK 参数</span><span class="group-toggle">${kOpen ? '▼' : '▶'}</span></div><div class="group-content" data-group-content="ik_knobs" style="${kOpen ? 'display:block' : 'display:none'}">`;
         ikKnobItems.forEach(v => { knobHtml += renderVarCard(v, block.id); });
+        // ★2026-11-14 IK 现场读数：D（目标距离）/ 链长 / 是否够得着。
+        //   用户问「明明够得着为什么是一根棍子」，这里直接给答案，不用再猜。
+        try {
+            const _g = n => { const d = block.scope.vars.get(n); const v = d ? Number(d.value) : NaN; return isFinite(v) ? v : null; };
+            const D = _g('v.ik_D'), L = _g('v.ik_lxy'), str = _g('v.ik_str'), bs = _g('v.ik_bs');
+            if (D != null && L != null) {
+                const over = D > L + 1e-3;
+                const col = over ? '#dc2626' : '#16a34a';
+                knobHtml += `<div class="ik-live" style="margin:4px 0 6px;padding:5px 8px;border-radius:6px;background:rgba(148,163,184,.14);font-size:11px;line-height:1.6;color:#334155;">`
+                    + `<b style="color:${col};">${over ? '够不着' : '可弯曲'}</b> · 目标距离 <b>${D.toFixed(2)}</b> ／ 链长 <b>${L.toFixed(2)}</b>`
+                    + (bs != null ? ` · 圆弧种子 ${bs.toFixed(1)}°` : '')
+                    + (str != null ? ` · str=${str}` : '')
+                    + `</div>`;
+            }
+        } catch (_) { }
         knobHtml += `</div></div>`;
     }
     let leftHtml = knobHtml + globalHtml + customHtml;
