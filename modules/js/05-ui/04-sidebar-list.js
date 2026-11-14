@@ -511,6 +511,15 @@ function renderSideBlockList() {
     // 生成单个方块条目 HTML（供文件夹内与未分组共用）
     // depth: 在骨骼树中的层级缩进（0 = 根，子骨骼逐层右移）
     // inFolder: 是否位于文件夹内（决定要不要 side-block-group-item 的蓝色竖线）
+    // ★★2026-11-14 深骨骼链缩进压缩：20 节 IK 长链按 depth*16 会累加到 320px，
+    //   把方块名挤成换行/裁掉（用户截图「缩进跑到屏幕外」）。改为分段递减 + 总缩进封顶：
+    //   前 6 层仍 16px/层（层级清晰），之后 4px/层，总缩进最多 132px。
+    const boneIndentPx = d => {
+        if (!(d > 0)) return 0;
+        const head = Math.min(d, 6) * 16;                    // 0..96
+        const deep = Math.max(0, Math.min(d - 6, 9)) * 4;    // 0..36
+        return Math.min(head + deep, 132);
+    };
     const cubeItemHtml = (b, depth = 0, inFolder = false) => {
         const isSel = selectedBlocksSet.has(b);
         // ★ Molang 编辑模式方块不显示紫色关键帧角标（它整体退出关键帧系统，不是关键帧方块）
@@ -526,7 +535,13 @@ function renderSideBlockList() {
         const isBackbone = !!(_f && (_f._backbone === b.id || isBoneRoot(b)));
         const nameStyle = isBackbone ? ' style="font-style:italic;font-weight:600;"' : '';
         const folderClass = inFolder ? ' side-block-group-item' : '';
-        const indentStyle = depth > 0 ? ` style="margin-left:${depth * 16}px;"` : '';
+        // ★★2026-11-14 缩进自适应：动作按钮（眼睛/锁/复制/绑定/删除）即使 opacity:0 也恒占 ~132px，
+        //   实测链上条目按钮组宽 ~164px（复制/绑定/删除 全是文字按钮）+ 盒内边距 24px + 名字 ~78px：
+        //   所以缩进上限按「面板宽 − 284px」算：
+        //     · 侧边 300px 窄栏 ⇒ 缩进=0（宁可不显示层级，也绝不裁掉方块名；加宽面板即恢复层级）
+        //     · 底部/宽栏 1400px ⇒ 回到分段上限 132px（层级完整）
+        //   max(0px,…) 防止超窄面板算出负 margin 把条目推到左边。
+        const indentStyle = depth > 0 ? ` style="margin-left:max(0px,min(${boneIndentPx(depth)}px,calc(100% - 284px)));"` : '';
         // 单项隐藏：整行降透明度 + 名字划线（仅方块自身 hidden；文件夹隐藏时行本身不变灰）
         const hiddenClass = b.hidden ? ' side-block-hidden' : '';
         // ★2026-10-04 方块锁定：只禁止选中、仍显示。名字前挂一把小锁（svg 不是 span，不会被隐藏划线规则命中）。
@@ -596,7 +611,8 @@ function renderSideBlockList() {
         const groupBlocks = groupedBlocks[folderName] || [];
         const expandedClass = group.expanded ? '' : 'collapsed';
         const isFolderSelected = (selectedFolder === folderName);
-        const treePad = depth > 0 ? ` style="padding-left:${depth * 12}px;"` : '';
+        // 文件夹层级同样封顶（深嵌套文件夹不要把内容挤出侧栏）
+        const treePad = depth > 0 ? ` style="padding-left:${Math.min(depth * 12, 84)}px;"` : '';
         html += `<div class="side-block-tree-node"${treePad}>`;
         html += `<div class="side-block-group-header${isFolderSelected ? ' ' + _SIDE_SEL_TOKEN : ''}" draggable="true" data-group-name="${escapeHtml(group.name)}">
             <button type="button" class="side-block-group-toggle" draggable="false" data-group="${escapeHtml(group.name)}" title="折叠/展开">
