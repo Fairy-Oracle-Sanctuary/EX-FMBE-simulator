@@ -1463,7 +1463,10 @@ function ikRepublishGlobals(block) {
     if (!block || !Array.isArray(block._ikPubList)) return;
     for (const it of block._ikPubList) {
         if (!it || typeof it[0] !== 'string') continue;
-        ensureGlobalVar(it[0], it[1], block.id);
+        // ★走 ensureIkGlobalVar：_ikPubList 里的键全是 IK 自己的输出（t.<末端>_ik_* / t.<点>_px / t.<关节>_ikW），
+        //   所有权必须唯一属于本块。用会「保留已存在项」的 ensureGlobalVar 会让导入工程里
+        //   被链首初值守卫占位的常量一直占着，末端块发布的值永远没人读（根关节恒 0）。
+        ensureIkGlobalVar(it[0], it[1], block.id);
     }
 }
 // ★★通用铁律（2026-11-08）：一个块「发布」的全局（globalVars 里 sourceBlockId = 本块）必须同时出现在
@@ -1509,6 +1512,26 @@ function ensureGlobalVar(key, expr, sourceBlockId) {
     }
     // 已存在的全局变量（可能已被用户自定义，例如把 v.xrot 改为 v.rotatex）一律保留，
     // 不再用预设 expr 覆盖——否则对同一父级再次绑定时会把用户修改清空，导致骨骼绑定"失效"。
+}
+// ★★★2026-11-14【IK 重建后「根关节恒 0 / 整链形状不对」的根因 · 修】
+//   IK 的输出全局（t.<末端>_ik_jrz、t.<末端>_ik_b{k}、t.<末端>_ikShape、t.<关节>_ikW）必须**唯一**
+//   由对应方块实时发布。但导入的老工程里，导出侧在链首块写过一次性初值守卫：
+//       v.fmbe_init==0?(t.Cube10_ik_jrx=0;t.Cube10_ik_jry=0;t.Cube10_ik_jrz=0;);v.fmbe_init=1;
+//   导入器于是把 `t.Cube10_ik_jrz` 登记成「Cube11 发布的常量 0」。
+//   `ensureGlobalVar` 见到 key 已存在就不覆盖（本意是保护用户改过的骨骼全局）⇒ 重建后
+//   末端块写 v.ik_jrz 没有任何人读，根关节读到的永远是 0 ⇒ 整条链少了 R1 那次整体朝向，
+//   末端偏一大截、关节角乱成锯齿（实测 12 节链末端偏 2.7，形状是正负交替的麻花）。
+//   这里对「IK 自己的输出全局」强制纠正所有权：owner 不对就把 sourceBlockId/expr 改回来，
+//   并保留用户手调过的默认值（v.ikShape 之类）。
+function ensureIkGlobalVar(key, expr, sourceBlockId) {
+    const cur = globalVars.get(key);
+    if (!cur) { ensureGlobalVar(key, expr, sourceBlockId); return; }
+    if (cur.sourceBlockId === sourceBlockId && cur.def && cur.def.expr === expr) return;
+    const keepVal = (cur.def && typeof cur.def.value === 'number') ? cur.def.value : null;
+    if (!cur.def) cur.def = new VarDef(expr, 0, -10000, 10000, 0.01);
+    cur.def.expr = expr;
+    if (keepVal !== null) cur.def.value = keepVal;
+    cur.sourceBlockId = sourceBlockId;
 }
 function escapeHtml(str) { return str.replace(/[&<>"]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : '&quot;'); }
 // ==================== 通用科技泡泡管线 showTechBubble ====================
@@ -1621,6 +1644,20 @@ function savePrefixSuffix() {
 //   · 末节前一块（chain[N-2]）只用 bone_rotz 单轴弯曲，c1 用两轴（欧拉反解 jrx/jry/jrz）。
 //   · 输入只有一个方块的三个末端坐标 v.ik_tx/ty/tz（建在 c1 上，可手改）。
 const IK_EPS = 0.000001;
+// ★★★2026-11-14【「形状不再是均匀圆弧、关节角正负交替」的第二根因 · 修】
+//   旧判据：任一段方向与首段夹角 > **0.5°** 就算「用户摆过的造型」⇒ v.ik_arc=0 ⇒ 种子取 0。
+//   实际上任何手工摆出来的链都有 2~4° 的抖动（用户这条 12 节链最大 3.9°），于是永远走不进
+//   圆弧种子分支：DLS 从「近直链」这个退化点起步，虽然能把末端收到目标（pN=gg），但解出来的
+//   关节角是 -0.6/-49/-51/-34/+6/+22/+24/+22/0/-19/-30 这种锯齿麻花 —— 用户视角
+//   「现在的 IK 做不出以前那种形状了」。
+//   12° 以内视为「基本共线 ⇒ 用等角圆弧种子」；超过 12° 才认定是用户有意摆的造型（保持原样）。
+const IK_STRAIGHT_TOL = 12;
+// ★2026-11-14【mode=0 直棒兜底的**严格**阈值】
+//   mode=0（保形）种子 b=0；若绑定姿态是**数学上真共线**（≈0°），DLS 的 Jacobian 只张成一维
+//   ⇒ 解不出径向缩短 ⇒ 整链转成一根直棒指目标、够不到（用户报「v.ikMode=0 咋出现直直棒」）。
+//   这个兜底只能在**真退化**时生效，绝不能复用 12°（否则 2~4° 的手摆抖动链也会被当直链，
+//   把「保形」的个性形状抹成圆弧 —— 实测 sd 20.31 → 0 = 回归）。
+const IK_DEGENERATE_TOL = 0.5;
 // 共用求解动画 ik_solve_N 的 DLS 迭代轮数：写死是为了让「同一段数」的链正文逐字一致（才能真正共用）
 const IK_SOLVE_ITERS = 20;
 function ikNum(v) { return String(_r4(Number(v) || 0)); }
@@ -2185,17 +2222,40 @@ function ikBuildSolveCcd(chain, parent, tipTarget, opts) {
     //   · 绑定姿态本来就是弯的（任意造型）⇒ 关节角全 0 = 原样保留用户摆好的形状，只求末端对准；
     //   · 绑定姿态完全拉直（所有段共线）⇒ DLS 在共线构型是退化点（一阶解不出径向），
     //     用等角圆弧 δ 打破退化：二分求 |W(δ)|=D，符号按 +nu 朝上 ⇒ 从「均匀向上拱」起步。
-    const straightBind = (() => {
-        for (let k = 1; k < N; k++) if (Math.abs(dBase[k]) > 0.5) return false;
-        return true;
+    // ★★★2026-11-14【「明明够得着却是一根棍子」的根因】
+    //   旧实现用 dBase（相邻段方向角之差）判共线。末端段的 g 若长度为 0（tipLen 算成 0），
+    //   atan2(0,0) 被当成 0°，于是 dBase = 90°-0° = -90° ⇒ 误判「非共线」⇒ v.ik_arc=0 ⇒ 种子取 0。
+    //   而种子 0 正好是**共线退化点**：直链绕关节一转，末端只会往横向走（一阶 rx=0）⇒ DLS 解不出径向位移
+    //   ⇒ 永远停在直链 ⇒ 就是用户看到的「一根棍子」。
+    //   现在改成：跳过零长段，用单位方向向量的夹角判共线（不再依赖角度差）。
+    // 绑定姿态「最大偏离首段方向」的夹角（度）。两个用途，阈值不同：
+    //   · straightBind   ≤ IK_STRAIGHT_TOL(12°)  = 基本共线 ⇒ 默认走圆弧种子（手工链有 2~4° 抖动）
+    //   · degenerateBind ≤ IK_DEGENERATE_TOL(0.5°)= 数学上真退化 ⇒ mode=0 也必须退回圆弧（否则直棒）
+    const bindWorstDeg = (() => {
+        let ref = null, worst = 0;
+        for (let k = 0; k < N; k++) {
+            const v = vecs[k];
+            if (!v) continue;
+            const L = Math.hypot(v[0], v[1]);
+            if (!(L > 1e-9)) continue;                 // 零长段没有方向，不参与判断
+            const d = [v[0] / L, v[1] / L];
+            if (!ref) { ref = d; continue; }
+            const dot = Math.max(-1, Math.min(1, ref[0] * d[0] + ref[1] * d[1]));
+            worst = Math.max(worst, Math.acos(dot) * 180 / Math.PI);
+        }
+        return worst;
     })();
+    const straightBind = bindWorstDeg <= IK_STRAIGHT_TOL;
+    const degenerateBind = bindWorstDeg <= IK_DEGENERATE_TOL;
     // 末端链位置前向传播（p0→pN）：种子、DLS 每轮、以及最终位置都用它，避免重复展开
     const emitForward = (useB) => {
         st('v.ik_p0x=0;');
         st('v.ik_p0y=0;');
         st('v.ik_c=0;');
         for (let k = 0; k < N; k++) {
-            if (k > 0) st(useB ? `v.ik_c=v.ik_c+v.ik_b${k};` : 'v.ik_c=v.ik_c+v.ik_bs;');
+            // useB=false（二分）：用「真实种子方向」sd_k 求弦长 ⇒ wav=0 时 sd≡1，与旧版逐字一致；
+            //   wav=±1 时 sd=±W（S 形），二分直接给出「S 弦长 = D」的 δ，DLS 才不会把 S 抹平。
+            if (k > 0) st(useB ? `v.ik_c=v.ik_c+v.ik_b${k};` : `v.ik_c=v.ik_c+v.ik_bs*v.ik_sd${k};`);
             st(posX(k));
             st(posY(k));
         }
@@ -2205,6 +2265,20 @@ function ikBuildSolveCcd(chain, parent, tipTarget, opts) {
     st('v.ik_sgn=v.ik_nuy>=0?1:0-1;');
     st('v.ik_loa=0;');
     st(`v.ik_hib=${ikNum(dmax)}*v.ik_sgn;`);
+    // ★★2026-11-14【S 形多弧：带符号波形种子 v.ikWave】
+    //   现有 v.ik_sh{k} 恒 ≥0 ⇒ 所有关节同号 ⇒ 只能出 C/U 单弧，**结构上出不了 S**。
+    //   这里给每个关节一条「根 +1 → 末端 −1」的线性带符号波形，让曲率沿链反号 ⇒ 真 S 形多弧。
+    //   ★关键：sd_k 必须参与【二分求 δ】，否则二分按 C 弧算出「能到 D」的 δ，而 S 弦更短
+    //     ⇒ DLS 为够到目标会把 S 重新抹平（实测 b 全正、flips=0）。
+    //   · wav = 0  ⇒ sd_k ≡ 1 ⇒ 二分与种子都与旧版逐字一致（零回归）
+    //   · wav = ±1 ⇒ sd_k = ±W_k ⇒ 纯 S 种子，且二分给的是「S 弦长 = D」的 δ
+    //   · sd 不乘 gw/sh：二分保持旧口径；实际种子 b_k = bs·sh_k·sd_k 仍受权重约束（gw=0 ⇒ 0）
+    st('v.ik_wav=math.max(0-1,math.min(1,v.ik_wave));');
+    for (let k = 1; k < N; k++) {
+        const W = (N > 2) ? (1 - 2 * (k - 1) / (N - 1)) : 0;   // 根 +1 → 末端 −1
+        const wLit = W < 0 ? '0' + ikNum(W) : ikNum(W);
+        st(`v.ik_sd${k}=(1-math.abs(v.ik_wav))+v.ik_wav*(${wLit});`);
+    }
     // ★单调性能：只有「绑定姿态共线」才需要圆弧种子；否则整段二分白跑（20×22 条语句/帧）
     // ★★★【2026-11-10 语法修正 · 真机 unknown token 报错根因】
     //   Molang **没有 `if(cond){…}` 语句**！官方流程控制只有两种写法：
@@ -2213,7 +2287,12 @@ function ikBuildSolveCcd(chain, parent, tipTarget, opts) {
     //   以前写成 `if(v.ik_arc){ … };` 只在**本项目的宽松解释器**里跑得通；真机解析到 `if` 就抛
     //   `Error: unknown token: if(v.ik_arc){ …` ⇒ 整段求解程序作废、关节角恒 0 ⇒ 触手散架。
     //   凡是往导出正文里写条件语句，一律用 `(cond)?{` … `};`。
-    st('(v.ik_arc)?{');
+    // ★★2026-11-14【v.ikMode=0 + 直链 = 一根直棒】
+    //   保形路线种子 b=0（保留绑定姿态）；若绑定姿态本来就是共线直链 ⇒ 没有「形」可保，
+    //   而 DLS 在完全共线构型是退化点（一阶解不出径向缩短）⇒ 只会整链转成直棒指向目标、够不到。
+    //   这里用输入 v.ik_straightb（= 绑定姿态是否共线，链自己的常量）做兜底：
+    //   直链时即使 mode=0 也走圆弧种子（不然必是一根棍子）；非直链 mode=0 仍原样保形（零回归）。
+    st('(v.ik_arc+v.ik_straightb>0)?{');
     st('loop(20,{');
     st('v.ik_bs=(v.ik_loa+v.ik_hib)*0.5;');
     // 二分求「等角圆弧」弦长：直接用同一套前向传播，末尾 pN 就是弦向量 W
@@ -2224,7 +2303,7 @@ function ikBuildSolveCcd(chain, parent, tipTarget, opts) {
     st('v.ik_hib=v.ik_gt?v.ik_hib:v.ik_bs;');
     st('});');
     st('};');
-    st('v.ik_bs=v.ik_arc?v.ik_bs:0;');
+    st('v.ik_bs=(v.ik_arc+v.ik_straightb)>0?v.ik_bs:0;');
     // 权重变量（夹到 [0,1]）：0 ⇒ DLS 给该关节的 Δb 恒为 0 = 完全不活动
     for (let k = 1; k < N; k++) st(`v.ik_gw${k}=math.max(0,math.min(1,v.ik_w${k}));`);
     // ★★2026-11-10 造型旋钮 v.ik_shape（末端块上的普通变量 v.ikShape，-1..1）
@@ -2242,7 +2321,11 @@ function ikBuildSolveCcd(chain, parent, tipTarget, opts) {
         const sLit = S < 0 ? '0' + ikNum(S) : ikNum(S);
         st(`v.ik_sh${k}=v.ik_gw${k}*(1+v.ik_shp*(${sLit}));`);
     }
-    for (let k = 1; k < N; k++) st(`v.ik_b${k}=v.ik_bs*v.ik_sh${k};`);
+    // ★★2026-11-14 S 形多弧：实际种子 = bs·sh_k·sd_k
+    //   （sd 在二分前已算好，参与 δ 求解；wav=0 时 sd≡1 ⇒ 与旧版逐字一致，零回归）
+    for (let k = 1; k < N; k++) {
+        st(`v.ik_b${k}=v.ik_bs*v.ik_sh${k}*v.ik_sd${k};`);
+    }
     // b=0 / 圆弧种子对应的初始链位置（DLS 第一轮用）
     emitForward(true);
     st(`v.ik_wl2=math.max(${IK_EPS},math.sqrt(v.ik_p${N}x*v.ik_p${N}x+v.ik_p${N}y*v.ik_p${N}y));`);
@@ -2351,10 +2434,23 @@ function ikBuildSolveCcd(chain, parent, tipTarget, opts) {
     }
     addIn('v.ik_wz', ikNum(wz));
     // wz2 / lxy / wx / wy / dmx / db_k 全部由正文从 g_k 推导，不再逐块写进 base（见上方 ★精简）
-    addIn('v.ik_arc', straightBind ? '1' : '0');
+    // ★★2026-11-14【第二条 IK 路线：保形 / 圆弧 由用户切】
+    //   以前 `v.ik_arc` 是**绑定时烘死的常量**（straightBind 判定），一旦绑完就再也改不了：
+    //     · 1 = 等角圆弧种子 ⇒ 均匀圆弧（触手/尾巴/藤蔓，稳定、可预测）
+    //     · 0 = 保留绑定瞬间手摆的造型 ⇒ 只做最小改动去够目标（有骨感/有个性，但近直链会退化）
+    //   现在改成读末端块上的普通变量 v.ikMode（经 t.<tip>_ikMode 全局），
+    //   ⇒ 同一条链可以在变量面板里随时切换两种"解法"，而且两种链共用同一份 ik_solve_N 正文
+    //     （因为差别只在输入），所以**混绑天然成立**：每条链各自带一个 v.ikMode。
+    addIn('v.ik_arc', `t.${safeTip}_ikMode`);
     // ★2026-11-10 造型旋钮：整条链一个数（末端块的 v.ikShape 发布成 t.<tip>_ikShape）。
     //   缺省 '0' ⇒ 正圆；改它就能把弯折往根部/末端偏，做出非圆弧的触手形状。
     addIn('v.ik_shape', (typeof opt.shapeExpr === 'string' && opt.shapeExpr) ? opt.shapeExpr : '0');
+    // ★★2026-11-14 S 形多弧旋钮（整条链一个数）：末端块 v.ikWave → t.<tip>_ikWave。
+    //   与 v.ikShape 同一条通路（普通变量 + 全局发布）⇒ 面板可改、导出/导入不丢、游戏里也能调。
+    addIn('v.ik_wave', (typeof opt.waveExpr === 'string' && opt.waveExpr) ? opt.waveExpr : '0');
+    // ★绑定姿态是否共线（链自己的常量）：mode=0 时若为直链，没有「形」可保 ⇒ 退回圆弧种子，
+    //   否则 DLS 在共线退化点解不动，只会得到一根直棒（见上方 ④ 的说明）。
+    addIn('v.ik_straightb', degenerateBind ? '1' : '0');
     for (let k = 1; k < N; k++) addIn(`v.ik_w${k}`, wExpr[k]);
     addIn('v.ik_haspar', parent ? '1' : '0');
     addIn('v.ik_parx', parent ? `t.${safePar}_xrot` : '0');
@@ -2362,7 +2458,7 @@ function ikBuildSolveCcd(chain, parent, tipTarget, opts) {
     addIn('v.ik_parz', parent ? `t.${safePar}_zrot` : '0');
     const publishText = ['ik_jrx', 'ik_jry', 'ik_jrz'].map(k => `t.${safeTip}_${k}=v.${k};`).join(' ')
         + ' ' + Array.from({ length: N - 1 }, (_x, i) => `t.${safeTip}_ik_b${i + 1}=v.ik_b${i + 1};`).join(' ');
-    return { multiJoint: true, N, tipLen, vecs, body: S.join(' '), inputs, publishText, aVar: 'v.ik_b' + (N - 1) };
+    return { multiJoint: true, N, tipLen, vecs, body: S.join(' '), inputs, publishText, aVar: 'v.ik_b' + (N - 1), arcDefault: straightBind ? 1 : 0 };
 }
 // 多关节末端块的普通变量基线（把上一轮 IK 语句/变量剥掉，否则 loop 二分无法用普通表达式重建）
 function ikBaselineOf(tip) {
@@ -2583,6 +2679,12 @@ function ikClearChain(list) {
         // 造型旋钮的全局（t.<tip>_ikShape）也随链一起清掉；v.ikShape 本身保留（用户设置不丢）
         const ikShapeKey = `${boneSafeId(b.id)}_ikShape`;
         if (globalVars.has(ikShapeKey)) globalVars.delete(ikShapeKey);
+        // 路线开关的全局（t.<tip>_ikMode）同理
+        const ikModeKey = `${boneSafeId(b.id)}_ikMode`;
+        if (globalVars.has(ikModeKey)) globalVars.delete(ikModeKey);
+        // S 形多弧旋钮的全局（t.<tip>_ikWave）同理；v.ikWave 本身保留（用户设置不丢）
+        const ikWaveKey = `${boneSafeId(b.id)}_ikWave`;
+        if (globalVars.has(ikWaveKey)) globalVars.delete(ikWaveKey);
         delete b._ikRole; delete b._ikChain; delete b._ikVars; delete b._ikPublish; delete b._ikAnchorId; delete b._ikPubList;
         delete b._ikMulti;
         // 多关节末端块是 molang 接管态：v.ik_* 已删，必须按剩余变量重建 program，
@@ -2674,7 +2776,7 @@ function ikPatchChainProgram(b) {
     // ★2026-11-11 用户：「可调的变量写在上面」= **molang 编辑器正文里**也要置顶。
     //   ① 先把正文前半段里遗留的「旋钮赋值」删掉（例如旧节数时写的 v.ik_ty=5.961），
     //      保证全文只有一个地方能改它们；② 追加段内部按「旋钮 → 骨骼跟随输入 → 几何量」排列。
-    const IK_KNOB_NAMES = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ik_shape'];
+    const IK_KNOB_NAMES = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ikMode', 'v.ik_shape', 'v.ik_wave'];
     IK_KNOB_NAMES.forEach(n => {
         const re = new RegExp('\\s*' + n.replace('.', '\\.') + '\\s*=[^;]*;', 'g');
         prog = prog.replace(re, ' ');
@@ -2682,7 +2784,7 @@ function ikPatchChainProgram(b) {
     // ②-b 把正文前半段里「求解层的派生量」赋值也清掉（旧补丁曾把 v.ik_lxy / v.ik_bs / v.ik_str /
     //   v.ik_M02 / v.ik_jr* 这些**中间结果**当输入抄进 base）。留着它们 = base 先跑一遍半成品求解，
     //   求解层再拿被污染的变量 ⇒ 整链伸直成棍子。
-    prog = prog.replace(/\s*v\.ik_(?:wz2|lxy|db\d+|wx|wy|dx|dy|dz|D|ux|uy|uz|hx|hz|hok|hl|hrx|hrz|dg|n0[xyz]|nl|n[xyz]|nu[xyz]|rr|sgn|loa|hib|bs|gw\d+|shp|sh\d+|b\d+|p\d+[xy]|wl2|gg[xy]|lam|e[xy2]|m\d+|det|dinv|w[012]|rx|ry|dj|str|W[xy]|Wl|w[123][xyz]|dgw|e3[xyz]|w2[xyz]|M\d+|ec|a[xyz]|jr[xyz])\s*=\s*[^;]*;/g, ' ');
+    prog = prog.replace(/\s*v\.ik_(?:wz2|lxy|db\d+|wx|wy|dx|dy|dz|D|ux|uy|uz|hx|hz|hok|hl|hrx|hrz|dg|n0[xyz]|nl|n[xyz]|nu[xyz]|rr|sgn|loa|hib|bs|gw\d+|shp|wav|sd\d+|sh\d+|b\d+|p\d+[xy]|wl2|gg[xy]|lam|e[xy2]|m\d+|det|dinv|w[012]|rx|ry|dj|str|W[xy]|Wl|w[123][xyz]|dgw|e3[xyz]|w2[xyz]|M\d+|ec|a[xyz]|jr[xyz])\s*=\s*[^;]*;/g, ' ');
     const parts = [mark];
     // ① 旋钮（第一屏就能看到、且只有这一处）
     IK_KNOB_NAMES.forEach(n => {
@@ -2700,7 +2802,9 @@ function ikPatchChainProgram(b) {
     //   求解层跑过一次后，`v.ik_lxy / v.ik_bs / v.ik_str / v.ik_p* / v.ik_M* / v.ik_jr*` 这些中间结果
     //   会被 materialize 进 scope.vars，旧实现把它们当输入抄进 base ⇒ base 先跑一遍「半成品求解」，
     //   只要顺序/变量名有一处对不上，求解层拿到的就是 0 ⇒ 整链伸直成一根棍子（用户 2026-11-13 报）。
-    const IK_INPUT_RE = /^v\.ik_(multi|tx|ty|tz|rx0|ry0|rz0|wz|arc|shape|haspar|parx|pary|parz|w\d+|g\d+[xy])$/;
+    // ★2026-11-14：新增 wave（S 形波形）/ straightb（直链兜底）两个输入，必须一起放行，
+    //   否则 molang 编辑模式下这两个变量进不了程序 ⇒ 求解层读到未定义（S 失效 / 直棒）。
+    const IK_INPUT_RE = /^v\.ik_(multi|tx|ty|tz|rx0|ry0|rz0|wz|arc|shape|wave|straightb|haspar|parx|pary|parz|w\d+|g\d+[xy])$/;
     sc.vars.forEach((d, k) => {
         if (!IK_INPUT_RE.test(k)) return;
         if (d && d.expr != null && String(d.expr).trim() !== '') parts.push(`${k}=${d.expr};`);
@@ -2935,7 +3039,15 @@ function ikRebuildChain(chain, anchor, opts) {
     //   而这里的默认目标却写成了末节**枢轴**（piv[N-1]）⇒ 求解器为了让「远端」落到枢轴上，
     //   必须把整条链缩短一整节 ⇒ 每绑一次就多弯一点，逐段追加几次就卷起来/看着炸开。
     //   正解：默认目标 = 末节枢轴 + 末段方向 × tipExtend（= 视觉远端），这样「竖着绑」就应该一直竖着。
-    const _tipExt = (typeof o.tipExtend === 'number') ? o.tipExtend : ikSegLenOf(tip);
+    let _tipExt = (typeof o.tipExtend === 'number') ? o.tipExtend : ikSegLenOf(tip);
+    // ★2026-11-14【v.ik_g{末}=0 的真因】末端块**自身长度算不出来**时（绑定那一瞬间它还不是标准 extend 段，
+    //   例如 scale/extend_scale 还没设好），`tipLen` 会取 0 ⇒ 求解器把「末节远端」当成 0 长：
+    //   可达半径少一整节、末端还会比别人多伸出一截。这里用「上一段的长度」兜底。
+    if (!(_tipExt > 1e-6) && N >= 2) {
+        const _a = piv[N - 2], _b = piv[N - 1];
+        const _L = Math.hypot(_b[0] - _a[0], _b[1] - _a[1], _b[2] - _a[2]);
+        if (_L > 1e-6) _tipExt = _L;
+    }
     let bindTarget = (() => {
         const t = piv[N - 1];
         if (!(N >= 2) || !(_tipExt > 1e-9)) return t.slice();
@@ -2959,9 +3071,9 @@ function ikRebuildChain(chain, anchor, opts) {
                 null, '#ff4d4f');
             addBlock(pb, false, false);
             const pSafe = boneSafeId(pid);
-            ensureGlobalVar(`${pSafe}_px`, 'v.xpos', pb.id);
-            ensureGlobalVar(`${pSafe}_py`, 'v.ypos', pb.id);
-            ensureGlobalVar(`${pSafe}_pz`, 'v.zpos', pb.id);
+            ensureIkGlobalVar(`${pSafe}_px`, 'v.xpos', pb.id);
+            ensureIkGlobalVar(`${pSafe}_py`, 'v.ypos', pb.id);
+            ensureIkGlobalVar(`${pSafe}_pz`, 'v.zpos', pb.id);
             pb._ikVars = [[`t.${pSafe}_px`, 'v.xpos'], [`t.${pSafe}_py`, 'v.ypos'], [`t.${pSafe}_pz`, 'v.zpos']];
             pb._ikPubList = [[`${pSafe}_px`, 'v.xpos'], [`${pSafe}_py`, 'v.ypos'], [`${pSafe}_pz`, 'v.zpos']];
             pb._ikGoalMarker = true;
@@ -3088,7 +3200,10 @@ function ikRebuildChain(chain, anchor, opts) {
     if (useCcd) {
         const safeTipS = boneSafeId(tip.id);
         if (!tip.scope.vars.has('v.ikShape')) tip.scope.addVar('v.ikShape', '0', -1, 1, 0.05);
-        ensureGlobalVar(`${safeTipS}_ikShape`, 'v.ikShape', tip.id);
+        ensureIkGlobalVar(`${safeTipS}_ikShape`, 'v.ikShape', tip.id);
+        // ★★2026-11-14 S 形多弧旋钮（-1..1，默认 0 = 只出 C/U 弧；±1 = 明显 S 形）
+        if (!tip.scope.vars.has('v.ikWave')) tip.scope.addVar('v.ikWave', '0', -1, 1, 0.05);
+        ensureIkGlobalVar(`${safeTipS}_ikWave`, 'v.ikWave', tip.id);
     }
     // ★2026-11-07 每关节活动权重：每个关节块一个普通变量 v.ikW（0..1，默认 1）；
     //   终端程序读 t.<关节>_ikW ⇒ 改权重立刻重算。变量名不带 ik_ 前缀 ⇒ 按常量导出、重导入不丢。
@@ -3098,7 +3213,7 @@ function ikRebuildChain(chain, anchor, opts) {
             const jb = chain[i];
             const js = boneSafeId(jb.id);
             if (!jb.scope.vars.has('v.ikW')) jb.scope.addVar('v.ikW', '1', 0, 1, 0.05);
-            ensureGlobalVar(`${js}_ikW`, 'v.ikW', jb.id);
+            ensureIkGlobalVar(`${js}_ikW`, 'v.ikW', jb.id);
             ikWeights.push(`t.${js}_ikW`);
         }
     }
@@ -3106,10 +3221,23 @@ function ikRebuildChain(chain, anchor, opts) {
         ? ikBuildSolveCcd(chain, anchor, bindTarget, {
             targetExpr: targetExpr || null, tipExtend, ccdIter: o.ccdIter, weights: ikWeights,
             // ★2026-11-10 造型旋钮（整条链一个数）：末端块 v.ikShape → t.<tip>_ikShape
-            shapeExpr: `t.${boneSafeId(tip.id)}_ikShape`
+            shapeExpr: `t.${boneSafeId(tip.id)}_ikShape`,
+            // ★2026-11-14 S 形多弧旋钮：末端块 v.ikWave → t.<tip>_ikWave
+            waveExpr: `t.${boneSafeId(tip.id)}_ikWave`
         })
         : ikBuildSolve(chain, anchor, bindTarget, { targetExpr: targetExpr || null, tipExtend, elbowIndex: o.elbowIndex });
     if (targetExpr) tip._ikTarget = targetExpr.slice();
+    // ★★2026-11-14【第二条 IK 路线：v.ikMode（0=保形 / 1=圆弧）】
+    //   求解正文读的是 t.<末端>_ikMode（见 ikBuildSolveCcd 的 addIn('v.ik_arc', …)）。
+    //   默认值按「绑定姿态是否基本共线」给：共线 ⇒ 圆弧（唯一不退化的一阶解），否则 ⇒ 保形。
+    //   ★必须在这里（sol 之后、写 inputs 之前）建，否则 v.ik_arc=t.<tip>_ikMode 求值时会读到未定义全局。
+    if (sol.multiJoint) {
+        const _modeKey = `${boneSafeId(tip.id)}_ikMode`;
+        if (!tip.scope.vars.has('v.ikMode')) {
+            tip.scope.addVar('v.ikMode', String(sol.arcDefault ? 1 : 0), 0, 1, 1);
+        }
+        ensureIkGlobalVar(_modeKey, 'v.ikMode', tip.id);
+    }
     // 多关节：旧的 v.ik_* 变量必须清掉（否则会被卷进普通变量基线、与 loop 语句重复定义）
     if (sol.multiJoint) {
         const deadI = [];
@@ -3138,7 +3266,7 @@ function ikRebuildChain(chain, anchor, opts) {
     const pubNames = sol.multiJoint
         ? ['ik_jrx', 'ik_jry', 'ik_jrz'].concat(Array.from({ length: N - 1 }, (_x, i) => `ik_b${i + 1}`))
         : ['ik_jrx', 'ik_jry', 'ik_jrz', 'ik_be'];
-    pubNames.forEach(k => ensureGlobalVar(`${safeTip}_${k}`, `v.${k}`, tip.id));
+    pubNames.forEach(k => ensureIkGlobalVar(`${safeTip}_${k}`, `v.${k}`, tip.id));
     tip._ikVars = sol.multiJoint ? (sol.inputs || []).slice() : (sol.vars || []).slice();
     tip._ikPublish = sol.multiJoint ? sol.publishText : ['ik_jrx', 'ik_jry', 'ik_jrz', 'ik_be'].map(k => `t.${safeTip}_${k}=v.${k};`).join(' ');
     tip._ikPubList = pubNames.map(k => [`${safeTip}_${k}`, `v.${k}`]);
@@ -3149,6 +3277,20 @@ function ikRebuildChain(chain, anchor, opts) {
         const _shpPub = `t.${_shpKey}=v.ikShape;`;
         if (String(tip._ikPublish || '').indexOf(_shpPub) < 0) {
             tip._ikPublish = (String(tip._ikPublish || '') + ' ' + _shpPub).trim();
+        }
+        // 第二条路线开关同样要发布，否则游戏里 v.ikMode 改了没人读
+        const _modKey = `${safeTip}_ikMode`;
+        if (!tip._ikPubList.some(it => it && it[0] === _modKey)) tip._ikPubList.push([_modKey, 'v.ikMode']);
+        const _modPub = `t.${_modKey}=v.ikMode;`;
+        if (String(tip._ikPublish || '').indexOf(_modPub) < 0) {
+            tip._ikPublish = (String(tip._ikPublish || '') + ' ' + _modPub).trim();
+        }
+        // S 形多弧旋钮同样要发布，否则游戏里 v.ikWave 改了没人读
+        const _wavKey = `${safeTip}_ikWave`;
+        if (!tip._ikPubList.some(it => it && it[0] === _wavKey)) tip._ikPubList.push([_wavKey, 'v.ikWave']);
+        const _wavPub = `t.${_wavKey}=v.ikWave;`;
+        if (String(tip._ikPublish || '').indexOf(_wavPub) < 0) {
+            tip._ikPublish = (String(tip._ikPublish || '') + ' ' + _wavPub).trim();
         }
     }
     // 关节活动权重的发布：运行时按 sourceBlockId 实时取值；导出时各关节自己输出 t.<id>_ikW=v.ikW;
@@ -3215,6 +3357,16 @@ function ikRebuildChain(chain, anchor, opts) {
     // 这一步必须在所有 vars/drive 都写完之后做，否则补进去的还是旧值。
     chain.forEach(b => { try { ikPatchChainProgram(b); } catch (_) { } });
     chain.forEach(b => { try { b.refresh(); } catch (_) {} });
+    // ★2026-11-14 够不着提示：目标比「链长」远时，求解器只能整链伸直对准目标（看起来就是一根棍子）。
+    //   用户会以为是 bug，这里明确报距离，避免再靠猜。
+    try {
+        const _p0 = piv[0];
+        const _D = Math.hypot(bindTarget[0] - _p0[0], bindTarget[1] - _p0[1], bindTarget[2] - _p0[2]);
+        const _L = (sol.vecs || []).reduce((acc, v) => acc + Math.hypot(v[0], v[1], v[2]), 0);
+        if (_L > 1e-6 && _D > _L + 1e-3 && !silent) {
+            showToast(`IK：目标距离 ${_D.toFixed(2)} 超出链长 ${_L.toFixed(2)} ⇒ 求解器只能整链伸直指向目标（看起来像一根棍子）。把目标拖近到 ${_L.toFixed(2)} 以内就会弯。`);
+        }
+    } catch (_) { }
     // ⑦ 面板 / 撤销 / 提示（预设批量构建时静默，由调用方统一收尾）
     // ★2026-11-11【段长自检】`v.ik_g{k}` 是求解器眼里的「第 k 段长度」。如果它和该节方块自己的
     //   体长（ikSegLenOf）差太多，说明这一节的偏移被烘歪了（典型：某节 g 长成 2.4 而块只有 1），
@@ -3432,5 +3584,67 @@ function createSpiderLegPreset() {
     try { recordAction(); } catch (_) {}
     if (typeof bumpDrawRev === 'function') bumpDrawRev('all');
     showToast(`蜘蛛腿预设：1 个 point + 6 条 IK 腿（每条腿 6 个 extend_scale 细杆、首尾相接；目标直接读 t.${pSafe}_px/py/pz，改 point 的 pos 六条腿即跟随；每条腿顶端枢轴 v.xpos 可手改）`);
+    return pb;
+}
+
+// ==================== 20 节长链 IK 预设（U 弧 / S 多弧） ====================
+// 一条 20 方块、首尾相接的长链 + 1 个可拖动目标点（point）。
+//   · 末端块旋钮：v.ikWave = 0 → 单弧 C/U；±1 → S 形多弧（曲率沿链反号）
+//                  v.ikShape → 弯折往根/末端偏；v.ikMode = 0 → 保形（不重解造型）
+//   · 拖动 point ⇒ 整链实时重解（Gizmo 位移直接写枢轴，见 _ikGoalMarker）
+function createLongChainIkPreset() {
+    const segLen = 0.5;                 // 每节长度（20 节 ⇒ 全伸 10）
+    const scale = 0.25;                 // 横截面（细杆）
+    const N = 20;
+    const goal = [5.0, 5.0, 0];         // 目标点：D≈7.07（链长 10）⇒ 中距，S 形最明显
+    const uniq = base => { let id = base, k = 2; while (blocks.some(b => b.id === id)) id = base + (k++); return id; };
+    const make = (id, pos, sc, es, color) => {
+        const b = new Block(id, [_r4(pos[0]), _r4(pos[1]), _r4(pos[2]), 0, 0, 0,
+            sc, _r4(es), -90, 0, 0, 0.5, 0], null, color);
+        addBlock(b, false, false);
+        return b;
+    };
+    // ① point：目标方块（红色，可拖）。t.<id>_px/py/pz 由它发布（导出侧写进 _ikVars）
+    const pid = uniq('point');
+    const pb = new Block(pid, [_r4(goal[0]), _r4(goal[1]), _r4(goal[2]), 0, 0, 0,
+        0.7, 1, -90, 0, 0, 0, 0], null, '#ff4d4f');
+    addBlock(pb, false, false);
+    const pSafe = boneSafeId(pid);
+    ensureGlobalVar(`${pSafe}_px`, 'v.xpos', pb.id);
+    ensureGlobalVar(`${pSafe}_py`, 'v.ypos', pb.id);
+    ensureGlobalVar(`${pSafe}_pz`, 'v.zpos', pb.id);
+    pb._ikVars = [
+        [`t.${pSafe}_px`, 'v.xpos'],
+        [`t.${pSafe}_py`, 'v.ypos'],
+        [`t.${pSafe}_pz`, 'v.zpos']
+    ];
+    pb._ikPubList = [[`${pSafe}_px`, 'v.xpos'], [`${pSafe}_py`, 'v.ypos'], [`${pSafe}_pz`, 'v.zpos']];
+    pb._ikGoalMarker = true;   // Gizmo 位移直接写枢轴 ⇒ IK 目标实时跟随
+    pb.refresh();
+    // ② 20 节直链：沿 +Y 竖直排开（rotate 全 0 ⇒ 骨偏移恰好 [0, segLen, 0]），首尾相接
+    const chain = [];
+    const es = Math.sqrt(segLen / scale);
+    for (let i = 0; i < N; i++) {
+        const t = i / (N - 1);
+        // 蓝色 → 青色 渐变（纯视觉，便于看清节序）
+        const c = [Math.round(0x4f + (0x35 - 0x4f) * t), Math.round(0x8c + (0xd6 - 0x8c) * t), Math.round(0xf7 + (0xff - 0xf7) * t)];
+        const color = `rgb(${c[0]},${c[1]},${c[2]})`;
+        chain.push(make(uniq(`chain_${i + 1}`), [0, i * segLen, 0], scale, es, color));
+    }
+    try { refreshAllBlocksOrdered(); } catch (_) { }
+    // ③ IK 逆骨骼绑定（自由根、全关节；目标读 point 的世界 pos）
+    const targetExpr = [`t.${pSafe}_px`, `t.${pSafe}_py`, `t.${pSafe}_pz`];
+    ikRebuildChain(chain, null, { targetExpr, silent: true });
+    // ④ 默认展示 S 形多弧（wave=1）；用户改一个数即可在 U/C 与 S 之间切换
+    const tip = chain[chain.length - 1];
+    try { tip.scope.setVarExpr('v.ikWave', '1'); } catch (_) { }
+    try { tip.scope.setVarExpr('v.ikMode', '1'); } catch (_) { }
+    try { refreshAllBlocksOrdered(); } catch (_) { }
+    // ⑤ 收尾：面板 / 撤销 / 选中 point（用户可直接拖它观察整链跟随）
+    try { renderSideBlockList(); } catch (_) {}
+    try { selectBlock(pb); renderVariablesForBlock(pb); } catch (_) {}
+    try { recordAction(); } catch (_) {}
+    if (typeof bumpDrawRev === 'function') bumpDrawRev('all');
+    showToast(`20 节长链 IK：默认 S 形多弧。拖红色 point 改形状；选中末端块把 v.ikWave 调 0 → 单弧 C/U、-1 → 反向 S；v.ikMode=0 → 保形`);
     return pb;
 }
