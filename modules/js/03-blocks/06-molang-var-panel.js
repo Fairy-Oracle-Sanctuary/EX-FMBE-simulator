@@ -86,7 +86,7 @@ function generateMolangBaseline(block) {
     //   IK 旋钮（目标 tx/ty/tz + 造型 ik_shape）排到基线最前面，其余保持拓扑序。
     //   它们都是纯常量/纯 t.* 读，提前不影响任何依赖。
     const _knobRank = n => {
-        const k = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ik_shape', 'v.ikShape', 'v.ikW'].indexOf(n);
+        const k = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ikMode', 'v.ik_shape', 'v.ikShape', 'v.ik_wave', 'v.ikWave', 'v.ikW'].indexOf(n);
         return k < 0 ? 99 : k;
     };
     ordered.sort((a, b) => _knobRank(a.name) - _knobRank(b.name));   // 稳定排序：非旋钮之间顺序不变
