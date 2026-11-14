@@ -43,6 +43,61 @@
   src:url('Fonts/ChillRoundF-sub.woff2') format('woff2');
 }
 </style>
+<style id="exBootStyles">
+/* ===== 启动 / 下载遮罩 + 程序设置面板（内联，保证离线、CSS 文件缺失时也能显示） ===== */
+#bootOverlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;
+  background:rgba(8,13,24,.92);color:#e2e8f0;font:14px/1.6 -apple-system,"Microsoft YaHei",sans-serif}
+#bootOverlay.boot-hidden{display:none}
+.boot-card{width:min(560px,92vw);padding:26px 26px 22px;border-radius:14px;background:#111a2b;
+  border:1px solid rgba(148,163,184,.22);box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.boot-logo{font:700 22px/1 -apple-system,"Microsoft YaHei",sans-serif;letter-spacing:1px;color:#38bdf8;margin-bottom:14px}
+.boot-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.boot-sub{font-size:12.5px;color:#94a3b8;margin-bottom:16px}
+.boot-bar{height:6px;border-radius:99px;background:rgba(148,163,184,.18);overflow:hidden}
+.boot-bar-fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#38bdf8,#22d3ee);transition:width .18s}
+.boot-meta{display:flex;justify-content:space-between;gap:12px;margin-top:9px;font-size:12px;color:#94a3b8}
+.boot-meta #bootCurrent{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
+.boot-files{display:none;margin-top:14px;max-height:180px;overflow:auto;font:12px/1.7 ui-monospace,Consolas,monospace;
+  color:#fca5a5;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 12px}
+#bootOverlay.boot-error .boot-files{display:block}
+#bootOverlay.boot-error .boot-bar-fill{background:#ef4444}
+#bootOverlay.boot-error .boot-title{color:#fca5a5}
+body.light-mode #bootOverlay{background:rgba(241,245,249,.94);color:#0f172a}
+body.light-mode .boot-card{background:#fff;border-color:#e2e8f0;box-shadow:0 18px 50px rgba(15,23,42,.14)}
+body.light-mode .boot-sub,body.light-mode .boot-meta{color:#64748b}
+body.light-mode .boot-bar{background:#e2e8f0}
+
+#pmSysBtn{font-size:15px;color:#64748b}
+.sys-mask{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;
+  background:rgba(8,13,24,.55);font:14px/1.6 -apple-system,"Microsoft YaHei",sans-serif}
+.sys-mask.sys-open{display:flex}
+.sys-card{width:min(460px,92vw);border-radius:14px;background:#111a2b;color:#e2e8f0;
+  border:1px solid rgba(148,163,184,.22);box-shadow:0 18px 50px rgba(0,0,0,.5);padding:20px 20px 18px}
+.sys-head{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:700;margin-bottom:8px}
+.sys-head button{width:28px;height:28px;border-radius:8px;border:1px solid rgba(148,163,184,.3);
+  background:transparent;color:#94a3b8;cursor:pointer;font-size:14px}
+.sys-desc{font-size:12.5px;color:#94a3b8;margin-bottom:12px}
+.sys-info{font-size:12px;color:#7dd3fc;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.22);
+  border-radius:8px;padding:8px 10px;margin-bottom:14px}
+.sys-action{display:block;width:100%;text-align:left;padding:11px 13px;margin-bottom:10px;border-radius:10px;
+  border:1px solid rgba(148,163,184,.28);background:rgba(148,163,184,.06);color:#e2e8f0;cursor:pointer;
+  font:inherit;font-weight:600;transition:background .15s,border-color .15s}
+.sys-action:hover{background:rgba(148,163,184,.14);border-color:rgba(148,163,184,.45)}
+.sys-action span{display:block;font-weight:400;font-size:12px;color:#94a3b8;margin-top:3px}
+.sys-action.danger{border-color:rgba(239,68,68,.45);color:#fca5a5}
+.sys-action.danger:hover{background:rgba(239,68,68,.12)}
+body.light-mode .sys-mask{background:rgba(15,23,42,.35)}
+body.light-mode .sys-card{background:#fff;color:#0f172a;border-color:#e2e8f0}
+body.light-mode .sys-desc{color:#64748b}
+body.light-mode .sys-info{color:#0369a1;background:#f0f9ff;border-color:#bae6fd}
+body.light-mode .sys-action{background:#f8fafc;border-color:#e2e8f0;color:#0f172a}
+body.light-mode .sys-action span{color:#64748b}
+body.light-mode .sys-action.danger{color:#b91c1c;border-color:#fecaca}
+.sys-toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:100001;
+  padding:10px 18px;border-radius:10px;background:rgba(15,23,42,.94);color:#e2e8f0;font:13px/1.5 -apple-system,"Microsoft YaHei",sans-serif;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transition:opacity .2s}
+.sys-toast.on{opacity:1}
+</style>
 </head>
 <body>
 <script>
@@ -56,6 +111,29 @@
 })();
 </script>
 
+<!-- ========== 启动 / 下载遮罩 ========== -->
+<div id="bootOverlay">
+    <div class="boot-card">
+        <div class="boot-logo">EX</div>
+        <div class="boot-title" id="bootTitle">正在下载程序文件…</div>
+        <div class="boot-sub" id="bootSub">首次打开需要把程序文件下载到本机，之后即可离线使用</div>
+        <div class="boot-bar"><div class="boot-bar-fill" id="bootBar"></div></div>
+        <div class="boot-meta"><span id="bootCount">0 / 0</span><span id="bootCurrent">准备中…</span></div>
+        <div class="boot-files" id="bootFiles"></div>
+    </div>
+</div>
+
+<!-- ========== 程序设置面板 ========== -->
+<div class="sys-mask" id="exSysMask">
+    <div class="sys-card">
+        <div class="sys-head"><span>程序设置</span><button id="exSysClose" title="关闭">✕</button></div>
+        <div class="sys-desc">这里的操作只影响「程序本体」在本机的缓存（脚本 / 样式 / 贴图 / 音效），不会动你的项目数据。</div>
+        <div class="sys-info" id="exSysInfo">正在统计本地缓存…</div>
+        <button class="sys-action danger" id="exSysClear">清空程序缓存<span>只删除本机缓存的程序文件，不会自动重新下载</span></button>
+        <button class="sys-action" id="exSysRedownload">重新下载程序<span>清空缓存后联网重新下载全部文件（修复缺文件 / 白屏）</span></button>
+    </div>
+</div>
+
 <!-- ========== 项目管理器 ========== -->
 <div id="projectManager">
     <div class="pm-header">
@@ -68,6 +146,7 @@
         </div>
         <div class="pm-header-actions">
             <button class="pm-theme-btn" id="pmThemeBtn" title="切换明暗主题">☀</button>
+            <button class="pm-theme-btn" id="pmSysBtn" title="程序设置（缓存 / 重新下载）">⚙</button>
             <!--<span class="pm-version">这里可以显示一个文字
                 v.6b79
                 6是版本号 这个79是本小姐tm的改了79次
@@ -720,6 +799,129 @@ v.head_rotation_z=v.F.e6?math.atan2(-v.F.e2,-v.F.e1):0;" wiki:fmbe.3d_blocks.ani
 
 <!-- 唯一的 module 入口：加载 three 全局 + 按顺序串行加载 modules/js/ 下全部功能脚本 -->
 <script type="module" src="modules/js/00-bootstrap.js"></script>
+
+<!-- ========== 程序设置（缓存 / 重新下载）+ 启动看门狗 ==========
+     写成普通脚本，模块脚本整个挂掉（离线缺文件）时这些功能依然可用。 -->
+<script>
+(function () {
+  var CACHE_PREFIX = 'ex-sim-';
+
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.className = 'sys-toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('on'); });
+    setTimeout(function () {
+      el.classList.remove('on');
+      setTimeout(function () { el.remove(); }, 250);
+    }, 2200);
+  }
+
+  function bootEl(id) { return document.getElementById(id); }
+
+  function showBootError(title, lines, sub) {
+    var ov = bootEl('bootOverlay');
+    if (!ov) return;
+    ov.classList.remove('boot-hidden');
+    ov.classList.add('boot-error');
+    var t = bootEl('bootTitle');
+    if (t) t.textContent = title;
+    var s = bootEl('bootSub');
+    if (s) s.textContent = sub || '请检查网络后重试，或点右上角 ⚙ →「重新下载程序」。';
+    var f = bootEl('bootFiles');
+    if (f) f.textContent = lines && lines.length ? lines.join('\n') : '';
+    var c = bootEl('bootCount');
+    if (c) c.textContent = lines && lines.length ? '缺少 ' + lines.length + ' 个文件' : '无法启动';
+    var cur = bootEl('bootCurrent');
+    if (cur) cur.textContent = '';
+  }
+
+  // ---- 缓存统计 ----
+  async function cacheStats() {
+    var names = [];
+    try { names = await caches.keys(); } catch (e) { return '无法读取缓存（浏览器不支持或未启用）'; }
+    var mine = names.filter(function (n) { return n.indexOf(CACHE_PREFIX) === 0; });
+    if (!mine.length) return '本机还没有程序缓存';
+    var total = 0, count = 0;
+    for (var i = 0; i < mine.length; i++) {
+      try {
+        var c = await caches.open(mine[i]);
+        var keys = await c.keys();
+        count += keys.length;
+        for (var j = 0; j < keys.length; j++) {
+          try {
+            var r = await c.match(keys[j]);
+            if (r) total += (await r.clone().blob()).size;
+          } catch (e) {}
+        }
+      } catch (e) {}
+    }
+    var mb = (total / 1048576).toFixed(1);
+    return '本机已缓存 ' + count + ' 个文件，约 ' + mb + ' MB';
+  }
+
+  async function clearCaches() {
+    var names = await caches.keys();
+    await Promise.all(names.map(function (n) {
+      return n.indexOf(CACHE_PREFIX) === 0 ? caches.delete(n) : null;
+    }));
+  }
+
+  // ---- 设置面板 ----
+  var mask = bootEl('exSysMask');
+  if (mask) {
+    var info = bootEl('exSysInfo');
+    function openPanel() {
+      mask.classList.add('sys-open');
+      if (info) {
+        info.textContent = '正在统计本地缓存…';
+        cacheStats().then(function (s) { info.textContent = s; });
+      }
+    }
+    function closePanel() { mask.classList.remove('sys-open'); }
+
+    var sysBtn = bootEl('pmSysBtn');
+    if (sysBtn) sysBtn.addEventListener('click', openPanel);
+    var closeBtn = bootEl('exSysClose');
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+    mask.addEventListener('click', function (e) { if (e.target === mask) closePanel(); });
+
+    var clearBtn = bootEl('exSysClear');
+    if (clearBtn) clearBtn.addEventListener('click', async function () {
+      clearBtn.disabled = true;
+      try { await clearCaches(); toast('已清空程序缓存，下次打开会重新下载'); }
+      catch (e) { toast('清空失败：' + ((e && e.message) || e)); }
+      clearBtn.disabled = false;
+      if (info) info.textContent = await cacheStats();
+    });
+
+    var reBtn = bootEl('exSysRedownload');
+    if (reBtn) reBtn.addEventListener('click', async function () {
+      reBtn.disabled = true;
+      toast('已清空缓存，正在重新下载程序…');
+      try { await clearCaches(); } catch (e) {}
+      setTimeout(function () { location.reload(); }, 400);
+    });
+  }
+
+  // ---- 启动看门狗：模块脚本整体挂掉时（离线缺 three.js 等）也给出明确提示 ----
+  var loadErrors = [];
+  window.addEventListener('error', function (e) {
+    var t = e && e.target;
+    if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) {
+      loadErrors.push((t.src || t.href || '').replace(location.origin + '/', ''));
+    }
+  }, true);
+
+  setTimeout(function () {
+    if (window.__exStarted) return;                  // 模块已正常启动
+    var lines = loadErrors.concat(window.__exLoadFail || []);
+    showBootError('无法启动：程序文件没有加载成功', lines,
+      '离线状态下这些文件不在本机缓存里。请联网后重新打开，或点右上角 ⚙ →「重新下载程序」。');
+  }, 12000);
+})();
+</script>
 
 
 <!-- file:// 跨源提示：直接双击打开时 WebGL 无法加载本地贴图（方块变黑），引导改用本地服务器 -->

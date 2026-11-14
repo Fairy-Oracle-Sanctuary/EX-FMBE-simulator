@@ -76,6 +76,40 @@ const EX_PARTS = [
 window.__exParts = EX_PARTS;
 window.__exFailedParts = [];
 
+// ---- 启动遮罩：下载进度 / 缺失文件提示（DOM 在 index.html 里，纯内联样式，离线也能显示） ----
+const __exBoot = (() => {
+    const ov = document.getElementById('bootOverlay');
+    const bar = document.getElementById('bootBar');
+    const count = document.getElementById('bootCount');
+    const cur = document.getElementById('bootCurrent');
+    const title = document.getElementById('bootTitle');
+    const sub = document.getElementById('bootSub');
+    const files = document.getElementById('bootFiles');
+    return {
+        show() { if (ov) ov.classList.remove('boot-hidden'); },
+        stage(text) { if (title) title.textContent = text; },
+        progress(done, total, name) {
+            if (bar) bar.style.width = (total ? (done / total) * 100 : 0).toFixed(1) + '%';
+            if (count) count.textContent = done + ' / ' + total;
+            if (cur && name) cur.textContent = name;
+        },
+        hide() { if (ov) ov.classList.add('boot-hidden'); },
+        fail(list) {
+            window.__exLoadFail = list;
+            if (!ov) return;
+            ov.classList.remove('boot-hidden');
+            ov.classList.add('boot-error');
+            if (title) title.textContent = '无法启动：缺少 ' + list.length + ' 个程序文件';
+            if (sub) sub.textContent = '这些文件不在本机缓存里（当前离线）。请联网后刷新，或点右上角 ⚙ →「重新下载程序」。';
+            if (files) files.textContent = list.join('\n');
+            if (count) count.textContent = '无法启动';
+            if (cur) cur.textContent = '';
+        }
+    };
+})();
+window.__exBoot = __exBoot;
+window.__exStarted = true;
+
 // 首次访问：等 Service Worker 激活并接管本页（约几十毫秒），
 // 这样下面 53 个脚本段下载时就能直接写入本地缓存，第二次打开全部读本地、零下载。
 // 不支持 SW / file:// / 超时（500ms）时直接继续，不阻塞启动。
@@ -99,7 +133,12 @@ window.__exReady = (async () => {
     // 并行取回全部脚本段（原来逐段 await 串行，53 次网络往返的延迟会叠加）；
     // 不用 cache:'no-store'：交给 Service Worker / 浏览器 HTTP 缓存，避免每次重下 3.4MB。
     const urls = EX_PARTS.map(rel => new URL(rel, base).href);
+    __exBoot.show();
+    __exBoot.stage('正在下载程序文件…');
+    __exBoot.progress(0, urls.length, '准备中…');
+    let done = 0;
     const texts = await Promise.all(urls.map(async (url, i) => {
+        __exBoot.progress(done, urls.length, EX_PARTS[i]);
         try {
             const res = await fetch(url);
             if (!res.ok) { window.__exFailedParts.push(EX_PARTS[i] + ' (HTTP ' + res.status + ')'); return null; }
@@ -107,12 +146,18 @@ window.__exReady = (async () => {
         } catch (e) {
             window.__exFailedParts.push(EX_PARTS[i] + ' (' + ((e && e.message) || e) + ')');
             return null;
+        } finally {
+            done++;
+            __exBoot.progress(done, urls.length, EX_PARTS[i]);
         }
     }));
     if (window.__exFailedParts.length) {
         console.error('[EX] 脚本加载失败:', window.__exFailedParts);
+        __exBoot.fail(window.__exFailedParts);
         return false;
     }
+    __exBoot.stage('正在启动…');
+    __exBoot.progress(urls.length, urls.length, '');
     // 各段在虚拟文件中的起始行（报错行号反查用）
     const starts = {};
     let lineNo = 1;
@@ -144,5 +189,7 @@ window.__exReady = (async () => {
             }).catch(() => {});
         }
     } catch (_) {}
+    // 程序已启动：收起下载遮罩（下一帧再收，避免启动瞬间闪一下）
+    requestAnimationFrame(() => __exBoot.hide());
     return true;
 })();

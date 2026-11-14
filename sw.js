@@ -5,8 +5,10 @@
  * 不再从云端重复下载（体积约 8MB ⇒ 第二次起几乎零网络）。
  *
  * 策略：
- *  - 页面（navigate）：网络优先（HTML 只有几十 KB），失败时回退本地缓存（可离线打开）；
- *    同时对比新旧 HTML 内容，一旦发现「代码更新了」，就清掉资源缓存，本页重新拉新版。
+ *  - 页面（navigate）：网络优先（HTML 只有几十 KB），失败时回退本地缓存（可离线打开）。
+ *    ★不再因为「HTML 文本变了」就清空资源缓存：转发站（Cloudflare）会往 HTML 里注入
+ *    每次都不一样的脚本/邮箱混淆，那样会导致每次打开都清空缓存、重新下载全部文件。
+ *    代码更新靠下面的「JS/CSS 网络优先」自动拿到新版；贴图/音效靠 4 小时后台校验。
  *  - 静态资源（js/css/贴图/字体/音效）：缓存优先，未命中才走网络，命中后立即返回；
  *    超过 4 小时就在后台条件刷新一次（不阻塞打开）。
  *  - Range 请求（音效/视频拖动进度）：用本地完整副本切片返回 206。
@@ -103,30 +105,38 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// 页面：网络优先 + 离线回退；HTML 内容变化 ⇒ 资源缓存整体失效（等同版本切换）
+// 页面：网络优先 + 离线回退。
+// ★HTML 内容变化不再清空资源缓存（Cloudflare 注入会让 HTML 每次都不同）；
+//   只有「本页 HTML 本身」会被更新，代码更新交给 handleCode 的「网络优先」。
 async function handleNavigate(req) {
   const pageCache = await caches.open(PAGE_CACHE);
   try {
     const fresh = await fetch(req, { cache: 'no-cache' });
-    if (fresh && fresh.ok) {
-      const old = await pageCache.match(req, { ignoreSearch: true });
-      if (old) {
-        let same = true;
-        try {
-          const [oldText, newText] = await Promise.all([old.clone().text(), fresh.clone().text()]);
-          same = oldText === newText;
-        } catch (_) { same = false; }
-        if (!same) await caches.delete(ASSET_CACHE);   // 代码更新了：下次资源请求重新下载
-      }
-      pageCache.put(req, fresh.clone()).catch(() => {});
-    }
+    if (fresh && fresh.ok) pageCache.put(req, fresh.clone()).catch(() => {});
     return fresh;
   } catch (err) {
     // 断网 / 服务器不可达：用本地缓存打开
-    const hit = await pageCache.match(req, { ignoreSearch: true });
+    const hit = await matchOfflinePage(pageCache, req);
     if (hit) return hit;
     throw err;
   }
+}
+
+// 离线页面兜底：先精确匹配（忽略 query），再按路径等价匹配（`/` ↔ `/index.html`），最后用任意已缓存页面
+async function matchOfflinePage(pageCache, req) {
+  const exact = await pageCache.match(req, { ignoreSearch: true });
+  if (exact) return exact;
+  let keys = [];
+  try { keys = await pageCache.keys(); } catch (_) { return undefined; }
+  if (!keys.length) return undefined;
+  const norm = (p) => p.replace(/index\.html$/, '').replace(/\/$/, '');
+  let path = '';
+  try { path = norm(new URL(req.url).pathname); } catch (_) {}
+  const alt = keys.find((k) => {
+    try { return norm(new URL(k.url).pathname) === path; } catch (_) { return false; }
+  });
+  if (alt) return pageCache.match(alt);
+  return pageCache.match(keys[0]);
 }
 
 // 静态资源：缓存优先；未命中才联网（reload 绕过 HTTP 缓存的陈旧副本，保证拿到当前版本）
