@@ -645,6 +645,10 @@ const presetTemplates = [
     {
         description: "蜘蛛腿：1 个 point 目标方块 + 6 条 IK 逆骨骼腿",
         build: () => createSpiderLegPreset()
+    },
+    {
+        description: "20 节长链 IK：可拖目标点，U 弧 / S 形多弧（v.ikWave 切换）",
+        build: () => createLongChainIkPreset()
     }
     
     // 添加新预设只需在此数组中增加对象即可
