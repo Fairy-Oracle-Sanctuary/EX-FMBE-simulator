@@ -406,6 +406,8 @@ body.light-mode .side-block-item.selected .side-block-box {
     flex-shrink: 1;
     min-width: 0;
     overflow: hidden;
+    /* ★2026-11-14 深链/窄侧栏下名字不要折行（折行会让条目变两行、观感破碎） */
+    white-space: nowrap;
 }
 /* ★IK / FK 角标（仅新操作模式，由 04-sidebar-list.js 的 ikfkTagOf 生成 <i>）：
    贴在方块名左上角的小字，淡灰、斜体、往左倾斜（skewX 取正 = 顶端偏左，与常见右倾 italic 相反）。
@@ -970,13 +972,23 @@ body.no-glass *::after {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
-body.no-glass .new-top-bar { background: rgba(10,15,26,0.97); }
+body.no-glass:not(.light-mode) .new-top-bar { background: rgba(10,15,26,0.97); }
+body.no-glass.light-mode .new-top-bar { background: rgba(248,251,254,0.98); border-bottom-color: rgba(0,0,0,0.08); }
 body.no-glass .side-block-list,
 body.no-glass .data-panel,
 body.no-glass #dataTableInspector.inspector-panel { background: rgba(10,15,26,0.95); }
 body.no-glass.light-mode .side-block-list,
 body.no-glass.light-mode .data-panel,
 body.no-glass.light-mode #dataTableInspector.inspector-panel { background: rgba(240,244,249,0.96); }
+/* ★ 玻璃浮窗（设置 / AI / 材质菜单）在关毛玻璃时同样补不透明兜底，避免透出画布 */
+body.no-glass .ui-settings-panel,
+body.no-glass .ai-svc-panel,
+body.no-glass .ai-chat-panel,
+body.no-glass .material-menu { background: rgba(10,15,26,0.97); }
+body.no-glass.light-mode .ui-settings-panel,
+body.no-glass.light-mode .ai-svc-panel,
+body.no-glass.light-mode .ai-chat-panel,
+body.no-glass.light-mode .material-menu { background: rgba(248,251,254,0.98); }
 
 /* ★【2026-11-04 设置「UI面板完全不透明」】面板底色去掉 alpha，彻底不透出画布内容。
    深色：变量型面板（设置/AI/数据卡）统一改纯色，玻璃型面板单独改纯色；
