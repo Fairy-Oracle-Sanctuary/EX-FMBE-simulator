@@ -556,20 +556,8 @@ function maybeStartTutorial() {
     if (tutAutoShown) return;
     // bf 转换器等外部网站经 URL(#cmds=) 导入模型：不播开场动画、不弹新手教程，直接导入。
     if (EXTERNAL_URL_IMPORT) { tutAutoShown = true; return; }
-    const s = tutLoad();
-    if (s.done || s.welcomed) { tutAutoShown = true; return; } // 已完成 / 点过「以后再说」：不再自动打扰
-    // 仅「项目列表」界面首次进入才自动播片头；不在项目内误触发
-    const atList = projectManagerEl && projectManagerEl.style.display !== 'none';
-    if (!introSeen()) {
-        if (atList) {
-            tutAutoShown = true;
-            startCinematicIntroWhenReady(() => setTimeout(showTutorialWelcome, 350), { allowSkip: false });
-        }
-        // 不在列表界面则暂不触发，等回到列表的后续调用（tutAutoShown 仍为 false，允许重试）
-        return;
-    }
+    // 2026-11-07 用户要求：首启不再自动播放开场动画，也不弹新手欢迎卡（教程仍可从 设置→新手教程 手动进入）
     tutAutoShown = true;
-    setTimeout(showTutorialWelcome, 900);
 }
 function openTutorialNow() { tutAutoShown = true; openTutorialOverview(); }
 

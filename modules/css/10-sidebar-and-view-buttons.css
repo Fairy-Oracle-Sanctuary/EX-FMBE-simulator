@@ -169,6 +169,80 @@ body.light-mode .inspector-panel .insp-row-action:hover { color: #0f172a; backgr
     color: #64748b;
     font-size: 10px;
 }
+/* ===== 镜像工具：数据面板（标题 > 分组标签 > 数值 > 操作）===== */
+.mirror-head { display: flex; align-items: center; gap: 7px; margin-bottom: 11px; }
+.mirror-head::before {
+    content: ""; flex: 0 0 auto; width: 2px; height: 14px; border-radius: 1px;
+    background: linear-gradient(180deg, #93c5fd, #2563eb);
+}
+.mirror-title { font-size: 13px; font-weight: 700; color: #e8eefc; letter-spacing: .5px; }
+.mirror-panel .insp-row { align-items: center; gap: 8px; margin-bottom: 7px; }
+.mirror-panel .insp-label {
+    width: 34px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #7d8ca8;
+    letter-spacing: .1em;
+}
+.mirror-panel .insp-cell input {
+    padding: 6px 2px 6px 12px;
+    border-radius: 3px;               /* 方形，不用胶囊 */
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #e6edf8;
+    font-variant-numeric: tabular-nums;
+}
+.mirror-panel .insp-marker { top: 4px; left: 3px; }
+.mirror-divider { height: 1px; margin: 10px 0; background: rgba(148,163,184,0.16); }
+.mirror-hint { padding: 2px 0 4px; font-size: 10.5px; color: #7d8ca8; }
+body.light-mode .mirror-title { color: #0f172a; }
+body.light-mode .mirror-panel .insp-label,
+body.light-mode .mirror-hint { color: #64748b; }
+body.light-mode .mirror-divider { background: rgba(100,116,139,0.18); }
+
+/* 结果方式：纯文字切换（无底色 / 无边框 / 无胶囊）
+   选中项正常大小、亮色；未选中项缩小并变灰 */
+/* 行高固定：切换时只改字号/颜色，不再撑高面板把下方方块列表整体顶动 */
+.mirror-result-row { display: flex; align-items: center; gap: 8px; height: 22px; }
+.mirror-label { flex: 0 0 34px; font-size: 10px; font-weight: 500; color: #7d8ca8; letter-spacing: .1em; line-height: 22px; }
+.mirror-seg-wrap { flex: 1; min-width: 0; display: flex; }
+.mirror-seg { display: flex; align-items: center; gap: 14px; min-width: 0; height: 22px; }
+.mirror-seg-btn {
+    flex: 0 0 auto; padding: 0; height: 22px; line-height: 22px;
+    border: none; background: none; box-shadow: none;
+    color: #6c7c93; font-family: inherit; font-size: 11.5px; font-weight: 400;
+    white-space: nowrap; cursor: pointer;
+    transition: color .15s ease, opacity .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.mirror-seg-btn:hover { color: #c7d2e0; }
+.mirror-seg-btn.on { color: #e2e8f0; font-size: 13px; font-weight: 600; }
+.mirror-seg-btn.on::before {
+    content: ""; display: inline-block; width: 4px; height: 4px;
+    margin-right: 6px; vertical-align: middle;
+    background: #60a5fa; border-radius: 1px;
+}
+body.light-mode .mirror-label { color: #64748b; }
+body.light-mode .mirror-seg-btn { color: #94a3b8; }
+body.light-mode .mirror-seg-btn:hover { color: #334155; }
+body.light-mode .mirror-seg-btn.on { color: #0f172a; }
+body.light-mode .mirror-seg-btn.on::before { background: #2563eb; }
+
+/* 操作区：右对齐的纯文字按钮（无底色 / 无边框），仅靠字重与颜色区分主次 */
+.mirror-actions { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 12px; }
+.mirror-act {
+    padding: 0; border: none; background: none; box-shadow: none;
+    font-family: inherit; font-size: 11px; font-weight: 400; color: #7d8ca8;
+    cursor: pointer; transition: color .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.mirror-act:hover { color: #c7d2e0; text-decoration: underline; }
+.mirror-act-primary { color: #93c5fd; font-size: 12px; font-weight: 600; }
+.mirror-act-primary:hover { color: #dbeafe; }
+body.light-mode .mirror-act { color: #94a3b8; }
+body.light-mode .mirror-act:hover { color: #1e293b; }
+body.light-mode .mirror-act-primary { color: #2563eb; }
+body.light-mode .mirror-act-primary:hover { color: #1d4ed8; }
 /* ===== 视图切换按钮（图形，非文字）=====
    造型沿用全局「切角矩形」语言：但按钮靠在面板【左上角】，故切角取【左上 + 右下】两个角，
    使切面朝向它贴靠的角落。clip-path 会裁掉 border，故用淡蓝填充表达形状（无 border/圆角/阴影）。 */
@@ -365,22 +439,39 @@ body.new-layout-active:fullscreen .new-top-bar {
         padding: 16px 20px;
     }
     .changelog-modal .modal-title {
-        font-size: 20px;
         margin-bottom: 10px;
         padding-bottom: 6px;
+    }
+    .changelog-title {
+        font-size: 17px;
+    }
+    .changelog-subtitle {
+        font-size: 10px;
     }
     .changelog-list {
         max-height: 50vh;
     }
     .changelog-date-header {
-        padding: 6px 6px;
+        padding: 7px 6px;
     }
-    .changelog-date-text {
-        font-size: 13px;
+    .changelog-date-main {
+        font-size: 14px;
+    }
+    .changelog-date-year {
+        font-size: 9px;
+    }
+    .changelog-body {
+        padding: 0 6px 8px 20px;
+    }
+    .changelog-body::before {
+        left: 9px;
     }
     .changelog-body li {
         font-size: 12px;
-        line-height: 1.4;
+        line-height: 1.5;
+    }
+    .changelog-item-text {
+        font-size: 12px;
     }
 }
 @media (max-width: 480px) {
@@ -388,21 +479,42 @@ body.new-layout-active:fullscreen .new-top-bar {
         padding: 16px;
         max-width: 94%;
     }
-    .changelog-modal .modal-title {
-        font-size: 20px;
+    .changelog-title {
+        font-size: 17px;
     }
-    .changelog-date-text {
-        font-size: 13px;
+    .changelog-subtitle {
+        display: none;
+    }
+    .changelog-date-main {
+        font-size: 14px;
+    }
+    .changelog-date-year {
+        font-size: 9px;
+    }
+    .changelog-date-slash {
+        width: 6px;
+        min-height: 23px;
     }
     .changelog-version-tag {
-        font-size: 10px;
-        padding: 1px 0 1px 5px;
-        border-left-width: 2px;
+        font-size: 9.5px;
     }
     .changelog-entry-label {
-        font-size: 10px;
+        font-size: 9.5px;
+    }
+    .changelog-body {
+        padding: 0 6px 8px 20px;
+    }
+    .changelog-body::before {
+        left: 9px;
     }
     .changelog-body li {
+        font-size: 12px;
+    }
+    .changelog-item-cat {
+        font-size: 12px;
+        margin-right: 6px;
+    }
+    .changelog-item-text {
         font-size: 12px;
     }
 }

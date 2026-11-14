@@ -44,6 +44,46 @@
 /* 按下态（「数据」视图）：同一形状，只换成蓝色调 */
 .kf-tl-btn.on { background: rgba(59,130,246,.26); color: #bfdbfe; border-color: rgba(59,130,246,.5); }
 .kf-tl-btn.on:hover { background: rgba(59,130,246,.34); }
+/* ★【2026-11-04】图标按钮（取代原来的「数据」文字按钮）：直接照搬全局「切角矩形」语言
+   （同 .view-toggle-btn：左上 + 右下切 7px、无边框/圆角、淡蓝填充表达形状） */
+.kf-tl-icbtn {
+  width: 26px; height: 26px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 0;
+  background: rgba(59,130,246,.16); color: #60a5fa;
+  clip-path: polygon(0 7px, 7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+}
+.kf-tl-icbtn:hover { background: rgba(59,130,246,.34); color: #93c5fd; }
+.kf-tl-icbtn.on { background: rgba(59,130,246,.42); color: #dbeafe; }
+.kf-tl-icbtn svg { width: 14px; height: 14px; display: block; pointer-events: none; }
+body.light-mode .kf-tl-icbtn { background: rgba(37,99,235,.12); color: #2563eb; }
+body.light-mode .kf-tl-icbtn:hover { background: rgba(37,99,235,.26); color: #1d4ed8; }
+body.light-mode .kf-tl-icbtn.on { background: rgba(37,99,235,.3); color: #1e40af; }
+/* 数据视图顶部的 Gizmo 精度快捷键：与手机端虚拟键条（.virt-mod-keybar / .virt-mod-key）完全同一套造型 */
+.kf-prec-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin: 6px 10px 2px; padding: 7px 0 6px;
+  border-top: 1px solid rgba(59,130,246,.18); border-bottom: 1px solid rgba(59,130,246,.18);
+}
+.kf-prec-label { font-size: 10px; color: var(--color-text-muted, #94a3b8); white-space: nowrap; margin-right: 2px; letter-spacing: .5px; }
+.kf-prec-keys { display: inline-flex; align-items: center; gap: 6px; }
+.kf-prec-key {
+  padding: 6px 13px; font-size: 12px; font-weight: 600; cursor: pointer;
+  border: none; border-radius: 0;
+  background: rgba(148,163,184,.14);
+  color: var(--color-text-strong, #e2e8f0);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  transition: background .15s ease, color .15s ease;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.kf-prec-key:hover { background: rgba(148,163,184,.26); }
+.kf-prec-key.lit { background: #3b82f6; color: #fff; }
+.kf-prec-val { margin-left: auto; font-size: 10px; color: var(--color-text-soft); font-variant-numeric: tabular-nums; }
+body.light-mode .kf-prec-row { border-top-color: rgba(0,0,0,.08); border-bottom-color: rgba(0,0,0,.08); }
+body.light-mode .kf-prec-key { background: rgba(37,99,235,.10); color: #1e293b; }
+body.light-mode .kf-prec-key:hover { background: rgba(37,99,235,.20); }
+body.light-mode .kf-prec-key.lit { background: #2563eb; color: #fff; }
 /* 主操作：与辅助按钮同一套造型，只换色调（半透明蓝） */
 .kf-tl-btn-primary { background: rgba(59,130,246,.18); border-color: rgba(96,165,250,.36); color: #bfdbfe; }
 .kf-tl-btn-primary:hover { background: rgba(59,130,246,.3); border-color: rgba(96,165,250,.6); color: #eff6ff; }
@@ -431,13 +471,16 @@ body.light-mode .mbr-tut:hover { background: rgba(251,191,36,0.42); color: #7835
   box-shadow: 0 14px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
   user-select: none; -webkit-user-select: none;
   backdrop-filter: blur(7px);
+  /* 整体缩放（设置项「泡泡大小」）：以左上角为原点，left/top 仍是未缩放布局坐标，拖拽不受影响 */
+  transform: scale(var(--mnb-scale, 1));
+  transform-origin: top left;
   animation: mnbPop .16s cubic-bezier(.22,.9,.32,1.2), mnbGlow 2.6s ease-in-out .35s infinite;
 }
 /* 现代科技主义：弹出 = 浅蓝发光展开（亮度闪一下再归位） */
 @keyframes mnbPop {
-  0%   { opacity: 0; transform: translateY(7px) scale(.78); filter: brightness(2.4) saturate(.7); }
-  60%  { opacity: 1; transform: translateY(0) scale(1.045); filter: brightness(1.15); }
-  100% { opacity: 1; transform: none; filter: brightness(1); }
+  0%   { opacity: 0; transform: translateY(7px) scale(calc(.78 * var(--mnb-scale, 1))); filter: brightness(2.4) saturate(.7); }
+  60%  { opacity: 1; transform: translateY(0) scale(calc(1.045 * var(--mnb-scale, 1))); filter: brightness(1.15); }
+  100% { opacity: 1; transform: scale(var(--mnb-scale, 1)); filter: brightness(1); }
 }
 /* toast/科技泡泡复用该动画，但它基类有 translateX(-50%) 居中，100% 必须保留，否则动画结束后会飘到视口中心右侧 */
 @keyframes tbPop {
@@ -547,6 +590,25 @@ body.light-mode .mbr-tut:hover { background: rgba(251,191,36,0.42); color: #7835
 .molang-num-bubble .mnb-q:hover { background: rgba(59,130,246,0.22); }
 .molang-num-bubble .mnb-q.active { background: rgba(59,130,246,0.38); border-color: #60a5fa; }
 .molang-num-bubble .mnb-hint { font-size: 10px; color: #64748b; text-align: center; padding: 0 10px 10px; line-height: 1.4; }
+/* ========== molang 变量描点泡泡（值 R / 帧 t 坐标点图） ========== */
+.molang-probe-bubble { width: 264px; }
+.molang-probe-bubble .mnp-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 4px; }
+.molang-probe-bubble .mnp-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.molang-probe-bubble .mnp-cur {
+  font-size: 16px; font-weight: 800; min-width: 0;
+  color: #7dd3fc; text-shadow: 0 0 11px rgba(96,165,250,0.6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.molang-probe-bubble .mnp-frames { flex: 0 0 auto; font-size: 10px; color: var(--color-text-muted, #94a3b8); }
+.molang-probe-bubble .mnp-canvas {
+  display: block; width: 236px; max-width: 100%; height: 104px;
+  border-radius: 8px; border: 1px solid rgba(59,130,246,0.22);
+  background: rgba(59,130,246,0.07);
+}
+.molang-probe-bubble .mnp-axis { display: flex; justify-content: space-between; font-size: 9px; color: #64748b; }
+/* 「当前数值」网格：变量名可点击查看描点曲线 */
+.molang-vals .mv-name { cursor: pointer; }
+.molang-vals .mv-name:hover { color: #38bdf8; text-decoration: underline dotted; }
 /* ========== molang 自动补全泡泡（v./t./q./math. 触发） ========== */
 #molangAutocomplete {
   position: fixed; z-index: 100001; display: none;
@@ -710,6 +772,14 @@ body.light-mode .molang-num-bubble .mnb-q { color: var(--color-text-strong, #0f1
 body.light-mode .molang-num-bubble .mnb-q:hover { background: rgba(59,130,246,0.16); }
 body.light-mode .molang-num-bubble .mnb-q.active { background: rgba(59,130,246,0.28); border-color: #2563eb; }
 body.light-mode .molang-num-bubble .mnb-hint { color: var(--color-text-muted, #64748b); }
+/* 描点泡泡浅色适配 */
+body.light-mode .molang-probe-bubble .mnp-cur { color: #0369a1; text-shadow: none; }
+body.light-mode .molang-probe-bubble .mnp-frames,
+body.light-mode .molang-probe-bubble .mnp-axis { color: var(--color-text-muted, #64748b); }
+body.light-mode .molang-probe-bubble .mnp-canvas {
+  background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.2);
+}
+body.light-mode .molang-vals .mv-name:hover { color: #0369a1; }
 /* 指向数值的小三角：箭头填色随面板底色变化（深/浅两套） */
 body.light-mode .molang-num-bubble:not(.pinned)::before { border-top-color: rgba(59,130,246,0.45); }
 body.light-mode .molang-num-bubble:not(.pinned)::after  { border-top-color: rgba(214,222,231,0.99); }
@@ -832,10 +902,138 @@ body.light-mode .modal-content { background: var(--bg-modal); }
 #grayscaleRange.grayscale-disabled::-moz-range-thumb { background: #000; border: 2px solid #111; }
 #grayscaleRange::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: 2px solid #0f172a; }
 #grayscaleRange::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: 2px solid #0f172a; }
-.command-card { background: var(--bg-range-item); border-radius: 16px; margin-bottom: 16px; padding: 12px; border-left: 4px solid var(--color-primary); }
-.command-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-.block-id-badge { font-weight: bold; background: var(--bg-block-id-badge); color: var(--color-block-id-badge); padding: 4px 14px; border-radius: 40px; font-size: 12px; border: var(--bg-block-id-badge-border); }
-.copy-cmd-btn { background: var(--bg-copy-cmd-btn); border: none; color: var(--color-text-inverse, white); padding: 5px 14px; border-radius: 30px; cursor: pointer; font-size: 12px; }
+/* ===== 命令列表弹窗（2026-11-07 重设计：切角卡片 + 斜切按钮；不用 emoji，也不全用矩形） ===== */
+/* 外壳：不再用 clip-path / backdrop-filter —— 它们会把整个列表的滚动降级成 CPU 逐帧重绘（几十条指令时巨卡） */
+.modal-content.io-shell.cmd-list-shell {
+    border-radius: 0;
+    border: 1px solid rgba(148,163,184,0.26);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+body.light-mode .modal-content.io-shell.cmd-list-shell { border-color: var(--lm-border); }
+
+/* 头部：左侧斜切竖条 + 标题 */
+.io-head.cmd-list-head { position: relative; padding-left: 26px; }
+.io-head.cmd-list-head::before {
+    content: ''; position: absolute; left: 16px; top: 13px; bottom: 13px; width: 3px;
+    background: linear-gradient(180deg, #60a5fa, #2563eb);
+    transform: skewX(-12deg);
+}
+.cmd-list-title { font-size: 15px; font-weight: 700; letter-spacing: .04em; }
+.cmd-list-head-actions { display: flex; align-items: center; gap: 6px; }
+
+/* 「输出文件」：无框文字链，靠下划细线识别 */
+.cmd-head-link {
+    padding: 4px 6px; font-family: inherit; font-size: 12px; cursor: pointer;
+    background: none; border: none; color: #34d399;
+    border-bottom: 1px solid rgba(52,211,153,0.45);
+    transition: color .15s ease, border-color .15s ease;
+}
+.cmd-head-link:hover { color: #6ee7b7; border-bottom-color: #6ee7b7; }
+body.light-mode .cmd-head-link { color: #15803d; border-bottom-color: rgba(21,128,61,0.4); }
+body.light-mode .cmd-head-link:hover { color: #166534; border-bottom-color: #166534; }
+.cmd-head-link > span { display: inline-block; }
+
+/* 关闭键：单角切方形（不是圆角、也不是纯方块） */
+.io-close.cmd-list-close {
+    border-radius: 0;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+}
+
+/* 正文滚动区 */
+.cmd-list-shell .io-body.cmd-list-body { padding-bottom: 0; }
+.cmd-list-scroll { max-height: 56vh; overflow-y: auto; padding-right: 2px; }
+
+/* 指令卡：左上 / 右下切角 + 左侧斜色条；离屏卡片不渲染，长列表滚动才不卡 */
+.cmd-card {
+    position: relative;
+    margin-bottom: 12px;
+    padding: 0;
+    background: rgba(148,163,184,0.08);
+    border: 1px solid rgba(148,163,184,0.16);
+    border-radius: 0;
+    clip-path: polygon(0 14px, 14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 200px;
+}
+/* 左侧斜色条挂在卡头上（不让长正文每帧重算） */
+.cmd-card-head { position: relative; }
+.cmd-card-head::before {
+    content: ''; position: absolute; left: 3px; top: 8px; bottom: 0; width: 3px;
+    background: #3b82f6; transform: skewX(-12deg);
+}
+body.light-mode .cmd-card { background: rgba(100,116,139,0.12); border-color: rgba(100,116,139,0.26); }
+
+/* 卡头：序号 + 类型图标（竖排）/ 方块名 / 动画层标记 / 复制 */
+.cmd-card-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px 8px 16px;
+    border-bottom: 1px dashed rgba(148,163,184,0.22);
+}
+body.light-mode .cmd-card-head { border-bottom-color: rgba(100,116,139,0.28); }
+/* 图标列：底部与左侧蓝色斜条下端（＝卡头底边）对齐 */
+.cmd-card-mark { flex: none; align-self: flex-end; margin-bottom: -8px; display: flex; justify-content: center; width: 18px; }
+.cmd-card-icon { width: 14px; height: 14px; image-rendering: pixelated; opacity: .92; display: block; }
+.cmd-card-name {
+    flex: 1 1 auto; min-width: 0; margin-left: 6px;
+    font-size: 17px; font-weight: 700; color: var(--color-text-strong);
+    word-break: break-all;
+}
+
+/* 复制：斜切描边按钮，按钮上直接显示该行所属动画控制器名（文字反向斜切保持正立） */
+.cmd-copy-btn {
+    position: relative;
+    margin-left: 8px; flex: none;
+    padding: 3px 10px; font-family: inherit; font-size: 10.5px; font-weight: 600;
+    background: transparent; color: #60a5fa; cursor: pointer;
+    border: 1px solid rgba(96,165,250,0.55); border-radius: 2px;
+    transform: skewX(-12deg);
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+/* 极小灰字「复制」压在按钮上边框上：字底跨过边框线，形成一点遮挡 */
+.cmd-copy-btn::after {
+    content: '复制';
+    position: absolute; right: 5px; top: -7px;
+    transform: skewX(12deg);
+    font-size: 8px; line-height: 1; font-weight: 500; letter-spacing: .06em;
+    color: rgba(148,163,184,0.75);
+    pointer-events: none;
+}
+body.light-mode .cmd-copy-btn::after { color: rgba(100,116,139,0.9); }
+.cmd-copy-btn > span {
+    display: inline-block; transform: skewX(12deg);
+    max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    vertical-align: bottom;
+}
+.cmd-copy-btn:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
+body.light-mode .cmd-copy-btn { color: #1d4ed8; border-color: rgba(37,99,235,0.5); }
+body.light-mode .cmd-copy-btn:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+/* 指令正文：完整展开，不再做「卡内滚动」（73 条时几十个滚动容器＝滚动巨卡） */
+body .cmd-list-shell .cmd-preview {
+    margin: 0; padding: 10px 14px 12px;
+    background: var(--bg-cmd-preview); color: var(--color-cmd-preview);
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 11px; line-height: 1.65;
+    white-space: pre-wrap; word-break: break-all;
+    border: none; border-radius: 0;
+}
+
+/* 底栏：左侧计数（等宽小字），右侧斜切实心主按钮 */
+.io-actions.cmd-list-actions { justify-content: space-between; }
+.cmd-list-count {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 11px; letter-spacing: .04em; color: var(--color-text-muted);
+}
+.cmd-copy-all {
+    padding: 7px 22px; font-family: inherit; font-size: 12.5px; font-weight: 600;
+    background: #2563eb; border: 1px solid #2563eb; color: #fff;
+    border-radius: 2px; cursor: pointer; transform: skewX(-12deg);
+    transition: background .15s ease, border-color .15s ease;
+}
+.cmd-copy-all > span { display: inline-block; transform: skewX(12deg); }
+.cmd-copy-all:hover { background: #1d4ed8; border-color: #1d4ed8; }
 .color-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 10px 0; }
 .color-swatch { width: 32px; height: 32px; border-radius: 12px; cursor: pointer; border: 2px solid #334155; transition: 0.1s; }
 .empty-state { text-align: center; color: var(--color-text-soft); padding: 24px; font-size: 13px; }
@@ -844,4 +1042,38 @@ body.light-mode .modal-content { background: var(--bg-modal); }
 .modal-btn { padding: 8px 16px; background: transparent; border: none; color: var(--color-modal-btn); cursor: pointer; font-size: 13px; outline: none; }
 .modal-btn:hover { color: var(--color-modal-btn-hover); }
 .modal-btn:focus { outline: none; }
+
+/* ===== 动画控制器层条（2026-11-07 重设计：竖向列表 · 无胶囊 / 无多余说明 =====
+   参考「旗帜库」条目行：抓取点阵 + 名称 + 极简图标，靠行底色与左侧色条表示当前编辑层，
+   不再使用蓝色胶囊按钮，也不再写「拖拽排序 / 不可删除 / 当前：xxx」等说明文字。 */
+.anim-layer-bar { margin: 0 0 10px; }
+.anim-layer-head { display: flex; align-items: baseline; gap: 6px; padding: 0 2px 4px; }
+.anim-layer-title { font-size: 12px; font-weight: 600; color: var(--color-text-muted, #64748b); }
+.anim-layer-count { font-size: 11px; color: var(--color-text-soft, #94a3b8); }
+.anim-layer-add { margin-left: auto; padding: 2px; border: none; background: none; box-shadow: none;
+  font: inherit; font-size: 12px; line-height: 1.4; color: var(--color-primary, #2563eb); cursor: pointer; }
+.anim-layer-add:hover { text-decoration: underline; }
+.anim-layer-list { display: flex; flex-direction: column; border-top: 1px solid var(--border-soft, rgba(148,163,184,0.22)); }
+.anim-layer-row { display: flex; align-items: center; gap: 8px; padding: 5px 4px 5px 2px;
+  border-bottom: 1px solid var(--border-soft, rgba(148,163,184,0.22)); cursor: pointer;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: background 0.12s; }
+.anim-layer-row:hover { background: rgba(59,130,246,0.10); }
+.anim-layer-row.is-active { background: rgba(59,130,246,0.14); box-shadow: inset 2px 0 0 var(--color-primary, #2563eb); }
+body.light-mode .anim-layer-row:hover { background: rgba(37,99,235,0.07); }
+body.light-mode .anim-layer-row.is-active { background: rgba(37,99,235,0.10); }
+.anim-layer-row.dragging { opacity: 0.45; }
+.anim-layer-grab { flex: 0 0 auto; width: 10px; height: 14px; cursor: grab; opacity: 0.7;
+  background-image: radial-gradient(circle, #94a3b8 1.2px, transparent 1.6px);
+  background-size: 5px 5px; background-position: 1px 1px; background-repeat: repeat; }
+.anim-layer-row:hover .anim-layer-grab { opacity: 1; }
+.anim-layer-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12.5px; color: var(--color-text, #334155); }
+.anim-layer-row.is-active .anim-layer-name { color: var(--color-primary, #2563eb); font-weight: 700; }
+.anim-layer-tag { flex: 0 0 auto; font-size: 10.5px; color: var(--color-text-soft, #94a3b8); }
+.anim-layer-del { flex: 0 0 auto; padding: 0 2px; border: none; background: none; box-shadow: none;
+  font-size: 13px; line-height: 1; color: var(--color-text-soft, #94a3b8); cursor: pointer;
+  opacity: 0.5; transition: opacity 0.12s, color 0.12s; }
+.anim-layer-row:hover .anim-layer-del { opacity: 1; }
+.anim-layer-del:hover { color: #dc2626; }
 

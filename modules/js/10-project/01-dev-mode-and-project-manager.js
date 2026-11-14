@@ -75,6 +75,14 @@ function applyMcStructUiVisibility() {
     }
 }
 
+/* ---- 「🖼识图」入口：默认隐藏，仅开发者模式可见 ------------------------------
+   用户要求：识图转面片还达不到可用精度，平时不要出现在画笔工具栏，
+   只在开发者模式下显示（并可从 🛠 开发者工具里直接打开）。 */
+function applyImtrEntryVisibility() {
+    const btn = document.getElementById('imtrOpenBtn');
+    if (btn) btn.style.display = devMode ? '' : 'none';
+}
+
 function makeDevItem(title, desc, onClick) {
     const row = document.createElement('div'); row.className = 'ui-settings-item';
     row.style.cssText = 'flex-direction:column;align-items:stretch;gap:8px;';
@@ -166,6 +174,9 @@ function ensureDevSettingEntry() {
     }));
     body.appendChild(makeDevToggleItem('显示 MC 结构导入 / 导出', '开启后：导出面板出现「🧱 结构导出」、导入面板出现「结构」页签（默认隐藏）',
         () => mcStructUiOn, (v) => setMcStructUi(v)));
+    body.appendChild(makeDevItem('识图 → 面片（实验性）', '把图片 / 多边形轮廓一键生成定向面片；精度尚未达标，普通界面不显示入口', () => {
+        try { imtrOpen(); } catch (e) { showToast('识图功能不可用', { duration: 2000 }); }
+    }));
     body.appendChild(makeDevItem('清除「OBJ 导入已开启」状态', 'OBJ 模型导入入口恢复默认关闭（导入面板「模型」页签重新隐藏）；可由「画笔模式 · 生成方块 · 长按三角形按钮」再次开启', () => {
         clearObjImportEnabled();
         showToast('已清除：OBJ 导入入口恢复默认关闭', { duration: 2400 });
@@ -205,6 +216,7 @@ function setDevMode(on) {
     refreshDevSettingEntry();
     refreshAiEntryVisibility();
     try { applyMcStructUiVisibility(); } catch (e) {}   // MC 结构入口 = devMode && 开关
+    try { applyImtrEntryVisibility(); } catch (e) {}     // 识图入口 = devMode
 }
 
 // AI 入口可见性：全部跟随开发者模式。退出时顺带收起已打开的面板，
@@ -353,7 +365,10 @@ window._test = {
     getKeyframeCommandText, parseSingleKeyframeCommand, runBlockProgram, validateMolang,
     generateCompressedCommands,
     constantizeBlock, generateMolangBaseline,   // 常量化 / molang 基线（导出导入往返测试用）
+    constantizeBlockPlan, constantizeBlockCommit,   // 【2026-11-13】两阶段常量化（探针按 UI 真实路径驱动）
     keyframeData, blocks, keyframeCurrentTime: () => keyframeCurrentTime,
+    // 【2026-11-10】IK / 刷新链路可观测（探针断言「改目标点后链上位移是否跟随」必须能手动跑三相刷新）
+    refreshAllBlocksOrdered, ikHasSolveLayer, ikSolveAnimIdOf, ikOrderByPivot, ikClearChain,
     setKfTime: (t) => { keyframeCurrentTime = kfQuantTime(t); },
     queryNamespace,
     // 骨骼关键帧复现所需
@@ -398,6 +413,7 @@ window._test = {
     // 「两边一角」专用 Gizmo 的内部状态（调试/探针用）
     plgRefs: () => plgGizmoRefs, plgDragInfo: () => plgDrag, plgMeasure,
     getCommandTextForBlock, getBoneOrderedBlocks, getBoneBindInstruction,
+    getCommandTextsForBlock,   // 【2026-11-13】多层导出（含 anim/ao 标签），常量化往返验证用
     // 【2026-10-01】导出侧 extend_scale=0 → 0.0001 归一化（探针用）
     getConstantAssignmentsString, getOrderedAssignmentsString, getBoneInputConstantsString,
     getShortNameRestoreString, ES_EXPORT_MIN,

@@ -241,6 +241,32 @@ function importFromCommands(text, opts) {
     const importedNewFolders = new Set();   // 本次导入中新建（而非已存在）的文件夹名
     const touchedFolders = new Set();       // 本次导入中任何方块/骨骼归属到的文件夹（含已存在的），用于统一展开
     const seenRawIds = new Set();           // 去重：同一 方块编号（逐帧烘焙导出会重复出现）只真正导入一次
+    // 多层动画导入（2026-11-07）：同一「方块编号」的多条指令 → 合并到一个方块；
+    // 'anim:<id>' 决定附加动画身份（没有该标签的那条是该块的 base），'ao:<n>' 决定本块执行顺序。
+    const importedBlockByRawId = new Map();      // rawId → 已建方块
+    const importedLayerOrders = new Map();       // block → Map(layerKey, ao)
+    // 解析并复用全局动画（按名称寻址；导出同时带 id 与名称，导入不依赖 id 稳定性）
+    function ensureImportedAnimation(content) {
+        const am = content.match(/['"]anim:([^'"]+)['"]/);
+        if (!am) return null;
+        const nm = content.match(/['"]anim名称：([^'"]+)['"]/);
+        const name = (nm ? nm[1].trim() : '') || ('动画 ' + am[1]);
+        let anim = projectAnimations.find(a => a.name === name);
+        if (!anim) anim = createProjectAnimation(name);
+        let prog = '';
+        try { prog = extractMolangProgram(content) || ''; } catch (e) { prog = ''; }
+        if (prog.trim() && !String(anim.program || '').trim()) anim.program = prog;
+        return anim;
+    }
+    function mergeImportedAnimationLayer(block, content, aoRaw) {
+        const anim = ensureImportedAnimation(content);
+        if (!anim) return false;
+        applyAnimationToBlock(block, anim.id);
+        const ao = parseInt(aoRaw, 10);
+        if (!importedLayerOrders.has(block)) importedLayerOrders.set(block, new Map());
+        if (Number.isFinite(ao)) importedLayerOrders.get(block).set(anim.id, ao);
+        return true;
+    }
     let _autoNameSeq = 1;                   // 无「方块编号」标签时的自动命名序号（autoName / autoName1 / …）
     const boneAnimExports = [];             // 收集骨骼动画导出命令（'anim:' + 骨骼引用），导入后重建 t=0 模型
 
@@ -275,6 +301,43 @@ function importFromCommands(text, opts) {
                 folderRename.set(name, name);
             }
         }
+    }
+
+    // ★★★【2026-11-10 修复：结构导入后骨骼链 / IK 链整条错乱】
+    //   `.mcstructure` 里指令的存放顺序是【方块线性索引】(Z 最快 → Y → X)，而命令方块的
+    //   【实际执行顺序】是蛇形链序 —— 两者完全不同，所以同一方块的两条指令在文件里可能
+    //   【层指令(bone_follow / ik_solve)在前、base 在后】。
+    //   旧实现是「先到先建块 + 同编号去重(seenRawIds)」：
+    //     · 先到的层指令建出方块本体，层指令的赋值按设计不回灌 ⇒ 该块只剩 13 个默认变量；
+    //     · 真正的 base 指令后到时被去重丢弃 ⇒ 常量、v.parent_* 跟随输入、v.ik_multi 全丢。
+    //   后果：① 父级推断（读 v.parent_xrot / v.parent_px）拿不到任何线索 ⇒ 骨骼链被拆成一根根孤块；
+    //         ② 末端块的 v.ik_multi 丢失 ⇒ IK 元数据(_ikVars/_ikPublish)不重建 ⇒ 触手退化成直杆/错序。
+    //   ⇒ 这里先按「方块编号」把同一块的指令聚拢：**base（无 'anim:' 标签）恒排第一**，其余按
+    //     'ao:<n>' 升序；组与组之间保持首次出现的先后。没有编号标签的指令各自独立成组（绝不合并）。
+    {
+        const payloadOf = (c) => {
+            const a = c.indexOf('"'), b = c.lastIndexOf('"');
+            return (a >= 0 && b > a) ? c.slice(a + 1, b) : '';
+        };
+        const gRankOf = new Map();
+        let gSeq = 0;
+        const metas = cmds.map((c, i) => {
+            const content = payloadOf(c);
+            const idm = content.match(/['"]方块编号：([^'"]+)['"]/);
+            let rank;
+            if (idm) {
+                const key = idm[1].trim();
+                if (!gRankOf.has(key)) gRankOf.set(key, gSeq++);
+                rank = gRankOf.get(key);
+            } else {
+                rank = 100000 + i;             // 无编号：独占一组，保持原相对顺序
+            }
+            const isLayer = /['"]anim:/.test(content) ? 1 : 0;
+            const aoM = content.match(/['"]ao:(\d+)['"]/);
+            return { c, rank, isLayer, ao: aoM ? Number(aoM[1]) : 999, i };
+        });
+        metas.sort((A, B) => (A.rank - B.rank) || (A.isLayer - B.isLayer) || (A.ao - B.ao) || (A.i - B.i));
+        cmds = metas.map(m => m.c);
     }
 
     // 预先建立材质名称到URL的映射（不区分大小写）
@@ -409,11 +472,31 @@ function importFromCommands(text, opts) {
         // 变量 v.N_time 以数字开头（如 v.1_time）不被变量名正则捕获；主程序也不该挂到 FMBE 解释器
         // （v.1_time 让词法分析器拆成 1 与 _time 两个 token，runBlockProgram 报错）。统一在导入末尾
         // 重建 t=0 静态模型 + 发布 t.<id>_* 全局变量 + 提取关键帧。
-        const isBoneAnim = /['"]anim:/.test(content) && /\bt\.[A-Za-z0-9_][A-Za-z0-9_]*_/.test(content);
+        // ★【2026-11-07】带 'anim名称：…' 的是【共用动画层】指令（骨骼跟随 bone_follow 等）：
+        //   它含 t.<父>_* 引用，绝不能当成「骨骼动画导出」被旧骨链重建逻辑劫持；必须走层动画合并。
+        const isLayerAnimLine = /['"]anim名称：/.test(content);
+        const isBoneAnim = !isLayerAnimLine && /['"]anim:/.test(content) && /\bt\.[A-Za-z0-9_][A-Za-z0-9_]*_/.test(content);
         if (isBoneAnim) {
             boneAnimExports.push({ finalId, content, groupName });
         }
+        // 多层动画层指令：带 'anim:<id>'（非骨骼动画）⇒ 本条是本块的一条附加动画，不是新方块
+        const layerAnimTag = (!isBoneAnim) ? content.match(/['"]anim:([^'"]+)['"]/) : null;
+        const aoTag = content.match(/['"]ao:([^'"]+)['"]/);
+        // ★ base 来自 molang 程序的显式标记（多层导出时由 getCommandTextsForBlock 写入）：
+        //   有它就必须整段存回 program，不能拆成变量卡片 —— 拆成卡片会让 base 层每帧重算所有变量，
+        //   从而覆盖排在它前面的附加动画写入，导致「导入后顺序看起来不对」
+        const baseProgTag = (!layerAnimTag) && /['"]baseprog:1['"]/.test(content);
         const newBlock = new Block(finalId, M, null, '#aaccff', blockType, groupName);
+        if (!importedBlockByRawId.has(rawId)) importedBlockByRawId.set(rawId, newBlock);
+        if (layerAnimTag) {
+            // 合并到「本批次同编号」的已建方块（base 指令一定排在层指令之前，见导出排序）
+            const _tgt = importedBlockByRawId.get(rawId) || newBlock;
+            mergeImportedAnimationLayer(_tgt, content, aoTag ? aoTag[1] : '');
+        }
+        if (!layerAnimTag && aoTag) {
+            if (!importedLayerOrders.has(newBlock)) importedLayerOrders.set(newBlock, new Map());
+            importedLayerOrders.get(newBlock).set('__base__', parseInt(aoTag[1], 10));
+        }
         
         // 如果存在分组名称，自动创建组
         if (groupName) {
@@ -457,8 +540,35 @@ function importFromCommands(text, opts) {
             }
         }
         
-        assignments.forEach(a => {
+        if (layerAnimTag) {
+            // 附加动画层：正文已进全局动画；层指令里的 v.* 赋值不回灌方块。
+            // ★★★【2026-11-10 修复：导入后「位置一动不动、只有旋转在动」】
+            //   导出侧 2026-11-08 起把【发布语句】`t.<id>_px=v.xpos` 从 base 后移到了 bone_follow /
+            //   ik_solve 层（因为 parent 的最终位姿只有那一层才算完）。而这里旧实现把层指令的赋值
+            //   **全部丢弃** ⇒ t.<id>_* 全局变量在导入场景里根本不存在 ⇒ 子块 `v.parent_px=t.<父>_px`
+            //   恒读到 0 ⇒ 每块都只剩「自身 xbasepos_bone × 自身旋转」，链上位置再也不跟随父级
+            //   （用户实测：拖目标点，别的方块在转、pos 死活不动）。
+            //   ⇒ t.* 是【广播通道】不是方块变量，必须逐条登记成全局；v.* 仍然不回灌。
+            //   ★发布语句的归属块必须用**已合并的真实块**（importedBlockByRawId），绝不能用本轮新建的
+            //     临时 Block：层指令的 finalId 会被防冲突逻辑改成 `Cubea` 之类，挂上去就找不到宿主，
+            //     全局变量永远刷不出值（导入后链上 pos 恒 0）。
+            const _owner = importedBlockByRawId.get(rawId) || newBlock;
+            assignments.forEach(a => {
+                if (a.type !== 't') return;
+                const rg = getDefaultRange(`t.${a.name}`);
+                if (!globalVars.has(a.name)) {
+                    globalVars.set(a.name, { def: new VarDef(a.expr, 0, rg.min, rg.max, 1), sourceBlockId: _owner.id });
+                } else {
+                    const g = globalVars.get(a.name);
+                    g.def.expr = a.expr;
+                    if (!g.sourceBlockId || !blocks.some(b => b.id === g.sourceBlockId)) g.sourceBlockId = _owner.id;
+                }
+            });
+        } else assignments.forEach(a => {
             const full = `${a.type}.${a.name}`;
+            // ★2026-11-10 废止项：v.parent_ux/uy/uz（父块「枢轴→视觉中心」补偿）已从跟随公式整层删除，
+            //   旧的导出指令里还带着这三条 ⇒ 导入时直接丢弃，不再造出这三张永远为 0 的变量卡片。
+            if (a.type === 'v' && (a.name === 'parent_ux' || a.name === 'parent_uy' || a.name === 'parent_uz')) return;
             if (a.type === 'v') {
                 if (newBlock.scope.vars.has(full)) newBlock.scope.setVarExpr(full, a.expr);
                 else newBlock.scope.addVar(full, a.expr, -10, 10, 0.01);
@@ -472,7 +582,37 @@ function importFromCommands(text, opts) {
             }
         });
         
-        // 应用材质（立方体、半砖、楼梯、旗帜）：旗帜生成器配方 > 六面贴图 > 组合方块预设 > 整体单贴图
+        // ★IK 末端块（base 里带 v.ik_multi=1）：求解正文在共用动画 ik_solve_<段数> 里，
+        //   _ikVars/_ikPublish 只是内存元数据、不随存档走 ⇒ 按刚解析出来的 base 变量/全局重建，
+        //   否则「导入 → 再导出」会把这整组求解输入丢掉（末端块看起来只剩静态常量）。
+        if (newBlock.scope.vars.has('v.ik_multi')) {
+            const ikIn = [];
+            newBlock.scope.vars.forEach((d, k) => {
+                if (k.indexOf('v.ik_') === 0) ikIn.push([k, String(d.expr)]);
+            });
+            newBlock._ikVars = ikIn;
+            newBlock._ikMulti = true;
+            const s = boneSafeId(newBlock.id);
+            const pub = [], list = [];
+            globalVars.forEach((g, k) => {
+                if (k.indexOf(s + '_ik_') !== 0) return;
+                const expr = String((g && g.def) ? g.def.expr : '');
+                if (!expr) return;
+                pub.push(`t.${k}=${expr};`);
+                list.push([k, expr]);
+            });
+            newBlock._ikPublish = pub.join(' ');
+            newBlock._ikPubList = list;
+            // 求解动画的输出量（v.ik_jrx/jry/jrz、v.ik_bN）必须先存在：base 里可能引用它们，
+            // 运行器读取未定义变量会抛错（见 09-bone-binding 的 ikAttachSolveLayer）。
+            list.forEach(([, expr]) => {
+                const m = String(expr).match(/^v\.([A-Za-z0-9_]+)/);
+                if (!m) return;
+                const n = 'v.' + m[1];
+                if (!newBlock.scope.vars.has(n)) newBlock.scope.addVar(n, '0', -360, 360, 0.01);
+            });
+        }
+
         // ★旗帜纳入（2026-10-18 r36）：织布机生成的旗帜按 'banner：' 配方就地重渲染还原；
         //   本地上传的图片走既有 data:/blob: 分支（loadTexture 会自动跳过旗杆等不可贴图的 cube）。
         if (newBlock.type === 'cube' || newBlock.type === 'halfbrick' || newBlock.type === 'stair' || newBlock.type === 'flag') {
@@ -520,13 +660,26 @@ function importFromCommands(text, opts) {
         // runBlockProgram 报错，统一走导入末尾 reconstructBoneAnimationImports 重建。
         const hasLogic = assignments.some(a => hasLogicalDiscriminator(a.expr));
         const hasRedef = hasRedefinedVariable(assignments);
-        const takeMolangProgram = (hasLogic || hasRedef || !hasIdTag) && !isBoneAnim;
+        const takeMolangProgram = (hasLogic || hasRedef || !hasIdTag || baseProgTag) && !isBoneAnim && !layerAnimTag;
         if (takeMolangProgram) {
             newBlock.scope.molangMode = true;
             newBlock.scope.molangEditedByUser = false;
             // 无编号标签时整段载荷即程序（含 return / loop 等非赋值语句），不能走 extractMolangProgram
             // 的「去标签」清洗（它会误删含 `=` 的标签判定外的内容），直接用 content 原文。
             let programText = hasIdTag ? extractMolangProgram(content) : content.trim();
+            // ★骨骼/IK 的 base 里，`t.<id>_px=v.xpos;` 这类发布语句只是「全局定义」，
+            //   上面 assignments 已经把它们建成了惰性 globalVars（expr + sourceBlockId）。
+            //   若留在 program 里逐帧执行，则会读到只有动画层才产出的变量
+            //   （共用 bone_follow 不再把 v.rotatex/v.xpos 写进 base）⇒ 抛「未定义的变量 v.rotatex」，
+            //   整个 base 帧回退、导入后模型塌成直线。这里把发布语句从程序里摘掉，只保留真正的输入赋值。
+            const _boneBase = /v\.(parent_xrot|parent_px|ik_multi|bone_rot[xyz])\s*=/.test(content);
+            if (_boneBase) {
+                programText = programText.replace(/\bt\.[A-Za-z0-9_]+_[A-Za-z0-9_]+\s*=[^;]*;/g, ' ');
+                // ★★★【2026-11-10】摘掉发布语句后可能留下**空的条件块**：
+                //   `v.fmbe_init==0?(t.Cube10_ik_b1=0;);` 被掏成 `v.fmbe_init==0?();`，再导出就是 `( );`
+                //   —— Molang 里空括号 / 空块是语法错误，真机会整条指令作废。统一压成一条无害空语句。
+                programText = programText.replace(/\?\(\s*\)\s*;/g, ';').replace(/\?\{\s*\}\s*;/g, ';');
+            }
             // ID 冲突时改名：molang 程序里的时间变量 v.<rawId>_time 需要同步改为 v.<finalId>_time，
             // 否则程序执行时时间变量名与方块 ID 不匹配，关键帧动画无法驱动
             if (rawId !== finalId) {
@@ -595,6 +748,19 @@ function importFromCommands(text, opts) {
             g.def.value = nv;
         }
     }
+    // 多层动画：按 'ao:<n>' 还原每块局部的执行顺序（base 可不在第一位）
+    for (const [blk, m] of importedLayerOrders.entries()) {
+        const sc = blk.scope;
+        if (!sc || !sc.channels) continue;
+        let st = (Array.isArray(sc.stack) ? sc.stack : ['__base__']).filter(k => k === '__base__' || sc.channels.has(k));
+        if (!st.includes('__base__')) st.unshift('__base__');
+        st.sort((a, b) => {
+            const oa = Number.isFinite(m.get(a)) ? m.get(a) : 999;
+            const ob = Number.isFinite(m.get(b)) ? m.get(b) : 999;
+            return oa - ob;
+        });
+        sc.stack = st;
+    }
     blocks.forEach(b => b.refresh());
     // 导入时识别显式 molang 父子关系：子块 molang 里引用了 t.<父>_*（且父块 ≠ 自身、且确实存在）即视为
     // 显式骨骼绑定，标记为 _boneParent + _boneExplicit=true，与紫色加号 ✛ 绑定等价。
@@ -634,6 +800,11 @@ function importFromCommands(text, opts) {
     // 已在 autoBone 时由 bindBone 写入（v.xpos=t.1_px+pR·xbasepos_bone 等），只要骨干发布 t.1_*，
     // 子块 refresh 时即可正确跟随。
     if (boneAnimExports.length) reconstructBoneAnimationImports(boneAnimExports);
+    // ★导入收尾必须做一次三相全量刷新：动画层（含 IK 共用求解层 ik_solve_<N>）是在上面才挂回去的，
+    //   在此之前各块只跑过 base。不补这一遍，求解层从未执行 → 关节块读到占位/上一帧值（模型塌成直线）。
+    if (typeof refreshAllBlocksOrdered === 'function') {
+        try { refreshAllBlocksOrdered(); } catch (_) { }
+    }
     if (selectedBlock) renderVariablesForBlock(selectedBlock);
 
     // 导入后刷新关键帧面板：为含关键帧的方块添加标签并重建时间轴

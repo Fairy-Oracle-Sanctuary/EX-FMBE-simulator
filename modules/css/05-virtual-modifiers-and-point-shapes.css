@@ -49,6 +49,15 @@ body.light-mode .pt-point.on { color: #1e293b; }
 }
 .pt-empty { padding: 4px 2px; font-size: 11px; color: var(--color-text-muted, #94a3b8); }
 /* 画布里的点标签＝点击热区，给一点悬停反馈（只在画笔模式下才可点，pointer-events 由 JS 切） */
+/* ★手机端：标签里的坐标文字绝不能被系统当成「可选中 / 可识别」的文本 ——
+   否则轻点/长按会弹出文本选择、「识别文字→搜索」或放大镜，把描点操作完全打断。
+   这里连同 iOS 长按菜单（touch-callout）一起禁掉。 */
+.pt-tag {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
 .pt-tag:hover { outline: 1px solid rgba(255, 255, 255, 0.55); }
 body.light-mode .pt-tag:hover { outline-color: rgba(30, 41, 59, 0.55); }
 
@@ -306,3 +315,72 @@ body.light-mode .pt-len-pop .brush-length-value { color: #1e293b; }
 /* molang 错误面板 */
 .molang-error { display: none; margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(239,68,68,0.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; line-height: 1.5; }
 .molang-error.show { display: block; }
+
+/* ================== 识图 → 面片 弹窗（10-project/04-image-trace.js） ================== */
+.imtr-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1002;
+    background: rgba(2, 6, 23, 0.72); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 16px;
+}
+.imtr-modal {
+    width: min(880px, 96vw); max-height: 92vh; display: flex; flex-direction: column;
+    background: var(--panel-bg, #0f172a); color: var(--color-text-strong, #e2e8f0);
+    border: 1px solid rgba(59, 130, 246, 0.5); border-radius: 10px; overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5); font-size: 13px;
+}
+body.light-mode .imtr-modal { background: #f8fafc; color: #0f172a; border-color: #93c5fd; }
+.imtr-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; font-size: 15px; font-weight: 700;
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff;
+}
+body.light-mode .imtr-head { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.imtr-x { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; line-height: 1; }
+.imtr-body { display: flex; gap: 16px; padding: 16px; overflow: auto; }
+.imtr-left { flex: 1 1 55%; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.imtr-right { flex: 1 1 45%; min-width: 260px; display: flex; flex-direction: column; gap: 10px; }
+.imtr-file-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.imtr-file-btn {
+    display: inline-block; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    background: rgba(59, 130, 246, 0.18); border: 1px solid rgba(59, 130, 246, 0.5); font-weight: 600;
+}
+.imtr-file-name { font-size: 12px; opacity: .8; word-break: break-all; }
+.imtr-preview-wrap {
+    position: relative; min-height: 180px; border-radius: 8px; overflow: hidden;
+    background: rgba(148, 163, 184, 0.10); display: flex; align-items: center; justify-content: center;
+}
+.imtr-canvas { display: block; max-width: 100%; }
+.imtr-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; opacity: .6; }
+.imtr-stats { font-size: 12px; opacity: .85; }
+.imtr-group { border: 1px solid rgba(100, 116, 139, 0.28); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.imtr-group-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+.imtr-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.imtr-row > span { flex: 0 0 96px; opacity: .82; }
+.imtr-row > input[type="range"] { flex: 1 1 auto; min-width: 60px; }
+.imtr-row > b { flex: 0 0 34px; text-align: right; font-family: ui-monospace, monospace; }
+.imtr-row > input[type="number"], .imtr-row > select {
+    flex: 1 1 auto; min-width: 60px; padding: 4px 6px; border-radius: 6px;
+    border: 1px solid rgba(100, 116, 139, 0.45); background: rgba(15, 23, 42, 0.6); color: inherit; font-size: 12px;
+}
+body.light-mode .imtr-row > input[type="number"], body.light-mode .imtr-row > select { background: #fff; }
+.imtr-hint { font-size: 11px; opacity: .7; line-height: 1.5; }
+.imtr-btn {
+    padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
+    border: 1px solid rgba(100, 116, 139, 0.4); background: rgba(148, 163, 184, 0.16); color: inherit;
+}
+.imtr-btn:hover { background: rgba(148, 163, 184, 0.3); }
+.imtr-btn.primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border-color: transparent; }
+.imtr-btn.big { padding: 10px 12px; font-size: 14px; }
+.imtr-btn.ghost { background: transparent; }
+.imtr-export-row { display: flex; gap: 8px; }
+.imtr-cmd {
+    width: 100%; min-height: 90px; max-height: 180px; resize: vertical; box-sizing: border-box;
+    padding: 8px; border-radius: 6px; border: 1px solid rgba(100, 116, 139, 0.4);
+    background: rgba(2, 6, 23, 0.55); color: #cbd5e1; font: 11px ui-monospace, Menlo, Consolas, monospace;
+    white-space: pre; overflow: auto;
+}
+body.light-mode .imtr-cmd { background: #fff; color: #0f172a; }
+@media (max-width: 720px) {
+    .imtr-body { flex-direction: column; }
+    .imtr-right { min-width: 0; }
+}

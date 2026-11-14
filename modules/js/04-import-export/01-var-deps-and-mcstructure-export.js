@@ -35,11 +35,16 @@ function effectiveExportSuffix(custom, skipIdTag) {
 // ==================== 变量依赖排序与命令生成（修复依赖顺序） ====================
 // 获取一个方块的所有可导出变量（局部变量 + 该方块创建的全局变量）
 function getExportableVariables(block) {
-    const localEntries = Array.from(block.scope.vars.entries()).map(([name, def]) => ({
-        name: name,           // 例如 "v.xpos"
-        def: def,
-        type: 'local'
-    }));
+    // ★2026-11-10 跳过「动画层自有变量」：它们由某个动画控制器正文赋值（IK 求解中间量 / 跟随 pR 矩阵…），
+    //   base 再导出一次等于把整段函数正文抄进 base 指令（旧格式的病根）。
+    const _layerOwned = (typeof animLayerOwnedVars === 'function') ? animLayerOwnedVars(block) : null;
+    const localEntries = Array.from(block.scope.vars.entries())
+        .filter(([name]) => !(_layerOwned && _layerOwned.has(name)))
+        .map(([name, def]) => ({
+            name: name,           // 例如 "v.xpos"
+            def: def,
+            type: 'local'
+        }));
     const globalEntries = Array.from(globalVars.entries())
         .filter(([_, g]) => g.sourceBlockId === block.id)
         .map(([key, g]) => ({
@@ -211,6 +216,8 @@ function getConstantAssignmentsString(block) {
         // 骨骼 molang 内部辅助：跳过，导出端会按需重建
         if (short.startsWith('pR') || short.startsWith('p_') || short.startsWith('parent_') || short.startsWith('own_bone_rot')) continue;
         if (short === 'xbasepos_bone' || short === 'ybasepos_bone' || short === 'zbasepos_bone') continue;
+        // IK 内部求解量 / 输入参数：由 _ikVars 按表达式导出（多关节的输入端全在 _ikVars 里）
+        if (short.startsWith('ik_')) continue;
         if (name === 'v.xpos' || name === 'v.ypos' || name === 'v.zpos') continue; // 已在 order 处理
         stmts.push(`${name}=${_fv(short, _r4(vnum(block, name)))};`);
     }
@@ -313,7 +320,8 @@ function isBoneMolangDriven(b) {
     const bp = (b.scope && b.scope.vars) ? b.scope.vars.get('v.xbasepos') : null;
     return !!(bp && bp.expr && /t(?:\[['"]?|\.)([A-Za-z0-9_]+)_bx/.test(String(bp.expr)));
 }
-function getCommandTextForBlock(block) {
+function getCommandTextForBlock(block, opts) {
+    const _o = opts || {};
     // molang 接管方块：直接输出完整 program（含三元条件、q. 查询与全部变量），
     // 不能用 def.expr 重建，否则条件分支会被吞成单一求值结果而丢失指令内容。
     // 【2026-10-19 · 关键帧去文件夹化】文件夹骨骼已整体移除：
@@ -347,12 +355,30 @@ function getCommandTextForBlock(block) {
                 varsStr += molangTag(`'anim:${getKeyframeAnimId(block.id)}';`);
             }
         }
+        // ★IK 末端块走 program 分支时（导入后程序里只剩输入赋值），求解输出发布必须补回来：
+        //   t.<tip>_ik_b* 是动画层产出的变量的「惰性全局定义」，导入时已被摘出程序，
+        //   程序分支又不像骨子块分支那样自动追加 _ikPublish ⇒ 不补就会在「导入 → 再导出」时丢发布。
+        if (block && block._ikPublish && !varsStr.includes(`${boneSafeId(block.id)}_ik_jrx=`)) {
+            varsStr += ' ' + block._ikPublish;
+        }
     } else if (isBoneChild) {
         // 骨骼子块：自驱动输入（相对父旋转 + 缩放），世界坐标由下方「跟随父块」公式给出
         varsStr = getBoneInputConstantsString(block);
+        // ★共用跟随动画 bone_follow：base 只需补「父引用 + 骨偏移」输入，
+        //    pR / pos / rotate 由动画控制器统一计算（导出时每块仍带自己的方块编号 + 控制器名）。
+        if (boneHasSharedFollow(block)) {
+            const _bp = blocks.find(b => b.id === getExportBoneParentId(block));
+            if (_bp) varsStr = (varsStr ? varsStr + ' ' : '') + boneFollowInputsExportString(block, _bp);
+        }
     } else {
         // 非骨骼动画：输出常量数值（molang 表达式求值为当前值），保证导入后外观一致
         varsStr = hasBoneAnim ? getOrderedAssignmentsString(block) : getConstantAssignmentsString(block);
+        // ★IK 逆骨骼「自由根」（链首没有父骨骼，直接接管自己的 rotate）：关节角必须按表达式导出，
+        //   getBoneInputConstantsString 只在骨子块路径追加 _ikVars，这条路径要自己补一次（追加在常量段之后即可覆盖）。
+        if (block && Array.isArray(block._ikVars) && block._ikVars.length) {
+            for (const [n, e] of block._ikVars) varsStr += ` ${n}=${e};`;
+            if (block._ikPublish) varsStr += ' ' + block._ikPublish;
+        }
     }
     // 骨骼子块：追加「跟随父块」的世界坐标计算（引用父全局矩阵 + 自身相对父偏移）。
     // 取代原先独立的巨命令，使每条方块命令自包含且很短（父全局见 getBonePublishGlobalsString）。
@@ -369,7 +395,11 @@ function getCommandTextForBlock(block) {
         // 去重按【跟随式特征】判定（不再按绑定方式）：新绑定统一后都是 pR 矩阵 + pos 跟随式，
         // 旧版局部轴链看 p_u0/basepos 跟随。缺偏移常量时（只写 v.xbasepos=t.父_bx）会跑位，必须补全。
         const _isBp = isBaseposDrivenBlock(block);
-        const _followDone = isPureSnapBone(block)
+        // ★枢轴绑定的跟随数学已搬进共用动画 bone_follow：base 只留输入，follower 由动画层输出，
+        //   绝不能再把整段跟随公式重复追加进 base（否则同一条指令出现两份 pR 矩阵）。
+        const _followDone = boneHasSharedFollow(block)
+            ? true
+            : isPureSnapBone(block)
             ? /v\.xpos=t\./.test(varsStr)
             : _isBp
             ? (varsStr.includes('v.p_u0=') || varsStr.includes('v.xbasepos=t.') && varsStr.includes('v.xbasepos_bone='))
@@ -406,7 +436,173 @@ function getCommandTextForBlock(block) {
         varsStr = molangTag(`'方块类型：掉落物';`) + varsStr;
     }
     const suffix = effectiveExportSuffix(exportSuffix).replace(/{id}/g, block.id);
-    return exportPrefix + blockIdPrefix + groupPrefix + parentBonePrefix + boneTag + varsStr + suffix;
+    // 多层导出：base 也要打 ao（顺序）；{anim} 在 prefix 里展开成动画名（单层工程无该占位符 ⇒ 逐字节不变）
+    const _animName = _o.animName || BASE_ANIM_NAME;
+    const _prefix = expandStructurePrefix(block, _animName);
+    const _tags = _o.extraTags || '';
+    // ★ 指令末尾追加动画控制器（playanimation 的收尾参数）：裸名字接在收尾引号后。
+    //   base 用默认控制器名 FMBE_variables，附加动画层由调用方传 animName。
+    const _ctrlName = _o.controllerName != null ? String(_o.controllerName).trim() : _animName;
+    const _ctrlArg = _ctrlName ? ' ' + _ctrlName : '';
+    return _prefix + blockIdPrefix + groupPrefix + parentBonePrefix + boneTag + molangFixFlowControl(varsStr) + _tags + suffix + _ctrlArg;
+}
+
+// ★★★【2026-11-10】Molang **没有 `if(cond){…}` 语句** —— 真机解析到 `if` 直接抛
+//   `Error: unknown token: if(cond){…`，整条 playanimation 当场作废（关节角恒 0、模型散架）。
+//   官方流程控制只有 `cond ? { …语句… };`（brace scope）与三元 `a ? b : c`。
+//   本项目的解释器历史上宽松放行 `if`，于是老工程 / 老动画里可能残留这种写法；
+//   导出时统一改写成官方条件块，语义完全等价：`if(C){A}` ≡ `(C)?{A}`。
+function molangFixFlowControl(text) {
+    return String(text == null ? '' : text)
+        .replace(/\bif\s*\(([^()]*)\)\s*\{/g, '($1)?{')
+        // 空条件块（`cond?();` / `cond?{};`）在 Molang 里是语法错误 ⇒ 压成无害空语句
+        .replace(/\?\(\s*\)\s*;/g, ';')
+        .replace(/\?\{\s*\}\s*;/g, ';')
+        // 废止项：`v.parent_ux/uy/uz`（父块视觉锚点补偿）已从 bone_follow 公式整层删除。
+        // 老工程里还留在 molang 程序正文中 ⇒ 导出时统一抹掉，免得每条指令白带三条恒 0 赋值。
+        .replace(/\bv\.parent_u[xyz]\s*=[^;]*;/g, ' ');
+}
+
+// ===== 多层动画导出（2026-11-07）=====
+// 单层（无 channels）⇒ 只输出原来那一条，逐字节不变。
+// 多层 ⇒ 按 scope.stack 顺序，每层一条 playanimation；载荷内加：
+//   'anim:<animId>';        —— 非 base 层身份；没有 anim 标签的那条就是该块的 base
+//   'anim名称：<name>';      —— 控制器显示名（导入还原用，导入端不依赖它寻址）
+//   'ao:<order>';           —— 本块内的执行顺序（base 也带，保证 base 可不在第一位）
+//   {anim} 占位符在 prefix 里展开成动画名。
+function getBlockLayerList(block) {
+    const sc = block && block.scope;
+    if (!sc || !sc.channels || sc.channels.size === 0) return null;
+    if (typeof sc.ensureLayerModel === 'function') sc.ensureLayerModel();
+    const stack = Array.isArray(sc.stack) ? sc.stack : ['__base__'];
+    const out = [];
+    for (const key of stack) {
+        if (key === '__base__') {
+            out.push({ key, name: (typeof BASE_ANIM_NAME !== 'undefined') ? BASE_ANIM_NAME : 'FMBE_variables', base: true, program: String(sc.program || '') });
+        } else if (sc.channels.has(key)) {
+            const ch = sc.channels.get(key);
+            if (ch && ch.enabled === false) continue;
+            const anim = (typeof getProjectAnimation === 'function') ? getProjectAnimation(key) : null;
+            let prog = String((typeof getAnimationProgram === 'function') ? getAnimationProgram(key) : (ch && ch.program) || '');
+            // ★2026-11-10 共用跟随动画（bone_follow）的正文由 app 拥有，老工程里可能还是
+            //   「带 v.parent_ux/uy/uz」的旧版 ⇒ 导出时直接换成当前版本。
+            //   不换的话每条指令白带三条废止赋值，而且真机上这三条是它自己的输入槽、没人再写它们。
+            if (typeof BONE_FOLLOW_PROGRAM === 'string' && prog.includes('v.parent_ux') && prog.includes('v.pR22=')) {
+                prog = BONE_FOLLOW_PROGRAM;
+                try { const a = getProjectAnimation(key); if (a) a.program = BONE_FOLLOW_PROGRAM; } catch (_) { }
+            }
+            if (!prog.trim()) continue;   // 空层不产出指令
+            out.push({ key, name: anim ? anim.name : key, base: false, program: prog });
+        }
+    }
+    if (!out.some(l => l.base)) {
+        out.unshift({ key: '__base__', name: (typeof BASE_ANIM_NAME !== 'undefined') ? BASE_ANIM_NAME : 'FMBE_variables', base: true, program: String(sc.program || '') });
+    }
+    return out;
+}
+function buildAnimationLayerCommand(block, layer, ao) {
+    const prog = molangFixFlowControl(String(layer.program || '')).replace(/\s*\r?\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    const prefix = expandStructurePrefix(block, layer.name);
+    const matTag = getMaterialTag(block);
+    const groupTag = block.group ? molangTag(`'group:${block.group}';`) : '';
+    const identTags = molangTag(`'anim:${layer.key}';`) + molangTag(`'anim名称：${layer.name}';`) + molangTag(`'ao:${ao}';`);
+    const suffix = effectiveExportSuffix(exportSuffix).replace(/{id}/g, block.id);
+    return prefix + matTag + groupTag + identTags + prog + suffix + (layer.name ? ' ' + layer.name : '');
+}
+// ===== 双 tag 识别法（结构导出可选，2026-11-08）=====
+// 位置法：1 命令方块 → 1 只狐狸（前缀 `positioned ~-1~~` + `@e[x=~,z=~,y=~,r=1]`）。
+//   ⇒ 前缀一改就失效，且「一个方块的多层动画」会分摊到多只狐狸，控制器无法叠加到同一只身上。
+// Tag 法：所有狐狸叠在同一个坐标，靠实体 tag 选中：
+//   模型 tag（用户输入，支持中文）= 本结构全部狐狸；方块名 tag = 某一块的狐狸。
+//   双否定 `unless entity @s[tag=!A,tag=!B]` 等价于「拥有 A 或 B 中任意一个」⇒ 一条指令可同时作用多块。
+//   ★★ unless 后面必须带 `entity`（`unless <选择器>` 是非法语法，游戏会整条拒绝执行）。
+const STRUCT_TAG_ANIM = 'animation.player.attack.positions';   // playanimation 的动画名（原模板同款）
+// tag 里不能出现空格/逗号/方括号/感叹号/引号（会破坏选择器解析）；中文等其他字符原样保留。
+function structTagSafe(s) {
+    return String(s == null ? '' : s).replace(/[\s,\[\]!"'`]+/g, '_').replace(/^_+|_+$/g, '');
+}
+// 方块名 tag：用面板上显示的名字（block.id，导入时即「方块编号」），允许中文
+function structBlockNameTag(block) {
+    if (!block) return '';
+    return structTagSafe(block.name || block.id);
+}
+// 强制专用前缀；{tags} 由 expandStructurePrefix 逐条替换成 `tag=!<方块名>,…`
+function structTagPrefixTemplate(modelTag) {
+    const t = structTagSafe(modelTag) || 'FMBE';
+    return `execute as @e[type=fox,tag=${t}] unless entity @s[tag=!{tags}] run playanimation @s ${STRUCT_TAG_ANIM} _ 0 "`;
+}
+// 统一展开 prefix：{anim} → 动画名；{tags} → 本方块（可多个）的名字 tag 否定式
+function expandStructurePrefix(block, animName) {
+    let p = String(exportPrefix == null ? '' : exportPrefix).replace(/{anim}/g, animName);
+    if (p.indexOf('{tags}') >= 0) {
+        const tags = [];
+        const t = structBlockNameTag(block);
+        if (t) tags.push(t);
+        // 模板里已写好 `tag=!{tags}`，这里只填「方块名」本身（多个用 ,tag=! 连接）
+        p = p.replace(/{tags}/g, tags.join(',tag=!'));
+    }
+    return p;
+}
+
+// 返回 [{ key, name, base, text }]：一个方块的所有导出指令（单层只有一条）
+// ★base 指令恒定排在第一行（导入需要先建块再挂层），真实执行顺序由每条载荷里的 'ao:<n>' 还原。
+function getCommandTextsForBlock(block, opts) {
+    const layers = getBlockLayerList(block);
+    if (!layers || layers.length < 2) {
+        return [{ key: '__base__', name: (typeof BASE_ANIM_NAME !== 'undefined') ? BASE_ANIM_NAME : 'FMBE_variables', base: true, text: getCommandTextForBlock(block, opts) }];
+    }
+    const ordered = layers.map((l, i) => ({ layer: l, ao: i }));
+    const baseItem = ordered.find(x => x.layer.base);
+    if (baseItem) {
+        ordered.splice(ordered.indexOf(baseItem), 1);
+        ordered.unshift(baseItem);
+    }
+    const items = ordered.map(({ layer: l, ao }) => ({
+        key: l.key, name: l.name, base: l.base,
+        text: l.base
+            ? getCommandTextForBlock(block, Object.assign({}, opts, {
+                animName: l.name,
+                // 'baseprog:1' 标记「base 来自 molang 程序」：导入侧据此整段存回 program，
+                // 否则会被拆成变量卡片，基础动画就不再按 stack 顺序执行（会重算所有变量、覆盖前面动画的写入）
+                extraTags: molangTag((block.scope && block.scope.program && block.scope.program.trim() ? `'baseprog:1'; ` : '') + `'ao:${ao}';`)
+            }))
+            : buildAnimationLayerCommand(block, l, ao, opts)
+    }));
+    return moveBonePublishToFollowLayer(block, ordered, items);
+}
+
+// ★★【命令执行顺序修复 2026-11-08】父块的 t.<id>_* 发布必须发生在「算出被发布变量」的那一层之后。
+//   base（ao:0）是独立的一条 playanimation；v.xpos/v.rotatex 由 bone_follow（ao:1）才写入，
+//   IK 的 v.ik_jr*/v.ik_b* 由 ik_solve 层（ao:1/2）才写入。发布留在 base ⇒ 游戏里读到的是
+//   【上一 tick】的位姿（首帧更会读到未定义 / 0）。
+//   ⇒ 导出时按「右侧变量在哪个附加层被写」逐条后移：
+//        t.<id>_xrot=v.rotatex  → bone_follow 末尾
+//        t.<id>_ik_b1=v.ik_b1   → ik_solve 末尾
+//      右侧变量只在本块 base 里写的（如 v.xbasepos 常量、v.ikW）则原地不动。
+function moveBonePublishToFollowLayer(block, ordered, items) {
+    if (!items || items.length < 2 || !items[0] || !items[0].base) return items;
+    const sid = (typeof boneSafeId === 'function') ? boneSafeId(block.id) : String(block.id);
+    const esc = sid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`\\s*t\\.${esc}_[A-Za-z0-9_]*\\s*=\\s*v\\.([A-Za-z_][A-Za-z0-9_]*)\\s*;`, 'g');
+    const moved = new Map();           // targetLayerIndex -> 语句串
+    const kept = String(items[0].text || '').replace(re, (m, rhs) => {
+        let target = -1;
+        for (let i = 1; i < ordered.length; i++) {
+            const prog = String((ordered[i].layer && ordered[i].layer.program) || '');
+            if (prog.includes('v.' + rhs + '=')) target = i;
+        }
+        if (target < 0) return m;                       // 没有计算层 → 留在 base（顺序本来就对）
+        moved.set(target, (moved.get(target) || '') + m.trim() + ' ');
+        return '';
+    });
+    if (!moved.size) return items;
+    items[0].text = kept;
+    for (const [idx, text] of moved) {
+        const t = String(items[idx].text || '');
+        const q = t.lastIndexOf('"');
+        items[idx].text = q < 0 ? t + ' ' + text : t.slice(0, q) + text + t.slice(q);
+    }
+    return items;
 }
 
 // 下载纯文本为文件
@@ -439,7 +635,7 @@ function downloadTextFile(text, filename) {
 //           block_position_data TAG_Compound
 //             "<格子索引>"  → { block_entity_data: { Command, ... } }
 //   ★ 关键：命令方块指令存在 palette.default.block_position_data[索引].block_entity_data.Command，
-//     索引 i = x + z*sx + y*sx*sz（X 变化最快），**不是**坐标。
+//     索引 i = lz + ly*sz + lx*sy*sz（Z 最快 → Y → X，官方口径），**不是**坐标。
 //   ★ 载体设计：1 命令方块 → 1 狐狸。狐狸站在命令方块上，命令方块用
 //     `execute positioned ~-1~~ run playanimation @e[x=~,z=~,y=~,r=1]`（模板前缀自带 `~-1~~`）
 //     选中半径 1 内最近的实体（= 该狐狸）执行动画指令，狐狸身上无 Tag、无指令。
@@ -474,6 +670,7 @@ class NbtWriter {
     writeShort(name, v)  { this._tagHeader(_NBT.TAG_SHORT, name); this._i16(v); }
     writeLong(name, v)   { this._tagHeader(_NBT.TAG_LONG, name); this._i64(v); }
     writeFloat(name, v)  { this._tagHeader(_NBT.TAG_FLOAT, name); this._f32(v); }
+    writeDouble(name, v) { this._tagHeader(_NBT.TAG_DOUBLE, name); this._f64(v); }
     writeString(name, s) { this._tagHeader(_NBT.TAG_STRING, name); this._utf8(s); }
     writeIntArray(name, arr) {
         this._tagHeader(_NBT.TAG_INT_ARRAY, name);
@@ -524,12 +721,12 @@ class NbtWriter {
 // 说明：getCommandTextForBlock 返回 = exportPrefix + materialTag + ... + varsStr + suffix
 // 结构里命令方块只需承载 playanimation 的目标参数，故这里直接复用完整 getCommandTextForBlock()
 // ——它本身就含前缀（execute positioned ~-1~~ run playanimation ...）+ 全部变量 + '方块编号：id' 后缀。
-function getBlockStructureCommand(block) {
+function getBlockStructureCommand(block, opts) {
     // ★ 不再静默吞异常：命令方块没有指令 = 功能失效，必须让调用方发现。
     //   （旧实现 catch 后返回 '' → 结构、尺寸、位置全对，唯独命令方块是空的，
     //     极难从产物上看出根因；见 2026-10-01 "命令方块里啥也没有" 报障。）
     if (!block || typeof block !== 'object') throw new Error('getBlockStructureCommand: 入参不是方块对象');
-    return getCommandTextForBlock(block);
+    return getCommandTextForBlock(block, opts);
 }
 
 // 方块世界坐标（四舍五入到整数格）。
@@ -549,9 +746,160 @@ function getBlockWorldIntPos(block) {
 
 // 狐狸落位：放在命令方块的【x-1】格，使其被 @e[x=~,z=~,y=~,r=1] 命中。
 // 返回狐狸的世界坐标（浮点，方块中心 = 整数 + 0.5）。
-// ★ 承载布局（用户定稿）：命令方块沿 Z 正轴依次排开，狐狸在各自命令方块的 x-1 处。
+// ★ 承载布局：命令方块折成三维区块（见 buildMcStructureBytes），狐狸恒在各自命令方块的 x-1 处。
 function getFoxSpawnPosForCommandBlock(cmdX, cmdY, cmdZ) {
     return [cmdX - 1 + 0.5, cmdY + 0.0, cmdZ + 0.5];
+}
+
+// --- 狐狸实体的「预设标量 NBT」表（2026-11-08 用户要求可交互）-------------------
+// 下列字段本来就是硬编码写进狐狸实体的；现在统一挪到这张表，导出弹窗据此渲染
+// 【勾选框（是否写入）+ 值输入框】，用户可以逐项开关、改值。
+// g=分组名  k=键名  t=类型  v=默认值（与原先硬编码完全一致）。
+// ★ 结构化字段（Pos / Rotation / Motion / Tags / Attributes / definitions /
+//   neteaseComponents / 装备槽 / 效果表 …）不在这张表里：它们的形状或取值依赖布局，
+//   仍按原样固定写入（其中 Attributes/definitions 是实体能否被加载的关键，不能删）。
+const FOX_NBT_SPEC = [
+    // 身份
+    { g: '身份',           k: 'OldEntityUniqueID', t: 'long',  v: -1 },
+    // 运动 / 生存
+    { g: '运动 / 生存',    k: 'Air',             t: 'short', v: 300 },
+    { g: '运动 / 生存',    k: 'OnGround',        t: 'byte',  v: 0 },
+    { g: '运动 / 生存',    k: 'FallDistance',    t: 'float', v: 0 },
+    { g: '运动 / 生存',    k: 'DeathTime',       t: 'short', v: 0 },
+    { g: '运动 / 生存',    k: 'HurtTime',        t: 'short', v: 0 },
+    { g: '运动 / 生存',    k: 'Dead',            t: 'byte',  v: 0 },
+    { g: '运动 / 生存',    k: 'Invulnerable',    t: 'byte',  v: 1 },
+    { g: '运动 / 生存',    k: 'ignoreHurt',      t: 'byte',  v: 1 },
+    { g: '运动 / 生存',    k: 'Fire',            t: 'byte',  v: -1 },
+    { g: '运动 / 生存',    k: 'FireHurtTime',    t: 'short', v: 0 },
+    // 狐狸本体状态
+    { g: '狐狸本体状态',   k: 'IsAutonomous',    t: 'byte',  v: 1 },
+    { g: '狐狸本体状态',   k: 'Persistent',      t: 'byte',  v: 1 },
+    { g: '狐狸本体状态',   k: 'IsGlobal',        t: 'byte',  v: 1 },
+    { g: '狐狸本体状态',   k: 'IsTamed',         t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'IsTrusting',      t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'IsBaby',          t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'IsAngry',         t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'Sitting',         t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'SittingDown',     t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'ShowBottom',      t: 'byte',  v: 1 },
+    { g: '狐狸本体状态',   k: 'Saddled',         t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'Sheared',         t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'Chested',         t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'Variant',         t: 'int',   v: 0 },
+    { g: '狐狸本体状态',   k: 'MarkVariant',     t: 'int',   v: 0 },
+    { g: '狐狸本体状态',   k: 'SkinID',          t: 'int',   v: 0 },
+    { g: '狐狸本体状态',   k: 'Color',           t: 'byte',  v: 0 },
+    { g: '狐狸本体状态',   k: 'Color2',          t: 'byte',  v: 0 },
+    // AI 开关
+    { g: 'AI 开关',        k: 'IsCloseAi',        t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsEating',         t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsGliding',        t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsIllagerCaptain', t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsOrphaned',       t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsOutOfControl',   t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsPregnant',       t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsRoaring',        t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsScared',         t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsStunned',        t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'IsSwimming',       t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'NaturalSpawn',     t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'LootDropped',      t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'canPickupItems',   t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'hasSetCanPickupItems', t: 'byte', v: 1 },
+    { g: 'AI 开关',        k: 'collidableMob',    t: 'byte', v: 1 },
+    { g: 'AI 开关',        k: 'needDispatchKnock', t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'hasBoundOrigin',   t: 'byte', v: 0 },
+    { g: 'AI 开关',        k: 'Surface',          t: 'byte', v: 0 },
+    // 维度 / 传送 / 目标
+    { g: '维度 / 传送',    k: 'LastDimensionId',  t: 'int',  v: 0 },
+    { g: '维度 / 传送',    k: 'PortalCooldown',   t: 'int',  v: 0 },
+    { g: '维度 / 传送',    k: 'TargetID',         t: 'long', v: -1 },
+    { g: '维度 / 传送',    k: 'LeasherID',        t: 'long', v: -1 },
+    { g: '维度 / 传送',    k: 'OwnerNew',         t: 'long', v: 0 },
+    // 交易 / 战斗数值
+    { g: '交易 / 战斗',    k: 'TradeExperience',  t: 'int',  v: 0 },
+    { g: '交易 / 战斗',    k: 'TradeTier',        t: 'int',  v: 0 },
+    { g: '交易 / 战斗',    k: 'Strength',         t: 'int',  v: 0 },
+    { g: '交易 / 战斗',    k: 'StrengthMax',      t: 'int',  v: 0 },
+    { g: '交易 / 战斗',    k: 'boundX',           t: 'int',  v: 0 },
+    { g: '交易 / 战斗',    k: 'boundY',           t: 'int',  v: 0 },
+    { g: '交易 / 战斗',    k: 'boundZ',           t: 'int',  v: 0 }
+];
+
+// --- 结构化 NBT 预设（2026-11-08 用户要求也开放编辑）--------------------------
+// 装备槽：Armor 5 格 + 主手 + 副手；每格可改 Name（物品 id，空=空槽）/ Count / Damage。
+// 注意 key 里的 # 只是 UI 用的分隔符，Armor#i 对应 Armor 列表第 i 项。
+const FOX_EQUIP_SLOTS = [
+    { key: 'Armor#0', list: 'Armor', idx: 0, label: '头盔 Armor[0]' },
+    { key: 'Armor#1', list: 'Armor', idx: 1, label: '胸甲 Armor[1]' },
+    { key: 'Armor#2', list: 'Armor', idx: 2, label: '护腿 Armor[2]' },
+    { key: 'Armor#3', list: 'Armor', idx: 3, label: '靴子 Armor[3]' },
+    { key: 'Armor#4', list: 'Armor', idx: 4, label: '盔甲槽 Armor[4]' },
+    { key: 'Mainhand', list: 'Mainhand', idx: 0, label: '主手 Mainhand' },
+    { key: 'Offhand', list: 'Offhand', idx: 0, label: '副手 Offhand' }
+];
+
+// 属性表（[名字, Base, Current, Min, Max, DefaultMin, DefaultMax]）
+// ★ health 必须有，否则实体被判「无生命值」而丢弃；UI 只开放 Base/Current/Max，Min/Default 保持默认。
+const FOX_ATTR_SPEC = [
+    ['minecraft:luck',                0,  0, -1024, 1024, -1024, 1024],
+    ['minecraft:health',             10, 10,     0,   10,     0,   10],
+    ['minecraft:absorption',          0,  0,     0,   16,     0,   16],
+    ['minecraft:movement',            0,  0,     0, 1024,     0, 1024],
+    ['minecraft:underwater_movement', 0,  0,     0, 1024,     0, 1024],
+    ['minecraft:lava_movement',       0,  0,     0, 1024,     0, 1024],
+    ['minecraft:attack_damage',       2,  2,     0, 1024,     0, 1024],
+    ['minecraft:follow_range',       16, 16,     0, 2048,     0, 2048],
+    ['minecraft:knockback_resistance',0,  0,     0, 1024,     0, 1024],
+    ['minecraft:horse.jump_strength', 0,  0,     0, 1024,     0, 1024],
+    ['minecraft:zombie.spawn_reinforcements', 0, 0, 0, 1024, 0, 1024],
+    ['minecraft:player.exhaustion',   0,  0,     0, 1024,     0, 1024],
+    ['minecraft:player.hunger',       0,  0,     0,   20,     0,   20],
+    ['minecraft:player.saturation',   0,  0,     0,   20,     0,   20],
+    ['minecraft:player.level',        0,  0,     0, 1024,     0, 1024],
+    ['minecraft:player.experience',   0,  0,     0, 1024,     0, 1024],
+    ['minecraft:friction',            0,  0,     0, 1024,     0, 1024],
+    ['minecraft:buoyant',             0,  0,     0, 1024,     0, 1024],
+    ['minecraft:fall_damage',         0,  0,     0, 1024,     0, 1024]
+];
+
+// neteaseComponents：值本身是 JSON 字符串，UI 里给文本框直接改
+const FOX_NETEASE_COMPONENTS = [
+    { k: 'minecraft:collision_box',            v: '{"width":1,"height":1}' },
+    { k: 'minecraft:free_camera_controlled',   v: '{"backwards_movement_modifier":1,"strafe_speed_modifier":1}' },
+    { k: 'minecraft:friction_modifier',        v: '{"value":0.01}' },
+    { k: 'minecraft:physics',                  v: '{"has_collision":true,"has_gravity":true}' },
+    { k: 'minecraft:scale',                    v: '{"value":1}' }
+];
+
+function writeFoxNbtScalar(w, t, k, v) {
+    if (t === 'byte') w.writeByte(k, v);
+    else if (t === 'short') w.writeShort(k, v);
+    else if (t === 'int') w.writeInt(k, v);
+    else if (t === 'long') w.writeLong(k, v);
+    else if (t === 'float') w.writeFloat(k, v);
+    else if (t === 'double') w.writeDouble(k, v);
+    else w.writeString(k, String(v));
+}
+
+// 按用户选择写预设标量字段：opts = { values:{键:值}, drop:{键:true} }
+function writeFoxNbtSpecFields(w, opts) {
+    const o = opts || {};
+    const values = o.values || {};
+    const drop = o.drop || {};
+    FOX_NBT_SPEC.forEach(f => {
+        if (drop[f.k]) return;
+        const v = Object.prototype.hasOwnProperty.call(values, f.k) ? values[f.k] : f.v;
+        writeFoxNbtScalar(w, f.t, f.k, v);
+    });
+}
+
+// 实际会写入的预设字段条数（UI 展示 / 导出 toast 用）
+function foxNbtCount(opts) {
+    const o = opts || {};
+    const drop = o.drop || {};
+    return FOX_NBT_SPEC.filter(f => !drop[f.k]).length;
 }
 
 // 生成一个狐狸实体复合标签（字段对齐实测样本 72 项 / 2026-10-01）
@@ -560,12 +908,18 @@ function getFoxSpawnPosForCommandBlock(cmdX, cmdY, cmdZ) {
 //    实体会被当作"不完整实体"对待 —— 表现为：不刷新、不执行 playanimation、
 //    或在部分版本被直接丢弃（用户实测：深色的"狐狸已识别"标识时有时无）。
 //    因此这里按实测样本逐字段还原（值取"中立默认"，不含样本项目特有数据）。
-// ★ 有意【不写】的字段：
-//    Tags —— 样本是 ["zscale","wiki:fmbe","expro"]（其项目私有标记）；
-//            本工具的狐狸是纯指令载体，不带 Tag 以免与其他装置的 @e[tag=..] 冲突。
-function writeFoxEntity(w, pos, uid) {
+// ★ Tags：位置法不写（狐狸是纯坐标载体，避免与其他装置的 @e[tag=..] 冲突）；
+//   tag 识别法必须写（模型 tag + 方块名 tag），否则 @e[type=fox,tag=…] 选不中。
+function writeFoxEntity(w, pos, uid, tags, foxNbt) {
     const end = w.beginListCompoundElem();
     w.writeString('identifier', 'minecraft:fox');
+
+    // --- tag 识别法标记（可选）：Tags = [模型 tag, 方块名 tag] ---
+    if (Array.isArray(tags) && tags.length) {
+        const tagList = tags.map(t => structTagSafe(t)).filter((t, i, a) => t && a.indexOf(t) === i);
+        w.beginList('Tags', _NBT.TAG_STRING, tagList.length);
+        tagList.forEach(t => w.writeListString(t));
+    }
 
     // --- 位置 / 朝向 ---
     w.beginList('Pos', _NBT.TAG_FLOAT, 3);
@@ -575,92 +929,31 @@ function writeFoxEntity(w, pos, uid) {
 
     // --- 身份 ---
     w.writeLong('UniqueID', uid);
-    w.writeLong('OldEntityUniqueID', -1);
 
-    // --- 运动 / 生存（缺 Air 会在水下窒息、缺 Motion 部分版本不给实体重力） ---
+    // --- 运动向量（列表型，固定写入） ---
+    //   Air 会在水下窒息、Motion 缺字段部分版本不给实体重力，因此保留原值：
+    //   标量部分（Air / OnGround / … / boundZ）见文件顶部 FOX_NBT_SPEC，由用户决定写不写/改值。
     w.beginList('Motion', _NBT.TAG_FLOAT, 3);
     w.writeListFloat(0.0); w.writeListFloat(0.0); w.writeListFloat(0.0);
-    w.writeShort('Air', 300);
-    w.writeByte('OnGround', 0);
-    w.writeFloat('FallDistance', 0);
-    w.writeShort('DeathTime', 0);
-    w.writeShort('HurtTime', 0);
-    w.writeByte('Dead', 0);
-    w.writeByte('Invulnerable', 1);      // 防止狐狸被打死导致指令载体消失
-    w.writeByte('ignoreHurt', 1);
-    w.writeByte('Fire', -1);
-    w.writeShort('FireHurtTime', 0);
 
-    // --- 狐狸本体状态 ---
-    w.writeByte('IsAutonomous', 1);
-    w.writeByte('Persistent', 1);
-    w.writeByte('IsGlobal', 1);          // 全局实体：不随区块卸载，保证指令载体常在
-    w.writeByte('IsTamed', 0);
-    w.writeByte('IsTrusting', 0);
-    w.writeByte('IsBaby', 0);
-    w.writeByte('IsAngry', 0);
-    w.writeByte('Sitting', 0);
-    w.writeByte('SittingDown', 0);
-    w.writeByte('ShowBottom', 1);
-    w.writeByte('Saddled', 0);
-    w.writeByte('Sheared', 0);
-    w.writeByte('Chested', 0);
-    w.writeInt('Variant', 0);            // ★TAG_INT(3)，实测样本口径（写成 Byte 会被判类型不符）
-    w.writeInt('MarkVariant', 0);
-    w.writeInt('SkinID', 0);
-    w.writeByte('Color', 0);
-    w.writeByte('Color2', 0);
-
-    // --- AI 开关（全关：载体狐不许乱跑） ---
-    w.writeByte('IsCloseAi', 0);
-    w.writeByte('IsEating', 0);
-    w.writeByte('IsGliding', 0);
-    w.writeByte('IsIllagerCaptain', 0);
-    w.writeByte('IsOrphaned', 0);
-    w.writeByte('IsOutOfControl', 0);
-    w.writeByte('IsPregnant', 0);
-    w.writeByte('IsRoaring', 0);
-    w.writeByte('IsScared', 0);
-    w.writeByte('IsStunned', 0);
-    w.writeByte('IsSwimming', 0);
-    w.writeByte('NaturalSpawn', 0);
-    w.writeByte('LootDropped', 0);
-    w.writeByte('canPickupItems', 0);
-    w.writeByte('hasSetCanPickupItems', 1);
-    w.writeByte('collidableMob', 1);
-    w.writeByte('needDispatchKnock', 0);
-    w.writeByte('hasBoundOrigin', 0);
-    w.writeByte('Surface', 0);
-
-    // --- 维度 / 传送 / 目标 ---
-    w.writeInt('LastDimensionId', 0);
-    w.writeInt('PortalCooldown', 0);
-    w.writeLong('TargetID', -1);
-    w.writeLong('LeasherID', -1);
-    w.writeLong('OwnerNew', 0);
-
-    // --- 交易 / 战斗数值（中立默认） ---
-    w.writeInt('TradeExperience', 0);
-    w.writeInt('TradeTier', 0);
-    w.writeInt('Strength', 0);
-    w.writeInt('StrengthMax', 0);
-    w.writeInt('boundX', 0);
-    w.writeInt('boundY', 0);
-    w.writeInt('boundZ', 0);
-
-    // --- 装备槽（5 甲 + 主手 + 副手，须为空但字段存在） ---
-    const emptySlot = () => {
+    // --- 装备槽（5 甲 + 主手 + 副手；字段须在，内容可由用户编辑） ---
+    const equipOv = (foxNbt && foxNbt.equip) || {};
+    const emptySlot = (slotKey) => {
+        const o = equipOv[slotKey] || {};
+        const name = String(o.Name == null ? '' : o.Name).trim();
+        const count = Number(o.Count);
+        const dmg = Number(o.Damage);
         const e = w.beginListCompoundElem();
-        w.writeByte('Count', 0);
-        w.writeShort('Damage', 0);
-        w.writeString('Name', '');
+        w.writeByte('Count', Number.isFinite(count) ? count : 0);
+        w.writeShort('Damage', Number.isFinite(dmg) ? dmg : 0);
+        w.writeString('Name', name);
         w.writeByte('WasPickedUp', 0);
         e();
     };
     w.beginList('Armor', _NBT.TAG_COMPOUND, 5);
-    for (let i = 0; i < 5; i++) emptySlot();
-    w.beginList('Mainhand', _NBT.TAG_COMPOUND, 1); emptySlot();
-    w.beginList('Offhand',  _NBT.TAG_COMPOUND, 1); emptySlot();
+    for (let i = 0; i < 5; i++) emptySlot('Armor#' + i);
+    w.beginList('Mainhand', _NBT.TAG_COMPOUND, 1); emptySlot('Mainhand');
+    w.beginList('Offhand',  _NBT.TAG_COMPOUND, 1); emptySlot('Offhand');
 
     // --- 效果 / 座位（空表，但字段须在） ---
     w.beginList('ActiveEffects', _NBT.TAG_COMPOUND, 0);
@@ -668,36 +961,18 @@ function writeFoxEntity(w, pos, uid) {
 
     // --- ★ 属性表：health 必须有，否则实体被判定为"无生命值"而丢弃 ---
     {
-        const attrs = [
-            // [名字, Base, Current, Min, Max, DefaultMin, DefaultMax]
-            ['minecraft:luck',                0,  0, -1024, 1024, -1024, 1024],
-            ['minecraft:health',             10, 10,     0,   10,     0,   10],
-            ['minecraft:absorption',          0,  0,     0,   16,     0,   16],
-            ['minecraft:movement',            0,  0,     0, 1024,     0, 1024],
-            ['minecraft:underwater_movement', 0,  0,     0, 1024,     0, 1024],
-            ['minecraft:lava_movement',       0,  0,     0, 1024,     0, 1024],
-            ['minecraft:attack_damage',       2,  2,     0, 1024,     0, 1024],
-            ['minecraft:follow_range',       16, 16,     0, 2048,     0, 2048],
-            ['minecraft:knockback_resistance',0,  0,     0, 1024,     0, 1024],
-            ['minecraft:horse.jump_strength', 0,  0,     0, 1024,     0, 1024],
-            ['minecraft:zombie.spawn_reinforcements', 0, 0, 0, 1024, 0, 1024],
-            ['minecraft:player.exhaustion',   0,  0,     0, 1024,     0, 1024],
-            ['minecraft:player.hunger',       0,  0,     0,   20,     0,   20],
-            ['minecraft:player.saturation',   0,  0,     0,   20,     0,   20],
-            ['minecraft:player.level',        0,  0,     0, 1024,     0, 1024],
-            ['minecraft:player.experience',   0,  0,     0, 1024,     0, 1024],
-            ['minecraft:friction',            0,  0,     0, 1024,     0, 1024],
-            ['minecraft:buoyant',             0,  0,     0, 1024,     0, 1024],
-            ['minecraft:fall_damage',         0,  0,     0, 1024,     0, 1024]
-        ];
-        w.beginList('Attributes', _NBT.TAG_COMPOUND, attrs.length);
-        attrs.forEach(a => {
+        // 属性表见文件顶部 FOX_ATTR_SPEC；用户可改 Base / Current / Max，其余保持默认
+        const attrOv = (foxNbt && foxNbt.attr) || {};
+        const num = (v, def) => { const n = Number(v); return Number.isFinite(n) ? n : def; };
+        w.beginList('Attributes', _NBT.TAG_COMPOUND, FOX_ATTR_SPEC.length);
+        FOX_ATTR_SPEC.forEach(a => {
+            const o = attrOv[a[0]] || {};
             const e = w.beginListCompoundElem();
-            w.writeFloat('Base', a[1]);
-            w.writeFloat('Current', a[2]);
+            w.writeFloat('Base', num(o.Base, a[1]));
+            w.writeFloat('Current', num(o.Current, a[2]));
             w.writeFloat('DefaultMax', a[6]);
             w.writeFloat('DefaultMin', a[5]);
-            w.writeFloat('Max', a[4]);
+            w.writeFloat('Max', num(o.Max, a[4]));
             w.writeFloat('Min', a[3]);
             w.writeString('Name', a[0]);
             e();
@@ -725,14 +1000,19 @@ function writeFoxEntity(w, pos, uid) {
         endIC();
     }
     {
+        // 组件值本身是 JSON 字符串，见文件顶部 FOX_NETEASE_COMPONENTS；用户可改，留空/非法回退默认
+        const ncOv = (foxNbt && foxNbt.netease) || {};
         const endNC = w.beginCompound('neteaseComponents');
-        w.writeString('minecraft:collision_box', '{"width":1,"height":1}');
-        w.writeString('minecraft:free_camera_controlled', '{"backwards_movement_modifier":1,"strafe_speed_modifier":1}');
-        w.writeString('minecraft:friction_modifier', '{"value":0.01}');
-        w.writeString('minecraft:physics', '{"has_collision":true,"has_gravity":true}');
-        w.writeString('minecraft:scale', '{"value":1}');
+        FOX_NETEASE_COMPONENTS.forEach(c => {
+            const uv = ncOv[c.k];
+            const val = (uv == null || String(uv).trim() === '') ? c.v : String(uv);
+            w.writeString(c.k, val);
+        });
         endNC();
     }
+
+    // --- 预设标量 NBT（用户可逐项勾选 / 改值，见 FOX_NBT_SPEC） ---
+    writeFoxNbtSpecFields(w, foxNbt);
 
     end();
 }
@@ -766,8 +1046,205 @@ function writeCommandBlockEntityData(w, cmdText, wx, wy, wz) {
     end();
 }
 
+// --- 承载布局规划：用户可指定 长(Z) / 宽(X) / 高(Y)（2026-11-02 重写）------------
+// ★ 结构坐标系与 .mcstructure 一致：size = [X, Y, Z]（宽 / 高 / 长）。
+// ★ 宽度必须偶数：奇数 x = 命令方块列，偶数 x = 该车道命令方块的狐狸列（狐狸恒在 x-1）。
+//   每条车道恒占 2 列 ⇒ 车道数 lanes = 宽/2，实际宽 = lanes×2。
+// ★ 车道之间用【空指令命令方块】当导线跨接（用户 2026-11-02 授权）：导线不需要狐狸，
+//   因此它可以走在偶数 x（狐狸列）以及任何空格上，只要相邻格面贴面、facing 指向下一格。
+// ★ 跨接走「走廊列」：多车道时 Z 两端各留 1 列走廊（z=0 与 z=sizeZ-1），真实方块只占
+//   z=1..sizeZ-2。车道蛇形必然在某端收尾，从那一端的走廊列横穿到下一车道 ⇒ 走廊列从不放真实块，
+//   下一车道的狐狸格永远空着，导线不会把狐狸挤进方块里。
+// ★ 车道内 = Z 蛇形 + Y 层交替：lane0 从 y=0 向上、lane1 从 y=sizeY-1 向下 ……
+//   每层沿 Z 折返；首层方向由「从哪条走廊进入」决定（低端进=+Z、高端进=−Z），保证接得上。
+// ★ 用户给的尺寸装不下 n 个方块时，只把「高」自动加上去（预览里显示实际尺寸），
+//   绝不用网格散开（那会断链）。
+// ★ 多动画（2026-11-07）：结构导出的承载单位是「一条指令」而不是「一个方块」——
+//   一个方块有多层动画时，每层各占一个命令方块格（同一部链），否则附加动画会整体丢失。
+function getMcStructureUnits(opts) {
+    opts = opts || {};
+    const src = (typeof getBoneOrderedBlocks === 'function' ? getBoneOrderedBlocks() : blocks)
+        .filter(b => b && typeof b === 'object');
+    const units = [];
+    // tag 识别法：前缀强制为专用模板（临时顶替 exportPrefix，生成完立刻还原，不影响命令列表导出）
+    const tagMode = isTagIdentifyMode(opts);
+    const savedPrefix = exportPrefix;
+    if (tagMode) exportPrefix = structTagPrefixTemplate(opts.modelTag);
+    try {
+        for (const b of src) {
+            let ts = null;
+            try { if (typeof getCommandTextsForBlock === 'function') ts = getCommandTextsForBlock(b, opts); } catch (_) { ts = null; }
+            if (ts && ts.length) ts.forEach(t => units.push({ blk: b, text: t.text }));
+            else units.push({ blk: b, text: '' });
+        }
+    } finally {
+        if (tagMode) exportPrefix = savedPrefix;
+    }
+    return { units: injectChainInitDeclarations(units), srcCount: src.length };
+}
+// ★★【首帧 unknown variable 修复 2026-11-08】链式命令方块按 units 顺序执行，但骨骼/IK 链存在
+//   「先读后写」的反馈边（链头读链尾的 IK 求解量、point 目标读末块等）⇒ 游戏第一帧读到未赋值的
+//   `t.*` 会报 `unknown variable` 并整条指令失效（连锁后面全部不写，形成级联报错）。
+//   这里在「每个方块的第一条指令」里补一次性的全局声明：
+//     v.fmbe_init==0?(t.a=0;t.b=0;...);v.fmbe_init=1;
+//   · v.fmbe_init 是狐狸自己的变量（默认 0）⇒ 每只狐狸只在第一帧初始化一次，
+//     之后不再清零，IK/父级反馈量得以按「上一 tick」正常传递；
+//   · 只初始化「本方块会读、但链上此前没有任何指令写过」的名字（通常就是 IK/反馈边），注入量极小；
+//   · 语法与关键帧导出同款（`cond?(stmt;stmt;);`），游戏已验证可解析。
+function injectChainInitDeclarations(units) {
+    if (!Array.isArray(units) || !units.length) return units;
+    const globalWritten = new Set();       // 链上此前所有指令已写过的 t.* 名
+    let i = 0;
+    while (i < units.length) {
+        const blk = units[i].blk;
+        let j = i;
+        const localWritten = new Set();    // 本方块此前指令写过的 t.* 名
+        const missing = new Set();         // 本方块读到、但链上此前还没写过的名字
+        while (j < units.length && units[j].blk === blk) {
+            const txt = String(units[j].text || '');
+            const re = /t\.([A-Za-z_][A-Za-z0-9_]*)\s*(=)?/g;
+            const reads = [];
+            const writes = [];
+            let m;
+            while ((m = re.exec(txt)) !== null) {
+                if (m[2] === '=') writes.push(m[1]); else reads.push(m[1]);
+            }
+            for (const n of reads) if (!globalWritten.has(n) && !localWritten.has(n)) missing.add(n);
+            for (const n of writes) { localWritten.add(n); globalWritten.add(n); }
+            j++;
+        }
+        if (missing.size && typeof units[i].text === 'string' && units[i].text) {
+            const decl = Array.from(missing).map(n => `t.${n}=0;`).join('');
+            // ★★★【2026-11-10 首帧报错根因修复】`v.fmbe_init` 在狐狸身上**第一次被读取时根本不存在**。
+            //   真机遇到未初始化变量会直接抛 `unhandled request for unknown variable 'variable.fmbe_init'`
+            //   ⇒ 整条 playanimation 指令当场作废 ⇒ 后面 `t.<id>_*` 全都没发布 ⇒ 子块读父级 t.* 连锁报
+            //   `unknown variable`（用户实测那一大片红字，顺序完全对得上）。旧写法只在模拟器的宽松解释器里成立。
+            //   官方写法 = 空值合并 `??`（1.18+）：`variable.x = (variable.x ?? 1.2) + 0.3;`
+            //   先安全取一次默认值，再判 `==0`，这一步永不报错。
+            const init = `v.fmbe_init=(v.fmbe_init??0);v.fmbe_init==0?(${decl});v.fmbe_init=1;`;
+            const txt = units[i].text;
+            const pIdx = txt.indexOf('playanimation');
+            const q = txt.indexOf('"', pIdx >= 0 ? pIdx : 0);
+            if (q >= 0) units[i].text = txt.slice(0, q + 1) + init + txt.slice(q + 1);
+        }
+        i = j;
+    }
+    return units;
+}
+// 是否启用「双 tag 识别法」（模型 tag 非空才算）
+function isTagIdentifyMode(opts) {
+    return !!(opts && opts.tagMode && structTagSafe(opts.modelTag));
+}
+
+function planMcStructureLayout(opts) {
+    opts = opts || {};
+    const tagMode = isTagIdentifyMode(opts);
+    const _pack = Array.isArray(opts.units) ? { units: opts.units, srcCount: -1 } : getMcStructureUnits(opts);
+    const srcBlocks = _pack.units;
+    const n = srcBlocks.length;
+    if (n === 0) throw new Error('没有可导出的方块');
+
+    const dims = opts.dims || {};
+    const askX = Math.max(tagMode ? 1 : 2, Math.floor(Number(dims.sizeX) || 2));
+    const askY = Math.max(1, Math.floor(Number(dims.sizeY) || 1));
+    const askZ = Math.max(1, Math.floor(Number(dims.sizeZ) || 1));
+    // 位置法：宽 = 车道数×2（奇数列命令方块、偶数列狐狸）
+    // tag 法：没有狐狸列 ⇒ 每一列都能放命令方块（整片实心），故 lanes = 宽
+    const lanes = Math.max(1, tagMode ? askX : Math.floor(askX / 2));
+    // tag 法（2026-11-08 用户要求）：狐狸改放到【长方体顶部】，不再占用侧边空列。
+    // 实体必须落在结构尺寸内（否则部分版本导入时会被丢弃）⇒ 顶部额外留 1 层空层给狐狸。
+    const sizeX = tagMode ? lanes : (lanes * 2);
+    // 位置法多车道时 Z 两端各留 1 列走廊跨道；tag 法不用走廊（每层沿 X 逐行铺满整块）
+    const sizeZ = (!tagMode && lanes > 1) ? Math.max(3, askZ) : askZ;
+    const ZR = (!tagMode && lanes > 1) ? sizeZ - 2 : sizeZ;   // 位置法每条车道的真实 Z 列数
+    const zLo = (!tagMode && lanes > 1) ? 1 : 0;
+    const zHi = (!tagMode && lanes > 1) ? sizeZ - 2 : sizeZ - 1;
+    // 方块实际需要的层数；tag 法再加 1 层空层放狐狸（狐狸站在长方体顶部）
+    const blockLayers = Math.max(askY, Math.ceil(n / (lanes * ZR)));
+    const sizeY = tagMode ? (blockLayers + 1) : blockLayers;
+
+    const chain = [];              // 链路顺序：{ lx, ly, lz, real, blk? }
+    let k = 0;
+    if (tagMode) {
+        // ★★ tag 法（2026-11-08 用户反馈后重写）：【层优先的实心蛇形】。
+        //   旧实现「先把一条车道铺满再换列」⇒ 指令装不满全部车道时只剩一个 L 形（用户报障）。
+        //   现在：每层 Y 内沿 Z 逐行、行内沿 X 走满所有车道列；换 Z 行 / 换 Y 层都只跨相邻格，
+        //   所以铺出来是【完整长方体】，只有最顶一层可能不满（用户明确允许「顶部不满一个面」）。
+        //   · 每格都是真实命令方块，不存在空导线/走廊格；
+        //   · 车道间不需要额外跨接块（行内 X 方向直接相邻）。
+        let zPlus = true;   // 本层 Z 遍历方向
+        let xPlus = true;   // 当前 Z 行的 X 遍历方向
+        for (let y = 0; y < sizeY && k < n; y++) {
+            for (let zi = 0; zi < sizeZ && k < n; zi++) {
+                const z = zPlus ? zi : (sizeZ - 1 - zi);
+                for (let xi = 0; xi < lanes && k < n; xi++) {
+                    const x = xPlus ? xi : (lanes - 1 - xi);
+                    chain.push({ lx: x, ly: y, lz: z, real: true, blk: srcBlocks[k] });
+                    k++;
+                }
+                xPlus = !xPlus;      // 换 Z 行：X 方向折返（下一行从本行末格正上方 → 实为同列邻格接上）
+            }
+            zPlus = !zPlus;          // 换 Y 层：Z 方向折返
+            // ★ xPlus 不再翻转：换层第一格就在上一层末格的正上方（同 x 同 z），
+            //   翻转后的方向正好从该端走回另一端，整行仍然铺满。
+        }
+    } else {
+        let entryPlus = true;          // true = 从 z 低端进入（首层 +Z）
+        for (let L = 0; L < lanes && k < n; L++) {
+            const cx = 1 + 2 * L;       // 本车道命令方块列（奇数列）
+            const dy = (L % 2 === 0) ? 1 : -1;         // 车道内 Y 走向交替
+            const yStart = (L % 2 === 0) ? 0 : sizeY - 1;
+            for (let j = 0; j < sizeY && k < n; j++) {
+                const y = yStart + dy * j;
+                const zPlus = entryPlus ? (j % 2 === 0) : (j % 2 !== 0);   // 每层沿 Z 折返
+                for (let t = 0; t < ZR && k < n; t++) {
+                    const z = zPlus ? (zLo + t) : (zHi - t);
+                    chain.push({ lx: cx, ly: y, lz: z, real: true, blk: srcBlocks[k] });
+                    k++;
+                }
+            }
+            // 本车道已铺满、且还有方块 → 用空指令导线从「收尾那一端的走廊」跨到下一车道
+            if (k < n && L + 1 < lanes) {
+                const last = chain[chain.length - 1];
+                const cornerZ = (last.lz === zLo) ? (zLo - 1) : (zHi + 1);   // 相邻的走廊列
+                chain.push({ lx: cx, ly: last.ly, lz: cornerZ, real: false });      // 挪到走廊
+                chain.push({ lx: cx + 1, ly: last.ly, lz: cornerZ, real: false });  // 跨过下一车道狐狸列
+                chain.push({ lx: cx + 2, ly: last.ly, lz: cornerZ, real: false });  // 落到下一车道命令列
+                entryPlus = (cornerZ === zLo - 1);                                  // 下一车道从这条走廊进入
+            }
+        }
+    }
+
+    // 逐格 facing：指向链路下一格（0=下 1=上 2=北(-Z) 3=南(+Z) 4=西 5=东）
+    // ★ 链尾【沿最后一步的方向继续朝外】，不能随便给一个朝向 —— 否则可能指回链上的格子
+    //   形成闭环（连锁会互相重复触发）。
+    const dirOf = (from, to) => {
+        const dx = to.lx - from.lx, dyy = to.ly - from.ly, dz = to.lz - from.lz;
+        return dx === 1 ? 5 : dx === -1 ? 4 : dyy === 1 ? 1 : dyy === -1 ? 0 : dz === 1 ? 3 : 2;
+    };
+    chain.forEach((c, i) => {
+        if (i + 1 < chain.length) c.facing = dirOf(c, chain[i + 1]);
+        else if (i > 0) c.facing = dirOf(chain[i - 1], c);   // 链尾：延续最后一步方向
+        else c.facing = 3;
+    });
+
+    // tag 识别法：所有狐狸叠在同一个坐标 —— 长方体的顶部空层正中（落在结构尺寸内）
+    const modelTag = tagMode ? structTagSafe(opts.modelTag) : '';
+    const foxPosLocal = tagMode
+        ? [lanes / 2, blockLayers + 0.5, sizeZ / 2]
+        : null;
+
+    return {
+        chain, n, sizeX, sizeY, sizeZ, lanes, ZR, blockLayers,
+        blockCount: _pack.srcCount,
+        dummyCount: chain.length - n,
+        tagMode, modelTag, foxPosLocal,
+        asked: { sizeX, sizeY: askY, sizeZ: askZ }
+    };
+}
+
 // --- 主生成函数 ------------------------------------------------------------
-// 参数：{ox, oy, oz} 结构原点（可选，默认 ox=-1 / oy=0 / oz=0）
+// 参数：{ox, oy, oz, dims:{sizeX, sizeY, sizeZ}}（原点可选，默认 ox=-1 / oy=0 / oz=0）
 // 返回 Uint8Array（未压缩 .mcstructure 字节）
 function buildMcStructureBytes(opts) {
     opts = opts || {};
@@ -783,27 +1260,20 @@ function buildMcStructureBytes(opts) {
     // 说明：这里【不再】用方块自身坐标算包围盒（旧实现正是栽在这上面，见下方注释）。
     //      方块只作为「第几个」的序号来源，落位完全由布局规则决定。
 
-    // ★★ 承载布局（用户定稿）：命令方块沿 **Z 正轴** 一个接一个横向排开，
-    //    狐狸放在对应命令方块的 **x-1** 处。
-    //    ⇒ 结构里只有两列方块 + 一条 Z 车道：
-    //       local x=0 → 狐狸列；local x=1 → 命令方块列；local y=0 → 唯一一层；z = 0..n-1。
-    //
-    //    ★★★ 尺寸必须由【最终落位】推导，绝不能用模型自身的坐标跨度：
-    //      命令方块只占 1 列 X、1 层 Y、n 格 Z；狐狸只占 1 列 X。
-    //      ⇒ 真实尺寸恒为 sx = 2、sy = 1、sz = n。
-    //      旧实现拿 minX/minY/maxX/maxY 算 sx/sy（= 模型的 X/Y 跨度），而命令方块又摆在别处
-    //      ⇒ 盒子比实际内容大一圈（用户实测：2 宽 2 高的模型 → size 报成 [3,2,12]，
-    //        纯直线本应是 [2,1,12]），预览里方块浮在大片空白中间、看着像"螺旋"。
-    const n = list.length;
-    // 载体方块：只作为「第几个」的序号来源（落位完全由布局规则决定，与方块自身坐标无关）
-    const placed = list;
-    // 原点取 ox = -1，使狐狸落在 local x=0、命令方块落在 local x=1 —— sx=2 恰好包住两列。
+    // ★★ 承载布局（2026-11-02 重写）：尺寸与落位全部交给 planMcStructureLayout。
+    //    · 用户可在导出预览里指定 长(Z) / 宽(X) / 高(Y)；宽 = 车道数×2（奇数 x=命令方块列、偶数 x=狐狸列）。
+    //    · 车道间用「空指令命令方块」当导线跨接（导线无需狐狸），见 planMcStructureLayout 长注释。
+    //    · 相邻两格恒面贴面 + 逐格 facing 指向下一格 ⇒ 连锁能一路传下去。
+    const plan = planMcStructureLayout(opts);
+    const chain = plan.chain;
+    const n = plan.n;
+    // 原点取 ox = -1，使狐狸落在 local x=0、命令方块落在 local x=1（宽度恒为偶数，恰好包住两列）。
     const ox = (opts.ox !== undefined) ? opts.ox : -1;
     const oy = (opts.oy !== undefined) ? opts.oy : 0;
     const oz = (opts.oz !== undefined) ? opts.oz : 0;
-    const sx = 2;                       // 两列：狐狸 + 命令方块
-    const sy = 1;                       // 一层
-    const sz = Math.max(1, n);          // 车道长度 = 方块数
+    const sx = plan.sizeX;
+    const sy = plan.sizeY;
+    const sz = plan.sizeZ;
 
     // 2) 调色板。★实测样本调色板第 0 项恒为 minecraft:air（val=0）——
     //    这是 Bedrock 结构的既定约定：空气必须占 0 号位，其余方块从 1 开始编号。
@@ -811,32 +1281,29 @@ function buildMcStructureBytes(opts) {
     //    ★ val 是 TAG_SHORT（实测 type=2），不是 TAG_INT。
     const PAL_AIR      = { name: 'minecraft:air',                  states: {}, val: 0, version: 18168865 };
     // ★ states 类型严格对齐实测样本：conditional_bit=BYTE、facing_direction=INT
-    const PAL_CMDBLOCK = {
+    // ★ 同一性质但朝向不同的方块必须各占一条调色板项 ⇒ 按链路里【实际用到】的朝向来建。
+    const mkCmdPal = (dir, val) => ({
         name: 'minecraft:chain_command_block',
-        states: { conditional_bit: { t: _NBT.TAG_BYTE, v: 0 }, facing_direction: { t: _NBT.TAG_INT, v: 3 } },
-        val: 3, version: 18168865
-    };
-    const palette = [PAL_AIR, PAL_CMDBLOCK];
-    const IDX_CMD = 1;
+        states: { conditional_bit: { t: _NBT.TAG_BYTE, v: 0 }, facing_direction: { t: _NBT.TAG_INT, v: dir } },
+        val, version: 18168865
+    });
+    const facingUsed = Array.from(new Set(chain.map(c => c.facing))).sort((a, b) => a - b);
+    const palette = [PAL_AIR];
+    const palOfFacing = new Map();
+    facingUsed.forEach((dir, i) => { palOfFacing.set(dir, i + 1); palette.push(mkCmdPal(dir, i + 1)); });
 
     // 3) block_indices：两层
-    // ★★★【块索引约定 —— 致命，2026-10-01 用户第 6 次报障后靠原生样本反推确认】
-    //    游戏用的是 **Z 最快**：i = (z-oz) + (x-ox)*sz + (y-oy)*sz*sx
-    //    （即 Z 变化最快，其次 X，最后 Y；等价于「先沿 Z 填一整列，再换 X」）
+    // ★★★【块索引约定 —— 致命；2026-11-02 定稿：Z 最快 → Y → X】
+    //    官方文档（wiki.bedrock.dev/nbt/mcstructure，TrimMCStruct 译）原文：
+    //      「将结构中每个方块依照从 Z 轴到 Y 轴到 X 轴且沿轴正方向的顺序一字排开」
+    //      size=[2,3,4] 时索引顺序 = (0,0,0..3),(0,1,0..3),(0,2,0..3),(1,0,0..3),(1,1,..),…
+    //    ⇒ i = lx*(sy*sz) + ly*sz + lz
     //
-    //    旧实现用的是 **X 最快**：i = (x-ox) + (z-oz)*sx + (y-oy)*sx*sz —— 完全反了。
-    //
-    //    ★判据（用游戏自己导出的 `导出.mcstructure` 反证）：
-    //      样本 size=[2,1,4]、bpd 键=[4,5,6,7]、be=(33,-60,0..3) 一条 Z 直线。
-    //      · Z 最快解码：key4→(x1,z0)、key5→(x1,z1)、key6→(x1,z2)、key7→(x1,z3)
-    //        → x 恒 1（世界 33）、z=0..3 连续 ⇒ 与 be 100% 吻合（4/4）
-    //      · X 最快解码：key4→(x0,z2)、key5→(x1,z2)、key6→(x0,z3)、key7→(x1,z3)
-    //        → 2×2 方格 ⇒ 与 be 完全不吻合（1/4）
-    //
-    //    ★错用 X 最快的后果（用户截图实测）：我写的 key=1,3,5,…,23 在 Z 最快下被解成
-    //      z=1,3,5,…,11 且 **一半落 x=0、一半落 x=1** ⇒ 画面上命令方块沿 X 左右交替、
-    //      Z 上还隔位跳 —— 就是用户看到的「X 方向锯齿形、狐狸与命令方块位置交替交换」。
-    //      （t 越大越明显：key≥sz 后就跨到下一列 x 去了。）
+    //    ★★★ 旧公式 i = lz + lx*sz + ly*sz*sx（Z→X→Y）是错的：sy=1 的样本（size=[2,1,4]）
+    //      无法区分后两轴顺序，所以 2026-10-01 的「Z 最快」结论只在 Y 单层时成立。
+    //      3D 折叠后按旧公式落位，游戏实际解码成 x'=i/(sy*sz)、y'=(i/sz)%sy ⇒
+    //      每层只出现 1 格厚、隔一层有空隙的「层状板」——就是用户 2026-11-02 报的
+    //      「上下两层的命令方块根本没连一起」。
     const total = sx * sy * sz;
     // ★ 空格子约定（实测样本口径）：
     //   layer0（主层）空格 = 0 —— 即调色板 0 号位的 minecraft:air。
@@ -844,45 +1311,51 @@ function buildMcStructureBytes(opts) {
     //   两层语义不同，切勿统一填同一个值。
     const layer0 = new Int32Array(total).fill(0);
     const layer1 = new Int32Array(total).fill(-1);
-    // ★★块索引：Z 最快（见上方长注释）。dx/dy/dz 为结构内局部坐标。
-    const idxOfLocal = (lx, ly, lz) => lz + lx * sz + ly * sz * sx;
+    // ★★块索引：Z 最快 → Y → X（见上方长注释）。参数为结构内局部坐标。
+    const idxOfLocal = (lx, ly, lz) => lz + ly * sz + lx * sz * sy;
     const idxOf = (x, y, z) => idxOfLocal(x - ox, y - oy, z - oz);
 
-    // 4) 命令方块实体：每个模型方块 → 一个 chain_command_block + 一只狐狸。
-    //    规则（用户定稿）：1 个命令方块 ↔ 1 只狐狸。
-    //    ★ 布局：命令方块沿 Z 正轴依次排开（第 k 个命令方块落在 z = oz + k），
-    //      狐狸放在该命令方块的 x-1 处 —— 与模板前缀 `positioned ~-1~~` 严格对应。
-    //      X 上：local 1 = 命令方块列、local 0 = 狐狸列（狐狸在 x-1）。
+    // 4) 落位：chain 里每一格 = 一个 chain_command_block
+    //    · real=true  → 承载指令，且配一只狐狸在 x-1（与模板前缀 `positioned ~-1~~` 对应）
+    //    · real=false → 空指令导线（Command 写空串），不配狐狸
     const blockEntityData = [];   // { idx, cmd, wx, wy, wz }
-    const foxEntities = [];       // 狐狸世界坐标
-
-    // ★ 用局部序号 k（0..n-1）驱动车道位置，与 placed 的遍历顺序解耦、绝不重叠。
-    placed.forEach((p, k) => {
-        const cmdZ = oz + k;            // 沿 Z 正轴：第 k 个 → z = oz + k
-        const cmdX = ox + 1;            // 命令方块列（local x=1）
-        const cmdY = oy;                // 只有一层（local y=0）
-        // ★★★ 承载指令：placed 里装的就是【方块对象本身】（getBoneOrderedBlocks 返回 raw blocks），
-        //   绝不能写成 p.block —— 那是 undefined，getCommandTextForBlock 会抛错，
-        //   而 getBlockStructureCommand 的 try/catch 会把异常静默吞掉返回 ''，
-        //   结果就是「结构、尺寸、位置全对，但命令方块里啥也没有」。
-        //   （2026-10-01 用户实测报障；探针 _dbg_parse_cmd.cjs 解析出 Command 长度为 0。）
-        const blkObj = (p && p.block) ? p.block : p;   // 兼容两种形状，别再赌
-        const cmd = getBlockStructureCommand(blkObj);
-        const i = idxOf(cmdX, cmdY, cmdZ);
+    const foxEntities = [];       // { pos:[x,y,z], tags?:[模型tag, 方块名tag] }
+    // ★ tag 识别法：狐狸不再跟命令方块 1:1 落位（否则一个方块的多层动画会分摊到多只狐狸），
+    //   而是「每个方块一只狐狸」，全部叠在同一个坐标，靠 tag 选中 ⇒ 同一只狐狸可叠加任意多层控制器。
+    const tagMode = !!plan.tagMode;
+    // 预设狐狸 NBT 的用户选择（{values, drop}，每只狐狸都写，位置法/tag 法通用）
+    const foxNbtOpts = opts.foxNbt || null;
+    const extraNbtCount = foxNbtCount(foxNbtOpts);
+    const tagFoxPos = tagMode
+        ? [ox + plan.foxPosLocal[0], oy + plan.foxPosLocal[1], oz + plan.foxPosLocal[2]]
+        : null;
+    const tagFoxSeen = new Set();
+    chain.forEach(c => {
+        const i = idxOfLocal(c.lx, c.ly, c.lz);
         if (i < 0 || i >= total) return;
-        // 命令方块占据该格（承载指令）
-        layer0[i] = IDX_CMD;
-        // ★★★ block_entity_data 的 x/y/z 必须写【结构内的世界格坐标】(cmdX/cmdY/cmdZ)，
-        //      绝不能写方块自己的原始坐标！游戏是按这三个字段来摆放命令方块实体的
-        //      —— 写成原始坐标 → 格子是对的但实体散落在模型各处 → 画面呈"锯齿/阶梯"状
-        //      （用户实测截图：狐狸成一条直线，命令方块却东一个西一个）。
-        //      旧实现误传 p.pos → 就是这个 bug。
-        blockEntityData.push({ idx: i, cmd, wx: cmdX, wy: cmdY, wz: cmdZ });
-        // 配对的狐狸：放在该命令方块的 x-1 格（与 @e[x=~,z=~,y=~,r=1] + positioned ~-1~~ 配合）
-        foxEntities.push(getFoxSpawnPosForCommandBlock(cmdX, cmdY, cmdZ));
-        // 狐狸所在格留空（layer0 空格 = 0 = air，上面 already 填好；此处仅显式说明语义）
-        const fi = idxOf(cmdX - 1, cmdY, cmdZ);
-        if (fi >= 0 && fi < total && layer0[fi] === 0) layer0[fi] = 0; // 保持空气（0 = air）
+        layer0[i] = palOfFacing.get(c.facing);
+        const wx = ox + c.lx, wy = oy + c.ly, wz = oz + c.lz;
+        if (c.real) {
+            // ★★★ 承载指令：c.blk 现在是「承载单位」{ blk, text }（一个方块的多层动画各占一格）。
+            //   优先用预先算好的 text，避免再次走 getCommandTextForBlock 丢失多层信息。
+            const blkObj = (c.blk && c.blk.block) ? c.blk.block : (c.blk && c.blk.blk) ? c.blk.blk : c.blk;
+            const cmd = (c.blk && typeof c.blk.text === 'string') ? c.blk.text : getBlockStructureCommand(blkObj);
+            // ★★★ block_entity_data 的 x/y/z 必须写【结构内的世界格坐标】，
+            //      绝不能写方块自己的原始坐标（否则格子对、实体散落 → 锯齿/阶梯）。
+            blockEntityData.push({ idx: i, cmd, wx, wy, wz });
+            if (tagMode) {
+                const bkey = (blkObj && (blkObj.id || blkObj)) || null;
+                const bTag = structBlockNameTag(blkObj);
+                if (bkey && !tagFoxSeen.has(bkey)) {
+                    tagFoxSeen.add(bkey);
+                    foxEntities.push({ pos: tagFoxPos, tags: [plan.modelTag, bTag].filter(Boolean) });
+                }
+            } else {
+                foxEntities.push({ pos: getFoxSpawnPosForCommandBlock(wx, wy, wz) });
+            }
+        } else {
+            blockEntityData.push({ idx: i, cmd: '', wx, wy, wz });
+        }
     });
 
     // 5) 序列化
@@ -900,7 +1373,7 @@ function buildMcStructureBytes(opts) {
         w._u8(_NBT.TAG_INT); w._i32(total); layer1.forEach(v => w.writeListInt(v));
         // entities
         w.beginList('entities', _NBT.TAG_COMPOUND, foxEntities.length);
-        foxEntities.forEach((pos, fi) => writeFoxEntity(w, pos, -(1000000 + fi)));
+        foxEntities.forEach((fe, fi) => writeFoxEntity(w, fe.pos, -(1000000 + fi), fe.tags, foxNbtOpts));
         // palette
         {
             const endPal = w.beginCompound('palette');
@@ -950,14 +1423,20 @@ function buildMcStructureBytes(opts) {
     }
     w.writeIntList('structure_world_origin', [ox, oy, oz]);   // ★必须是 List<int>
     w._u8(_NBT.TAG_END);   // ★ 根 compound 的结束标记（漏写 → 整个文件非法、游戏拒绝导入）
-    return { bytes: w.finish(), size: [sx, sy, sz], origin: [ox, oy, oz], blockCount: placed.length, entityCount: foxEntities.length };
+    return {
+        bytes: w.finish(), size: [sx, sy, sz], origin: [ox, oy, oz],
+        blockCount: plan.n, entityCount: foxEntities.length, dummyCount: plan.dummyCount,
+        extraNbtCount,
+        tagMode: !!plan.tagMode, modelTag: plan.modelTag || ''
+    };
 }
 
 // 触发下载 .mcstructure（二进制）
-function downloadMcStructure() {
+// opts = { dims: {sizeX(宽), sizeY(高), sizeZ(长)} }（可选，默认 宽2 × 自动高 × 自动长）
+function downloadMcStructure(opts) {
     let res;
     try {
-        res = buildMcStructureBytes();
+        res = buildMcStructureBytes(opts);
     } catch (e) {
         showToast('生成结构失败：' + (e && e.message ? e.message : e));
         return;
@@ -971,6 +1450,8 @@ function downloadMcStructure() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    showToast(`已导出 .mcstructure：${res.blockCount} 个方块 · ${res.entityCount} 只狐狸 · 尺寸 ${res.size.join('×')}`);
+    showToast(`已导出 .mcstructure：${res.blockCount} 方块 + ${res.dummyCount} 导线 · ${res.entityCount} 狐狸 · 尺寸 ${res.size.join('×')}`
+        + (res.tagMode ? ` · tag 识别「${res.modelTag}」` : '')
+        + (res.extraNbtCount ? ` · 附加 NBT ${res.extraNbtCount} 项` : ''));
 }
 

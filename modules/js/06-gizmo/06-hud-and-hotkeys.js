@@ -66,6 +66,11 @@ function gizmoDragTypeLabel() {
     // 镜像：手柄操作的是对称面，动作名与方块一致（位移 / 旋转），主体名由 HUD 标题拼成「旋转 · 对称面」
     if (mirrorActive && activePick && activePick.mirrorPlane) return activePick.mirrorPlane === 'rot' ? '旋转' : '位移';
     if (!activePick) return '变换';
+    if (activePick.plane) {
+        // 平面手柄：直接告诉用户「在哪个平面里自由移动」，与高亮面片一一对应
+        const pair = (activePick.planeAxes || []).map(a => a.name.toUpperCase()).join('');
+        return pair + ' 平面移动';
+    }
     if (activePick.folder) {
         if (activePick.type === 'rot') return '文件夹旋转';
         if (activePick.folderPivot) return '枢轴移动';
@@ -227,8 +232,18 @@ document.querySelectorAll('#vtxSnapDropdown .top-dropdown-item').forEach(item =>
     });
 });
 vtxSnapUpdateBtnTitle();
-// 镜像入口已迁到方块列表的扳手「工具」菜单：①自由对称面 ②选取面作为对称面 ③三点确定对称面
-// （懒绑定：菜单由 renderSideBlockList 动态重建，故每次重建时在菜单容器上挂一次委托）
+// 镜像入口（快捷操作栏「丰」字形按钮）：点按钮展开三种定面方式，选中即进入镜像
+document.getElementById('mirrorMenuBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleTopDropdown('mirrorDropdown');
+});
+document.querySelectorAll('#mirrorDropdown .top-dropdown-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllTopDropdowns();
+        mirrorBegin(item.dataset.mirror || 'free');
+    });
+});
 // 关键帧模式：Gizmo 行「编辑/动画」两个互斥按钮（从左侧工具列表迁出）
 const _kfEditBtn = document.getElementById('kfEditModeBtn');
 if (_kfEditBtn) _kfEditBtn.addEventListener('click', () => { if (isKeyframeMode) exitKeyframeMode(); if (isBrushMode) exitBrushMode(); syncModeButtons(); });
@@ -301,6 +316,13 @@ window.addEventListener('keydown', (e) => {
         if (key === 'r' && e.shiftKey) { e.preventDefault(); toggleHerMode(currentGlobalRotMode); return; }
         // X：顶点捕捉（对齐类型沿用上次选择；默认「位移移动型对齐」）
         if (key === 'x' && !e.shiftKey) { e.preventDefault(); if (!selectedFolder) toggleHerMode('vtxsnap'); return; }
+        // M：镜像（自由对称面）；镜像已激活时再按一次退出（Esc 同样可退出）
+        if (key === 'm' && !e.shiftKey) {
+            e.preventDefault();
+            if (mirrorActive && herModes.has('mirror')) mirrorExit(true);
+            else if (!selectedFolder) mirrorBegin('free');
+            return;
+        }
     }
 });
 

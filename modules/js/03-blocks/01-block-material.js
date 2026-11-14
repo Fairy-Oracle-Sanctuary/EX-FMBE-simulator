@@ -428,11 +428,31 @@ updateMaterialSide() {
         }
 }
 
-    refresh() {
+    /* ★【2026-11-08 性能】支持传入「已算好的输入签名」：脏块筛选（_blockShouldRefresh）
+       与动画循环在调用 refresh 前本来就刚算过一次签名，这里直接复用，
+       避免每个块每帧把同一份签名算两遍（实测该开销 ≈1ms/帧）。 */
+    refresh(preSig, preSigValid) {
+    let _inSig = null;
+    if (preSigValid === true) { _inSig = preSig; }
+    else if (typeof _blockDepSig === 'function') { try { _inSig = _blockDepSig(this); } catch (e) { _inSig = null; } }
     this.scope.recompute();
     this.updateTransform();
     updateGlobalVarsDependingOn(this, null);
     this.updateMaterialSide();   // 新增：根据 scale 调整材质背面
+    if (this._ikPubList && typeof ikRepublishGlobals === 'function') ikRepublishGlobals(this);
+    // 记录签名基线（null = 该块含无法用签名表达的查询，交给旧判据）
+    this._depSig = _inSig; this._depSigSet = (_inSig != null);
+    // ★molang 程序写出的 t.* 若数值真的变了，排在前面刷新过的依赖块拿到的是旧值 ⇒ 这里补刷一次。
+    const tw = this.scope._tWrites;
+    if (tw && tw.size) {
+        this.scope._tWrites = null;   // 消费掉，避免同一结果反复级联
+        if (typeof refreshBlocksUsingGlobals === 'function') refreshBlocksUsingGlobals(this, tw);
+        return true;                  // 供 refreshAllBlocksOrdered 判断是否需要第三相回刷
+    }
+    // ★IK 末端块的求解在共用动画层里完成，等价于「程序块」：它发布的 t.<末端>_ik_* 也必须让
+    //   排在前面刷过的关节块再刷一遍（否则根/关节永远差一帧）。
+    if (typeof ikHasSolveLayer === 'function' && ikHasSolveLayer(this)) return true;
+    return false;
 }
 
     getVarList() {

@@ -81,6 +81,8 @@ function screenTangentDelta(meta, clientX, clientY, dx, dy) {
 // ---------- 主重建 ----------
 function clearGizmo() {
     clearActiveHighlight();
+    _planeHoverGroup = null; _planeActiveGroup = null;   // 手柄重建后旧平面组的引用作废
+    if (renderer && renderer.domElement && (renderer.domElement.style.cursor === 'grab' || renderer.domElement.style.cursor === 'grabbing')) renderer.domElement.style.cursor = '';
     stretchGizmoRefs = null;
     plgGizmoRefs = null;
     plgDrag = null;

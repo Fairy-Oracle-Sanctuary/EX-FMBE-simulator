@@ -567,6 +567,17 @@ if (autoBakeBoneCheckbox) {
         try { localStorage.setItem('ui_auto_bake_bone', autoBakeBone ? '1' : '0'); } catch (e) {}
     });
 }
+// IK 绑定时自动建目标点复选框（默认开；状态由 09-bone-binding.js 的 ikBindWithPoint 持有，记忆到 localStorage）
+const ikBindPointCheckbox = document.getElementById('ikBindPointCheckbox');
+if (ikBindPointCheckbox) {
+    ikBindPointCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        ikBindWithPoint = !ikBindWithPoint;
+        ikBindPointCheckbox.classList.toggle('checked', ikBindWithPoint);
+        ikBindPointCheckbox.setAttribute('aria-pressed', String(ikBindWithPoint));
+        try { localStorage.setItem('ui_ik_bind_point', ikBindWithPoint ? '1' : '0'); } catch (e) {}
+    });
+}
 // 渲染局部坐标系复选框
 const localAxesCheckbox = document.getElementById('localAxesCheckbox');
 if (localAxesCheckbox) {
@@ -686,6 +697,44 @@ if (queryUpdateCheckbox) {
         }
     });
 }
+
+// 关闭面板毛玻璃：body 加 no-glass 后由 CSS 统一禁用 backdrop-filter，并改用近乎不透明的底色
+const noGlassCheckbox = document.getElementById('noGlassCheckbox');
+function applyNoGlass(on) {
+    document.body.classList.toggle('no-glass', on);
+    if (noGlassCheckbox) {
+        noGlassCheckbox.classList.toggle('checked', on);
+        noGlassCheckbox.setAttribute('aria-pressed', String(on));
+    }
+}
+if (noGlassCheckbox) {
+    noGlassCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const on = !document.body.classList.contains('no-glass');
+        applyNoGlass(on);
+        try { localStorage.setItem('ui_no_glass', on ? '1' : '0'); } catch (err) {}
+    });
+}
+try { if (localStorage.getItem('ui_no_glass') === '1') applyNoGlass(true); } catch (e) {}
+
+// UI面板完全不透明：body 加 ui-opaque 后由 CSS 把各面板底色改成纯色，不再透出画布
+const uiOpaqueCheckbox = document.getElementById('uiOpaqueCheckbox');
+function applyUiOpaque(on) {
+    document.body.classList.toggle('ui-opaque', on);
+    if (uiOpaqueCheckbox) {
+        uiOpaqueCheckbox.classList.toggle('checked', on);
+        uiOpaqueCheckbox.setAttribute('aria-pressed', String(on));
+    }
+}
+if (uiOpaqueCheckbox) {
+    uiOpaqueCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const on = !document.body.classList.contains('ui-opaque');
+        applyUiOpaque(on);
+        try { localStorage.setItem('ui_opaque', on ? '1' : '0'); } catch (err) {}
+    });
+}
+try { if (localStorage.getItem('ui_opaque') === '1') applyUiOpaque(true); } catch (e) {}
 if (uiSettingsPanel) {
     uiSettingsPanel.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -737,6 +786,63 @@ if (molangTakeoverBtn) {
                 showModal('已开启', `已对 ${targets.length} 个方块启用 molang 接管。变量区已变为只读数值，可在下方 molang 编辑器自由编写表达式。`, null, false);
             }, false);
     });
+}
+
+// 旧操作模式「恒用 molang 编辑面板」：开启后旧布局选中方块直接进入 molang 编辑器（自动生成基线程序）
+const oldModeMolangPanelCheckbox = document.getElementById('oldModeMolangPanelCheckbox');
+function updateOldModeMolangPanelCheckboxUI() {
+    if (!oldModeMolangPanelCheckbox) return;
+    oldModeMolangPanelCheckbox.classList.toggle('checked', oldModeMolangPanelAlways);
+    oldModeMolangPanelCheckbox.setAttribute('aria-pressed', String(oldModeMolangPanelAlways));
+}
+if (oldModeMolangPanelCheckbox) {
+    oldModeMolangPanelCheckbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        oldModeMolangPanelAlways = !oldModeMolangPanelAlways;
+        updateOldModeMolangPanelCheckboxUI();
+        try { localStorage.setItem('ui_old_mode_molang_panel', oldModeMolangPanelAlways ? '1' : '0'); } catch (err) {}
+        // 重新开启时清掉「⇦ 转普通方块」留下的单项退出标记，恢复全量强制接管
+        if (oldModeMolangPanelAlways && typeof blocks !== 'undefined') {
+            blocks.forEach(b => { if (b._molangPanelOptOut) delete b._molangPanelOptOut; });
+        }
+        if (typeof selectedBlock !== 'undefined' && selectedBlock) renderVariablesForBlock(selectedBlock);
+    });
+}
+
+// molang 变量描点：历史帧数（10 ~ 600，默认 120）
+const molangProbeFramesInput = document.getElementById('molangProbeFramesInput');
+if (molangProbeFramesInput) {
+    const applyProbeFrames = () => {
+        let v = parseInt(molangProbeFramesInput.value, 10);
+        if (!isFinite(v) || v <= 0) v = 120;
+        v = Math.max(10, Math.min(600, v));
+        molangProbeFramesInput.value = String(v);
+        try { localStorage.setItem('ui_molang_probe_frames', String(v)); } catch (err) {}
+        if (typeof setMolangProbeFrames === 'function') setMolangProbeFrames(v);
+    };
+    molangProbeFramesInput.addEventListener('change', applyProbeFrames);
+    molangProbeFramesInput.addEventListener('blur', applyProbeFrames);
+    molangProbeFramesInput.addEventListener('click', (e) => e.stopPropagation());
+}
+
+// molang 泡泡大小（70 ~ 180%，默认 100%，作用于数字微调泡泡 + 变量描点泡泡）
+const molangBubbleScaleRange = document.getElementById('molangBubbleScaleRange');
+const molangBubbleScaleLabel = document.getElementById('molangBubbleScaleLabel');
+if (molangBubbleScaleRange) {
+    const applyBubbleScale = (pct, persist) => {
+        let v = parseInt(pct, 10);
+        if (!isFinite(v) || v <= 0) v = 100;
+        v = Math.max(70, Math.min(180, v));
+        molangBubbleScaleRange.value = String(v);
+        if (molangBubbleScaleLabel) molangBubbleScaleLabel.textContent = v + '%';
+        if (typeof setMolangBubbleScale === 'function') setMolangBubbleScale(v / 100);
+        if (persist) { try { localStorage.setItem('ui_molang_bubble_scale', String(v)); } catch (err) {} }
+    };
+    const savedScale = parseInt(localStorage.getItem('ui_molang_bubble_scale') || '0', 10);
+    applyBubbleScale(isFinite(savedScale) && savedScale > 0 ? savedScale : 100, false);
+    molangBubbleScaleRange.addEventListener('input', () => applyBubbleScale(molangBubbleScaleRange.value, true));
+    molangBubbleScaleRange.addEventListener('change', () => applyBubbleScale(molangBubbleScaleRange.value, true));
+    molangBubbleScaleRange.addEventListener('click', (e) => e.stopPropagation());
 }
 
 const brushModeCheckbox = document.getElementById('brushModeCheckbox');
@@ -797,6 +903,17 @@ try {
             newLayoutCheckbox.classList.add('checked');
             newLayoutCheckbox.setAttribute('aria-pressed', 'true');
         }
+    }
+    const savedOldMolangPanel = localStorage.getItem('ui_old_mode_molang_panel');
+    if (savedOldMolangPanel !== null) {
+        oldModeMolangPanelAlways = savedOldMolangPanel === '1';
+        updateOldModeMolangPanelCheckboxUI();
+    }
+    const savedProbeFrames = parseInt(localStorage.getItem('ui_molang_probe_frames') || '0', 10);
+    if (isFinite(savedProbeFrames) && savedProbeFrames > 0) {
+        const pv = Math.max(10, Math.min(600, savedProbeFrames));
+        if (molangProbeFramesInput) molangProbeFramesInput.value = String(pv);
+        if (typeof setMolangProbeFrames === 'function') setMolangProbeFrames(pv);
     }
     const savedWorldAxisDisp = localStorage.getItem('ui_world_axis_disp');
     if (savedWorldAxisDisp !== null) {
@@ -861,6 +978,11 @@ try {
             queryUpdateCheckbox.classList.remove('checked');
             queryUpdateCheckbox.setAttribute('aria-pressed', 'false');
         }
+    }
+    // IK 自动建目标点：ikBindWithPoint 已在声明时从 localStorage 读取，这里只同步开关视觉
+    if (ikBindPointCheckbox) {
+        ikBindPointCheckbox.classList.toggle('checked', !!ikBindWithPoint);
+        ikBindPointCheckbox.setAttribute('aria-pressed', String(!!ikBindWithPoint));
     }
     // 控件精度设置：四档步长
     Object.keys(GIZMO_PREC_KEYS).forEach((key) => {

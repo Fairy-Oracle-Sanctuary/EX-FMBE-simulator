@@ -282,7 +282,7 @@ body.light-mode .keyframe-track-row.pending-track {
     display: none;
     flex-direction: column;
     min-width: 280px;
-    min-height: 180px;
+    min-height: 100px;
     max-width: 96vw;
     max-height: 96vh;
     overflow: hidden;
@@ -420,6 +420,103 @@ body.light-mode .kf-header-btn:hover {
 }
 .keyframe-resize-handle-l:hover {
     background: linear-gradient(225deg, transparent 0%, transparent 40%, rgba(59,130,246,0.7) 40%, rgba(59,130,246,0.7) 50%, transparent 50%, transparent 55%, rgba(59,130,246,0.7) 55%, rgba(59,130,246,0.7) 65%, transparent 65%);
+}
+/* ===== 【2026-10-31 用户要求】关键帧卡片最小化态（拖到最小自动触发，单级） =====
+   最小化后仍保留：播放键（固定在控制行最左，不居中）+ 已播放时间 + 时间轴。
+   只收起次要控件（顶部 ＋方块/导入、录帧、缩放、滚动、多选），并用过渡平滑淡出；
+   左下/右下拖拽条与右上角关闭 X 始终保留，可随时拖回完整卡片。 */
+.keyframe-window {
+    transition: width 0.16s ease, height 0.16s ease;
+}
+/* 【2026-10-31 用户要求】最小化/恢复时排版不再瞬间跳换：
+   状态切换瞬间让时间轴区与顶部栏做一次淡入 + 轻微上浮的 settle 动画。 */
+.keyframe-window.kf-settle .keyframe-timeline-area,
+.keyframe-window.kf-settle .keyframe-window-header {
+    animation: kfSettleIn 0.22s ease-out;
+}
+@keyframes kfSettleIn {
+    from { opacity: 0.25; }
+    to { opacity: 1; }
+}
+.keyframe-window.kf-compact {
+    min-width: 0;
+    min-height: 0;
+}
+/* 拖动缩放期间关闭毛玻璃：backdrop-filter 在每帧尺寸变化时重算，是卡顿主因 */
+.keyframe-window.kf-resizing {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+.keyframe-window-controls > * {
+    max-width: 96px;
+    overflow: hidden;
+    transition: opacity 0.16s ease, max-width 0.16s ease, margin 0.16s ease, padding 0.16s ease;
+}
+.keyframe-window.kf-compact .keyframe-window-controls > #kfAddBlockBtn,
+.keyframe-window.kf-compact .keyframe-window-controls > #kfImportBtn {
+    max-width: 0;
+    opacity: 0;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
+    pointer-events: none;
+}
+.keyframe-timeline-controls #kfAddKeyframeBtn,
+.keyframe-timeline-controls .kf-ctrl-group,
+.keyframe-timeline-controls #kfMselBtn {
+    max-width: 240px;
+    overflow: hidden;
+    transition: opacity 0.16s ease, max-width 0.16s ease, margin 0.16s ease, padding 0.16s ease;
+}
+/* 【2026-10-31 用户要求】最小化态两行布局：
+   第一行 = 左上拖拽把手 + 播放键 + 时间 + 右侧叉叉；第二行 = 整条时间轴（占满宽度）。
+   纵向再缩到很小时（kf-compact-mini）隐藏第二行时间轴，只留第一行。
+   完整态布局完全不受影响。 */
+.keyframe-window.kf-compact .keyframe-timeline-controls > :not(#kfPlayBtn):not(#kfTimeLabel) {
+    display: none !important;
+}
+.keyframe-window.kf-compact .keyframe-timeline-controls {
+    display: contents;
+}
+.keyframe-window.kf-compact .keyframe-timeline-controls #kfPlayBtn {
+    position: absolute;
+    left: 30px;
+    top: 2px;
+    z-index: 3;
+}
+.keyframe-window.kf-compact .keyframe-timeline-controls #kfTimeLabel {
+    position: absolute;
+    left: 62px;
+    top: 9px;
+    z-index: 3;
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0;
+}
+.keyframe-window.kf-compact .keyframe-timeline-area {
+    display: block;
+    flex: 0 0 auto;
+    padding: 0 14px 4px;
+    overflow: hidden;
+}
+.keyframe-window.kf-compact .keyframe-timeline-container {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    height: 24px !important;
+    margin: 0;
+    overflow: hidden;
+    --kf-gutter: 0px;
+}
+.keyframe-window.kf-compact .kf-track-head,
+.keyframe-window.kf-compact .keyframe-timeline-bg {
+    display: none !important;
+}
+.keyframe-window.kf-compact-mini .keyframe-timeline-container {
+    display: none !important;
+}
+.keyframe-window.kf-compact-mini .keyframe-timeline-area {
+    padding: 0;
 }
 .keyframe-toolbar {
     display: flex;
@@ -660,6 +757,10 @@ body.light-mode .kf-picker-ungrouped-title {
     padding: 6px 10px 0;
     flex: 1;
     overflow-y: auto;
+    /* ★【2026-10-31 用户要求】控制行的负左右外边距会撑出横向溢出，
+       overflow-y:auto 会把 overflow-x 也算成 auto ⇒ 面板底部出现一条蓝色横向滚动条。
+       时间轴横向滚动由刻度拖动/滚动按钮接管，这里直接裁掉横向滚动条。 */
+    overflow-x: hidden;
     min-height: 0;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;

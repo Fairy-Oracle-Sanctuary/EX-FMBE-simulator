@@ -500,7 +500,23 @@ const MOLANG_QUERY_FUNCS = [
       params: '无参数',
       desc: '返回【该方块自身】自创建 / 复制 / 加载以来经历的时间（秒）。每个方块独立计时：方块在加入场景时记录自己的出生时刻，复制 / 新建出来的方块是「新生的」，life_time 从接近 0 开始，因此和原件数值不同。',
       ret: '该方块的存在时长（浮点数，单位秒），随时间持续增长。受「查询函数更新」开关控制；帮助面板该项右侧的（重置）按钮可让所有方块同时归零并从 0 重新自增。',
-      reset: true }
+      reset: true },
+    { name: 'q.camera_rotation(mode)', copy: 'q.camera_rotation(1)',
+      params: 'mode（0 或 1）：0 → 俯仰，1 → 偏航',
+      desc: '返回【摄像机自身朝向】的角度（单位：度）。与 q.rotation_to_camera 同源但方向相反：那边是「原点 → 摄像机」，这边是「摄像机正在看的方向」，故摄像机向下看时俯仰为正。用于把相机空间的偏移量（左/上/前）换算到世界坐标。',
+      ret: 'mode=0 → 俯仰角；mode=1 → 偏航角。' },
+    { name: 'q.distance_from_camera', copy: 'q.distance_from_camera',
+      params: '无参数',
+      desc: '返回摄像机到世界原点 (0,0,0) 的距离。模拟器没有实体，命令中的「实体位置」统一以原点为锚点，因此与 q.rotation_to_camera 的基准一致。',
+      ret: '摄像机到原点的距离（浮点数）。' },
+    { name: 'q.position(axis)', copy: 'q.position(0)',
+      params: 'axis（0/1/2 → x/y/z）',
+      desc: '模拟器没有实体，世界里也不存在 playanimation 的目标实体，故「跟随实体」的锚点统一取世界原点，三个轴均返回 0。命令里的逐帧位移补偿（position_change_*）随之恒为 0，方块稳定停在相机空间的固定偏移处。',
+      ret: '恒为 0。' },
+    { name: 'q.frame_alpha', copy: 'q.frame_alpha',
+      params: '无参数',
+      desc: '逐帧插值系数（Minecraft 中的帧内插值比例）。模拟器按整帧刷新、没有帧间插值，恒为 1，从而命令里的 (1 - frame_alpha) 补偿项为 0，不引入抖动。',
+      ret: '恒为 1。' }
 ];
 const MOLANG_MATH_FUNCS = [
     { name: 'math.sin(x)', desc: '正弦。输入为角度（度），返回正弦值，范围 -1~1。' },
@@ -566,6 +582,11 @@ function openMolangHelp() {
         <div class="mh-fn-top"><span class="mh-name">${esc(f.name)}</span><button type="button" class="mh-copy" data-copy="${esc(f.name)}">📋 复制</button></div>
         <div class="mh-row">${esc(f.desc)}</div>
       </div>`).join('');
+    const stHtml = `
+      <div class="mh-fn">
+        <div class="mh-fn-top"><span class="mh-name">loop</span><button type="button" class="mh-copy" data-copy="loop(3, { v.x = v.x + 1; });">📋 复制</button></div>
+        <div class="mh-row">loop(次数, { 语句... }); —— 官方 Molang 循环语句（最多 1024 次，可嵌套）。循环体也可只写一条语句：loop(5, v.x=v.x+1);</div>
+      </div>`;
     const m = document.createElement('div');
     m.className = 'molang-help-modal';
     m.id = 'molangHelpModal';
@@ -577,6 +598,8 @@ function openMolangHelp() {
           ${qHtml}
           <div class="mh-sec-title">🧮 数学函数（math.）</div>
           ${mHtml}
+          <div class="mh-sec-title">🔁 语句</div>
+          ${stHtml}
           <div class="mh-foot">学习 molang？QQ1057514348</div>
         </div>
       </div>`;
@@ -899,6 +922,7 @@ function removeBubblesForBlock(block) {
     for (let i = pinnedBubbles.length - 1; i >= 0; i--) {
         if (pinnedBubbles[i].block === block) burstRemovePinned(pinnedBubbles[i]);
     }
+    probeRemoveForBlock(block);
 }
 // 手动编辑文本后，同步常显泡泡的显示 / 清理已删除变量的泡泡
 function refreshPinnedBubbles(block) {
@@ -909,6 +933,11 @@ function refreshPinnedBubbles(block) {
         if (!tok) { burstRemovePinned(p); continue; }
         const valEl = p.el.querySelector('.mnb-val');
         if (valEl) { valEl.textContent = fmtLit(tok.value); fitMnbVal(valEl); }
+    }
+    // 描点泡泡：变量被删 / 改名后同样炸开消失
+    for (let i = probeBubbles.length - 1; i >= 0; i--) {
+        const p = probeBubbles[i];
+        if (p.block === block && !block.scope.vars.has(p.varName)) probeBurstRemove(p);
     }
 }
 // 让数值文本根据长度自适应字号，避免超大 / 超小数值在框内被截断
@@ -949,21 +978,23 @@ function buildMolangBubble(ctx) {
           <button class="mnb-q" data-act="q10">10</button>
         </div>
       </div>
-      <div class="mnb-hint">${ctx.pinned ? '拖动标题栏移动 · 点 ✕ 关闭' : '▲/▼ 或滚轮/↑↓ 微调 · 手机可长按 ▲/▼ 连续增减或拖动数值 · 点外部关闭 · 点 📌 常显'}</div>`;
+      <div class="mnb-hint">${ctx.pinned ? '' : ''}</div>`;
     document.body.appendChild(el);
     ctx.el = el;
     fitMnbVal(el.querySelector('.mnb-val'));   // 数值自适应字号（防超大/超小数值截断）
     // 定位（瞬时：点击点上方；常显：沿用记录位置或初始锚点）
     const bw = el.offsetWidth || 214, bh = el.offsetHeight || 150;
+    const sc = mnbBubbleScale || 1;
+    const vw = bw * sc, vh = bh * sc;   // 视觉尺寸（transform: scale 不影响 offsetWidth）
     let left, top;
     if (ctx.pinned && ctx.left != null) { left = ctx.left; top = ctx.top; }
     else {
-        left = Math.max(8, Math.min(window.innerWidth - bw - 8, ctx.anchorX - bw / 2));
-        top = ctx.anchorY - bh - 16;                 // 显示在数值上方
+        left = Math.max(8, Math.min(window.innerWidth - vw - 8, ctx.anchorX - vw / 2));
+        top = ctx.anchorY - vh - 16;                 // 显示在数值上方
         if (top < 8) top = ctx.anchorY + 22;          // 上方空间不足则放到下方
     }
-    left = Math.max(8, Math.min(window.innerWidth - bw - 8, left));
-    top = Math.max(8, Math.min(window.innerHeight - bh - 8, top));
+    left = Math.max(8, Math.min(window.innerWidth - vw - 8, left));
+    top = Math.max(8, Math.min(window.innerHeight - vh - 8, top));
     el.style.left = left + 'px';
     el.style.top = top + 'px';
     if (ctx.pinned) { ctx.left = left; ctx.top = top; }
@@ -1046,7 +1077,7 @@ function buildMolangBubble(ctx) {
         valDragEl.addEventListener('contextmenu', (e) => e.preventDefault());
     }
     el.querySelector('[data-act="close"]').addEventListener('click', () => {
-        if (ctx.pinned) burstRemovePinned(ctx); else mnbHide();
+        if (ctx.pinned) { burstRemovePinned(ctx); saveMolangBubblesToProject(); } else mnbHide();
     });
     el.addEventListener('mousedown', (e) => { e.stopPropagation(); });   // 防止触发外部关闭 / 文本框失焦
     el.addEventListener('wheel', (e) => { e.preventDefault(); applyStep(e.deltaY < 0 ? +1 : -1); }, { passive: false });
@@ -1054,7 +1085,7 @@ function buildMolangBubble(ctx) {
     const pinBtn = el.querySelector('[data-act="pin"]');
     if (pinBtn) {
         pinBtn.addEventListener('click', () => {
-            if (ctx.pinned) burstRemovePinned(ctx);
+            if (ctx.pinned) { burstRemovePinned(ctx); saveMolangBubblesToProject(); }
             else {
                 const r = el.getBoundingClientRect();
                 mnbHide();   // 关闭原瞬时泡泡（不炸开）
@@ -1063,6 +1094,7 @@ function buildMolangBubble(ctx) {
                 const newCtx = { block: p.block, varName: p.varName, token: ctx.token, pinned: true, left: r.left, top: r.top, step: p.step };
                 buildMolangBubble(newCtx);
                 p.el = newCtx.el;
+                saveMolangBubblesToProject();
             }
         });
     }
@@ -1091,6 +1123,7 @@ function buildMolangBubble(ctx) {
                 head.removeEventListener('pointerup', up);
                 head.removeEventListener('pointercancel', up);
                 el.classList.remove('dragging');
+                saveMolangBubblesToProject();   // 记住拖动后的位置，重开项目仍在原处
             };
             head.addEventListener('pointermove', move);
             head.addEventListener('pointerup', up);
@@ -1102,10 +1135,406 @@ function buildMolangBubble(ctx) {
 }
 function mnbShow(block, token, clientX, clientY) {
     mnbHide();
+    probeHideTransient();   // 同一时刻只留一个瞬时泡泡（数字微调 ↔ 变量描点互斥）
     const varName = findVarForToken(block.scope.program || '', token);
     const ctx = { block, varName, token, pinned: false, anchorX: clientX, anchorY: clientY, step: 1 };
     buildMolangBubble(ctx);
     mnbEl = ctx.el;
     mnbState = ctx;
 }
+
+// ========== molang 变量描点：值 / 帧 坐标点图（同款泡泡，可常显、可跨模式显示） ==========
+// 触发：molang 编辑器文本里单击 `v.xxx` 变量，或点「当前数值（只读）」网格里的变量名。
+// 泡泡从「打开的那一帧」才开始逐次渲染采样：横轴 = 采样序号（不是项目动画时间，帧率变化会让滚动速度变化），纵轴 R = 值（全体实数）。
+// 设置项「变量描点历史采样数」控制最多保留多少个采样（localStorage: ui_molang_probe_frames，默认 120）。
+let mnbProbeFrames = 120;
+// 泡泡整体缩放（设置项「泡泡大小」，localStorage: ui_molang_bubble_scale，存百分比 70~180）
+let mnbBubbleScale = 1;
+function setMolangBubbleScale(v) {
+    v = Number(v);
+    if (!isFinite(v) || v <= 0) v = 1;
+    v = Math.max(0.7, Math.min(1.8, v));
+    mnbBubbleScale = v;
+    document.documentElement.style.setProperty('--mnb-scale', String(v));
+}
+try {
+    const _bs = parseFloat(localStorage.getItem('ui_molang_bubble_scale') || '');
+    if (isFinite(_bs) && _bs > 0) setMolangBubbleScale(_bs / 100);
+} catch (e) { }
+let mnbProbeFrameNo = 0;
+let probeTransient = null;          // 当前瞬时描点泡泡（未固定）
+const probeBubbles = [];            // {id, block, varName, el, pinned, left, top, hist:number[]}
+let probeIdSeq = 1, probeDocBound = false;
+const PROBE_W = 236, PROBE_H = 104;
+try {
+    const _pf = parseInt(localStorage.getItem('ui_molang_probe_frames') || '', 10);
+    if (isFinite(_pf) && _pf > 0) mnbProbeFrames = Math.max(10, Math.min(600, _pf));
+} catch (e) {}
+function setMolangProbeFrames(n) {
+    n = parseInt(n, 10);
+    if (!isFinite(n)) n = 120;
+    mnbProbeFrames = Math.max(10, Math.min(600, n));
+    for (const p of probeBubbles) {
+        if (p.hist.length > mnbProbeFrames) p.hist.splice(0, p.hist.length - mnbProbeFrames);
+    }
+}
+// 读取变量当前值（ES 名称需过守卫；非有限值返回 NaN，图上留空）
+function probeGetValue(block, varName) {
+    const d = block && block.scope && block.scope.vars ? block.scope.vars.get(varName) : null;
+    if (!d) return NaN;
+    let v;
+    try { v = esGuardVarValue(varName, d.value); } catch (e) { v = d.value; }
+    v = Number(v);
+    return isFinite(v) ? v : NaN;
+}
+// 文本位置上的变量名（v.xxx / t.xxx），找不到返回 null
+function findVarAt(text, pos) {
+    if (!text) return null;
+    const re = /(?:v|t)\.(?:[A-Za-z_][\w.]*|\d[\w.]*)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+        if (pos >= m.index && pos <= m.index + m[0].length) return m[0];
+        if (m.index > pos) break;
+    }
+    return null;
+}
+function probeFormatNum(v) {
+    if (!isFinite(v)) return '—';
+    const r = Math.round(v * 1000) / 1000;
+    return String(r === 0 ? 0 : r);
+}
+// 绘制坐标点图：t 横轴（右侧＝最新，向左＝过去），R 纵轴（自适应 min/max）
+function probeDrawChart(p) {
+    const canvas = p.el && p.el.querySelector('.mnp-canvas');
+    if (!canvas) return;
+    // 泡泡整体放大时同步提高画布后备分辨率，避免 transform: scale 把曲线拉糊
+    const dpr = Math.max(1, Math.min(3, (window.devicePixelRatio || 1) * (mnbBubbleScale || 1)));
+    if (canvas.width !== Math.round(PROBE_W * dpr)) {
+        canvas.width = Math.round(PROBE_W * dpr);
+        canvas.height = Math.round(PROBE_H * dpr);
+    }
+    canvas.style.width = PROBE_W + 'px';
+    canvas.style.height = PROBE_H + 'px';
+    const g = canvas.getContext('2d');
+    if (!g) return;
+    const light = document.body.classList.contains('light-mode');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, PROBE_W, PROBE_H);
+    const padL = 34, padR = 8, padT = 8, padB = 16;
+    const plotW = PROBE_W - padL - padR, plotH = PROBE_H - padT - padB;
+    const cap = Math.max(10, mnbProbeFrames);
+    const hist = p.hist || [];
+    // 网格
+    g.strokeStyle = light ? 'rgba(15,23,42,0.14)' : 'rgba(59,130,246,0.22)';
+    g.lineWidth = 1;
+    for (let i = 0; i <= 3; i++) {
+        const y = padT + plotH * i / 3;
+        g.beginPath(); g.moveTo(padL, y); g.lineTo(padL + plotW, y); g.stroke();
+        const x = padL + plotW * i / 3;
+        g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + plotH); g.stroke();
+    }
+    let vmin = Infinity, vmax = -Infinity;
+    for (const v of hist) { if (isFinite(v)) { if (v < vmin) vmin = v; if (v > vmax) vmax = v; } }
+    g.font = '9px ui-monospace, Menlo, Consolas, monospace';
+    g.textAlign = 'right';
+    g.fillStyle = light ? '#475569' : 'rgba(148,163,184,0.95)';
+    if (!isFinite(vmin)) {
+        g.textAlign = 'center';
+        g.fillText('等待采样…', padL + plotW / 2, padT + plotH / 2);
+        return;
+    }
+    const dataMin = vmin, dataMax = vmax;
+    if (vmax - vmin < 1e-9) {
+        const pad = Math.max(1, Math.abs(vmax) * 0.1);
+        vmin -= pad; vmax += pad;
+    } else {
+        const pad = (vmax - vmin) * 0.12;
+        vmin -= pad; vmax += pad;
+    }
+    const xOf = (fromNewest) => padL + plotW - (fromNewest / Math.max(1, cap - 1)) * plotW;
+    const yOf = (v) => padT + plotH - ((v - vmin) / (vmax - vmin)) * plotH;
+    // 折线（遇到非有限值断开）
+    g.strokeStyle = light ? 'rgba(2,132,199,0.85)' : 'rgba(125,211,252,0.9)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    let started = false;
+    for (let i = 0; i < hist.length; i++) {
+        if (!isFinite(hist[i])) { started = false; continue; }
+        const x = xOf(hist.length - 1 - i), y = yOf(hist[i]);
+        if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+    }
+    g.stroke();
+    // 坐标点
+    g.fillStyle = light ? '#0284c7' : '#38bdf8';
+    for (let i = 0; i < hist.length; i++) {
+        if (!isFinite(hist[i])) continue;
+        g.beginPath();
+        g.arc(xOf(hist.length - 1 - i), yOf(hist[i]), 1.4, 0, Math.PI * 2);
+        g.fill();
+    }
+    // 最新点高亮 + 纵轴当前值
+    const last = hist.length - 1;
+    if (last >= 0 && isFinite(hist[last])) {
+        const lx = xOf(0), ly = yOf(hist[last]);
+        g.beginPath(); g.arc(lx, ly, 2.6, 0, Math.PI * 2);
+        g.fillStyle = light ? '#0369a1' : '#e0f2fe'; g.fill();
+    }
+    g.textAlign = 'right';
+    g.fillStyle = light ? '#475569' : 'rgba(148,163,184,0.95)';
+    g.fillText(probeFormatNum(dataMax), padL - 4, padT + 8);
+    g.fillText(probeFormatNum(dataMin), padL - 4, padT + plotH);
+    // 横轴说明：这里不是项目动画时间，而是逐次渲染采样的序号
+    g.textAlign = 'left';
+    g.fillText('采样', padL + 2, PROBE_H - 4);
+    g.textAlign = 'right';
+    g.fillText('最新', padL + plotW, PROBE_H - 4);
+}
+// 逐帧刷新泡泡（数值 + 曲线 + 帧计数）
+function probeRender(p) {
+    if (!p || !p.el) return;
+    const curEl = p.el.querySelector('.mnp-cur');
+    const lastValid = p.hist.length ? p.hist[p.hist.length - 1] : NaN;
+    const showv = isFinite(lastValid) ? lastValid : probeGetValue(p.block, p.varName);
+    if (curEl) curEl.textContent = probeFormatNum(showv);
+    const frameEl = p.el.querySelector('.mnp-frames');
+    if (frameEl) frameEl.textContent = p.hist.length + ' / ' + mnbProbeFrames + ' 采样';
+    probeDrawChart(p);
+}
+// 渲染循环调用：所有打开的描点泡泡逐帧采样（关闭后立即停止）
+function probeTick() {
+    if (!probeBubbles.length) return;
+    mnbProbeFrameNo++;
+    for (let i = probeBubbles.length - 1; i >= 0; i--) {
+        const p = probeBubbles[i];
+        if (!p.el || !p.el.isConnected) { probeBubbles.splice(i, 1); if (probeTransient === p) probeTransient = null; continue; }
+        if (!p.block || !p.block.scope || !p.block.scope.vars) continue;
+        // 变量被删 / 方块已移除 → 炸开消失
+        if (!p.block.scope.vars.has(p.varName) || (typeof blocks !== 'undefined' && blocks.indexOf(p.block) < 0)) {
+            probeBurstRemove(p); continue;
+        }
+        p.hist.push(probeGetValue(p.block, p.varName));
+        if (p.hist.length > mnbProbeFrames) p.hist.splice(0, p.hist.length - mnbProbeFrames);
+        probeRender(p);
+    }
+}
+function probeHideTransient() {
+    const p = probeTransient;
+    probeTransient = null;
+    if (!p) return;
+    const idx = probeBubbles.indexOf(p);
+    if (idx >= 0) probeBubbles.splice(idx, 1);
+    if (p.el) p.el.remove();
+}
+function probeBurstRemove(entry) {
+    if (!entry) return;
+    if (probeTransient === entry) probeTransient = null;
+    const idx = probeBubbles.indexOf(entry);
+    if (idx >= 0) probeBubbles.splice(idx, 1);
+    const el = entry.el;
+    if (!el || el.classList.contains('mnb-burst')) return;
+    el.classList.add('mnb-burst');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 420);
+}
+function probeRemoveForBlock(block) {
+    for (let i = probeBubbles.length - 1; i >= 0; i--) {
+        if (probeBubbles[i].block === block) probeBurstRemove(probeBubbles[i]);
+    }
+}
+// 构建描点泡泡（transient / pinned 共用）。ctx = {block, varName, pinned, anchorX, anchorY, left, top, hist}
+function buildProbeBubble(ctx) {
+    const el = document.createElement('div');
+    el.className = 'molang-num-bubble molang-probe-bubble' + (ctx.pinned ? ' pinned' : '');
+    const blockName = (ctx.block && ctx.block.id != null) ? String(ctx.block.id) : '方块';
+    if (!ctx.hist) ctx.hist = [];
+    const vn = escapeHtml(ctx.varName || '');
+    el.innerHTML = `
+      <div class="mnb-head">
+        <i class="mnb-diamond" aria-hidden="true"></i>
+        <span class="mnb-var" title="${vn}">${vn}</span>
+        <span class="mnb-block" title="${escapeHtml(blockName)}">🧊 ${escapeHtml(blockName)}</span>
+        <button class="mnb-ico mnb-pin${ctx.pinned ? ' active' : ''}" data-act="pin" title="常显 / 固定（可拖动，可跨操作模式显示）">📌</button>
+        <button class="mnb-ico mnb-close" data-act="close" title="关闭">✕</button>
+      </div>
+      <div class="mnp-body">
+        <div class="mnp-top"><span class="mnp-cur">—</span><span class="mnp-frames">0 / ${mnbProbeFrames} 采样</span></div>
+        <canvas class="mnp-canvas"></canvas>
+        <div class="mnp-axis"><span>采样序号 ← 过去</span><span>最新</span></div>
+      </div>
+      <div class="mnb-hint">${ctx.pinned ? ' ' : ' '}</div>`;
+    document.body.appendChild(el);
+    ctx.el = el;
+    // 定位（瞬时：锚点上方；常显：沿用记录位置）
+    const bw = el.offsetWidth || 264, bh = el.offsetHeight || 190;
+    const sc = mnbBubbleScale || 1;
+    const vw = bw * sc, vh = bh * sc;
+    let left, top;
+    if (ctx.pinned && ctx.left != null) { left = ctx.left; top = ctx.top; }
+    else {
+        left = Math.max(8, Math.min(window.innerWidth - vw - 8, ctx.anchorX - vw / 2));
+        top = ctx.anchorY - vh - 16;
+        if (top < 8) top = ctx.anchorY + 22;
+    }
+    left = Math.max(8, Math.min(window.innerWidth - vw - 8, left));
+    top = Math.max(8, Math.min(window.innerHeight - vh - 8, top));
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+    if (ctx.pinned) { ctx.left = left; ctx.top = top; }
+    // 关闭 / 固定
+    el.querySelector('[data-act="close"]').addEventListener('click', () => {
+        if (ctx.pinned) { probeBurstRemove(ctx); saveMolangBubblesToProject(); } else probeHideTransient();
+    });
+    const pinBtn = el.querySelector('[data-act="pin"]');
+    if (pinBtn) {
+        pinBtn.addEventListener('click', () => {
+            if (ctx.pinned) { probeBurstRemove(ctx); saveMolangBubblesToProject(); return; }
+            const r = el.getBoundingClientRect();
+            probeHideTransient();
+            const p = { id: probeIdSeq++, block: ctx.block, varName: ctx.varName, pinned: true, left: r.left, top: r.top, hist: ctx.hist };
+            probeBubbles.push(p);
+            const nc = { block: p.block, varName: p.varName, pinned: true, left: p.left, top: p.top, hist: p.hist };
+            buildProbeBubble(nc);
+            p.el = nc.el;
+            saveMolangBubblesToProject();
+        });
+    }
+    // 常显拖动（pointer，兼容触屏）
+    if (ctx.pinned) {
+        const head = el.querySelector('.mnb-head');
+        head.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.mnb-ico')) return;
+            e.preventDefault();
+            const r = el.getBoundingClientRect();
+            const ox = e.clientX - r.left, oy = e.clientY - r.top;
+            const pid = e.pointerId;
+            el.classList.add('dragging');
+            try { head.setPointerCapture(pid); } catch (_) {}
+            const move = (ev) => {
+                if (ev.pointerId !== pid) return;
+                let nl = ev.clientX - ox, nt = ev.clientY - oy;
+                nl = Math.max(4, Math.min(window.innerWidth - r.width - 4, nl));
+                nt = Math.max(4, Math.min(window.innerHeight - r.height - 4, nt));
+                el.style.left = nl + 'px'; el.style.top = nt + 'px';
+                ctx.left = nl; ctx.top = nt;
+            };
+            const up = () => {
+                try { head.releasePointerCapture(pid); } catch (_) {}
+                head.removeEventListener('pointermove', move);
+                head.removeEventListener('pointerup', up);
+                head.removeEventListener('pointercancel', up);
+                el.classList.remove('dragging');
+                saveMolangBubblesToProject();   // 记住拖动后的位置，重开项目仍在原处
+            };
+            head.addEventListener('pointermove', move);
+            head.addEventListener('pointerup', up);
+            head.addEventListener('pointercancel', up);
+        });
+    }
+    el.addEventListener('mousedown', (e) => { e.stopPropagation(); });
+    probeRender(ctx);
+    return el;
+}
+// 打开一个描点泡泡（瞬时）。变量不存在就不弹（避免空图误导）
+function probeShow(block, varName, clientX, clientY) {
+    if (!block || !block.scope || !block.scope.vars) return;
+    if (!block.scope.vars.has(varName)) return;
+    mnbHide();
+    probeHideTransient();
+    const ctx = { block, varName, pinned: false, anchorX: clientX, anchorY: clientY, hist: [] };
+    buildProbeBubble(ctx);
+    probeBubbles.push(ctx);
+    probeTransient = ctx;
+    if (!probeDocBound) {
+        probeDocBound = true;
+        document.addEventListener('mousedown', (e) => {
+            const t = e.target;
+            if (!probeTransient) return;
+            if (probeTransient.el && probeTransient.el.contains(t)) return;
+            if (t === document.getElementById('molangTextarea')) return;
+            if (t instanceof Element && t.closest && t.closest('#molangValsGrid')) return; // 换变量时由点击处理器接管
+            probeHideTransient();
+        });
+    }
+}
+
+// ========== 常显泡泡的项目级持久化 ==========
+// 需求：关闭项目后第二次打开，molang 编辑模式下固定（📌）的微调泡泡与描点泡泡仍然显示。
+// 不放进 getState()：那会进入撤销栈 —— 拖动泡泡会变成一次可撤销操作（错误语义）。
+// 改为按项目 id 存 localStorage：ui_molang_bubbles_<projectId>，内容为常显泡泡的
+// {kind, blockId, varName, left, top, step, hist}；打开项目时在方块恢复完成后重建。
+function molangBubblesStorageKey(pid) { return 'ui_molang_bubbles_' + pid; }
+function molangBubblePos(el, fallbackLeft, fallbackTop) {
+    let left = parseFloat(el && el.style.left), top = parseFloat(el && el.style.top);
+    if (!isFinite(left)) left = fallbackLeft;
+    if (!isFinite(top)) top = fallbackTop;
+    return { left: isFinite(left) ? left : 8, top: isFinite(top) ? top : 8 };
+}
+function saveMolangBubblesToProject() {
+    if (typeof currentProjectId === 'undefined' || !currentProjectId) return;
+    try {
+        const list = [];
+        for (const p of pinnedBubbles) {
+            if (!p || !p.el || !p.block) continue;
+            const pos = molangBubblePos(p.el, p.left, p.top);
+            list.push({ kind: 'num', blockId: String(p.block.id), varName: p.varName || '', step: p.step != null ? p.step : 1, left: pos.left, top: pos.top });
+        }
+        for (const p of probeBubbles) {
+            if (!p || !p.pinned || !p.el || !p.block) continue;
+            const pos = molangBubblePos(p.el, p.left, p.top);
+            const hist = Array.isArray(p.hist) ? p.hist.slice(-mnbProbeFrames).map(v => isFinite(v) ? v : null) : [];
+            list.push({ kind: 'probe', blockId: String(p.block.id), varName: p.varName, left: pos.left, top: pos.top, hist });
+        }
+        localStorage.setItem(molangBubblesStorageKey(currentProjectId), JSON.stringify(list));
+    } catch (e) { }
+}
+// 清掉当前屏幕上的全部泡泡（项目切换 / 恢复前调用，避免上一个项目的泡泡残留）
+function clearMolangBubbles() {
+    if (mnbEl) { mnbEl.remove(); mnbEl = null; }
+    mnbState = null;
+    for (let i = 0; i < pinnedBubbles.length; i++) {
+        const p = pinnedBubbles[i];
+        if (p && p.el && p.el.parentNode) p.el.remove();
+    }
+    pinnedBubbles.length = 0;
+    probeHideTransient();
+    for (let i = 0; i < probeBubbles.length; i++) {
+        const p = probeBubbles[i];
+        if (p && p.el && p.el.parentNode) p.el.remove();
+    }
+    probeBubbles.length = 0;
+}
+// 打开项目后按存档重建常显泡泡（方块 / 变量已不存在时自动跳过）
+function restoreMolangBubblesForProject() {
+    clearMolangBubbles();
+    if (typeof currentProjectId === 'undefined' || !currentProjectId) return;
+    let list = null;
+    try { list = JSON.parse(localStorage.getItem(molangBubblesStorageKey(currentProjectId)) || '[]'); } catch (e) { list = null; }
+    if (!Array.isArray(list) || !list.length) return;
+    for (const it of list) {
+        if (!it || !it.blockId || !it.varName) continue;
+        const block = blocks.find(b => String(b.id) === String(it.blockId));
+        if (!block || !block.scope || !block.scope.vars) continue;
+        if (!block.scope.vars.has(it.varName)) continue;
+        if (it.kind === 'num') {
+            const tok = findVarNumberToken(block.scope.program || '', it.varName);
+            if (!tok) continue;   // 变量已不再是「=数字」形式 → 不恢复
+            const p = { id: mnbIdSeq++, block, varName: it.varName, el: null, left: it.left, top: it.top, step: (isFinite(parseFloat(it.step)) && parseFloat(it.step) > 0) ? parseFloat(it.step) : 1 };
+            pinnedBubbles.push(p);
+            const ctx = { block, varName: it.varName, token: tok, pinned: true, left: it.left, top: it.top, step: p.step };
+            buildMolangBubble(ctx);
+            p.el = ctx.el;
+        } else if (it.kind === 'probe') {
+            const hist = Array.isArray(it.hist)
+                ? it.hist.slice(-mnbProbeFrames).map(v => (typeof v === 'number' && isFinite(v)) ? v : NaN)
+                : [];
+            const p = { id: probeIdSeq++, block, varName: it.varName, pinned: true, left: it.left, top: it.top, hist };
+            probeBubbles.push(p);
+            const ctx = { block, varName: it.varName, pinned: true, left: it.left, top: it.top, hist };
+            buildProbeBubble(ctx);
+            p.el = ctx.el;
+        }
+    }
+}
+window.addEventListener('beforeunload', () => { try { saveMolangBubblesToProject(); } catch (e) { } });
+
 

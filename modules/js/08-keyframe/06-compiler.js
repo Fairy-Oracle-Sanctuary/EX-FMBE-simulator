@@ -1991,11 +1991,10 @@ function kfRenderTimelinePanel(container) {
     const idOf = targets.map(b => escapeHtml(b.id)).join(', ');
 
     let html = '';
+    // 「数据」视图的图形按钮图标：与方块列表 / 数据视图头部的切换按钮同一套四格图形
+    const kfDataIconSvg = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="5.2" height="5.2" rx="0.9"/><rect x="8.8" y="2" width="5.2" height="5.2" rx="0.9"/><rect x="2" y="8.8" width="5.2" height="5.2" rx="0.9"/><rect x="8.8" y="8.8" width="5.2" height="5.2" rx="0.9"/></svg>';
     // ---- 面板头（参考 molang 编辑模式：切角按钮 + 变量名紫色）----
-    //   ★★【2026-10-13 修复】必须提供「+关键帧 / ▶播放 / 播放头」快捷入口：
-    //     侧栏在关键帧模式下整体取代方块列表；若这里没有录帧按钮、浮动窗又被隐藏，
-    //     用户就完全找不到创建关键帧的入口（实测投诉）。两条路都要通。
-    const _playLabel = (typeof keyframePlaying !== 'undefined' && keyframePlaying) ? '⏸ 暂停' : '▶ 播放';
+    //   ★【2026-10-31 用户要求】「+关键帧 / 播放」入口从方块列表面板移除，统一由浮动关键帧卡片提供。
     const _curT = (typeof keyframeCurrentTime === 'number') ? parseFloat(keyframeCurrentTime.toFixed(2)) : 0;
     /* ★【2026-10-20 用户要求】面板头彻底去掉「🎬 关键帧时间表」标题与 emoji
        （上一轮误判为"保留标题、只重排"，用户明确：「"关键帧时间表"文字和emoji也没删啊」）；
@@ -2003,13 +2002,9 @@ function kfRenderTimelinePanel(container) {
        选中方块名下移到第二行（与播放头/时间步进/浮动窗同排，小胶囊标签）。 */
     html += `<div class="outliner-header kf-tl-header">
         <span class="kf-tl-hbtnbar">
-            <span class="kf-tl-bgrp">
-                <button type="button" class="kf-tl-btn kf-tl-btn-primary" id="kfTlRecord" title="在当前播放头位置录制关键帧（等于浮动窗的 +关键帧）">+关键帧</button>
-                <button type="button" class="kf-tl-btn kf-tl-btn-primary" id="kfTlPlay" title="播放/暂停整段动画">${_playLabel}</button>
-            </span>
             <span class="kf-tl-bgrp kf-tl-bgrp-aux">
                 <!-- ★【2026-10-20 用户要求】❒（加入/移出动画列表）与「导入」已由浮动关键帧窗实现，此处重复入口删除 -->
-                <button type="button" class="kf-tl-btn${kfDataView ? ' on' : ''}" id="kfTlData" title="只显示播放头所在帧的核心变量数值（多选时自动回到时间列表）">数据</button>
+                <button type="button" class="kf-tl-btn kf-tl-icbtn${kfDataView ? ' on' : ''}" id="kfTlData" title="数据视图：显示播放头所在帧的核心变量数值 + Gizmo 精度快捷键（多选时自动回到时间列表）">${kfDataIconSvg}</button>
                 <button type="button" class="kf-tl-btn" id="kfTlVars">变量</button>
                 <button type="button" class="kf-tl-btn" id="kfTlOpenWin" title="打开/关闭浮动关键帧窗口（时间轴拖动与缩放）">浮动窗</button>
                 <button type="button" class="kf-tl-btn kf-tl-toolbtn" id="kfTlToolsBtn" title="方块工具：欧拉角转换 / 枢轴归位到原点 / 取消所有方块隐藏 / 取消所有方块锁定">
@@ -2022,6 +2017,10 @@ function kfRenderTimelinePanel(container) {
         <span class="kf-tl-targets" title="当前编辑方块">${idOf || '未选中'}${multi ? ' (' + targets.length + ')' : ''}</span>
         <span class="kf-tl-curtime">播放头 <b id="kfTlCurT" title="点击直接输入秒数（如 2 或 1.5）">${_curT}s</b> / 总长 ${parseFloat((Number(keyframeAnimDuration) || 0).toFixed(2))}s</span>
     </div>`;
+    // 🎬 动画层条（2026-11-07）：动画模式下直接给锚点方块一个可见入口（切层 / ＋附加 / 排序 / 删除）
+    if (anchor && typeof renderAnimationLayerBar === 'function') {
+        html += `<div class="kf-anim-layer-wrap">${renderAnimationLayerBar(anchor, 'kf-')}</div>`;
+    }
     /* ★【2026-10-31】原「工具」独立成一行（.kf-tl-toolsrow）已取消：
        名称与播放头信息独占第二行，不再有任何单独成行的按钮。 */
 
@@ -2067,7 +2066,7 @@ function kfRenderTimelinePanel(container) {
         }
         html += `<div class="kf-tl-empty">暂无关键帧：点 +关键帧 录制，或在下面点数值直接建帧</div>`;
         // 仍然给出一个 t=0 的块，让用户能把变量直接纳入关键帧
-        html += `<div class="kf-tl-block">` + kfBlockHtml(anchor, targets, 0, [0], 0, multi) + `</div>`;
+        html += `<div class="kf-tl-block" data-kf-block-t="0">` + kfBlockHtml(anchor, targets, 0, [0], 0, multi) + `</div>`;
         container.innerHTML = html;
         kfBindTimelinePanel(container, targets); return;
     }
@@ -2081,7 +2080,7 @@ function kfRenderTimelinePanel(container) {
 
     html += `<div class="kf-tl-blocks">`;
     for (let i = 0; i < times.length; i++) {
-        html += `<div class="kf-tl-block">` + kfBlockHtml(anchor, targets, times[i], times, i, multi) + `</div>`;
+        html += `<div class="kf-tl-block" data-kf-block-t="${times[i]}">` + kfBlockHtml(anchor, targets, times[i], times, i, multi) + `</div>`;
     }
     html += `</div>`;
     container.innerHTML = html;
@@ -2180,6 +2179,40 @@ function kfBlockHtml(block, targets, t, times, i, multi) {
 }
 /* ★【2026-10-22 用户要求】「数据」按钮视图：只列**当前帧**的所有核心变量数值。
    编辑复用 .kf-tl-val 的数值泡泡逻辑（点击数字 → 播放头定位到该帧 → 改值）。 */
+/* ★【2026-11-04 用户要求】数据视图里除「单方块单帧」的数值外，还要有 Gizmo 精度快捷按键。
+   与手机端虚拟修饰键（#virtModShift / #virtModCtrl）共用同一份状态 gizmoPrecMods，
+   所以两处点击等价于按住键盘 Shift / Ctrl；双键点亮 = Shift+Ctrl 细档。 */
+function kfPrecQuickRowHtml() {
+    let step = 1, shift = false, ctrl = false;
+    try {
+        step = gizmoPrecisionStep();
+        shift = !!gizmoPrecMods.shift;
+        ctrl = !!gizmoPrecMods.ctrl;
+    } catch (e) { }
+    const stepTxt = step > 0 ? String(step) : '不取整';
+    return `<div class="kf-prec-row">
+        <span class="kf-prec-label">Gizmo 精度</span>
+        <span class="kf-prec-keys">
+            <button type="button" class="kf-prec-key${shift ? ' lit' : ''}" data-kf-prec="shift" title="模拟按住 Shift（精修档）">⇧ Shift</button>
+            <button type="button" class="kf-prec-key${ctrl ? ' lit' : ''}" data-kf-prec="ctrl" title="模拟按住 Ctrl（精修档；两键同时点亮 = Shift+Ctrl）">Ctrl</button>
+        </span>
+        <span class="kf-prec-val" id="kfPrecVal">步长 ${escapeHtml(stepTxt)}</span>
+    </div>`;
+}
+// 同步数据视图里的精度快捷键点亮态 + 步长读数（点击按键、真实键盘按 Shift/Ctrl、重绘后都走这里）
+function kfSyncPrecQuickKeys() {
+    let step = 1;
+    try { step = gizmoPrecisionStep(); } catch (e) { }
+    document.querySelectorAll('.kf-prec-key[data-kf-prec]').forEach(el => {
+        let lit = false;
+        try {
+            lit = el.dataset.kfPrec === 'shift' ? !!gizmoPrecMods.shift : !!gizmoPrecMods.ctrl;
+        } catch (e) { }
+        el.classList.toggle('lit', lit);
+    });
+    const pv = document.getElementById('kfPrecVal');
+    if (pv) pv.textContent = '步长 ' + (step > 0 ? step : '不取整');
+}
 function kfDataViewHtml(block, t) {
     const d = kfData(block.id);
     const f = d && d.frames instanceof Map ? d.frames.get(t) : null;
@@ -2190,6 +2223,7 @@ function kfDataViewHtml(block, t) {
             <span class="kf-tl-bdash" aria-hidden="true"></span>
             <span class="kf-tl-bd">当前帧数据</span>
         </div>
+        ${kfPrecQuickRowHtml()}
         <div class="kf-tl-vars">`;
     for (const n of KF_CORE_VARS) {
         const base = kfValueAt(block, t, n);
@@ -2247,32 +2281,8 @@ function fmt2(v) {
 }
 // 事件绑定
 function kfBindTimelinePanel(container, targets) {
-    // ★★ 录帧 / 播放 / 播放头 / 浮动窗（面板头快捷入口 —— 用户找不到录帧入口的事故修复点）
-    const rec = container.querySelector('#kfTlRecord');
-    if (rec) rec.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const _before = getKeyframeTimes(selectedKeyframeBlock || (targets[0] && targets[0].id) || '').length;
-        if (typeof createKeyframeAtCurrentTime === 'function') createKeyframeAtCurrentTime();
-        // ★【2026-10-14 设计修复】原来录帧后**没有任何反馈**，新手只能靠"面板里多出一个时间块"
-        //   这个细节判断录没录上。现在给出明确提示（含时间点与总帧数）。
-        try {
-            const _id = selectedKeyframeBlock || (targets[0] && targets[0].id) || '';
-            const _after = getKeyframeTimes(_id).length;
-            const _t = parseFloat((Number(keyframeCurrentTime) || 0).toFixed(2));
-            if (typeof showToast === 'function') {
-                showToast(_after > _before
-                    ? `已在 ${_t}s 录制关键帧（共 ${_after} 帧）`
-                    : `已更新 ${_t}s 的关键帧（共 ${_after} 帧）`);
-            }
-        } catch (err) { }
-        kfRenderTimelinePanel(container);
-    });
-    const play = container.querySelector('#kfTlPlay');
-    if (play) play.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (typeof toggleKeyframePlayback === 'function') toggleKeyframePlayback();
-        kfRenderTimelinePanel(container);
-    });
+    // ★【2026-10-31 用户要求】面板头「+关键帧 / 播放」两个按钮取消：
+    //   关键帧卡片（浮动窗）已经提供播放与录帧，方块列表里不再重复放一份。
     // ★【2026-10-20 用户要求】播放头 ◀/▶ 步进按钮及其绑定已删除（浮动窗时间轴可拖动/定位）。
     // ★【2026-10-14 设计修复】播放头数字可点击直接输入秒数（比连点 ◀/▶ 快得多）。
     //   ★★ 绝不能用 `window.prompt()`：它**阻塞渲染线程**，把整个页面卡死
@@ -2342,11 +2352,29 @@ function kfBindTimelinePanel(container, targets) {
     // ★【2026-10-20 用户要求】❒（加入/移出动画列表）与「导入」按钮已删除，对应绑定一并移除。
     const varsBtn = container.querySelector('#kfTlVars');
     if (varsBtn) varsBtn.addEventListener('click', () => kfShowVarCandidates(targets[0] || null));
+    // 🎬 动画层条绑定（切层 / ＋附加 / 排序 / 删除；改动后重绘本时间表面板）
+    const _animWrap = container.querySelector('.kf-anim-layer-wrap');
+    if (_animWrap && targets[0] && typeof bindAnimationLayerBar === 'function') {
+        bindAnimationLayerBar(targets[0], { root: _animWrap, prefix: 'kf-', rerender: () => kfRenderTimelinePanel(container) });
+    }
     // ★【2026-10-22】「数据」视图开关：多选时不允许进入（保持正常时间列表样式）
     const dataBtn = container.querySelector('#kfTlData');
     if (dataBtn) dataBtn.addEventListener('click', () => {
         kfDataView = targets.length > 1 ? false : !kfDataView;
         kfRenderTimelinePanel(container);
+    });
+    /* ★【2026-11-04】数据视图里的 Gizmo 精度快捷按键：与手机端虚拟修饰键同源（gizmoPrecMods），
+       点击即等价按住 Shift / Ctrl，双键点亮 = Shift+Ctrl；点亮状态与步长读数由 syncVirtModKeys 统一回填。 */
+    container.querySelectorAll('[data-kf-prec]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            try {
+                if (btn.dataset.kfPrec === 'shift') gizmoPrecMods.shift = !gizmoPrecMods.shift;
+                else gizmoPrecMods.ctrl = !gizmoPrecMods.ctrl;
+                syncVirtModKeys();
+            } catch (err) { }
+            kfSyncPrecQuickKeys();
+        });
     });
     /* 【2026-10-24 用户要求】方块名称下方的「工具」图标：打开挂在 body 上的 fixed 浮层菜单，
        含「欧拉角转换 / 枢轴归位到原点 / 取消所有方块隐藏 / 取消所有方块锁定」。
@@ -2397,6 +2425,52 @@ function kfBindTimelinePanel(container, targets) {
         });
         paint();
     });
+    /* ★【2026-10-31 用户要求】右键/长按可以落在面板任意位置，不必先点中某一帧：
+       落在某个时间块上 = 针对该帧（可删除）；落在块外空白 = 针对播放头（复制就近帧、粘贴到播放头）。 */
+    const _openSideFrameMenu = (x, y, blockEl) => {
+        const b = targets[0];
+        if (!b) return;
+        const unit = { id: null, label: b.id, blocks: [b], repBlock: b, times: new Set(getKeyframeTimes(b.id)) };
+        if (blockEl) {
+            const t = parseFloat(blockEl.dataset.kfBlockT);
+            if (!Number.isFinite(t)) return;
+            showKeyframeFolderDeleteMenu(unit, t, x, y, { allowDelete: true, nearest: false });
+        } else {
+            showKeyframeFolderDeleteMenu(unit, Number(keyframeCurrentTime) || 0, x, y, { allowDelete: false, nearest: true });
+        }
+    };
+    /* 用 on* 属性而非 addEventListener：kfBindTimelinePanel 每次重绘都会调用，
+       事件挂在常驻的 container 上会重复叠加；属性赋值天然覆盖旧处理器。 */
+    container.oncontextmenu = (e) => {
+        // 表达式编辑框 / 输入框内保留原生文本菜单
+        if (e.target.closest('.kf-seg-ta, textarea, input, .molang-editor')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _openSideFrameMenu(e.clientX, e.clientY, e.target.closest('.kf-tl-block[data-kf-block-t]'));
+    };
+    // 触屏：长按面板任意位置 = 右键菜单（表达式框与数值单元格保留自身交互）
+    let _lpT = 0, _lpFired = false, _lpX = 0, _lpY = 0;
+    container.ontouchstart = (e) => {
+        if (e.touches.length !== 1) return;
+        if (e.target.closest('.kf-seg-ta, textarea, input, .molang-editor, .kf-tl-val')) return;
+        const t = e.touches[0];
+        _lpX = t.clientX; _lpY = t.clientY; _lpFired = false;
+        clearTimeout(_lpT);
+        _lpT = setTimeout(() => { _lpFired = true; }, 500);
+    };
+    container.ontouchmove = (e) => {
+        const t = e.touches[0];
+        if (!t) return;
+        if (Math.abs(t.clientX - _lpX) > 10 || Math.abs(t.clientY - _lpY) > 10) { clearTimeout(_lpT); _lpT = 0; }
+    };
+    container.ontouchcancel = () => { clearTimeout(_lpT); _lpT = 0; _lpFired = false; };
+    container.ontouchend = (e) => {
+        clearTimeout(_lpT); _lpT = 0;
+        if (!_lpFired) return;
+        _lpFired = false;
+        e.preventDefault();
+        _openSideFrameMenu(_lpX, _lpY, e.target.closest('.kf-tl-block[data-kf-block-t]'));
+    };
     // 时间块折叠（数值表 ⇄ 分段表达式：互斥）
     container.querySelectorAll('[data-kf-bfold]').forEach(btn => {
         btn.addEventListener('click', () => {

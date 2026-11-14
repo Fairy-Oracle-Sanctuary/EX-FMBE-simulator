@@ -199,8 +199,12 @@ function ptAddPoint(x, z, color, silent) {
     div.addEventListener('pointerdown', (ev) => {
         if (!isBrushMode) return;
         ev.stopPropagation();
+        // ★触屏上必须阻止默认行为：否则标签文字会被系统启动文本选择 / 识别文字 → 弹搜索栏。
+        ev.preventDefault();
         ptToggleSelect(id);
     });
+    // iOS/Android 长按菜单（复制 / 查询 / 识别文字）同样会打断描点，直接吞掉右键菜单。
+    div.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
     // con：约束预留字段（默认 null，自由点）
     ptMarkers.push({ id, x, z, color: String(color || '').trim().toLowerCase() || 'red', mesh, label, div, con: null });

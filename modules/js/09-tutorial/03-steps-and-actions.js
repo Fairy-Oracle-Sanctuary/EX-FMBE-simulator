@@ -548,7 +548,7 @@ function tutRecoverEnv(st) {
                 herModes.add('origin');
             }
             try {
-                document.querySelectorAll('.her-mode-btn').forEach(x => x.classList.toggle('active', herModes.has(x.dataset.mode)));
+                document.querySelectorAll('.her-mode-btn').forEach(x => { if (x.dataset.mode) x.classList.toggle('active', herModes.has(x.dataset.mode)); });
                 rebuildGizmo();
                 // 重建后立刻套用相机自适应缩放，否则这一步的第一帧箭头会以 scale=1 巨大显示一下
                 try { syncGizmo(); } catch (e) {}
@@ -648,7 +648,7 @@ function tutRecoverEnv(st) {
     if (st.act && st.act.indexOf('pivotMode') >= 0) {        try {
             herModes.delete('origin');
             if (!herModes.has('base') && !herModes.has('rotate') && !herModes.has('centerRotate') && !herModes.has('globalRotate') && !herModes.has('globalCenterRotate') && !herModes.has('scale')) herModes.add('rotate');
-            document.querySelectorAll('.her-mode-btn').forEach(b => b.classList.toggle('active', herModes.has(b.dataset.mode)));
+            document.querySelectorAll('.her-mode-btn').forEach(b => { if (b.dataset.mode) b.classList.toggle('active', herModes.has(b.dataset.mode)); });
             rebuildGizmo();
         } catch (e) {}
     }

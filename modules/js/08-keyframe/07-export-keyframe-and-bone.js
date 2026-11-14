@@ -391,7 +391,10 @@ function getBoneFolderKeyframeCommandText(block, forMolangProgram) {
 
 // 修改导出 - 如果方块有关键帧动画，使用关键帧格式输出
 const originalGetCommandTextForBlock = getCommandTextForBlock;
-function patchedGetCommandTextForBlock(block) {
+/* ★ 多动画（2026-11-07）：本函数是导出链上的最后一道包装，必须透传 opts，
+   否则带关键帧的方块在多层导出时拿不到 'ao:<n>' 顺序标签 / {anim} 展开。 */
+function patchedGetCommandTextForBlock(block, opts) {
+    const _o = opts || {};
     if (hasKeyframeAnimation(block.id)) {
         const kfText = getKeyframeCommandText(block.id);
         if (kfText) {
@@ -406,12 +409,18 @@ function patchedGetCommandTextForBlock(block) {
             // ★【双倍后缀去重 2026-10-18】kfText 在 !forMolangProgram 时末尾已自带 'anim:...'; + '方块编号：<id>';，
             //   故此处调用 effectiveExportSuffix 必须传 skipIdTag=true，否则同一条指令会出现两份「方块编号」标签
             //   （用户报：部分（= 带关键帧的）方块导出指令后缀双倍）。
-            const hasOpenQuote = exportPrefix.trimEnd().endsWith('"');
+            // ★ 2026-11-08：tag 识别法的前缀里含 {tags}，必须走统一展开（否则命令方块会带字面 {tags}）
+            const hasOpenQuote = String(exportPrefix == null ? '' : exportPrefix).trimEnd().endsWith('"');
+            const _pref = (typeof expandStructurePrefix === 'function')
+                ? expandStructurePrefix(block, _o.animName || (typeof BASE_ANIM_NAME !== 'undefined' ? BASE_ANIM_NAME : 'FMBE_variables'))
+                : String(exportPrefix == null ? '' : exportPrefix).replace(/{anim}/g, _o.animName || (typeof BASE_ANIM_NAME !== 'undefined' ? BASE_ANIM_NAME : 'FMBE_variables'));
             const suffixEnd = effectiveExportSuffix(exportSuffix, true);
-            return (hasOpenQuote ? exportPrefix : exportPrefix + ' "') + blockIdPrefix + groupPrefix + parentBonePrefix + boneTag + kfText + suffixEnd;
+            // 指令末尾的动画控制器（裸名字接在收尾引号后）
+            const _ctrl = _o.controllerName != null ? String(_o.controllerName).trim() : (_o.animName || (typeof BASE_ANIM_NAME !== 'undefined' ? BASE_ANIM_NAME : 'FMBE_variables'));
+            return (hasOpenQuote ? _pref : _pref + ' "') + blockIdPrefix + groupPrefix + parentBonePrefix + boneTag + kfText + (_o.extraTags || '') + suffixEnd + (_ctrl ? ' ' + _ctrl : '');
         }
     }
-    return originalGetCommandTextForBlock(block);
+    return originalGetCommandTextForBlock(block, opts);
 }
 // 替换导出函数
 getCommandTextForBlock = patchedGetCommandTextForBlock;
@@ -579,6 +588,8 @@ function getBoneInputConstantsString(block) {
         // 骨骼 molang 内部辅助量：由导出端重新计算，不应污染导出
         if (short.startsWith('pR') || short.startsWith('p_') || short.startsWith('parent_') || short.startsWith('own_bone_rot')) continue;
         if (short === 'xbasepos_bone' || short === 'ybasepos_bone' || short === 'zbasepos_bone') continue;
+        // IK 求解量：必须保持「表达式」语义（下面的 _ikVars 段按依赖顺序整段输出），不能当常量
+        if (short.startsWith('ik_')) continue;
         // 枢轴位置(xpos/ypos/zpos)与旋转跟随(rotatex/y/z)由下方跟随公式(t.父_px / pR·xbasepos_bone / t.父_*rot)生成，不在此重复
         if (name === 'v.xpos' || name === 'v.ypos' || name === 'v.zpos') continue;
         if (name === 'v.rotatex' || name === 'v.rotatey' || name === 'v.rotatez') continue;
@@ -586,6 +597,12 @@ function getBoneInputConstantsString(block) {
         if (typeof isKeyframeInternalVar === 'function' && isKeyframeInternalVar(short, block.id)) continue;
         stmts.push(`${name}=${_fv(short, _r4(vnum(block, name)))};`);
     }
+    // ★ IK 逆骨骼：求解量必须按「表达式」整段导出（常量段放在最前，因此这里追加在末尾即可覆盖同名的常量赋值）；
+    //   根块额外发布弯曲角给末节前一块（t.<根>_ik_be=v.ik_be;），末节前一块则输出 v.bone_rotz=t.<根>_ik_be。
+    if (block && Array.isArray(block._ikVars)) {
+        for (const [n, e] of block._ikVars) stmts.push(`${n}=${e};`);
+    }
+    if (block && block._ikPublish) stmts.push(block._ikPublish);
     return stmts.join(' ');
 }
 

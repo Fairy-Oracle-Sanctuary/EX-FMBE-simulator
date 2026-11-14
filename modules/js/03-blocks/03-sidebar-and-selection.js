@@ -1,11 +1,15 @@
 /* 03-blocks/03-sidebar-and-selection.js · 源 测试版v.6b79.html 第 11144-11513 行 */
 'use strict';
 // ===== 侧边栏数值显示区（inspector）：文件夹数值 / 选中方块常量（仅新操作模式）=====
+// 镜像模式专用数据面板（由 06-gizmo/04-mirror.js 注册；用 var 以免初始化早期访问后段 let 触发 TDZ）
+var _mirrorInspectorRender = null;
 // 渲染到指定面板元素（侧边栏 #inspectorPanel 或浮动面板 #folderValuesFloat 复用同一套逻辑）
 function renderInspectorInto(panel) {
     if (!panel) return;
     if (!isNewLayoutMode) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
     panel.style.display = '';
+    // 镜像进行中：数据面板改显「对称面」的位置 / 旋转 / 结果方式
+    if (_mirrorInspectorRender && _mirrorInspectorRender(panel)) return;
     const round4 = (v) => { const n = Number(v); return Math.round(n * 10000) / 10000; };
 
     // ----- 文件夹选中：显示骨骼枢轴与旋转（实时），不显示可编辑变换（文件夹不存储可编辑变换）-----

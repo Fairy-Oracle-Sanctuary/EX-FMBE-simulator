@@ -3,6 +3,92 @@
 // ========== 3D Gizmo 核心实现 ==========
 
 // ---------- 高亮显示 ----------
+// ---------- 平面手柄悬停 / 拖拽高亮 ----------
+// 目的：让用户一眼看出「现在抓的是哪个平面、正在平面内自由移动」，而不是只有 HUD 数字在变。
+let _planeHoverGroup = null;
+let _planeActiveGroup = null;
+
+function planeGroupOfObject(obj) {
+    let p = obj;
+    while (p) {
+        if (p.userData && p.userData.planeFill) return p;
+        p = p.parent;
+    }
+    return null;
+}
+
+function setPlaneHandleVisual(group, state) {
+    if (!group || !group.userData || !group.userData.planeFill) return;
+    if (group.userData.planeVisualState === state) return;
+    const edge = group.userData.planeEdge;
+    const mats = group.userData.planeMats || [];
+    const base = group.userData.planeBaseColor;
+    const isActive = state === 'active';
+    const isHover = state === 'hover';
+    // 平面手柄始终保留各自的平面本色（XY/YZ/XZ 靠颜色区分），本体完全不透明，只靠提亮表达状态；
+    // 不能像轴/圆环那样统一染黄，否则三个平面拖起来一模一样、分不清拖的是哪块。
+    const col = isActive
+        ? new THREE.Color(base).lerp(new THREE.Color(0xffffff), 0.3)
+        : isHover
+            ? new THREE.Color(base).lerp(new THREE.Color(0xffffff), 0.5)
+            : new THREE.Color(base);
+    mats.forEach(m => {
+        m.color.copy(col);
+        m.transparent = false;
+        m.opacity = 1;
+    });
+    // 描边保持固定灰色（三渲二外观），不随悬停/拖拽染色
+    edge.material.opacity = 1;
+    // 拖拽指示：只在真正拖拽该平面手柄时出现的灰色轮廓，颜色固定不染
+    const indEdge = group.userData.planeIndicatorEdge;
+    if (indEdge) {
+        indEdge.visible = isActive;
+        indEdge.material.opacity = 1;
+    }
+    group.userData.planeVisualState = state;
+}
+
+function setPlaneHover(group) {
+    if (_planeHoverGroup === (group || null)) return;
+    if (_planeHoverGroup && _planeHoverGroup !== _planeActiveGroup) setPlaneHandleVisual(_planeHoverGroup, 'idle');
+    _planeHoverGroup = group || null;
+    if (_planeHoverGroup) setPlaneHandleVisual(_planeHoverGroup, 'hover');
+}
+
+function setPlaneActive(group) {
+    const g = group || null;
+    if (_planeActiveGroup && _planeActiveGroup !== g) setPlaneHandleVisual(_planeActiveGroup, 'idle');
+    _planeActiveGroup = g;
+    if (g) setPlaneHandleVisual(g, 'active');
+    // 平面拖拽期间临时隐藏三根轴箭头，只留当前平面片，避免箭头干扰视线
+    if (typeof gizmoArrowGroups !== 'undefined' && gizmoArrowGroups) {
+        gizmoArrowGroups.forEach(gr => {
+            if (!gr || !gr.userData) return;
+            if (gr.userData.planeFill) { gr.visible = true; return; }
+            gr.visible = !g;
+        });
+    }
+}
+
+function clearPlaneHandleVisuals() {
+    setPlaneActive(null);
+    setPlaneHover(null);
+}
+
+// 非拖拽时每帧指针移动调用：命中平面手柄则提亮并把光标变成抓取手型
+function updatePlaneHover(cx, cy) {
+    if (typeof mirrorActive !== 'undefined' && mirrorActive && herModes.has('mirror')) return;
+    if (draggingGizmo || activePick || pendingInputPick) {
+        setPlaneHover(null);
+        return;
+    }
+    const obj = pickGizmo({ clientX: cx, clientY: cy });
+    const meta = obj && obj.userData && obj.userData.her;
+    const grp = meta && meta.plane ? planeGroupOfObject(obj) : null;
+    setPlaneHover(grp);
+    if (renderer && renderer.domElement) renderer.domElement.style.cursor = grp ? 'grab' : '';
+}
+
 function clearActiveHighlight() {
     if (activeHighlight && activeHighlight.parent) {
         activeHighlight.parent.remove(activeHighlight);
@@ -16,6 +102,8 @@ function makeActiveHighlight(meta) {
     clearActiveHighlight();
     if (!meta || meta.type === 'input') return;
     if (meta.folder) return; // 文件夹 Gizmo 不显示方块式黄色高亮环，避免错位
+    // 平面手柄自带方形高亮面，不再叠加黄色箭头高亮（否则会凭空多出一根轴）
+    if (meta.plane) return;
     /* ★【2026-10-31】旋转手柄也不再额外画黄色高亮环：
        这里按「方块局部轴 + 默认半径 2.05」重建一条半圆弧，而 ex/ey 拉伸环挂在 eyFrame 下、
        半径 1.9/2.2 且随 ey 实时转动 ⇒ 方向/半径都对不上，用户拖动旋转环时会看到凭空多出一个淡黄色圆环。
@@ -246,8 +334,9 @@ function _boneJointRotChannelRedirect(b, varName, value) {
     if (!b || !b.scope) return false;
     const idx = { 'v.rotatex': 0, 'v.rotatey': 1, 'v.rotatez': 2 }[varName];
     if (idx === undefined) return false;
+    // 枢轴绑定的 rotate 跟随已搬进共用动画 bone_follow（v.rotatex 是冻成常量的输出）→ 仍须转发到关节角
     const def = b.scope.vars.get(varName);
-    if (!def || !isMolangExpr(def.expr)) return false; // 常量 rotate（未绑父）→ 正常写常量
+    if (!def || (!isMolangExpr(def.expr) && !boneHasSharedFollow(b))) return false; // 常量 rotate（未绑父）→ 正常写常量
     if (!getBoneParentId(b)) return false;
     const own = 'v.bone_rot' + ['x', 'y', 'z'][idx];
     if (!b.scope.vars.has(own)) b.scope.addVar(own, '0', -180, 180, 1);
@@ -283,7 +372,9 @@ function _guardBoneFollowWrite(b, varName, value, def) {
     // 骨骼子块：rotate 是「父旋转 + v.bone_rotX」跟随式 → 写入转发到关节角（用户问题 2）
     if (_boneJointRotChannelRedirect(b, varName, value)) return true;
     if (axis === undefined && !isRot) return false;
-    if (!def || !isMolangExpr(def.expr)) return false;   // 已是常量（静态分组子块）→ 不拦
+    // 枢轴绑定的 pos 跟随已搬进共用动画 bone_follow（v.xpos 是冻成常量的输出）→ 仍须换算进 xbasepos_bone，
+    // 否则 Gizmo 写常量会被动画每帧覆盖（拖完弹回）。
+    if (!def || (!isMolangExpr(def.expr) && !boneHasSharedFollow(b))) return false;   // 已是常量（静态分组子块）→ 不拦
     if (axis !== undefined) {
         const parent = blocks.find(x => x.id === pid);
         const cur = new THREE.Vector3(tvnum(b, 'v.xpos'), tvnum(b, 'v.ypos'), tvnum(b, 'v.zpos'));
@@ -687,6 +778,17 @@ function blockMolangInfo(b, molangSourceIds) {
 function inferMolangBoneParent(b) {
     if (!b || !b.scope) return null;
     if (b._boneParent) return b._boneParent;
+    // ★先认「跟随输入」：共用 bone_follow 的 base 只有 v.parent_xrot / v.parent_px 这些输入，
+    //   是最可靠的父级来源。否则 IK 末端块的 v.ik_tx=t.point_px（IK 目标点）会先被扫到，
+    //   把「目标方块」误当父级 → 导入后整条链断成 point→leg*_6（用户报：导入后腿塌成直线）。
+    const pick = (n) => {
+        const d = b.scope.vars.get(n);
+        if (!d || !d.expr) return null;
+        const m = String(d.expr).match(/t\.([A-Za-z0-9_]+)_(?:xrot|yrot|zrot|px|py|pz|bx|by|bz)\b/);
+        return m ? m[1] : null;
+    };
+    const followParent = pick('v.parent_xrot') || pick('v.parent_px') || pick('v.xpos') || pick('v.xbasepos');
+    if (followParent) return followParent;
     const exprs = [];
     for (const [name, def] of b.scope.vars) {
         if (def && def.expr) exprs.push(def.expr);
@@ -788,6 +890,27 @@ function applyCenterRotateDelta(varName, delta) {
 
     const ns = ['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos','v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez','v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'];
 
+// ★2026-11-07 IK 目标点（_ikGoalMarker）：它的「坐标」就是发布出去的 t.<id>_px/py/pz（= v.xpos/ypos/zpos）。
+//   Gizmo「位移(V)」默认只把世界位移写进 basepos（几何偏移，枢轴不动）⇒ 目标点视觉在动、t.* 却不变、
+//   IK 链完全不刷新。故标记块一律把世界位移直接写入枢轴，保证目标坐标与视觉同步。
+function _ikGoalMarkerMove(b, wd) {
+    if (!b || !wd || typeof wd.getComponent !== 'function') return false;
+    let ok = false;
+    [['v.xpos', 0], ['v.ypos', 1], ['v.zpos', 2]].forEach(([vn, i]) => {
+        if (gizmoMolangGuard(b, vn)) return;
+        let def = b.scope.vars.get(vn);
+        if (!def) {
+            const rg = getDefaultRange(vn);
+            b.scope.addVar(vn, '0', rg.min, rg.max, rg.step);
+            def = b.scope.vars.get(vn);
+        }
+        if (!def) return;
+        const cur = parseFloat(def.expr) || def.value;
+        setConstVarValue(b, vn, parseFloat((cur + wd.getComponent(i)).toFixed(6)));
+        ok = true;
+    });
+    return ok;
+}
 function changeVar(name, delta, refresh = true) {
     if (!selectedBlocksSet || !selectedBlocksSet.size) return;
     // ★ 骨骼子块（molang 绑定）的「枢轴」拖拽：位置由 molang（v.xpos = t[父_px] + pR·xbasepos_bone）实时跟随父骨骼，
@@ -845,6 +968,13 @@ function changeVar(name, delta, refresh = true) {
     if (activePick && activePick.mode === 'base') {
         const worldDeltaVec = activePick.axis.clone().multiplyScalar(delta);
         for (const b of selectedBlocksSet) {
+            // IK 目标点：世界位移写入枢轴（写 basepos 的话 t.<id>_p* 不变，IK 永远不会跟随）
+            if (b._ikGoalMarker && _ikGoalMarkerMove(b, worldDeltaVec)) {
+                b.refresh();
+                b.mesh.updateMatrixWorld(true);
+                syncKeyframeFromBlock(b);
+                continue;
+            }
             // 位移模式：骨骼子块与普通块、骨骼根完全一致 —— 只改【几何局部偏移 basepos】。
             // 骨骼 molang 只接管 v.xpos（枢轴位置 = t[父_px] + pR·xbasepos_bone），并不接管 basepos；
             // basepos 是几何相对【本块枢轴】的局部偏移，由 computeTransformMatrix 的 localMat 自动挂枢轴、
@@ -886,6 +1016,14 @@ function changeVar(name, delta, refresh = true) {
             const dec = (d.step.toString().includes('.') ? d.step.toString().split('.')[1].length : 0);
             nv = parseFloat(nv.toFixed(dragWriteDecimals(dec)));   // 拖拽期间保留更高精度（避免逐帧取整漂移）
             setConstVarValue(b, name, nv);
+
+            // IK 目标点：枢轴就是目标本身，视觉必须随枢轴一起走 —— 不做 basepos 反向补偿
+            if (b._ikGoalMarker) {
+                b.refresh();
+                b.mesh.updateMatrixWorld(true);
+                syncKeyframeFromBlock(b);
+                continue;
+            }
 
             // 2. 获取更新后的位置 pos_new
             const posNew = new THREE.Vector3(

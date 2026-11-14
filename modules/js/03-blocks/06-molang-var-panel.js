@@ -2,6 +2,10 @@
 'use strict';
 // ========== 渲染变量面板 ==========
 
+// 【2026-11-07】旧操作模式「恒用 molang 编辑面板」开关（设置面板开启）。
+// var 声明：整段脚本拼接后同作用域提升，后段（08-value-bubble）读取时不会踩 TDZ。
+var oldModeMolangPanelAlways = false;
+
 // ========== molang 接管：只读数值显示 + 高亮脚本编辑器 ==========
 function fmtNumRaw(v) {
     if (!isFinite(v)) return '0';
@@ -32,11 +36,13 @@ function hasRedefinedVariable(assignments) {
 // 从命令内容中抽取 molang 程序本体：去掉材质/编号/类型等不含等号的 '...' 标签，
 // 保留全部变量赋值（含三元条件与 q. 查询），使接管后脚本可完整执行与导出。
 function extractMolangProgram(content) {
-    return (content || '')
+    let out = (content || '')
         .replace(/['"][^'"]*['"]/g, (m) => /[=]/.test(m) ? m : '')  // 去掉材质/编号等不含等号的标签
-        .replace(/;\s*;/g, ';')   // 合并因去标签产生的空语句
-        .replace(/^\s*;+/, '')    // 去掉开头残留的分号（由首标签如 'block：红色混凝土'; 产生）
         .trim();
+    // 每个被剥掉的标签都会留下一个裸分号（如 4 个身份标签 → "; ; ; ;"），
+    // 必须反复折叠成单分号并把开头的分号全部去掉，否则导入的动画正文会变成 "; v.xrot=45;"
+    while (/;\s*;/.test(out)) out = out.replace(/;\s*;/g, ';');
+    return out.replace(/^\s*;+\s*/, '').trim();
 }
 function generateMolangBaseline(block) {
     // 标准变换变量（缺省值取自用户示例）。优先保留变量原有「表达式」(d.expr)，
@@ -54,6 +60,7 @@ function generateMolangBaseline(block) {
         return String(def);
     };
     // 收集全部变量（标准 + 自定义），统一参与依赖拓扑排序
+    const _layerOwned = (typeof animLayerOwnedVars === 'function') ? animLayerOwnedVars(block) : new Set();
     const entries = [];
     const seen = new Set();
     for (const [name, def] of std) {
@@ -64,17 +71,62 @@ function generateMolangBaseline(block) {
         if (!n.startsWith('v.')) continue;
         const name = n.slice(2);
         if (seen.has(name)) continue;
+        // ★★2026-11-10「FMBE variables 里只想看见赋值的语句」：由动画控制器正文赋值的中间量
+        //   （IK 求解的 v.ik_p1x/v.ik_db0/v.ik_M02…、跟随的 v.pR00/v.p_cx…）属于那一层，不进 base 基线。
+        //   否则 base 卡片就是一堵计算式墙，而且这些量在 base 层还会每帧重算一遍。
+        //   核心变换量（pos/rot/rotate/scale/extend/basepos）不受影响，仍由 base 拥有。
+        if (_layerOwned.has(n)) continue;
         entries.push({ name, expr: exprOrVal(d, 0) });
     }
     // 按依赖关系拓扑排序：被依赖的变量必须先定义，否则接管后自上而下求值时
     // 会引用到尚未定义的变量而得到 NaN（典型如 v.xrot 依赖自定义 v.scy_or/v.scy_rot）。
     const wrapped = entries.map(e => ({ name: 'v.' + e.name, def: { expr: e.expr } }));
     const ordered = topologicalSortVariables(wrapped);
+    // ★2026-11-11 用户：「可调的变量写在上面」（molang 编辑器正文里）——
+    //   IK 旋钮（目标 tx/ty/tz + 造型 ik_shape）排到基线最前面，其余保持拓扑序。
+    //   它们都是纯常量/纯 t.* 读，提前不影响任何依赖。
+    const _knobRank = n => {
+        const k = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ik_shape', 'v.ikShape', 'v.ikW'].indexOf(n);
+        return k < 0 ? 99 : k;
+    };
+    ordered.sort((a, b) => _knobRank(a.name) - _knobRank(b.name));   // 稳定排序：非旋钮之间顺序不变
     let program = ordered.map(o => `v.${o.name.slice(2)}=${o.def.expr};`).join(' ');
     // ★【三处一致铁律 2026-09-30】骨骼父块：把「广播全局」段也写进基线程序。
     //   否则 molang 编辑器看不到 t.<id>_px=…，而导出时原函数又会把它自动补上 → 编辑器 ≠ 导出（用户报）。
     if (bonePublishNeededInProgram(block)) program += ' ' + getBonePublishGlobalsString(block);
+    // ★【通用 · 2026-11-08】本块作为「发布源」的全部全局（globalVars.sourceBlockId = 本块）也要写进基线。
+    //   否则编辑器只看得到 v.*，别的方块却引用 t.* —— 像凭空出现的隐藏连线（用户报 point 看不到 t.point_p*）。
+    //   与上面骨骼父块同一意图，但覆盖所有发布者（普通骨骼父块 / IK 目标点 / IK 末端关节）。
+    if (typeof molangAppendOwnedGlobals === 'function') {
+        const _withPub = molangAppendOwnedGlobals(block, program);
+        if (_withPub != null) program = _withPub;
+    }
     return program;
+}
+// 【2026-11-07】旧操作模式「恒用 molang 编辑面板」：选中方块即转入 molang 接管（等价于点设置里的
+// 「使用 molang 表达式完全接管」），跳过那一堆折叠变量卡片。关键帧方块优先用关键帧编译程序，
+// 避免把插值脚本冻结成常量。不写撤销栈：这是用户已显式开启的模式，不是一次性破坏性操作；
+// 想单独退出用编辑器里的「⇦ 转普通方块」（会打 _molangPanelOptOut 标记，见 renderVariablesForBlock）。
+function ensureOldModeMolangPanelBlock(block) {
+    const sc = block && block.scope;
+    if (!sc || sc.molangMode) return false;
+    if (typeof hasKeyframeAnimation === 'function' && hasKeyframeAnimation(block.id)) {
+        sc.program = getKeyframeCommandText(block.id, true) || generateMolangBaseline(block);
+    } else if (!String(sc.program || '').trim()) {
+        sc.program = generateMolangBaseline(block);
+    }
+    sc.molangMode = true;
+    sc.molangEditedByUser = false;
+    // 关键帧程序首帧初始化：时间≠0 时先按 time=0 跑一遍，再回到当前时间（与设置面板接管逻辑一致）
+    if (typeof hasKeyframeAnimation === 'function' && hasKeyframeAnimation(block.id)
+        && typeof keyframeCurrentTime !== 'undefined' && keyframeCurrentTime !== 0) {
+        const savedTime = keyframeCurrentTime;
+        keyframeCurrentTime = 0;
+        try { block.refresh(); } catch (e) {}
+        keyframeCurrentTime = savedTime;
+    }
+    try { block.refresh(); } catch (e) {}
+    return true;
 }
 // ===== 骨骼「广播全局」写入 molang program（实时 / 编辑器 / 导出 三处一致）=====
 // 父块发布 t.<id>_px/py/pz + _xrot/yrot/zrot 供子块引用；这段此前只在导出时由
@@ -207,6 +259,22 @@ function validateMolang(text, scope) {
     // 静态扫描：q./math./t. 未知成员（运行期不会抛，需单独检查；与顺序无关）
     const tokens = tokenizeMolang(text || '');
     const globalSet = new Set([...globalVars].map(([n]) => n));
+    // ★2026-11-06：其它方块的程序里「声明」过的 t.x= 同样算已定义（例如 point 方块发布 t.point_px）。
+    //   globalVars 是运行期缓存，撤销 / 重载 / 重新导入后可能暂时没有该项；
+    //   但全局的「定义处」就在发布块的程序里，静态校验不该把这种跨块引用判成未定义。
+    try {
+        const _blks = (typeof blocks !== 'undefined' && blocks) ? blocks : [];
+        const reDecl = /t\.([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/g;
+        for (const b of _blks) {
+            const prog = (b && b.scope && b.scope.program) ? String(b.scope.program) : '';
+            if (prog) { reDecl.lastIndex = 0; let m; while ((m = reDecl.exec(prog))) globalSet.add(m[1]); }
+            if (b && Array.isArray(b._ikVars)) {
+                for (const it of b._ikVars) {
+                    if (it && typeof it[0] === 'string' && it[0].indexOf('t.') === 0) globalSet.add(it[0].slice(2));
+                }
+            }
+        }
+    } catch (_) { }
     const qKeys = new Set(Object.keys(queryNamespace));
     const mKeys = new Set(Object.keys(angleMath));
     for (let k = 0; k < tokens.length; k++) {
@@ -373,12 +441,13 @@ function updateMolangConvertBtn(block) {
 }
 // 只读数值小节：并入 molang 编辑器组尾部（不再是独立 var-group）。
 // 折叠态存全局 molangValsOpen，重渲染（选中切换/失焦重建）后保持不变。
-let molangValsOpen = true;
+// 默认 false：molang 编辑模式打开时「当前数值（只读）」列表默认收起，点 ▶ 再展开（用户 2026-11-11）。
+let molangValsOpen = false;
 function renderMolangValsSection(block) {
     let rows = '';
     for (const [n, d] of block.scope.vars) {
         if (!n.startsWith('v.')) continue;
-        rows += `<div class="mv-row"><span class="mv-name" title="${escapeHtml(n)}">${escapeHtml(n)}</span><span class="mv-val">${fmtNumRaw(esGuardVarValue(n, d.value))}</span></div>`;
+        rows += `<div class="mv-row"><span class="mv-name" title="${escapeHtml(n)}（点击查看描点曲线）">${escapeHtml(n)}</span><span class="mv-val">${fmtNumRaw(esGuardVarValue(n, d.value))}</span></div>`;
     }
     if (!rows) rows = '<div class="mv-row"><span class="mv-name">（暂无局部变量）</span></div>';
     // 折叠态用类控制（.folded → display:none）：早先这里写内联 style="display:grid"，
@@ -656,10 +725,274 @@ function molangBranchRanges(text, scope) {
     }
     return out.filter(r => r.e > r.s);
 }
+/* ===== 动画层条（2026-11-07 定稿）=====
+   一个方块 = 基础动画（FMBE变量，scope.program，必需、拥有核心变量）
+            + 若干附加动画（全局动画控制器，scope.channels 只记启用状态）。
+   scope.stack 决定本块内的执行顺序（可拖拽）；点胶囊切换「当前编辑层」，下方编辑器只编辑该层。
+   ★不存储层类型：任何层都只是 molang 程序，卡片/时间轴视图后面按程序内容派生。 */
+function renderAnimationLayerBar(block, idPrefix) {
+    const p = idPrefix || '';
+    const sc = block.scope;
+    const active = (typeof sc.activeLayerKey === 'function') ? sc.activeLayerKey() : '__base__';
+    if (typeof sc.ensureLayerModel === 'function') sc.ensureLayerModel();
+    const known = ['__base__'].concat(sc.channels ? Array.from(sc.channels.keys()) : []);
+    let ordered = Array.isArray(sc.stack) ? sc.stack.filter(k => known.includes(k)) : [];
+    if (!ordered.includes('__base__')) ordered.unshift('__base__');
+    for (const k of known) if (!ordered.includes(k)) ordered.push(k);
+    const row = (k) => {
+        const on = k === active;
+        const base = (k === '__base__');
+        const label = (typeof animationDisplayName === 'function') ? animationDisplayName(k) : (base ? 'FMBE_variables' : k);
+        const title = base ? '基础动画（每块必需，拥有核心变量）'
+            : `「${label}」· 拖拽调整本块执行顺序 · 双击重命名`;
+        return `<div class="anim-layer-row${on ? ' is-active' : ''}" data-anim-layer="${escapeHtml(k)}" draggable="true" title="${escapeHtml(title)}">
+            <span class="anim-layer-grab" aria-hidden="true"></span>
+            <span class="anim-layer-name">${escapeHtml(label)}</span>
+            ${base ? '<span class="anim-layer-tag">基础</span>'
+                : `<button type="button" class="anim-layer-del" data-anim-del="${escapeHtml(k)}" title="从本块移出（其他方块不受影响）">×</button>`}
+        </div>`;
+    };
+    return `<div class="anim-layer-bar" data-anim-owner="${p}">
+      <div class="anim-layer-head">
+        <span class="anim-layer-title">动画控制器</span>
+        <span class="anim-layer-count">${ordered.length}</span>
+        <button type="button" class="anim-layer-add" id="${p}animLayerAdd" title="添加动画控制器">＋ 动画</button>
+      </div>
+      <div class="anim-layer-list" id="${p}animLayerChips">${ordered.map(row).join('')}</div>
+    </div>`;
+}
+// 「＋ 动画」下拉：列出现有动画控制器（点击应用到所有目标方块），底部可新建
+function openAnimationPicker(anchorEl, targets, after) {
+    const old = document.querySelector('.anim-picker-pop');
+    if (old) old.remove();
+    const pop = document.createElement('div');
+    pop.className = 'anim-picker-pop';
+    pop.style.cssText = 'position:fixed;z-index:12000;min-width:230px;max-width:300px;max-height:280px;overflow:auto;background:#fff;border:1px solid rgba(148,163,184,.55);border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.18);padding:8px;font-size:12px;color:#334155;';
+    const side = (targets.length > 1) ? `· ${targets.length} 个方块` : '';
+    const applied = (a) => targets.every(t => t.scope && t.scope.channels && t.scope.channels.has(a.id));
+    const rows = projectAnimations.map(a => `
+        <div class="anim-pick-row" data-anim-id="${escapeHtml(a.id)}" style="display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:6px;cursor:pointer;${applied(a) ? 'opacity:.6;' : ''}${a.enabled === false ? 'text-decoration:line-through;' : ''}">
+            <span class="anim-pick-label" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.name)}</span>
+            <span style="font-size:10px;color:#94a3b8;white-space:nowrap;" title="引用方块数">${animationUsageCount(a.id)} 块</span>
+            <button type="button" class="anim-pick-op" data-act="toggle" title="${a.enabled === false ? '启用' : '停用'}该控制器" style="cursor:pointer;border:none;background:transparent;font-size:11px;padding:0 2px;">${a.enabled === false ? '👁' : '👁‍🗨'}</button>
+            <button type="button" class="anim-pick-op" data-act="rename" title="重命名（所有引用方块同步生效）" style="cursor:pointer;border:none;background:transparent;font-size:11px;padding:0 2px;">✎</button>
+            <button type="button" class="anim-pick-op" data-act="del" title="删除该控制器（所有方块解除引用）" style="cursor:pointer;border:none;background:transparent;color:#dc2626;font-size:11px;padding:0 2px;">🗑</button>
+        </div>`).join('') || `<div style="padding:6px;color:#94a3b8;">还没有动画控制器，先在下面新建</div>`;
+    pop.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;padding:0 4px 6px;">
+        <b style="flex:1;color:#0f172a;">动画控制器${side}</b>
+        <button type="button" class="anim-pick-close" style="cursor:pointer;border:none;background:transparent;color:#64748b;font-size:14px;">✕</button>
+      </div>
+      <div style="border-top:1px solid rgba(148,163,184,.25);padding-top:6px;">${rows}</div>
+      <div style="border-top:1px solid rgba(148,163,184,.25);margin-top:6px;padding-top:8px;display:flex;gap:6px;">
+        <input class="anim-pick-name" type="text" placeholder="新动画名称（=控制器名称）" style="flex:1;min-width:0;padding:4px 6px;border:1px solid rgba(148,163,184,.55);border-radius:6px;font-size:12px;" />
+        <button type="button" class="anim-pick-create" style="cursor:pointer;padding:4px 8px;border-radius:6px;border:1px solid #2563eb;background:#2563eb;color:#fff;font-size:12px;">新建</button>
+      </div>`;
+    document.body.appendChild(pop);
+    const r = anchorEl.getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(window.innerWidth - 310, r.left)) + 'px';
+    pop.style.top = Math.max(8, Math.min(window.innerHeight - 120, r.bottom + 6)) + 'px';
+    const close = () => pop.remove();
+    setTimeout(() => document.addEventListener('pointerdown', function onDoc(ev) {
+        if (!pop.isConnected) { document.removeEventListener('pointerdown', onDoc); return; }
+        if (!pop.contains(ev.target) && ev.target !== anchorEl) { close(); document.removeEventListener('pointerdown', onDoc); }
+    }), 0);
+    pop.querySelector('.anim-pick-close').addEventListener('click', close);
+    const doApply = (anim) => {
+        let hit = 0;
+        targets.forEach(t => { if (applyAnimationToBlock(t, anim.id)) { t.scope.activeLayer = anim.id; t.refresh(); hit++; } });
+        if (hit) { recordAction(); close(); after(); }
+    };
+    pop.querySelectorAll('.anim-pick-row').forEach(row => {
+        row.addEventListener('mouseenter', () => { row.style.background = 'rgba(37,99,235,.08)'; });
+        row.addEventListener('mouseleave', () => { row.style.background = 'transparent'; });
+        row.addEventListener('click', () => {
+            const anim = getProjectAnimation(row.dataset.animId);
+            if (anim) doApply(anim);
+        });
+    });
+    // 行内的启用/停用、重命名、删除（不触发「应用到方块」的行点击）
+    pop.querySelectorAll('.anim-pick-op').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = btn.closest('.anim-pick-row');
+            if (!row) return;
+            const anim = getProjectAnimation(row.dataset.animId);
+            if (!anim) return;
+            const act = btn.dataset.act;
+            if (act === 'toggle') {
+                anim.enabled = anim.enabled === false;
+                try { blocks.forEach(b => { if (b.scope && b.scope.channels && b.scope.channels.has(anim.id)) b.refresh(); }); } catch (_) {}
+                recordAction(); close(); after();
+                return;
+            }
+            if (act === 'rename') {
+                const nm = window.prompt('重命名动画控制器（所有引用它的方块同步生效）', anim.name);
+                if (nm == null) return;
+                if (!renameProjectAnimation(anim.id, nm)) { alert('重命名失败：名称为空或与其他动画重名'); return; }
+                try { blocks.forEach(b => { if (b.scope && b.scope.channels && b.scope.channels.has(anim.id)) b.refresh(); }); } catch (_) {}
+                recordAction(); close(); after();
+                return;
+            }
+            if (act === 'del') {
+                const n = animationUsageCount(anim.id);
+                showModal('删除动画', `删除控制器「${anim.name}」？它作用于 ${n} 个方块，这些方块将不再执行这条动画。`, () => {
+                    deleteProjectAnimation(anim.id);
+                    recordAction(); close(); after();
+                }, false);
+            }
+        });
+    });
+    const nameInput = pop.querySelector('.anim-pick-name');
+    const createAndApply = () => {
+        const anim = createProjectAnimation(nameInput.value);
+        nameInput.value = '';
+        doApply(anim);
+    };
+    pop.querySelector('.anim-pick-create').addEventListener('click', createAndApply);
+    nameInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') createAndApply(); });
+    setTimeout(() => { try { nameInput.focus(); } catch (_) {} }, 30);
+}
+function bindAnimationLayerBar(block, opts) {
+    const _o = opts || {};
+    const p = _o.prefix || '';
+    const host = _o.root || document;
+    const after = () => {
+        if (typeof _o.rerender === 'function') { try { _o.rerender(); } catch (e) {} }
+        else renderVariablesForBlock(block);
+    };
+    const sc = block.scope;
+    const bar = host.querySelector('.anim-layer-bar[data-anim-owner="' + p + '"]');
+    if (!bar) return;
+    // 多选时「＋ 动画」应用到所有选中方块（一个动画可作用于若干方块）
+    const targets = (() => {
+        try {
+            if (typeof selectedBlocksSet !== 'undefined' && selectedBlocksSet && selectedBlocksSet.size > 1) {
+                // ★ selectedBlocksSet 里存的是方块对象（不是 id）
+                const arr = Array.from(selectedBlocksSet).filter(b => b && b.scope);
+                if (arr.length > 1) return arr;
+            }
+        } catch (e) {}
+        return [block];
+    })();
+    bar.querySelectorAll('[data-anim-layer]').forEach(btn => {
+        const key = btn.dataset.animLayer;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sc.activeLayer = key;
+            after();
+        });
+        // 双击重命名动画控制器（基础 FMBE_variables 固定）
+        btn.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            if (key === '__base__') return;
+            const anim = getProjectAnimation(key);
+            if (!anim) return;
+            const nm = window.prompt('重命名动画控制器（所有引用它的方块同步生效）', anim.name);
+            if (nm == null) return;
+            if (!renameProjectAnimation(key, nm)) { alert('重命名失败：名称为空或与其他动画重名'); return; }
+            try {
+                blocks.forEach(b => { if (b.scope && b.scope.channels && b.scope.channels.has(key)) b.refresh(); });
+            } catch (err) {}
+            recordAction(); after();
+        });
+    });
+    // 拖拽排序：本块局部顺序（base 也可以被拖到任意位置）
+    const chipsEl = bar.querySelector('#' + p + 'animLayerChips');
+    let dragKey = null;
+    if (chipsEl) {
+        chipsEl.addEventListener('dragstart', (e) => {
+            const c = e.target.closest('[data-anim-layer]');
+            if (!c) return;
+            dragKey = c.dataset.animLayer;
+            c.classList.add('dragging');
+            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragKey); } catch (_) {}
+        });
+        chipsEl.addEventListener('dragend', (e) => {
+            const c = e.target.closest('[data-anim-layer]');
+            if (c) c.classList.remove('dragging');
+            dragKey = null;
+        });
+        chipsEl.addEventListener('dragover', (e) => {
+            if (!dragKey) return;
+            if (!e.target.closest('[data-anim-layer]') && !e.target.closest('#' + p + 'animLayerChips')) return;
+            e.preventDefault();
+            try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+        });
+        chipsEl.addEventListener('drop', (e) => {
+            const tgt = e.target.closest('[data-anim-layer]');
+            if (!tgt || !dragKey) return;
+            e.preventDefault();
+            const to = tgt.dataset.animLayer;
+            if (dragKey === to) return;
+            const st = Array.isArray(sc.stack) ? sc.stack.slice() : ['__base__'];
+            const from = st.indexOf(dragKey), ti = st.indexOf(to);
+            if (from < 0 || ti < 0) return;
+            st.splice(from, 1);
+            st.splice(ti, 0, dragKey);
+            sc.stack = st;
+            sc.activeLayer = dragKey;
+            block.refresh(); recordAction(); after();
+        });
+    }
+    const add = bar.querySelector('#' + p + 'animLayerAdd');
+    if (add) add.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof sc.ensureLayerModel !== 'function') return;
+        sc.ensureLayerModel();
+        openAnimationPicker(add, targets, after);
+    });
+    // 行内 ×：只从本块移除该动画（基础层没有该按钮）
+    bar.querySelectorAll('[data-anim-del]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const key = btn.dataset.animDel;
+            if (key === '__base__') return;
+            const nm = (typeof animationDisplayName === 'function') ? animationDisplayName(key) : key;
+            showModal('移出动画', `把动画控制器「${nm}」从本块移除？该动画本身与其他方块不受影响。`, () => {
+                removeAnimationFromBlock(block, key);
+                block.refresh(); recordAction(); after();
+            }, false);
+        });
+        // 拖拽只从抓取点发起，避免点 × 时触发排序
+        btn.addEventListener('dragstart', (e) => e.stopPropagation());
+    });
+}
+/* 浮动关键帧窗顶部的动画层条（2026-11-07）：动画模式必然打开该窗，入口放这里最可靠。
+   目标块优先 selectedKeyframeBlock（动画编辑对象），否则 selectedBlock。 */
+function refreshFloatAnimLayerBar(force) {
+    const host = document.getElementById('kfFloatAnimBar');
+    if (!host) return;
+    if (typeof isKeyframeMode !== 'undefined' && !isKeyframeMode) { host.innerHTML = ''; host._animKey = null; return; }
+    let b = null;
+    try {
+        if (typeof selectedKeyframeBlock !== 'undefined' && selectedKeyframeBlock) {
+            b = blocks.find(x => x.id === selectedKeyframeBlock) || null;
+        }
+    } catch (e) {}
+    if (!b && typeof selectedBlock !== 'undefined') b = selectedBlock;
+    if (!b || !b.scope) { host.innerHTML = ''; host._animKey = null; return; }
+    if (!force && host._animKey === b.id && host.querySelector('.anim-layer-bar')) return;
+    host._animKey = b.id;
+    host.innerHTML = renderAnimationLayerBar(b, 'kfwin-');
+    bindAnimationLayerBar(b, {
+        root: host, prefix: 'kfwin-',
+        rerender: () => {
+            const h = document.getElementById('kfFloatAnimBar');
+            if (h) h._animKey = null;
+            try { if (typeof kfRefreshAllPanels === 'function') { kfRefreshAllPanels(); return; } } catch (e) {}
+            renderVariablesForBlock(b);
+        }
+    });
+}
 function renderMolangEditor(block) {
+    const sc = block.scope;
+    const active = (typeof sc.activeLayerKey === 'function') ? sc.activeLayerKey() : '__base__';
+    const layerLabel = (active === '__base__') ? '' : ` · 当前 ${escapeHtml((typeof animationDisplayName === 'function') ? animationDisplayName(active) : active)}`;
     return `<div class="var-group" data-group="molang">
-      <div class="group-header" data-group-toggle="molang"><span class="molang-header-actions"><button type="button" class="molang-head-btn" id="molangBatchBtn" title="批量查找替换表达式：对所选/全部 molang 方块做通用字符串替换（任意变量与写法），可逐块预览、一次撤销">⇄ 批量</button><button type="button" class="molang-head-btn" id="molangHelpBtn" title="molang 帮助：查询函数 / math 函数">❓ 帮助</button><button type="button" class="molang-head-btn primary" id="molangConvertBtn" title="转回普通方块（旧操作模式变量修改器）">⇦ 转普通方块</button><span class="group-toggle">▼</span></span><span class="group-title">📜 molang 表达式（完全接管）</span></div>
+      <div class="group-header" data-group-toggle="molang"><span class="molang-header-actions"><button type="button" class="molang-head-btn" id="molangBatchBtn" title="批量查找替换表达式：对所选/全部 molang 方块做通用字符串替换（任意变量与写法），可逐块预览、一次撤销">⇄ 批量</button><button type="button" class="molang-head-btn" id="molangHelpBtn" title="molang 帮助：查询函数 / math 函数">❓ 帮助</button><button type="button" class="molang-head-btn primary" id="molangConvertBtn" title="转回普通方块（旧操作模式变量修改器）">⇦ 转普通方块</button><span class="group-toggle">▼</span></span><span class="group-title">📜 molang 表达式（完全接管）${layerLabel}</span></div>
       <div class="group-content" data-group-content="molang" style="display:block">
+        ${renderAnimationLayerBar(block)}
         <div class="molang-editor">
           <pre class="molang-highlight" id="molangHighlight" aria-hidden="true"></pre>
           <textarea class="molang-textarea" id="molangTextarea" data-block-id="${escapeHtml(block.id)}" spellcheck="false" placeholder="例如：&#10;v.xrot = q.rotation_to_camera(1) > 0 ? 90 : -90;"></textarea>
@@ -820,6 +1153,7 @@ function attachMolangEditorEvents(block) {
     if (!ta || !pre) return;
     mnbHide(); // 重建编辑器时关闭可能残留的数字气泡（旧的 textarea 已失效）
     acHide();  // 同时关闭可能残留的自动补全泡泡
+    bindAnimationLayerBar(block);   // 🎬 动画层条（切层/加层/排序/删除）
     // 绑定 molang 接管视图里的分组折叠（编辑器组组头 + 组内只读数值小节头）
     document.querySelectorAll('.var-group[data-group="molang"] .group-header').forEach(h => {
         h.removeEventListener('click', molangGroupClick);
@@ -829,6 +1163,17 @@ function attachMolangEditorEvents(block) {
     if (valsHead) { valsHead.removeEventListener('click', molangValsClick); valsHead.addEventListener('click', molangValsClick); }
     // 末行贴边：挂载时算一次；面板宽度变化导致每行项数变化时重算（只绑一次，避免重复叠加）
     fitMolangValsGrid();
+    // 描点入口：点「当前数值」网格里的变量名 → 弹出同款描点泡泡（从这一帧开始记录）
+    const valsGrid = document.getElementById('molangValsGrid');
+    if (valsGrid) valsGrid.addEventListener('click', (e) => {
+        const row = e.target.closest ? e.target.closest('.mv-row') : null;
+        if (!row) return;
+        const nameEl = row.querySelector('.mv-name');
+        const name = nameEl ? nameEl.textContent : '';
+        if (!name || !name.startsWith('v.')) return;
+        e.stopPropagation();
+        if (typeof probeShow === 'function') probeShow(block, name, e.clientX, e.clientY);
+    });
     // 布局可能在挂载当帧尚未定型（面板过渡/媒体查询切换），下一帧再校一次
     requestAnimationFrame(fitMolangValsGrid);
     if (!window.__molangFitBound) {
@@ -844,16 +1189,31 @@ function attachMolangEditorEvents(block) {
     }
     // 「转普通方块」：仅当程序为纯变量赋值（无条件/查询/循环依赖）时可点（disabled 态见 updateMolangConvertBtn）
     const convBtn = document.getElementById('molangConvertBtn');
-    if (convBtn) convBtn.addEventListener('click', (e) => { e.stopPropagation(); convertMolangBlockToNormal(block); });
+    if (convBtn) convBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // 只在基础层上允许转回普通方块：附加层只是程序段，不能反过来改写核心变量
+        const k = (typeof block.scope.activeLayerKey === 'function') ? block.scope.activeLayerKey() : '__base__';
+        if (k !== '__base__') { block.scope.activeLayer = '__base__'; renderVariablesForBlock(block); return; }
+        // 「旧操作模式恒用 molang 面板」下：手动转回普通方块即视为该块的单项退出，
+        // 打标记后 renderVariablesForBlock 不再自动接管，否则刚转回就被强制转回去。
+        if (oldModeMolangPanelAlways && !document.body.classList.contains('new-layout-active')) {
+            block._molangPanelOptOut = true;
+        }
+        convertMolangBlockToNormal(block);
+    });
     // 「批量」：打开批量改写面板（单选时默认作用于全部 molang 方块，多选时作用于所选）
     const batchBtn = document.getElementById('molangBatchBtn');
     if (batchBtn) batchBtn.addEventListener('click', (e) => { e.stopPropagation(); openMolangBatchReplace(); });
-    ta.value = block.scope.program || '';
+    // 编辑器绑定「当前活动层」：基础层 ↔ scope.program，附加层 ↔ scope.channels[key].program
+    const _activeKey = (typeof block.scope.activeLayerKey === 'function') ? block.scope.activeLayerKey() : '__base__';
+    ta.dataset.layer = _activeKey;
+    ta.value = (typeof block.scope.layerProgram === 'function') ? block.scope.layerProgram(_activeKey) : (block.scope.program || '');
     refreshMolangEditor(block);
     // 关键修复：每次输入即时生效（写入程序 → 重算 → 刷新 3D → 更新只读数值 + 实时校验报错），无需失焦
     ta.addEventListener('input', () => {
         refreshMolangEditor(block);
-        block.scope.program = ta.value;
+        if (typeof block.scope.setLayerProgram === 'function') block.scope.setLayerProgram(ta.dataset.layer || '__base__', ta.value);
+        else block.scope.program = ta.value;
         // 标记"用户手动编辑过 Molang"：之后关键帧增删改不再自动覆盖此代码，
         // 保留用户在编辑器里做的手工修改（比如改 Tyrot 做疯狂旋转等自定义效果）
         block.scope.molangEditedByUser = true;
@@ -890,7 +1250,8 @@ function attachMolangEditorEvents(block) {
     });
     ta.addEventListener('scroll', () => { pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft; if (acEl && acEl.style.display !== 'none') acPosition(ta); });
     ta.addEventListener('change', () => {
-        block.scope.program = ta.value;
+        if (typeof block.scope.setLayerProgram === 'function') block.scope.setLayerProgram(ta.dataset.layer || '__base__', ta.value);
+        else block.scope.program = ta.value;
         block.refresh();
         cascadeAfterProgramChange(block);
         if (selectedBlock) renderVariablesForBlock(selectedBlock); // 失焦时整体重建一次，校正数值

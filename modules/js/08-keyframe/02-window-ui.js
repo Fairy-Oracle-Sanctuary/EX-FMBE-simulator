@@ -82,6 +82,8 @@ function openKeyframeWindow() {
                 <button class="keyframe-window-close" id="kfCloseBtn" title="关闭">✕</button>
             </div>
         </div>
+        <!-- 🎬 动画层条（2026-11-07）：浮动窗是动画模式必然打开的载体，层入口放这里保证一定看得见 -->
+        <div id="kfFloatAnimBar" style="padding:6px 8px 0;"></div>
         <div class="keyframe-timeline-area" id="kfTimelineArea">
             <div class="keyframe-timeline-controls">
                 <button class="keyframe-play-btn" id="kfPlayBtn" title="播放 / 停止">▶</button>
@@ -114,6 +116,52 @@ function openKeyframeWindow() {
     `;
     
     document.body.appendChild(win);
+    /* ★【2026-10-31】屏蔽浮动窗内的浏览器右键菜单（触屏长按弹系统菜单同样被拦截），
+       关键帧菱形的右键/长按菜单由 03-timeline.js 自己处理；表达式编辑框保留原文菜单。 */
+    win.addEventListener('contextmenu', (e) => {
+        if (e.target.closest('textarea, input, .molang-editor')) return;
+        e.preventDefault();
+    });
+    /* ★【2026-10-31 用户要求】右键/长按不必先点中某一帧：在浮动窗时间轴空白处右键或长按，
+       也弹出「复制就近帧 / 粘贴到播放头」菜单（落在菱形上仍由菱形自己的菜单处理，含删除）。 */
+    const _openFloatFrameMenu = (x, y) => {
+        const _u0 = getKeyframeFolderUnits()[0] || {};
+        const id = selectedKeyframeBlock || (_u0.repBlock && _u0.repBlock.id) || '';
+        const b = blocks.find(x => x.id === id);
+        if (!b) return;
+        const unit = { id: null, label: b.id, blocks: [b], repBlock: b, times: new Set(getKeyframeTimes(b.id)) };
+        showKeyframeFolderDeleteMenu(unit, Number(keyframeCurrentTime) || 0, x, y, { allowDelete: false, nearest: true });
+    };
+    const _area = win.querySelector('#kfTimelineArea');
+    if (_area) {
+        _area.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('textarea, input, .molang-editor, .keyframe-marker-group')) return;
+            e.preventDefault();
+            _openFloatFrameMenu(e.clientX, e.clientY);
+        });
+        let _lpT = 0, _lpFired = false, _lpX = 0, _lpY = 0;
+        _area.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            if (e.target.closest('textarea, input, .molang-editor, .keyframe-marker-group')) return;
+            const t = e.touches[0];
+            _lpX = t.clientX; _lpY = t.clientY; _lpFired = false;
+            clearTimeout(_lpT);
+            _lpT = setTimeout(() => { _lpFired = true; }, 500);
+        }, { passive: true });
+        _area.addEventListener('touchmove', (e) => {
+            const t = e.touches[0];
+            if (!t) return;
+            if (Math.abs(t.clientX - _lpX) > 10 || Math.abs(t.clientY - _lpY) > 10) { clearTimeout(_lpT); _lpT = 0; }
+        }, { passive: true });
+        _area.addEventListener('touchcancel', () => { clearTimeout(_lpT); _lpT = 0; _lpFired = false; }, { passive: true });
+        _area.addEventListener('touchend', (e) => {
+            clearTimeout(_lpT); _lpT = 0;
+            if (!_lpFired) return;
+            _lpFired = false;
+            e.preventDefault();
+            _openFloatFrameMenu(_lpX, _lpY);
+        }, { passive: false });
+    }
     keyframeWindowEl = win;
     win.style.zoom = getUiZoom(); // 让关键帧窗口跟随 UI 缩放（自身缩放围绕中心，位置不变）
     
@@ -604,6 +652,7 @@ function makeKeyframeResizable(win) {
         const handle = win.querySelector('#' + handleId);
         if (!handle) return;
         let isResizing = false, startX, startY, startW, startH, startL;
+        let _kfSettleTimer = null;
         handle.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -614,28 +663,46 @@ function makeKeyframeResizable(win) {
             startH = win.offsetHeight;
             startL = parseInt(win.style.left) || 0;
             win.style.transition = 'none';
+            win.classList.add('kf-resizing');
             document.addEventListener('pointermove', onResize);
             document.addEventListener('pointerup', onResizeEnd);
         });
+        /* ★【2026-10-31 用户要求】最小化两行布局：第一行放播放键/时间（与叉叉同行），
+           第二行放整条时间轴；纵向再缩到 <58 时加 kf-compact-mini 隐藏时间轴。
+           完整态与拖动全程连续，不中断手势。 */
         function onResize(e) {
             if (!isResizing) return;
             e.preventDefault();
             const z = getUiZoom();
             const dx = (e.clientX - startX) / z;
             const dy = (e.clientY - startY) / z;
-            const newW = Math.max(280, fromLeft ? startW - dx : startW + dx);
-            const newH = Math.max(180, startH + dy);
+            const rawW = fromLeft ? startW - dx : startW + dx;
+            const rawH = startH + dy;
+            const wasCompact = win.classList.contains('kf-compact');
+            const wasMini = win.classList.contains('kf-compact-mini');
+            const compact = wasCompact ? (rawH < 114) : (rawH < 100);
+            const mini = compact && rawH < 58;
+            if (compact !== wasCompact || mini !== wasMini) {
+                win.classList.toggle('kf-compact', compact);
+                win.classList.toggle('kf-compact-mini', mini);
+                win.classList.remove('kf-settle');
+                void win.offsetWidth;
+                win.classList.add('kf-settle');
+                if (_kfSettleTimer) clearTimeout(_kfSettleTimer);
+                _kfSettleTimer = setTimeout(() => win.classList.remove('kf-settle'), 320);
+            }
+            const newW = Math.max(compact ? 240 : 280, rawW);
+            const newH = Math.max(mini ? 32 : compact ? 58 : 100, rawH);
             win.style.width = newW + 'px';
             win.style.height = newH + 'px';
-            if (fromLeft) {
-                win.style.left = (startL + startW - newW) + 'px';
-            }
+            if (fromLeft) win.style.left = (startL + startW - newW) + 'px';
         }
         function onResizeEnd() {
             isResizing = false;
             document.removeEventListener('pointermove', onResize);
             document.removeEventListener('pointerup', onResizeEnd);
-            // 窗口宽度变化后重算棋盘网格与刻度，避免网格被拉伸变形
+            win.classList.remove('kf-resizing');
+            win.style.transition = '';
             try { renderKeyframeTimeline(); } catch (e) { }
         }
     }
@@ -1265,23 +1332,177 @@ function removeKeyframeUnitAtTime(unit, time) {
     recordAction();
 }
 
-// 文件夹轨道右键删除菜单
-function showKeyframeFolderDeleteMenu(unit, time, x, y) {
-    // ★【2026-10-13】旧操作模式只读：不提供删除入口
-    if (kfBlockLegacyEdit('删除关键帧，')) return;
+/* ==================== 关键帧复制 / 粘贴 ====================
+   ★【2026-10-31 用户要求】复制某一帧的「变量情况 + 分段表达式情况」，
+     粘贴时整帧落到当前播放头（时间轴当前位置）所在的时刻。
+   剪贴板结构：
+     { blockId, time, vars: Map<varName, number>, exprs: Map<varName, expr> }
+   · vars  = 该帧在 keyframeData.frames 里的全部变量数值快照（内部变量除外）
+   · exprs = 该帧时刻起始的分段表达式覆盖（d.exprs[time] 的整份内容）
+   · 粘贴目标是当前右键所在轨道的方块；跨方块粘贴同样可用（数值按变量名逐项写入）。 */
+let kfFrameClipboard = null;
+function kfFrameNameInternal(name, blockId) {
+    try {
+        return isKeyframeInternalVar(name, blockId) || _kfIsNsInternal(name, blockId);
+    } catch (e) { return false; }
+}
+function kfCopyFrameAt(blockId, time) {
+    if (kfBlockLegacyEdit('复制关键帧，')) return false;
+    const d = kfData(blockId, false);
+    if (!d || !(d.frames instanceof Map) || !d.frames.has(time)) {
+        try { if (typeof showToast === 'function') showToast(time.toFixed(2) + 's 处没有关键帧，无法复制'); } catch (e) { }
+        return false;
+    }
+    const vars = new Map();
+    const src = d.frames.get(time);
+    if (src instanceof Map) {
+        for (const [n, v] of src) {
+            if (kfFrameNameInternal(n, blockId)) continue;
+            vars.set(n, v);
+        }
+    }
+    const exprs = new Map();
+    if (d.exprs instanceof Map && d.exprs.has(time)) {
+        const em = d.exprs.get(time);
+        if (em instanceof Map) {
+            for (const [n, e] of em) {
+                if (kfFrameNameInternal(n, blockId)) continue;
+                exprs.set(n, e);
+            }
+        }
+    }
+    kfFrameClipboard = { blockId, time, vars, exprs };
+    try {
+        if (typeof showToast === 'function') {
+            showToast('已复制 ' + blockId + ' @ ' + time.toFixed(2) + 's 的帧：' + vars.size + ' 个变量'
+                + (exprs.size ? '，' + exprs.size + ' 条分段表达式' : '') + '。右键目标帧可选「粘贴到当前时间」');
+        }
+    } catch (e) { }
+    return true;
+}
+function kfPasteFrameAt(blockId, time) {
+    if (!kfFrameClipboard) {
+        try { if (typeof showToast === 'function') showToast('关键帧剪贴板为空：请先右键一个关键帧选「复制该帧」'); } catch (e) { }
+        return false;
+    }
+    if (kfBlockLegacyEdit('粘贴关键帧，')) return false;
+    const t = kfQuantTime(time);
+    const d = kfData(blockId, true);
+    if (!(d.frames instanceof Map)) d.frames = new Map();
+    // 数值：整帧覆盖（与「复制该帧」的变量情况完全一致）
+    const vars = new Map();
+    for (const [n, v] of kfFrameClipboard.vars) {
+        if (kfFrameNameInternal(n, blockId)) continue;
+        vars.set(n, v);
+    }
+    d.frames.set(t, vars);
+    // 分段表达式：整段覆盖；源帧该时刻没有表达式 ⇒ 同时清掉目标时刻已有的覆盖
+    if (!(d.exprs instanceof Map)) d.exprs = new Map();
+    const exprs = new Map();
+    for (const [n, e] of kfFrameClipboard.exprs) {
+        if (kfFrameNameInternal(n, blockId)) continue;
+        exprs.set(n, e);
+    }
+    if (exprs.size) d.exprs.set(t, exprs);
+    else d.exprs.delete(t);
+    const b = blocks.find(x => x.id === blockId);
+    if (b) {
+        if (!(d.vars instanceof Set)) d.vars = new Set();
+        for (const n of vars.keys()) {
+            // 内部量 / 派生量绝不并入驱动集合：派生量一旦被当作"关键帧驱动"，
+            // 其 molang 表达式会被剔除并冻结成常量（见 kfShouldRecordVar 注释）。
+            if (kfFrameNameInternal(n, blockId) || kfIsLegacyScaffoldTwin(n, blockId, b.scope && b.scope.program)) continue;
+            try { if (kfIsNonConstAssigned(b, n)) continue; } catch (e) { }
+            d.vars.add(n);
+        }
+        try { kfCompleteFrames(blockId); } catch (e) { }
+        refreshMolangProgramForBlock(blockId);
+        applyKeyframeToBlock(blockId, t);
+        b.refresh();
+    }
+    keyframeEpoch++;
+    kfRefreshAllPanels();
+    recordAction();
+    try {
+        if (typeof showToast === 'function') {
+            showToast('已把复制的帧粘贴到 ' + t.toFixed(2) + 's（' + blockId + '，' + vars.size + ' 个变量'
+                + (exprs.size ? '，' + exprs.size + ' 条分段表达式' : '') + '）');
+        }
+    } catch (e) { }
+    return true;
+}
+
+// 关键帧右键 / 长按菜单（复制 / 粘贴 / 删除）
+// opts.nearest=true：该处没有帧时，复制当前方块离播放头最近的一帧（用于在时间轴空白处右键）
+// opts.allowDelete=false：不显示删除项（空白处没有可删的帧）
+function showKeyframeFolderDeleteMenu(unit, time, x, y, opts) {
+    opts = opts || {};
+    // ★【2026-10-13】旧操作模式只读：不提供编辑入口
+    if (kfBlockLegacyEdit('编辑关键帧，')) return;
     if (kfDeleteMenu) { kfDeleteMenu.remove(); kfDeleteMenu = null; }
     const menu = document.createElement('div');
-    menu.style.cssText = 'position:fixed;z-index:800;background:rgba(15,23,42,0.95);border:1px solid #f43f5e;border-radius:8px;padding:4px 0;min-width:140px;backdrop-filter:blur(8px);left:' + x + 'px;top:' + y + 'px;';
-    const item = document.createElement('div');
-    item.style.cssText = 'padding:8px 14px;font-size:12px;color:#fca5a5;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;';
-    item.innerHTML = '🗑 删除 ' + escapeHtml(unit.label) + ' @ ' + time.toFixed(2) + 's';
-    item.addEventListener('mouseenter', () => item.style.background = 'rgba(244,63,94,0.2)');
-    item.addEventListener('mouseleave', () => item.style.background = '');
-    item.addEventListener('click', () => {
-        removeKeyframeUnitAtTime(unit, time);
-        if (kfDeleteMenu) { kfDeleteMenu.remove(); kfDeleteMenu = null; }
-    });
-    menu.appendChild(item);
+    menu.style.cssText = 'position:fixed;z-index:800;background:rgba(15,23,42,0.95);border:1px solid #475569;border-radius:8px;padding:4px 0;min-width:160px;backdrop-filter:blur(8px);left:' + x + 'px;top:' + y + 'px;';
+    const mkItem = (text, color, hoverBg, onClick, dimmed) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:8px 14px;font-size:12px;color:' + (dimmed ? 'rgba(148,163,184,.55)' : color) + ';cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;';
+        item.innerHTML = text;
+        if (!dimmed) {
+            item.addEventListener('mouseenter', () => item.style.background = hoverBg);
+            item.addEventListener('mouseleave', () => item.style.background = '');
+        }
+        item.addEventListener('click', () => {
+            onClick();
+            if (kfDeleteMenu) { kfDeleteMenu.remove(); kfDeleteMenu = null; }
+        });
+        return item;
+    };
+    const _bid = unit.repBlock ? unit.repBlock.id : null;
+    const _frameAt = (t) => {
+        const d = _bid ? kfData(_bid, false) : null;
+        return d && d.frames instanceof Map ? d.frames.get(t) : null;
+    };
+    const _exprsAt = (t) => {
+        const d = _bid ? kfData(_bid, false) : null;
+        const m = d && d.exprs instanceof Map ? d.exprs.get(t) : null;
+        return m instanceof Map ? m.size : 0;
+    };
+    let _copyTime = time;
+    let _copySrc = _frameAt(time);
+    let _nearest = false;
+    if (!(_copySrc instanceof Map) && opts.nearest) {
+        const ts = getKeyframeTimes(_bid);
+        if (ts.length) {
+            let best = ts[0], dist = Math.abs(keyframeCurrentTime - best);
+            for (const t of ts) {
+                const dd = Math.abs(keyframeCurrentTime - t);
+                if (dd < dist) { best = t; dist = dd; }
+            }
+            _copyTime = best;
+            _copySrc = _frameAt(best);
+            _nearest = true;
+        }
+    }
+    const _hasFrame = _copySrc instanceof Map;
+    const _copyVars = _hasFrame ? _copySrc.size : 0;
+    const _copyExprs = _hasFrame ? _exprsAt(_copyTime) : 0;
+    const _name = unit.repBlock ? unit.label : '当前方块';
+    menu.appendChild(mkItem((_nearest ? '复制最近帧 ' + _copyTime.toFixed(2) + 's' : '复制该帧 ' + time.toFixed(2) + 's')
+        + '（' + _copyVars + ' 个变量' + (_copyExprs ? ' · ' + _copyExprs + ' 条表达式' : '') + '）',
+        '#93c5fd', 'rgba(59,130,246,0.2)', () => {
+            if (_bid) kfCopyFrameAt(_bid, _copyTime);
+        }, !_hasFrame));
+    const _pasteT = parseFloat((Number(keyframeCurrentTime) || 0).toFixed(2));
+    const _hasClip = !!kfFrameClipboard;
+    menu.appendChild(mkItem('粘贴到当前时间 ' + _pasteT + 's' + (_hasClip ? '' : '（剪贴板为空）'),
+        '#86efac', 'rgba(34,197,94,0.2)', () => {
+            if (_bid) kfPasteFrameAt(_bid, keyframeCurrentTime);
+        }, !_hasClip));
+    if (opts.allowDelete !== false && _hasFrame) {
+        menu.appendChild(mkItem('删除 ' + escapeHtml(_name) + ' @ ' + time.toFixed(2) + 's',
+            '#fca5a5', 'rgba(244,63,94,0.2)', () => {
+                removeKeyframeUnitAtTime(unit, time);
+            }, false));
+    }
     const closeHandler = (e) => {
         if (!menu.contains(e.target)) {
             menu.remove(); kfDeleteMenu = null;

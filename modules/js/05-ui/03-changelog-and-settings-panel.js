@@ -23,23 +23,40 @@ function showChangelogModal() {
             //   ⇒ 曾导致「更新日志只显示一条」（其余 59 条全被第一个条目里的 <textarea> 吞掉）。
             const titleHtml = (pill ? `<span class="changelog-version-tag">${escapeHtml(pill)}</span>` : '')
                 + (label ? `<span class="changelog-entry-label">${escapeHtml(label)}</span>` : '');
-            const itemsHtml = entry.items.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+            // 日期拆成年 + 月日：年份灰字压在左上角，月日大字放右下角，中间用斜切菱形分隔
+            const dateParts = String(entry.date || '').split('-');
+            const hasYmd = dateParts.length === 3;
+            const dateHtml = `<span class="changelog-date">`
+                + `<span class="changelog-date-year">${escapeHtml(hasYmd ? dateParts[0] : '')}</span>`
+                + `<span class="changelog-date-slash" aria-hidden="true"></span>`
+                + `<span class="changelog-date-main">${escapeHtml(hasYmd ? dateParts[1] + '-' + dateParts[2] : entry.date)}</span>`
+                + `</span>`;
+            // 条目常写成「分类 · 正文」⇒ 分类单独成一个小号标签（11px），正文用正文字号（12.5px），
+            // 让每一项都有可扫读的两级层次；没有「分类 · 」写法的旧条目只渲染正文。
+            const itemsHtml = entry.items.map(item => {
+                const sep = item.indexOf(' · ');
+                if (sep > 0 && sep <= 14) {
+                    return `<li><span class="changelog-item-cat">${escapeHtml(item.slice(0, sep))}</span>`
+                        + `<span class="changelog-item-text">${escapeHtml(item.slice(sep + 3))}</span></li>`;
+                }
+                return `<li><span class="changelog-item-text">${escapeHtml(item)}</span></li>`;
+            }).join('');
             const hasDetails = entry.details && entry.details.trim();
             const detailsHtml = hasDetails ? `<div class="changelog-details" id="${id}_details" style="display:none;">${escapeHtml(entry.details).replace(/\n/g, '<br>')}</div>` : '';
             const detailBtn = hasDetails ? `<span class="changelog-detail-btn" data-target="${id}" data-details="${id}_details">查看详情</span>` : '';
+            // 最新一条默认展开：打开弹窗第一眼就能看到层级（日期 / 版本号 / 分类 / 正文），而不是一列空标题
+            const expanded = i === 0;
             listHtml += `
                 <div class="changelog-item" data-id="${id}">
                     <div class="changelog-date-header" data-target="${id}">
-                        <div class="changelog-date-left">
-                            <span class="changelog-date-text">${entry.date}</span>
-                            ${titleHtml}
-                        </div>
+                        <div class="changelog-date-left">${dateHtml}</div>
                         <div class="changelog-header-right">
                             ${detailBtn}
-                            <span class="changelog-toggle-icon" data-target="${id}">▾</span>
+                            ${titleHtml}
+                            <span class="changelog-toggle-icon${expanded ? ' open' : ''}" data-target="${id}">▾</span>
                         </div>
                     </div>
-                    <div class="changelog-body" id="${id}">
+                    <div class="changelog-body${expanded ? ' open' : ''}" id="${id}">
                         <ul>${itemsHtml}</ul>
                         ${detailsHtml}
                     </div>
@@ -50,9 +67,18 @@ function showChangelogModal() {
     
     modalDiv.innerHTML = `
         <div class="modal-content">
+            <canvas class="changelog-triangle-bg" aria-hidden="true"></canvas>
             <div class="modal-title">
-                <span>📋 更新日志</span>
+                <div class="changelog-title-row">
+                    <span class="changelog-title">📋 更新日志</span>
+                    <span class="changelog-subtitle">版本更新与功能调整记录</span>
+                </div>
                 <button class="modal-close-btn" id="changelogCloseBtn">✕</button>
+            </div>
+            <div class="changelog-divider" aria-hidden="true">
+                <span class="changelog-divider-tri left"></span>
+                <span class="changelog-divider-square"></span>
+                <span class="changelog-divider-tri right"></span>
             </div>
             <div class="changelog-list">${listHtml}</div>
             <div class="modal-footer">
@@ -61,6 +87,7 @@ function showChangelogModal() {
         </div>
     `;
     document.body.appendChild(modalDiv);
+    startChangelogTriangleBg(modalDiv);
     
     // 关闭弹窗
     const closeModal = () => modalDiv.remove();
@@ -118,6 +145,113 @@ function showChangelogModal() {
             }
         });
     });
+}
+
+// ==================== 更新日志背景：缓慢漂浮的三角形 ====================
+// 做法参考「动画字段检索工具」的整页背景：Canvas 2D 画一批半透明蔚蓝三角形缓缓漂移。
+// 这里只铺在日志弹窗内部：数量按面积收敛、DPR 上限 2；弹窗被移除后下一帧自动停，
+// 监听器也会在 resize 时自清理，避免关窗后还占着 rAF。
+function startChangelogTriangleBg(modalDiv) {
+    const canvas = modalDiv.querySelector('.changelog-triangle-bg');
+    const box = modalDiv.querySelector('.modal-content');
+    // ★三角形只铺在「内页」（changelog-list）后面：外框是实心的，必须把三角形挡住
+    const area = modalDiv.querySelector('.changelog-list') || box;
+    if (!canvas || !box) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    let W = 0, H = 0, DPR = 1, tris = [], ro = null, raf = 0;
+
+    function resize() {
+        // 画布对齐内页矩形（而不是整个弹窗），这样外框区域天然是实心遮挡
+        const br = box.getBoundingClientRect();
+        const ar = area.getBoundingClientRect();
+        const w = Math.max(1, Math.floor(ar.width));
+        const h = Math.max(1, Math.floor(ar.height));
+        canvas.style.left = (ar.left - br.left) + 'px';
+        canvas.style.top = (ar.top - br.top) + 'px';
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+        W = canvas.width = Math.max(1, Math.floor(w * DPR));
+        H = canvas.height = Math.max(1, Math.floor(h * DPR));
+        const count = Math.round(Math.min(30, Math.max(10, (w * h) / 18000)));
+        tris = [];
+        for (let i = 0; i < count; i++) {
+            const s = rand(16, 70) * DPR;
+            tris.push({
+                x: rand(0, W), y: rand(0, H), s,
+                rot: rand(0, Math.PI * 2), vr: rand(-0.0007, 0.0007),
+                vx: rand(-0.12, 0.12) * DPR, vy: rand(-0.1, 0.1) * DPR,
+                hue: rand(198, 217), sat: rand(58, 86), lig: rand(54, 76),
+                alpha: rand(0.06, 0.15), stroke: Math.random() < 0.42
+            });
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+        const light = document.body.classList.contains('light-mode');
+        for (const t of tris) {
+            if (!reduceMotion) {
+                t.x += t.vx; t.y += t.vy; t.rot += t.vr;
+                if (t.x < -t.s) t.x = W + t.s; else if (t.x > W + t.s) t.x = -t.s;
+                if (t.y < -t.s) t.y = H + t.s; else if (t.y > H + t.s) t.y = -t.s;
+            }
+            // 内页半透明，能透出三角形；浅色内页要更深的蓝、更高一点的不透明度才看得出
+            const alpha = t.alpha * (light ? 1.7 : 1.8);
+            const lig = light ? Math.max(38, t.lig - 20) : t.lig;
+            const col = 'hsla(' + t.hue + ',' + t.sat + '%,' + lig + '%,' + alpha + ')';
+            ctx.save();
+            ctx.translate(t.x, t.y);
+            ctx.rotate(t.rot);
+            ctx.beginPath();
+            for (let k = 0; k < 3; k++) {
+                const a = (Math.PI * 2 / 3) * k - Math.PI / 2;
+                const px = Math.cos(a) * t.s, py = Math.sin(a) * t.s;
+                if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            if (t.stroke) {
+                ctx.lineWidth = 1.1 * DPR;
+                ctx.strokeStyle = col;
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = col;
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+        raf = (!reduceMotion && modalDiv.isConnected) ? requestAnimationFrame(draw) : 0;
+    }
+
+    // 尺寸变化时重排三角形；先取消已在队列里的帧，避免同一弹窗跑出多条动画循环
+    function restart() {
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        draw();
+    }
+
+    const onResize = () => {
+        if (!modalDiv.isConnected) {
+            window.removeEventListener('resize', onResize);
+            if (ro) ro.disconnect();
+            return;
+        }
+        resize();
+        restart();
+    };
+
+    resize();
+    draw();
+    if (window.ResizeObserver) {
+        ro = new ResizeObserver(onResize);
+        ro.observe(box);
+        if (area !== box) ro.observe(area);
+    }
+    window.addEventListener('resize', onResize);
 }
 
 // 绑定网站日志按钮
@@ -187,6 +321,20 @@ if (uiSettingsPanel) {
         const group = head.closest('.ui-settings-group');
         if (!group || !group.classList.contains('collapsible')) return;
         group.classList.toggle('collapsed');
+    });
+    // 「帮助 → 获取FMBE」指令卡复制：复用导出命令列表的 .cmd-card / .cmd-copy-btn 外观
+    uiSettingsPanel.addEventListener('click', (ev) => {
+        const btn = ev.target.closest && ev.target.closest('.cmd-copy-btn');
+        if (!btn) return;
+        ev.stopPropagation();
+        const card = btn.closest('.cmd-card');
+        const preview = card && card.querySelector('.cmd-preview');
+        if (!preview) return;
+        copyToClipboard(preview.textContent.trim(), '已复制指令');
+        const label = btn.querySelector('span') || btn;
+        const orig = label.textContent;
+        label.textContent = '已复制';
+        setTimeout(() => { label.textContent = orig; }, 1500);
     });
 }
 // 设置项悬停音效（2026-10-17 第 19 轮，用户要求「和新手教程的项目一样，鼠标放上去显示光亮然后有声音」）：
@@ -373,6 +521,8 @@ function syncVirtModKeys() {
     const c = document.getElementById('virtModCtrl');
     if (s) s.classList.toggle('lit', !!gizmoPrecMods.shift);
     if (c) c.classList.toggle('lit', !!gizmoPrecMods.ctrl);
+    // 关键帧「数据」视图里的 Gizmo 精度快捷键与这里共用同一份状态，真实键盘按 Shift/Ctrl 时也要同步
+    try { if (typeof kfSyncPrecQuickKeys === 'function') kfSyncPrecQuickKeys(); } catch (e) { }
 }
 function clearVirtModKeys() {
     gizmoPrecMods.shift = false;

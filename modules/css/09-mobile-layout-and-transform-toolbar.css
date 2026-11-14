@@ -407,6 +407,30 @@ body.light-mode .side-block-item.selected .side-block-box {
     min-width: 0;
     overflow: hidden;
 }
+/* ★IK / FK 角标（仅新操作模式，由 04-sidebar-list.js 的 ikfkTagOf 生成 <i>）：
+   贴在方块名左上角的小字，淡灰、斜体、往左倾斜（skewX 取正 = 顶端偏左，与常见右倾 italic 相反）。
+   用 <i> 而不是 <span>，这样「隐藏方块」的 >span 划线规则不会把它划掉。 */
+.side-block-item .side-block-ikfk {
+    display: inline-block;
+    align-self: flex-start;
+    flex: none;
+    font-size: 8px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    opacity: 0.78;
+    font-style: italic;
+    transform: skewX(18deg);
+    transform-origin: left top;
+    margin: 0 3px 0 0;
+    pointer-events: none;
+    user-select: none;
+}
+body.light-mode .side-block-item .side-block-ikfk {
+    color: #64748b;
+    opacity: 0.85;
+}
 .side-block-item .side-block-actions {
     display: flex;
     gap: 4px;
@@ -426,35 +450,6 @@ body.light-mode .side-block-item.selected .side-block-box {
         opacity: 1;
     }
 }
-/* molang 驱动方块：仅在左下/右上切角处画一小段颜色（清新切角风格），绝不污染整块或直边。
-   driven(子骨骼)=暖橙  source(骨源)=蔚蓝  mode(完全接管)=淡紫。
-   颜色画在外层 .side-block-item（不裁剪）的 ::before(左下)/::after(右上) 角三角上，
-   对角线对齐切角切口；内层 .side-block-box 才裁剪。故颜色只落在切角、不碰直边、不整块染色。 */
-.side-block-item.side-block-molang::before,
-.side-block-item.side-block-molang::after {
-    content: "";
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    pointer-events: none;
-    z-index: 2;
-}
-.side-block-item.side-block-molang::before {
-    left: 0; bottom: 0;
-    background: #fb923c;
-    /* 沿左下切角切口的斜边(对角线 0,0→12,12)画一条约1.5px宽的颜色线段，两端缩进不碰直边 */
-    clip-path: polygon(20% 11%, 11% 20%, 80% 89%, 89% 80%);
-}
-.side-block-item.side-block-molang::after {
-    right: 0; top: 0;
-    background: #fb923c;
-    /* 沿右上切角切口的斜边(对角线 0,0→12,12)画一条约1.5px宽的颜色线段，两端缩进不碰直边 */
-    clip-path: polygon(20% 11%, 11% 20%, 80% 89%, 89% 80%);
-}
-.side-block-item.side-block-molang-mode::before,
-.side-block-item.side-block-molang-mode::after { background: #a78bfa; }
-.side-block-item.side-block-molang-source::before,
-.side-block-item.side-block-molang-source::after { background: #0ea5e9; }
 /* 单项方块隐藏（无分组场景）：整行降透明度 + 名字划线 + 眼睛按钮常显，切回前仍一眼可辨 */
 .side-block-item.side-block-hidden .side-block-box {
     opacity: 0.42;
@@ -943,7 +938,63 @@ body.light-mode .side-block-group-content {
     background: rgba(59,130,246,0.28);
     margin: 4px 8px 2px 0;
 }
+
+/* ★【2026-10-31 移动端性能】在触屏设备上关闭「压在画布之上」的常驻浮层毛玻璃：
+   backdrop-filter 会让合成器每帧重新采样 WebGL 画布区域做模糊，双指捏合/拖拽时是明确的拖帧元凶。
+   这些浮层本来就几乎不透明，改成纯色后视觉差异极小。 */
+@media (pointer: coarse) {
+    body.new-layout-active .new-top-bar,
+    body.new-layout-active .side-block-list,
+    body.new-layout-active .data-panel,
+    body.new-layout-active #dataTableInspector.inspector-panel {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+    body.new-layout-active .new-top-bar { background: rgba(10,15,26,0.97); }
+    body.new-layout-active .side-block-list,
+    body.new-layout-active .data-panel,
+    body.new-layout-active #dataTableInspector.inspector-panel { background: rgba(10,15,26,0.95) !important; }
+    body.light-mode.new-layout-active .side-block-list,
+    body.light-mode.new-layout-active .data-panel,
+    body.light-mode.new-layout-active #dataTableInspector.inspector-panel { background: rgba(240,244,249,0.96) !important; }
+}
 body.light-mode .side-block-group-divider {
     background: rgba(59,130,246,0.22);
 }
+
+/* ★【2026-11-04 性能设置「关闭面板毛玻璃」】body.no-glass 下禁用所有元素的 backdrop-filter。
+   玻璃层原本靠模糊才看得清，关掉后必须换成近乎不透明的底色，否则文字会透出画布内容。 */
+body.no-glass *,
+body.no-glass *::before,
+body.no-glass *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+body.no-glass .new-top-bar { background: rgba(10,15,26,0.97); }
+body.no-glass .side-block-list,
+body.no-glass .data-panel,
+body.no-glass #dataTableInspector.inspector-panel { background: rgba(10,15,26,0.95); }
+body.no-glass.light-mode .side-block-list,
+body.no-glass.light-mode .data-panel,
+body.no-glass.light-mode #dataTableInspector.inspector-panel { background: rgba(240,244,249,0.96); }
+
+/* ★【2026-11-04 设置「UI面板完全不透明」】面板底色去掉 alpha，彻底不透出画布内容。
+   深色：变量型面板（设置/AI/数据卡）统一改纯色，玻璃型面板单独改纯色；
+   浅色：--lm-* 本身已是实色，只需把仍带 alpha 的方块列表 / 数据面板 / 数据表补成实色。 */
+body.ui-opaque:not(.light-mode) {
+    --bg-panel: #0f172a;
+    --bg-settings-panel: #0a0f1a;
+    --bg-settings-item: #0f172a;
+    --bg-info: #0f172a;
+}
+body.ui-opaque:not(.light-mode) .new-top-bar,
+body.ui-opaque:not(.light-mode) .side-block-list,
+body.ui-opaque:not(.light-mode) .data-panel,
+body.ui-opaque:not(.light-mode) #dataTableInspector.inspector-panel,
+body.ui-opaque:not(.light-mode) .keyframe-window,
+body.ui-opaque:not(.light-mode) .top-dropdown-menu { background: #0a0f1a !important; }
+body.ui-opaque.light-mode .side-block-list,
+body.ui-opaque.light-mode .side-list-bottom,
+body.ui-opaque.light-mode .data-panel,
+body.ui-opaque.light-mode #dataTableInspector.inspector-panel { background: #f0f4f9 !important; }
 

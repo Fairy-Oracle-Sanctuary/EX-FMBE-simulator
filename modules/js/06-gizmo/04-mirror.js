@@ -126,6 +126,42 @@ function mirrorPlaneWorld() {
     const n = new THREE.Vector3(0, 0, 1).applyQuaternion(mirrorPlaneQuat).normalize();
     return { n, d: n.dot(mirrorPlanePos) };
 }
+// ===== 对称面自身的撤销栈（工具激活时的 Ctrl+Z 先回退面上的调整，再回退场景） =====
+// 对称面是工具态、不进入项目快照，所以无法走全局撤销；这里单独记「面的姿态」快照。
+let mirrorPlaneUndoStack = [];
+function mirrorResetPlaneUndo() { mirrorPlaneUndoStack = []; }
+function mirrorPushPlaneUndo() {
+    if (!mirrorActive || mirrorFacePicking || mirrorVtxPicking) return;
+    const s = {
+        p: [mirrorPlanePos.x, mirrorPlanePos.y, mirrorPlanePos.z],
+        q: [mirrorPlaneQuat.x, mirrorPlaneQuat.y, mirrorPlaneQuat.z, mirrorPlaneQuat.w]
+    };
+    const last = mirrorPlaneUndoStack[mirrorPlaneUndoStack.length - 1];
+    if (last && last.p.join() === s.p.join() && last.q.join() === s.q.join()) return;
+    mirrorPlaneUndoStack.push(s);
+    if (mirrorPlaneUndoStack.length > 64) mirrorPlaneUndoStack.shift();
+}
+// 返回 true 表示这次 Ctrl+Z 已被「对称面」消费
+function mirrorUndoPlane() {
+    if (!mirrorActive || mirrorFacePicking || mirrorVtxPicking) return false;
+    if (!mirrorPlaneUndoStack.length) return false;
+    const same = s => s
+        && Math.abs(mirrorPlanePos.x - s.p[0]) < 1e-6 && Math.abs(mirrorPlanePos.y - s.p[1]) < 1e-6
+        && Math.abs(mirrorPlanePos.z - s.p[2]) < 1e-6
+        && Math.abs(mirrorPlaneQuat.x - s.q[0]) < 1e-6 && Math.abs(mirrorPlaneQuat.y - s.q[1]) < 1e-6
+        && Math.abs(mirrorPlaneQuat.z - s.q[2]) < 1e-6 && Math.abs(mirrorPlaneQuat.w - s.q[3]) < 1e-6;
+    // 已在输入框里用原生文本撤销退回过（或该快照本来就是当前姿态）⇒ 跳过，继续找真正要回退的那一步
+    let s = mirrorPlaneUndoStack.pop();
+    while (s && same(s)) s = mirrorPlaneUndoStack.pop();
+    if (!s) return false;
+    mirrorPlanePos.set(s.p[0], s.p[1], s.p[2]);
+    mirrorPlaneQuat.set(s.q[0], s.q[1], s.q[2], s.q[3]);
+    mirrorUpdatePlane();
+    mirrorUpdatePreviews();
+    mirrorSyncInspectorValues();
+    bumpDrawRev('mat');
+    return true;
+}
 // 全局旋转按 Ry(-ry')·Rx(rx')·Rz(-rz') 的顺序反解（与 computeTransformMatrix 的 globalRot 同序）
 function mirrorDecomposeGlobal(R) {
     const e = R.elements;
@@ -517,6 +553,12 @@ function mirrorUpdatePreviews() {
 const _mirrorSkinSaved = new WeakMap();
 const MIRROR_PREVIEW_EDGE = 0x22d3ee;     // 预览棱线（青色，与对称面的深藏青区分开）
 function mirrorSkinPreview(block) {
+    // ★【2026-11-05 修复 · 掉落物预览「每个像素像负体积」】
+    //   预览默认 opacity≈0.6 且关掉深度写入（为了让后面的方块透出来）。这对 cube/楼梯无碍，
+    //   但掉落物是「整块像素挤出的壳」：不写深度时，透明顶盖后面会把同一块几何的背面/侧壁
+    //   全部再画一遍 —— 每根像素柱的内壁、底盖都透出来，看上去每个像素都是被掏空的负体积。
+    //   ⇒ 壳状几何（掉落物）保留深度写入：仍然半透明（能看出是预览），但内部面被正常遮挡。
+    const keepDepth = !!(block && block.type === 'dropitem');
     const meshes = (typeof block.getMeshes === 'function' ? block.getMeshes() : [block.mesh]) || [];
     for (const mesh of meshes) {
         if (!mesh || !mesh.geometry) continue;
@@ -537,7 +579,7 @@ function mirrorSkinPreview(block) {
             // 玻璃类本来就是半透明：取更低的那个，不要把原样弄得更实
             m.opacity = Math.min(m.opacity == null ? 1 : m.opacity, 0.6);
             m.transparent = true;
-            m.depthWrite = false;
+            m.depthWrite = keepDepth;
             if (m.color) m.color.lerp(new THREE.Color(MIRROR_PREVIEW_EDGE), 0.22);   // 极轻的青色偏移：像「全息投影」而不是变了个色
             m.needsUpdate = true;
         });
@@ -602,85 +644,129 @@ function mirrorBuildPreviews() {
 function mirrorCloseBubble() {
     if (mirrorBubbleEl) { mirrorBubbleEl.remove(); mirrorBubbleEl = null; }
 }
+// 对称面数据（位置 / 旋转 / 结果方式）已并入「方块数据列表」的 inspector；
+// 底部气泡只保留一句状态与结果方式按键，不再堆说明文字。
+let mirrorInspectorPanelEl = null;
+
 function mirrorUpdateBubble() {
-    const info = document.getElementById('mirrorBubbleInfo');
-    if (!info) return;
-    const p = mirrorPlanePos;
-    const t = v => (Math.round(v * 1000) / 1000);
-    info.textContent = '对称面中心：' + t(p.x) + ', ' + t(p.y) + ', ' + t(p.z) +
-        '　预览：' + mirrorPreview.length + ' 个　模式：' + (mirrorGizmoMode === 'move' ? '位移' : '旋转');
+    // 兼容旧调用点（Gizmo 拖拽 / 模式切换）：把对称面最新数值同步回数据面板
+    mirrorSyncInspectorValues();
 }
-/* ★【2026-10-31 用户要求】结果方式切换控件：镜像模型生成（复制新方块） ↔ 自身对称（把方块本身反射过去，不复制）。
-   三种对称方式（自由对称面 / 选取面 / 三点定面）的气泡都挂这同一套切换，
-   因此任意入口都能自由组合「哪种定面方式 + 哪种结果方式」。
-   视觉沿用整体简约风格：当前项加粗下划线，未选项淡出（不用胶囊样式）。 */
+/* 结果方式切换：镜像模型生成（复制新方块） ↔ 自身对称（把方块本身反射过去，不复制）。
+   做成真正的分段按键（有描边 / 有选中填充），不再用「带下划线的文字」冒充按钮。 */
 function mirrorSelfSwitchHtml() {
-    return '<div style="margin-top:6px;">结果方式：<span class="mirror-self-opt" data-self="0" style="cursor:pointer;">镜像模型生成</span>' +
-        '<span style="opacity:.4;">　/　</span>' +
-        '<span class="mirror-self-opt" data-self="1" style="cursor:pointer;">自身对称</span></div>' +
-        '<div id="mirrorSelfHint" style="margin-top:4px;opacity:.75;"></div>';
-}
-function mirrorSelfHintText() {
-    return mirrorSelf
-        ? '自身对称：把方块本身反射过去，不新建方块（有关键帧动画时写入当前时刻的帧）'
-        : '镜像模型生成：在对称面另一侧生成新方块';
+    return '<div class="mirror-seg" role="group" aria-label="结果方式">' +
+        '<button type="button" class="mirror-seg-btn" data-self="0">复制镜像</button>' +
+        '<button type="button" class="mirror-seg-btn" data-self="1">自身对称</button>' +
+        '</div>';
 }
 function mirrorSyncSelfSwitchUI() {
-    if (!mirrorBubbleEl) return;
-    mirrorBubbleEl.querySelectorAll('.mirror-self-opt').forEach(sp => {
-        const on = (sp.dataset.self === '1') === mirrorSelf;
-        sp.style.fontWeight = on ? '600' : '400';
-        sp.style.textDecoration = on ? 'underline' : 'none';
-        sp.style.opacity = on ? '1' : '.55';
+    document.querySelectorAll('.mirror-seg-btn').forEach(btn => {
+        const on = (btn.dataset.self === '1') === mirrorSelf;
+        btn.classList.toggle('on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-    // 说明文字随切换同步（否则切到自身对称后仍显示「生成新方块」的解释，误导用户）
-    const hint = mirrorBubbleEl.querySelector('#mirrorSelfHint');
-    if (hint) hint.textContent = mirrorSelfHintText();
-    const ok = mirrorBubbleEl.querySelector('.tb-ok');
-    // 选面 / 选点阶段的气泡只有「取消」一个出口，不能把按钮文案改成结果方式
-    if (ok && !mirrorFacePicking && !mirrorVtxPicking) ok.textContent = mirrorSelf ? '自身对称' : '镜像';
 }
 function mirrorAttachSelfSwitch(el) {
     if (!el) return;
-    // 结果方式在气泡里随时可切（生成模型 ↔ 自身对称），无需重新进入工具
-    el.querySelectorAll('.mirror-self-opt').forEach(sp => {
-        sp.addEventListener('click', (e) => {
+    el.querySelectorAll('.mirror-seg-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const want = sp.dataset.self === '1';
+            const want = btn.dataset.self === '1';
             if (want === mirrorSelf) return;
             mirrorSelf = want;
             mirrorSyncSelfSwitchUI();
-            if (!mirrorFacePicking && !mirrorVtxPicking) mirrorUpdateBubble();
             bumpDrawRev('mat');
         });
     });
     mirrorSyncSelfSwitchUI();
 }
-function mirrorShowBubble() {
-    mirrorCloseBubble();
-    const el = showTechBubble('镜像', '', {
-        contentHtml: '<div id="mirrorBubbleInfo"></div>' +
-            mirrorSelfSwitchHtml() +
-            '<div style="margin-top:6px;opacity:.75;">顶栏「枢轴 / 旋转」切换：三轴箭头平移　三轴圆环旋转</div>',
-        confirmText: mirrorSelf ? '自身对称' : '镜像', cancelText: '取消',
-        onConfirm: () => mirrorCommit(),
-        onCancel: () => mirrorExit(true)
-    });
-    mirrorBubbleEl = el;
-    mirrorAttachSelfSwitch(el);
-    mirrorUpdateBubble();
+// ===== 数据面板里的「对称面」：位置 / 旋转 / 结果方式 / 应用与取消 =====
+const MIRROR_AXIS_COLORS = ['#ef4444', '#22c55e', '#3b82f6'];
+function mirrorInspectorCell(rowKey, idx, val, step) {
+    return '<label class="insp-cell"><svg class="insp-marker" viewBox="0 0 8 8" width="8" height="8">' +
+        '<path d="M0 0 L0 6 L6 0 Z" fill="' + MIRROR_AXIS_COLORS[idx] + '"/></svg>' +
+        '<input type="number" step="' + step + '" data-mirror="' + rowKey + '" data-idx="' + idx + '" value="' + val + '"></label>';
 }
-// 面选取阶段的提示气泡：此时还没有对称面，只有「取消」一个出口（结果方式可先切好）
-function mirrorShowPickBubble() {
-    mirrorCloseBubble();
-    mirrorBubbleEl = showTechBubble('镜像', '', {
-        contentHtml: '把鼠标移到方块表面：高亮的那一整块面，就是点下去后的对称面（两者完全重合）' +
-            mirrorSelfSwitchHtml(),
-        confirmText: '取消',
-        onConfirm: () => mirrorExit(true)
-    });
-    mirrorAttachSelfSwitch(mirrorBubbleEl);
+function mirrorInspectorRow(label, cells) {
+    return '<div class="insp-row"><span class="insp-label">' + label + '</span><div class="insp-inputs">' + cells + '</div></div>';
 }
+function mirrorInspectorValues() {
+    const t = v => Math.round(v * 1000) / 1000;
+    const e = new THREE.Euler().setFromQuaternion(mirrorPlaneQuat, 'YXZ');
+    return {
+        pos: [t(mirrorPlanePos.x), t(mirrorPlanePos.y), t(mirrorPlanePos.z)],
+        rot: [t(THREE.MathUtils.radToDeg(e.x)), t(THREE.MathUtils.radToDeg(e.y)), t(THREE.MathUtils.radToDeg(e.z))]
+    };
+}
+function mirrorSyncInspectorValues() {
+    const panel = mirrorInspectorPanelEl;
+    if (!mirrorActive || !panel || !panel.querySelector) return;
+    const focus = document.activeElement;
+    const v = mirrorInspectorValues();
+    panel.querySelectorAll('input[data-mirror]').forEach(inp => {
+        if (inp === focus) return;        // 正在输入时不要抢光标 / 覆盖内容
+        const idx = Number(inp.dataset.idx);
+        inp.value = v[inp.dataset.mirror][idx];
+    });
+}
+// 返回 true 表示这次 inspector 渲染已被镜像面板接管
+function renderMirrorInspectorInto(panel) {
+    if (!mirrorActive) return false;
+    mirrorInspectorPanelEl = panel;
+    const picking = mirrorFacePicking || mirrorVtxPicking;
+    let html = '<div class="mirror-panel">';
+    html += '<div class="mirror-head"><span class="mirror-title">对称面</span></div>';
+    if (picking) {
+        html += '<div class="mirror-hint">' + (mirrorFacePicking
+            ? '点选方块表面确定对称面'
+            : '依次点选 3 个顶点确定对称面（已选 ' + mirrorVtxPicked.length + ' / 3）') + '</div>';
+    } else {
+        const v = mirrorInspectorValues();
+        html += mirrorInspectorRow('位置', [0, 1, 2].map(i => mirrorInspectorCell('pos', i, v.pos[i], 0.5)).join(''));
+        html += mirrorInspectorRow('旋转', [0, 1, 2].map(i => mirrorInspectorCell('rot', i, v.rot[i], 1)).join(''));
+        html += '<div class="mirror-divider"></div>';
+    }
+    html += '<div class="mirror-result-row"><span class="mirror-label">结果</span>' +
+        '<div class="mirror-seg-wrap">' + mirrorSelfSwitchHtml() + '</div></div>';
+    html += '<div class="mirror-actions">' + (picking
+        ? '<button type="button" class="mirror-act" data-mirror-cancel>取消</button>'
+        : '<button type="button" class="mirror-act" data-mirror-cancel>取消</button>' +
+          '<button type="button" class="mirror-act mirror-act-primary" data-mirror-apply>应用</button>') + '</div>';
+    html += '</div>';
+    panel.innerHTML = html;
+    // 位置 / 旋转输入：直接改对称面实体（不走方块变量通道）
+    panel.querySelectorAll('input[data-mirror]').forEach(inp => {
+        const apply = () => {
+            let val = parseFloat(inp.value); if (isNaN(val)) val = 0;
+            const idx = Number(inp.dataset.idx);
+            if (inp.dataset.mirror === 'pos') {
+                mirrorPlanePos.setComponent(idx, val);
+            } else {
+                const e = new THREE.Euler().setFromQuaternion(mirrorPlaneQuat, 'YXZ');
+                if (idx === 0) e.x = THREE.MathUtils.degToRad(val);
+                else if (idx === 1) e.y = THREE.MathUtils.degToRad(val);
+                else e.z = THREE.MathUtils.degToRad(val);
+                mirrorPlaneQuat.setFromEuler(e);
+            }
+            mirrorUpdatePlane();
+            mirrorUpdatePreviews();
+            bumpDrawRev('mat');
+        };
+        inp.addEventListener('focus', mirrorPushPlaneUndo);   // 进入输入框即记一个「改之前」的面姿态
+        inp.addEventListener('input', apply);
+        inp.addEventListener('change', apply);
+    });
+    mirrorAttachSelfSwitch(panel);
+    const applyBtn = panel.querySelector('[data-mirror-apply]');
+    if (applyBtn) applyBtn.addEventListener('click', () => mirrorCommit());
+    const cancelBtn = panel.querySelector('[data-mirror-cancel]');
+    if (cancelBtn) cancelBtn.addEventListener('click', () => mirrorExit(true));
+    return true;
+}
+_mirrorInspectorRender = renderMirrorInspectorInto;
+
+// 镜像不再弹底部气泡：所有控件（结果方式 / 应用 / 取消）只在「方块数据列表」里出现一次
 function mirrorCleanupScene() {
     mirrorVtxCleanup();   // 三点取点阶段的圆点图层是借顶点捕捉的，必须先交还
     mirrorClearPreviews(true);
@@ -691,12 +777,15 @@ function mirrorCleanupScene() {
 }
 function mirrorExit(rebuild) {
     mirrorActive = false;
+    mirrorResetPlaneUndo();
     mirrorFacePicking = false;
     mirrorSrc = [];
     mirrorSrcIds = '';
     mirrorCleanupScene();
     herModes.delete('mirror');
     applyMirrorToolbarUI();   // 顶栏恢复常规按钮（位移 / 缩放 / 顶点捕捉 / 两个旋转下拉）
+    mirrorInspectorPanelEl = null;
+    renderInspector();        // 数据面板恢复方块数值
     if (rebuild) rebuildGizmo();
 }
 // 当前镜像源（与 UI 选区同口径；极端情况下 selectedBlock 在集合外也能兜住）
@@ -729,6 +818,7 @@ function mirrorBegin(mode, self) {
     }
     if (mirrorActive) mirrorCleanupScene();
     mirrorActive = true;
+    mirrorResetPlaneUndo();
     mirrorSelf = !!self;
     mirrorMode = (mode === 'face') ? 'face' : (mode === 'vtx' ? 'vtx' : 'free');
     mirrorFacePicking = mirrorMode === 'face';
@@ -747,14 +837,12 @@ function mirrorBegin(mode, self) {
     if (mirrorFacePicking) {
         mirrorRemovePlane();
         mirrorClearPreviews(true);
-        mirrorShowPickBubble();
         renderer.domElement.style.cursor = 'crosshair';
     } else if (mirrorMode === 'vtx') {
         // 三点定面：先进入取点阶段（对称面尚未确定），点满 3 个顶点才建面
         mirrorVtxPicking = true;
         mirrorRemovePlane();
         mirrorClearPreviews(true);
-        mirrorShowVtxPickBubble();
         mirrorVtxEnter();
         renderer.domElement.style.cursor = 'crosshair';
     } else {
@@ -765,9 +853,9 @@ function mirrorBegin(mode, self) {
         mirrorPlaneQuat.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0));
         mirrorCreatePlane();
         mirrorBuildPreviews();
-        mirrorShowBubble();
     }
     rebuildGizmo();
+    renderInspector();   // 数据面板切到「对称面」：位置 / 旋转 / 结果方式
 }
 // 面选取完成：对称面与所选面「完全重合」（同平面 + 同中心 + 同长宽）
 function mirrorApplyFace(rect) {
@@ -778,12 +866,12 @@ function mirrorApplyFace(rect) {
     mirrorPlaneQuat.setFromRotationMatrix(new THREE.Matrix4().makeBasis(rect.u, rect.v, rect.n));
     mirrorCreatePlaneFromFace(rect);
     mirrorBuildPreviews();
-    mirrorShowBubble();
     renderer.domElement.style.cursor = '';
     applyMirrorToolbarUI();   // 面已定：顶栏恢复显示「枢轴 / 旋转」两个切换按钮
     mirrorGizmoMode = 'move';
     syncHerModeButtons();
     rebuildGizmo();
+    renderInspector();        // 对称面已确定：数据面板显示位置 / 旋转
     bumpDrawRev('mat');
 }
 // 命中面 → 精确的「面矩形」：直接取命中三角形所属【那个面】的 4 个角（几何分组里的一格），
@@ -803,6 +891,7 @@ function mirrorFaceRectOf(hit) {
     // ① 命中面所属分组的全部顶点 → 去重得到 3~4 个角（按面环绕顺序，世界坐标）。
     //   按分组取而不是「筛所有共面顶点」：压扁方块正反两面顶点只隔 4e-4，靠 EPS 筛永远有风险。
     let corners = null;
+    let spreadPts = null;   // 大分组（整块壳）的全部顶点：只用来撑开面矩形，绝不参与法线
     if (pos && hit.face) {
         const groups = geo.groups || [];
         const triStart = (hit.faceIndex != null ? hit.faceIndex : Math.floor((hit.face.a || 0) / 3)) * 3;
@@ -814,12 +903,27 @@ function mirrorFaceRectOf(hit) {
         // 无分组（非方块网格）：按三角形顶点号推所在的面（每面 6 个写入顶点 = 4 个唯一角）
         if (start < 0 && hit.face.a != null) { start = Math.floor(hit.face.a / 6) * 6; count = 6; }
         if (start >= 0) {
+            // ★【2026-11-05 修复 · 掉落物「选面镜像」歪面】
+            //   掉落物几何按像素挤出一整块壳，只注册了【一个】分组（实测 count = 2100 顶点）。
+            //   旧逻辑把整块壳当成「一个面」算 Newell 法线：闭合壳体本应抵消为 0，浮点残差归一化后
+            //   得到任意方向 —— 实测法与真实命中面法线 dot 只有 0.72，对称面整体歪掉、镜像副本错位。
+            //   ⇒ 分组顶点数 > 8 时只取命中三角形所在的 6 顶点四边形定法线；
+            //     整块壳的顶点另存 spreadPts，仅用于把可视化矩形撑满整个外壳面。
+            const quadStart = count > 8 ? (geo.index ? triStart : Math.floor((hit.face.a || start) / 6) * 6) : start;
+            const quadCount = count > 8 ? (geo.index ? 3 : 6) : count;
             const seen = [];
-            for (let i = start; i < start + count && i < pos.count; i++) {
+            for (let i = quadStart; i < quadStart + quadCount && i < pos.count; i++) {
                 const p = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(obj.matrixWorld);
                 if (!seen.some(q => q.distanceToSquared(p) < 1e-14)) seen.push(p);
             }
             if (seen.length >= 3) corners = seen;
+            if (count > 8) {
+                spreadPts = [];
+                for (let i = start; i < start + count && i < pos.count; i++) {
+                    const p = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(obj.matrixWorld);
+                    if (!spreadPts.some(q => q.distanceToSquared(p) < 1e-14)) spreadPts.push(p);
+                }
+            }
         }
     }
     // ② 法线：世界空间真实边的叉积（Newell 公式对平面多边形精确，任何线性变换下都成立）
@@ -843,6 +947,16 @@ function mirrorFaceRectOf(hit) {
         n.set(0, 0, 1).transformDirection(obj.matrixWorld);   // 最后兜底（几乎不可达）
     }
     n.normalize();
+    // ★兜底校验：Newell 法线与命中三角形的真实法线必须基本同向（|dot|≈1）。
+    //   闭合壳体 / 多四边形分组会让 Newell 退化成残差方向（掉落物实测 |dot| = 0.722），
+    //   此时一律改用命中三角形的世界法线，保证对称面与用户点中的那个面严格一致。
+    if (hit.face && pos) {
+        const ta = new THREE.Vector3().fromBufferAttribute(pos, hit.face.a).applyMatrix4(obj.matrixWorld);
+        const tb = new THREE.Vector3().fromBufferAttribute(pos, hit.face.b).applyMatrix4(obj.matrixWorld);
+        const tc = new THREE.Vector3().fromBufferAttribute(pos, hit.face.c).applyMatrix4(obj.matrixWorld);
+        const tn = new THREE.Vector3().crossVectors(tb.clone().sub(ta), tc.clone().sub(ta));
+        if (tn.lengthSq() > 1e-20 && Math.abs(tn.normalize().dot(n)) < 0.9) n.copy(tn);
+    }
     // ③ 面内基：u = 面的第一条真实边（退化时改用下一条），v = n×u
     let u = new THREE.Vector3(1, 0, 0);
     if (corners) {
@@ -854,9 +968,11 @@ function mirrorFaceRectOf(hit) {
     u.normalize();
     const v = new THREE.Vector3().crossVectors(n, u).normalize();
     // ④ 面在 (u,v) 上的紧包围盒（平行四边形会外接成略大的矩形，正好完整盖住该面）
+    //   ★大分组（掉落物整块壳）用 spreadPts 投影撑满整个外壳面，法线仍由上一步的命中四边形决定。
+    const extPts = spreadPts || corners;
     let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
-    if (corners) {
-        for (const p of corners) {
+    if (extPts) {
+        for (const p of extPts) {
             const pu = p.dot(u), pv = p.dot(v);
             if (pu < minU) minU = pu;
             if (pu > maxU) maxU = pu;
@@ -1109,12 +1225,12 @@ function mirrorApplyVtxPlane(pts) {
     mirrorVtxCleanup();
     mirrorPlaneCore();
     mirrorBuildPreviews();
-    mirrorShowBubble();
     renderer.domElement.style.cursor = '';
     applyMirrorToolbarUI();
     mirrorGizmoMode = 'move';
     syncHerModeButtons();
     rebuildGizmo();
+    renderInspector();        // 对称面已确定：数据面板显示位置 / 旋转
     bumpDrawRev('mat');
     return true;
 }
@@ -1128,6 +1244,7 @@ function mirrorVtxClick(cx, cy) {
         if (!mirrorVtxPicked.some(p => p.world.distanceToSquared(w) < 1e-8)) {   // 同一点重复点不计数
             mirrorVtxPicked.push({ blockId: mirrorVtxCands[i].blockId, world: w.clone() });
             mirrorVtxRender();
+            renderInspector();   // 数据面板里的「已选 n / 3」同步
             if (mirrorVtxPicked.length >= 3) mirrorApplyVtxPlane(mirrorVtxPicked.slice());
         }
         return true;
@@ -1141,18 +1258,6 @@ function mirrorVtxClick(cx, cy) {
     }
     return true;   // 空白：吞掉本次点击（不清选区、不结束镜像）
 }
-function mirrorShowVtxPickBubble() {
-    mirrorCloseBubble();
-    mirrorBubbleEl = showTechBubble('镜像', '', {
-        contentHtml: '依次点击方块顶点确定对称面（已选 <b id="mirrorVtxCount">0</b> / 3）'
-            + '<div style="margin-top:6px;opacity:.75;">点方块可切换取点方块，三个点可以来自不同方块</div>'
-            + mirrorSelfSwitchHtml(),
-        confirmText: '取消',
-        onConfirm: () => mirrorExit(true)
-    });
-    mirrorAttachSelfSwitch(mirrorBubbleEl);
-}
-
 // 确认：把预览块（或按需新建的副本）转正并选中
 function mirrorCommit() {
     if (!mirrorActive || mirrorFacePicking || mirrorVtxPicking) return;
@@ -1168,6 +1273,9 @@ function mirrorCommit() {
     //   旧实现末尾用 recordAction()（200ms 防抖）：用户在 200ms 内按 Ctrl+Z 时，undo() 里的
     //   flushPendingRecords() 会把「镜像后」的状态压栈再弹掉 ⇒ 撤销空转、镜像方块删不掉（用户报）。
     flushPendingRecords();
+    // ★空栈兜底：刚打开/新建的项目很可能一次都没落账（u 长度 < 2），
+    //   此时只压「镜像后」快照会让 history.undo 无状态可回 ⇒ Ctrl+Z 完全没反应（用户报「自身对称撤不回」）。
+    history.ensure(getState());
     _bulkAddDepth++;
     try {
         for (const src of mirrorSrc) {
@@ -1226,6 +1334,8 @@ function mirrorCommitSelf() {
     // 时间键与所有关键帧写入口同口径量化（1ms），避免「显示的时刻」与「真实键」不一致
     const t = kfOn ? kfQuantTime(keyframeCurrentTime) : 0;
     flushPendingRecords();
+    // ★同上：自身对称是原地改变量，空栈时只压「镜像后」状态会让撤销无路可退（完全没反应）
+    history.ensure(getState());
     let done = 0, skipped = 0, kfCount = 0, shapeSkipped = 0;
     for (const src of mirrorSrc) {
         // 有关键帧动画的方块不受「静态表达式」限制：它的姿态由当前时刻的帧决定，镜像后写回当前帧
@@ -1370,6 +1480,9 @@ function syncHerModeButtons() {
     // 顶点捕捉按钮是下拉按钮（无 data-mode），激活态需单独同步
     const _vtxBtn = document.getElementById('vtxSnapMenuBtn');
     if (_vtxBtn) _vtxBtn.classList.toggle('active', herModes.has('vtxsnap'));
+    // 镜像入口按钮（快捷操作栏「丰」）同样无 data-mode
+    const _mirrorBtn = document.getElementById('mirrorMenuBtn');
+    if (_mirrorBtn) _mirrorBtn.classList.toggle('active', inMirror);
 }
 // 镜像模式下顶栏只保留「枢轴 / 旋转」两个既有按钮（复用作位移 / 旋转切换器）；
 // 面选取阶段还没有对称面 ⇒ 两个按钮一起隐藏。退出镜像后按常规规则还原可见性。
@@ -1383,10 +1496,12 @@ function applyMirrorToolbarUI() {
     const localWrap  = document.getElementById('localRotMenuBtn')?.parentElement || null;
     const globalWrap = document.getElementById('globalRotMenuBtn')?.parentElement || null;
     const vtxWrap    = document.getElementById('vtxSnapMenuBtn')?.parentElement || null;
+    const mirrorWrap = document.getElementById('mirrorMenuBtn')?.parentElement || null;
     const hide = el => { if (el) el.style.display = 'none'; };
     const show = el => { if (el) el.style.display = ''; };
     if (mirrorActive && herModes.has('mirror')) {
         hide(scaleBtn); hide(baseBtn); hide(localWrap); hide(globalWrap); hide(vtxWrap);
+        show(mirrorWrap);   // 镜像按钮保持可见并高亮，再点可切换定面方式
         if (mirrorFacePicking || mirrorVtxPicking) { hide(originBtn); hide(folderRot); }
         else { show(originBtn); show(folderRot); }
         syncHerModeButtons();
@@ -1396,6 +1511,7 @@ function applyMirrorToolbarUI() {
     const hasBlock = !!selected();
     if (scaleBtn) scaleBtn.style.display = (selectedFolder || !hasBlock) ? 'none' : '';
     show(baseBtn);
+    if (mirrorWrap) mirrorWrap.style.display = (selectedFolder || !hasBlock) ? 'none' : '';
     if (vtxWrap) vtxWrap.style.display = (selectedFolder || !hasBlock) ? 'none' : '';
     if (localWrap) localWrap.style.display = selectedFolder ? 'none' : '';
     if (globalWrap) globalWrap.style.display = selectedFolder ? 'none' : '';
@@ -1479,6 +1595,22 @@ function rebuildGizmo() {
         gizmoRoot.add(makeAt(new THREE.Vector3(), makeArrow(wx,wz,0xff3030,'v.xpos',0.012,0,{visualScale:1.05,start:0.58,priority:10,moveKind:'origin',axisName:'x'}),{moveWrapper:'origin'}));
         gizmoRoot.add(makeAt(new THREE.Vector3(), makeArrow(wy,wz,0x25d94f,'v.ypos',0.012,0,{visualScale:1.05,start:0.58,priority:10,moveKind:'origin',axisName:'y'}),{moveWrapper:'origin'}));
         gizmoRoot.add(makeAt(new THREE.Vector3(), makeArrow(wz,wy,0x2078ff,'v.zpos',0.012,0,{visualScale:1.05,start:0.58,priority:10,moveKind:'origin',axisName:'z'}),{moveWrapper:'origin'}));
+        // 枢轴移动：三块平面手柄（XY / YZ / XZ），拖动即在对应平面内自由移动两轴枢轴
+        const _pm = { x: 'v.xpos', y: 'v.ypos', z: 'v.zpos' };
+        const _pd = { x: wx, y: wy, z: wz };
+        [
+            { pair: ['x', 'y'], normal: wz, color: 0x2078ff },
+            { pair: ['y', 'z'], normal: wx, color: 0xff3030 },
+            { pair: ['x', 'z'], normal: wy, color: 0x25d94f }
+        ].forEach(cfg => {
+            const g = makePlaneHandle(
+                cfg.pair.map(n => ({ name: n, dir: _pd[n], varName: _pm[n] })),
+                cfg.normal, cfg.color,
+                { offset: 0.74, scale: 0.012, priority: 96, moveKind: 'origin' }
+            );
+            gizmoArrowGroups.push(g);
+            gizmoRoot.add(g);
+        });
     }
     if (herModes.has('base')) {
         if (useWorldAxisDisplacement) {
@@ -1499,6 +1631,23 @@ function rebuildGizmo() {
                 arrowGroup.userData.baseAxis = axis;
                 gizmoArrowGroups.push(arrowGroup);
                 gizmoRoot.add(arrowGroup);
+            });
+            // 世界轴 basepos 位移：三块平面手柄（XY / YZ / XZ），拖动即在对应平面内自由位移
+            const _bm = { x: 'v.xbasepos', y: 'v.ybasepos', z: 'v.zbasepos' };
+            const _bd = { x: wx, y: wy, z: wz };
+            [
+                { pair: ['x', 'y'], normal: wz, color: 0x49e6ff },
+                { pair: ['y', 'z'], normal: wx, color: 0xffb347 },
+                { pair: ['x', 'z'], normal: wy, color: 0xc6ff5c }
+            ].forEach(cfg => {
+                const g = makePlaneHandle(
+                    cfg.pair.map(n => ({ name: n, dir: _bd[n], varName: _bm[n] })),
+                    cfg.normal, cfg.color,
+                    { offset: 0.74, scale: 0.012, priority: 96, moveKind: 'base', mode: 'base' }
+                );
+                g.userData.isBaseWorldAxis = true;
+                gizmoArrowGroups.push(g);
+                gizmoRoot.add(g);
             });
         } else {
             // 原始位移模式：箭头沿世界轴创建，每帧通过 setFromUnitVectors 旋转到剪切轴方向

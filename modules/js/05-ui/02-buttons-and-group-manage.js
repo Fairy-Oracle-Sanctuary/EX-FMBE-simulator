@@ -88,8 +88,9 @@ function showCreateBlockMenu() {
         closeModal();
     };
     createDropItemBtn.onclick = () => {
-        createBlockOfType('dropitem');
+        // 掉落物只能使用物品材质：先弹出材质列表，选中后才生成方块（取消则不生成）
         closeModal();
+        showDropItemCreatePicker((file, disp) => createBlockOfType('dropitem', file, disp));
     };
     createGroupBtn.onclick = () => {
         closeModal();
@@ -101,7 +102,8 @@ function showCreateBlockMenu() {
     };
 }
 // 实际创建方块的函数（复用原有逻辑）
-function createBlockOfType(type) {
+// texFile / texName：可选，指定新建模型使用的贴图（掉落物走「先选材质再生成」）
+function createBlockOfType(type, texFile, texName) {
     const defaultM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
     let base;
     if (type === 'flag') base = "Flag";
@@ -114,7 +116,7 @@ function createBlockOfType(type) {
     // 若当前选中了文件夹（骨骼），新方块/模型直接创建到该文件夹内
     const newBlock = new Block(id, defaultM, null, '#aaccff', type, selectedFolder || null);
     // 掉落物默认用黄色染料贴图；材质面板「本地上传图片」可换成任意物品贴图（16×16/32×32）
-    if (type === 'dropitem') newBlock.loadTexture('items/dye_powder_yellow.png', '掉落物');
+    if (type === 'dropitem') newBlock.loadTexture(texFile || 'items/dye_powder_yellow.png', texName || '掉落物');
     if (selectedFolder) {
         // 组内（骨骼）创建方块：自动把新模型的位置对齐到骨骼枢轴（骨干方块所在位置），
         // 并把新模型的 pos 变量初始化为骨干方块的 pos，使新方块直接生成在骨骼当前位置、随骨骼一起运动。
@@ -639,6 +641,10 @@ const presetTemplates = [
     {
         description: "x/z 横向拉伸预设-ey=0/90",
         command: `execute  positioned ~-1~~ run playanimation @e[x=~,z=~,y=~,r=1] animation.player.attack.positions _ 0 "'block：绿宝石块'; v.xpos=0; v.ypos=0; v.zpos=0; v.xrot=0; v.yrot=0; v.zrot=0; v.extend_xrot=0; v.extend_yrot=180; v.xbasepos=0; v.ybasepos=0; v.zbasepos=0; v.h=7.74; v.m=3.41; v.extend_scale=v.m/v.h; v.scale=v.m/v.extend_scale;'方块编号：Cube'; "`
+    },
+    {
+        description: "蜘蛛腿：1 个 point 目标方块 + 6 条 IK 逆骨骼腿",
+        build: () => createSpiderLegPreset()
     }
     
     // 添加新预设只需在此数组中增加对象即可
@@ -682,6 +688,12 @@ function showPresetMenu() {
         item.addEventListener('dblclick', (e) => {
             const idx = parseInt(item.dataset.index);
             const preset = presetTemplates[idx];
+            // build：程序化生成的预设（如 IK 蜘蛛腿），生成的是带完整 molang/骨骼元数据的活模型
+            if (preset && typeof preset.build === 'function') {
+                try { preset.build(); } catch (err) { console.error(err); showToast('预设生成失败：' + err.message); }
+                closeModal();
+                return;
+            }
             if (preset && preset.command) {
                 importFromCommands(preset.command);  // 使用已有的导入函数
                 closeModal();
@@ -747,14 +759,16 @@ document.getElementById('resetViewBtn').addEventListener('click', () => {
     resetCameraHome();
 });
 // 把 title 拆成「版本号」+「剩余说明」两段
-// 蓝色胶囊里只放 title 开头的版本号，**原样显示、不做任何归一化**（点几个点由数据说了算）；
-// 剩余文字只有在「没有版本号的条目」上才显示（有胶囊的条目不再旁边挂灰字）。
+// 蓝色胶囊 = title 开头的版本号（可带 -b2 / -b 这类预发布后缀），点几个点由数据说了算；
+// 版本号之后的文字（如「测试版 / 正式版 / 快捷更新」）一律作为灰字说明显示，
+// ★不能丢：曾写成 label:'' ⇒ 所有带版本号的条目都只显示「v.6.00」，中文后缀全被吞掉。
 function splitChangelogTitle(title) {
     const t = (title || '').trim();
     if (!t) return { pill: '', label: '' };
-    const m = t.match(/^v\s*[.\-]?\s*[\d]+(?:\s*[.\-]\s*[\d]+)*\.?/i);
+    const m = t.match(/^v\s*[.\-]?\s*\d+(?:\s*[.\-]\s*\d+)*(?:\s*-\s*[a-z]+\d*)?\.?/i);
     if (!m) return { pill: '', label: t };
-    const pill = m[0].replace(/[\s\-]+/g, '').replace(/\.$/, '');
-    return { pill, label: '' };
+    const pill = m[0].replace(/\s+/g, '').replace(/\.$/, '');
+    const label = t.slice(m[0].length).replace(/^[\s\-–—·|]+/, '').trim();
+    return { pill, label };
 }
 

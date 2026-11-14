@@ -287,9 +287,261 @@ let _lastMolangAnimTime = null;
 let _visRev = 0, _visSyncRev = -1, _visSyncLen = -1, _visSyncTs = 0;
 function bumpVisibilityRev() { _visRev++; bumpDrawRev('ui'); }
 
+/* ★【2026-11-08 性能】判断一个程序正文在「暂停 + 时间未变」时是否会自己变化：
+   含 q. 查询（时间/相机等）或【跨帧】自引用赋值（v.t=v.t+1 这类逐帧累加）⇒ 必须每帧重算。
+   注意：IK 求解层里的 `v.ik_lxy=v.ik_lxy+…` 是循环内累加器（前面有 `v.ik_lxy=0;` 初始化），
+   不再被误判成跨帧 —— 判定逻辑统一在解释器的 _molangAnalyze/ _molangCrossFrameSelfRef，
+   这里不再有「IK 白名单」特例。 */
+function _pauseProgramIsSelfFree(p) {
+    if (!p) return true;
+    if (typeof _molangAnalyze === 'function') {
+        const a = _molangAnalyze(String(p));
+        return !(a.hasQ || a.crossFrame);
+    }
+    // 兜底（解释器尚未加载时）：保守认定含 q. 即不纯
+    return p.indexOf('q.') === -1;
+}
+// 缓存：签名（各层 key + 长度 + 首尾字符）未变则复用上次判定，避免每帧扫上万字符
+function _blockPausedPure(b) {
+    const sc = b.scope;
+    let layers = null;
+    try { if (typeof sc.layersOrdered === 'function') layers = sc.layersOrdered(); } catch (e) { layers = null; }
+    if (!layers || !layers.length) layers = [{ key: '__base__', program: String(sc.program || '') }];
+    let sig = '';
+    for (const l of layers) {
+        const p = String(l.program || '');
+        sig += l.key + ':' + p.length + ':' + p.slice(0, 16) + ':' + p.slice(-16) + ';';
+    }
+    if (b._pauseSig === sig) return b._pausePure;
+    let pure = true;
+    for (const l of layers) {
+        if (!_pauseProgramIsSelfFree(String(l.program || ''))) { pure = false; break; }
+    }
+    b._pauseSig = sig; b._pausePure = pure;
+    return pure;
+}
+/* ★★【2026-11-08 通用性能 · 依赖脏标记】
+   用「本块每层程序读到的 v.* 当前值 / t.* 全局值 / q.anim_time 时钟」拼一个数值签名：
+     · 含 q.anim_time 以外的查询（相机、生命时钟、速度…）⇒ 返回 null，交给旧的每帧判据；
+     · 签名与上次「真正重算时」记录的签名相同 ⇒ 输入没变 ⇒ 输出必然相同 ⇒ 本帧可跳过。
+   这样「用户手搓的各种纯函数」（包括 IK 求解层）只在其输入真的变化时才重算，
+   而不是靠「程序里有没有 v.x=v.x」这类文本启发式 —— 特例被彻底去掉。 */
+/* 变量表达式依赖计划缓存：所有 expr 的读集/哈希只在文本变化时算一次，
+   之后每帧只读取当前值拼签名。否则求解块 179 个变量 × 每帧多次签名调用会让签名本身成为瓶颈。 */
+function _blockVarPlan(sc) {
+    /* ★【2026-11-08 性能】旧实现每次调用都对 179 条表达式做逐字符哈希并拼出长 key 字符串，
+       实测占 _blockDepSig 的绝大部分。计划只描述「依赖关系」，与数值无关；
+       改为缓存「变量名数组 + 表达式原文数组」，逐项比较（字符串同引用时 === 立即通过），
+       只有表达式文本真的变了才重建计划。 */
+    const names = [], exprs = [];
+    for (const [n, d] of sc.vars) { names.push(n); exprs.push(String(d && d.expr != null ? d.expr : '')); }
+    const pn = sc._depPlanNames, pe = sc._depPlanExprs;
+    if (sc._depPlan && pn && pe && pn.length === names.length) {
+        let same = true;
+        for (let i = 0; i < names.length; i++) {
+            if (pn[i] !== names[i] || pe[i] !== exprs[i]) { same = false; break; }
+        }
+        if (same) return sc._depPlan;
+    }
+    const entries = [];
+    let hasQBad = false, hasQTime = false;
+    for (let i = 0; i < names.length; i++) {
+        const n = names[i], ex = exprs[i];
+        const d = sc.vars.get(n);
+        if (!d) continue;
+        if (typeof isConstantExpr === 'function' && isConstantExpr(ex)) { entries.push({ n, k: 'c' }); continue; }
+        const ea = _molangAnalyze(ex);
+        if (ea.hasQ) {
+            let bad = false;
+            for (const qn of ea.readsQ) { if (qn !== 'anim_time') { bad = true; break; } }
+            if (bad) { hasQBad = true; break; }
+            hasQTime = true;
+        }
+        entries.push({ n, k: 'd', hash: ea.hash, rv: Array.from(ea.readsV), rt: Array.from(ea.readsT) });
+    }
+    const plan = { entries, hasQBad, hasQTime };
+    sc._depPlanNames = names; sc._depPlanExprs = exprs; sc._depPlan = plan;
+    return plan;
+}
+
+function _blockDepSig(b) {
+    const sc = b.scope;
+    if (!sc || typeof _molangAnalyze !== 'function') return null;
+    let layers = null;
+    try { if (typeof sc.layersOrdered === 'function') layers = sc.layersOrdered(); } catch (e) { layers = null; }
+    if (!layers || !layers.length) layers = [{ key: '__base__', program: String(sc.program || '') }];
+    let sig = '';
+    let hasQTime = false;
+    for (const l of layers) {
+        const a = _molangAnalyze(String(l.program || ''));
+        sig += 'P' + l.key + ':' + a.hash + ';';   // 程序正文哈希：编辑公式必须触发重算
+        // 真正的跨帧累加（v.t=v.t+1 且无初始化）无法用签名表达 ⇒ 交给每帧判据
+        if (a.crossFrame) return null;
+        // 只认 q.anim_time（时钟驱动）；其它查询无法用本签名表达 ⇒ 放弃签名走旧路径
+        if (a.hasQ) {
+            for (const n of a.readsQ) if (n !== 'anim_time') return null;
+            hasQTime = true;
+        }
+        for (const n of a.readsV) {
+            // 程序自己写出的变量（求解层的 v.ik_* 等中间量）不算外部输入：
+            // 若把它们的值纳入签名，块刚算完就会判定「输入变了」→ 每帧多跑一遍。
+            if (a.writesV && a.writesV.has(n)) continue;
+            const d = sc.vars.get('v.' + n);
+            sig += 'v.' + n + '=' + (d && typeof d.value === 'number' ? d.value : '?') + ';';
+        }
+        for (const n of a.readsT) {
+            const g = globalVars.get(n);
+            sig += 't.' + n + '=' + (g && typeof g.def.value === 'number' ? g.def.value : '?') + ';';
+        }
+    }
+    /* ★变量表达式（v.x = 表达式）参与计算的两种情况：
+       ① 非 molangMode（变量卡片模式）；② 有附加动画层且 base 程序为空 —— recomputeLayers 里
+       base 空程序仍会跑「变量卡片不动点」，IK 末端块的 v.ik_tx=t.point_px 就是这种情况。
+       只有「molangMode 且 base 有程序」时变量 expr 不参与计算，才不扫描（否则会把自身输出值
+       也算进签名，导致每帧都判定输入变化、白跑求解）。 */
+    const _hasChannels = layers.some(l => l.key !== '__base__');
+    const _baseEmpty = !layers.some(l => l.key === '__base__' && String(l.program || '').trim());
+    const _varCardMode = !sc.molangMode || (_hasChannels && _baseEmpty);
+    if (_varCardMode) {
+        const _plan = _blockVarPlan(sc);
+        if (_plan.hasQBad) return null;
+        if (_plan.hasQTime) hasQTime = true;
+        for (const e of _plan.entries) {
+            if (e.k === 'c') {
+                const d = sc.vars.get(e.n);
+                sig += 'C' + e.n + '=' + (d && typeof d.value === 'number' ? d.value : '?') + ';';
+                continue;
+            }
+            /* 有依赖的变量只记「表达式哈希 + 依赖值」；无依赖的源变量（如 point 的 xpos，
+               拖拽时直接改 value/expr）必须把自身当前值也纳入，否则拖动检测不到。 */
+            if (e.rv.length || e.rt.length) sig += 'E' + e.n + ':' + e.hash + ';';
+            else {
+                const dcur = sc.vars.get(e.n);
+                sig += 'E' + e.n + ':' + e.hash + ':' + (dcur && typeof dcur.value === 'number' ? dcur.value : '?') + ';';
+            }
+            for (const rn of e.rv) {
+                const vd = sc.vars.get('v.' + rn);
+                sig += 'v.' + rn + '=' + (vd && typeof vd.value === 'number' ? vd.value : '?') + ';';
+            }
+            for (const rn of e.rt) {
+                const g2 = globalVars.get(rn);
+                sig += 't.' + rn + '=' + (g2 && typeof g2.def.value === 'number' ? g2.def.value : '?') + ';';
+            }
+        }
+    }
+    if (hasQTime) {
+        let t = 0;
+        try { t = keyframeCurrentTime || 0; } catch (e) { t = 0; }
+        sig += 'q.anim_time=' + t + ';';
+    }
+    return layers.map(l => String(l.key)).join('|') + '#' + sig;
+}
+
+/* ===== 性能开销面板（HUD）· 左下角 ⚡ 点开/关闭 =====
+   目的：让用户直观看到「这一帧花了多久、最贵的是哪个块、单块是否超预算」，
+   而不是只能凭感觉说「卡」。默认关闭，不参与任何正常渲染路径（零开销）。
+   实现上不改动画循环：按需包装 Block.prototype.refresh 采样单块耗时，
+   帧率用独立 rAF 采样（不影响主循环逻辑）。 */
+let _perfHudOn = false, _perfHudEl = null, _perfBadgeEl = null, _perfOrigRefresh = null;
+let _perfBlocks = new Map(), _perfFrameTs = [], _perfPaintTs = 0, _perfRafId = 0;
+const _PERF_FRAME_BUDGET = 16.7, _PERF_BLOCK_BUDGET = 8;
+function _perfRecord(id, ms) {
+    if (!_perfHudOn || !(ms > 0)) return;
+    const cur = _perfBlocks.get(id) || { ms: 0, n: 0 };
+    cur.ms += ms; cur.n++;
+    _perfBlocks.set(id, cur);
+}
+function _perfEnsureBadge() {
+    if (_perfBadgeEl || !document.body) return;
+    const b = document.createElement('div');
+    b.textContent = '⚡';
+    b.title = '性能开销面板（点击开关）';
+    b.style.cssText = 'position:fixed;left:10px;bottom:10px;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(30,34,44,.55);color:#ffd166;font-size:16px;cursor:pointer;z-index:99999;opacity:.45;user-select:none;';
+    b.onclick = () => _perfHudToggle();
+    b.onmouseenter = () => { b.style.opacity = '1'; };
+    b.onmouseleave = () => { b.style.opacity = _perfHudOn ? '1' : '.45'; };
+    document.body.appendChild(b);
+    _perfBadgeEl = b;
+}
+function _perfHudEnsureDom() {
+    if (_perfHudEl) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:48px;bottom:10px;min-width:250px;max-width:340px;padding:8px 10px;border-radius:10px;background:rgba(20,24,32,.9);color:#e6e9ef;font:12px/1.5 ui-monospace,Consolas,monospace;z-index:99999;box-shadow:0 6px 24px rgba(0,0,0,.4);pointer-events:none;';
+    document.body.appendChild(el);
+    _perfHudEl = el;
+}
+function _perfHudPaint() {
+    if (!_perfHudEl) return;
+    const ts = _perfFrameTs;
+    let html = '';
+    if (ts.length >= 4) {
+        const d = [];
+        for (let i = 1; i < ts.length; i++) d.push(ts[i] - ts[i - 1]);
+        d.sort((a, b) => a - b);
+        const avg = d.reduce((s, x) => s + x, 0) / d.length;
+        const p90 = d[Math.min(d.length - 1, Math.floor(d.length * 0.9))];
+        const fps = avg > 0 ? (1000 / avg) : 0;
+        const over = avg > _PERF_FRAME_BUDGET;
+        html += '<div style="font-weight:700;margin-bottom:2px;">帧 ' + avg.toFixed(1) + 'ms · p90 ' + p90.toFixed(1) + 'ms · ' + fps.toFixed(0) + 'fps</div>';
+        if (over) html += '<div style="color:#ff7b72;">⚠ 帧预算超支（' + _PERF_FRAME_BUDGET + 'ms）</div>';
+    } else {
+        html += '<div>采样中…</div>';
+    }
+    const rows = [];
+    for (const [id, v] of _perfBlocks) rows.push([id, v.ms, v.n]);
+    rows.sort((a, b) => b[1] - a[1]);
+    const top = rows.slice(0, 5);
+    if (top.length) {
+        html += '<div style="margin-top:5px;border-top:1px solid #333;padding-top:4px;">最贵方块（单次均耗时）</div>';
+        for (const [id, ms, n] of top) {
+            const per = ms / n;
+            const hot = per > _PERF_BLOCK_BUDGET;
+            html += '<div style="display:flex;justify-content:space-between;gap:8px;' + (hot ? 'color:#ffd166;' : '') + '"><span>' + id + '</span><span>' + per.toFixed(2) + 'ms ×' + n + (hot ? ' ⚠' : '') + '</span></div>';
+        }
+    }
+    _perfHudEl.innerHTML = html;
+}
+function _perfRafTick(ts) {
+    if (!_perfHudOn) return;
+    _perfFrameTs.push(ts);
+    if (_perfFrameTs.length > 240) _perfFrameTs.shift();
+    if (ts - _perfPaintTs > 500) { _perfPaintTs = ts; _perfHudPaint(); _perfBlocks.clear(); }
+    _perfRafId = requestAnimationFrame(_perfRafTick);
+}
+function _perfHudToggle() {
+    _perfHudOn = !_perfHudOn;
+    if (_perfBadgeEl) _perfBadgeEl.style.opacity = _perfHudOn ? '1' : '.45';
+    if (_perfHudOn) {
+        _perfHudEnsureDom();
+        _perfFrameTs = []; _perfBlocks.clear(); _perfPaintTs = 0;
+        // 包装 refresh 采样单块耗时（只包一次；关闭时还原，保证零开销）
+        if (!_perfOrigRefresh && typeof Block === 'function' && Block.prototype && typeof Block.prototype.refresh === 'function') {
+            _perfOrigRefresh = Block.prototype.refresh;
+            Block.prototype.refresh = function () {
+                const t0 = performance.now();
+                try { return _perfOrigRefresh.apply(this, arguments); }
+                finally { _perfRecord(this.id, performance.now() - t0); }
+            };
+        }
+        if (_perfRafId) cancelAnimationFrame(_perfRafId);
+        _perfRafId = requestAnimationFrame(_perfRafTick);
+    } else {
+        if (_perfRafId) { cancelAnimationFrame(_perfRafId); _perfRafId = 0; }
+        if (_perfOrigRefresh) { Block.prototype.refresh = _perfOrigRefresh; _perfOrigRefresh = null; }
+        if (_perfHudEl) { _perfHudEl.remove(); _perfHudEl = null; }
+    }
+}
+try { window.__perfHud = { toggle: _perfHudToggle, isOn: () => _perfHudOn }; } catch (e) { }
+
+
+
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    // 性能开销面板的常驻小徽标（首次进入时创建一次，之后零开销）
+    if (!_perfBadgeEl) { try { _perfEnsureBadge(); } catch (e) { } }
+    // 刻度数字是 CSS2D DOM 标签，会被画在方块之上；定期做遮挡检测，被挡住的标签隐藏掉
+    try { updateOriginTickOcclusion(performance.now()); } catch (e) { }
 
     // 相机视角变化后，刷新直接使用了 q.（如 q.rotation_to_camera）的方块，使相机相关表达式实时生效
     if (_cameraExprDirty) {
@@ -332,6 +584,11 @@ function animate() {
         }
         _lifeTimeLast = _ltNow;
     }
+    /* ★【2026-11-08】标记「处于动画循环内的刷新」：循环内本来就会遍历所有块，
+       updateGlobalVarsDependingOn 不必再触发全量 refreshAllBlocksOrdered 级联
+       （否则 molang 完全接管时每帧 37 块互相回刷 ≈ 1700ms/帧，实测）。 */
+    window._inAnimLoop = true;
+    try {
     for (let i = 0; i < blocks.length; i++) {
         const b = blocks[i];
         const sp = scopeUsesSpontaneous(b.scope);
@@ -339,9 +596,39 @@ function animate() {
         const _prog = b.scope.program || '';
         // 含 q.life_time 的方块需每帧重算（否则暂停态下不会自增显示）
         const usesLifeTime = _prog.includes('q.life_time');
-        const needsPerFrame = sp || usesLifeTime || !_prog.includes('q.anim_time') || _playing || _timeChanged;
+        /* ★【2026-11-08 修「打开 molang 编辑模式后超级卡」】
+           实测：蜘蛛腿预设 37 块在 molangMode 下被逐帧 refresh 2220 次/60 帧 ≈ 15.6ms/帧；
+           对全部方块启用「molang 完全接管」后更糟（基线程序 + 全局回刷级联，实测 ~1700ms/帧）。
+           旧判据只看「程序里有没有 q.anim_time」，于是所有不含 q. 的程序（含空程序、
+           自动生成的常量基线、IK 求解层）暂停态也逐帧重跑。
+           新判据（暂停且时间未推进时）：
+             · IK 求解块（ikHasSolveLayer）：附加求解层是输入的纯函数，基础程序不自增/不含 q. 时跳过；
+             · 各层程序都不含 q.、也不自引用（如 v.t=v.t+1）⇒ 结果与上一帧无关，跳过；
+             · 其余（自增/随机/含 q.）维持旧的逐帧语义。
+           拖拽目标点 / 改时间 / 播放都会走显式 refresh 或 _playing/_timeChanged，不会漏更新。 */
+        let needsPerFrame;
+        /* ★★【2026-11-08 续 · 关键性能修复】
+           旧判据 `sp || usesLifeTime || _playing || _timeChanged || _catchup` 在【播放中】与
+           【拖拽后的 300ms 收敛期】每帧对所有 molang 块强制重算 —— 即使该块输入没变。
+           实测蜘蛛腿 37 块播放态 2146 次 refresh/60 帧（≈14.8ms/帧）大头就在这。
+           现在只保留「自发随机 / q.life_time」两种真正无法签名的情况；
+           其余一律走依赖签名：读 q.anim_time 的块因时钟变化自然重算，不读时间且输入不变的块跳过。
+           拖拽/改值走的 `refreshAllBlocksOrdered()` 与 refresh 内级联本就是同步完成的，
+           且每次 refresh 都会记录「本次输入签名」⇒ 循环下一帧直接命中跳过，无需 _catchup 补跑。 */
+        let _sigPre = null, _sigPreValid = false;
+        if (sp || usesLifeTime) needsPerFrame = true;
+        else {
+            /* 通用依赖脏标记（取代旧的「程序文本启发式 + IK 白名单」）：
+               签名 = 程序正文哈希 + 读到的 v.* / t.* 当前值 + q.anim_time 时钟。
+               与上次真正重算时记录的一致 ⇒ 输入没变 ⇒ 结果相同 ⇒ 本帧跳过。
+               签名不可用（含其它查询函数）时退回旧的纯函数判据。 */
+            const _sig = _blockDepSig(b);
+            if (_sig == null) needsPerFrame = !_blockPausedPure(b);
+            else needsPerFrame = !(b._depSigSet && _sig === b._depSig);
+            _sigPre = _sig; _sigPreValid = true;   // 复用给紧随其后的 refresh，避免重复计算
+        }
         if (needsPerFrame) {
-            b.refresh();
+            b.refresh(_sigPre, _sigPreValid);   // refresh 内部会记录本次输入签名基线
             if (b === selectedBlock) updateMolangValueDisplay(b); // 让只读数值面板里的 zrot 等实时跳动
         }
         // molang 编辑模式下：选中块的「逻辑分支运行态」着色随动画时间实时跟随
@@ -350,6 +637,9 @@ function animate() {
             try { updateMolangBranchColors(b); } catch (e) { }
         }
     }
+    } finally { window._inAnimLoop = false; }
+    // molang 变量描点：已打开的描点泡泡逐帧采样（无泡泡时立即返回，零开销）
+    try { if (typeof probeTick === 'function') probeTick(); } catch (e) { }
 
     // ---------- MC 式固定太阳光：从斜上方固定照射，不再跟随摄像机 ----------
     // 太阳方向已在初始化时固定为 (-12, 18, 8) -> (0, 0, 0)，保持与游戏内一致
@@ -804,8 +1094,13 @@ function captureThumbnail() {
 
         if (result) return result;
 
-        // 降级方案
-        try { const d = canvas.toDataURL('image/jpeg', 0.90); if (d && d.length > 1000) return d; } catch(e) {}
+        // 降级方案：★关闭 preserveDrawingBuffer 后，必须「先同步重绘一帧」再读画布，
+        // 否则读到的是已被浏览器清空的空白缓冲（旧实现依赖 preserve，现已不再开启）。
+        try {
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+            const d = canvas.toDataURL('image/jpeg', 0.90); if (d && d.length > 1000) return d;
+        } catch(e) {}
         return null;
     } catch (e) {
         return null;
@@ -967,6 +1262,8 @@ async function importOverwriteToCurrentProject(text, temp = false, applyFn = nul
 }
 
 function loadProjectIntoSimulator(project, addDefaultBlock = true) {
+    // 项目切换：先清掉旧项目屏幕上的 molang 泡泡；打开项目后按存档重建（见函数末尾）
+    try { if (typeof clearMolangBubbles === 'function') clearMolangBubbles(); } catch (e) { }
     // 清空当前场景
     blocks.forEach(b => { scene.remove(b.mesh); if(b.label) scene.remove(b.label); if(b.selectionWireframe) scene.remove(b.selectionWireframe); });
     blocks = [];
@@ -985,6 +1282,8 @@ function loadProjectIntoSimulator(project, addDefaultBlock = true) {
         folders = []; window.folders = folders; folderAxesDirty = true;
         globalVars.clear();
         keyframeData.clear();
+        // 全新空项目：全局动画控制器也必须清空，不能把上一个项目的动画带过来
+        if (typeof projectAnimations !== 'undefined' && Array.isArray(projectAnimations)) projectAnimations.length = 0;
         /* 【2026-10-19 · 关键帧去文件夹化】原此处还 clear() 骨级关键帧容器（boneKeyframes / kfAddedFolders），已删除 */
         if (addDefaultBlock) {
             const defM = [0,0,0,0,0,0,1,1,-90,0,0,0,0];
@@ -1005,6 +1304,10 @@ function loadProjectIntoSimulator(project, addDefaultBlock = true) {
     if (typeof renderSideBlockList === 'function') renderSideBlockList();
     requestGizmoRefresh();
     updateToolbar(true);
+    // 打开已有项目：重建上次固定（📌）的 molang 微调泡泡 / 描点泡泡（清空项目则不恢复）
+    if (project && project.state) {
+        try { if (typeof restoreMolangBubblesForProject === 'function') restoreMolangBubblesForProject(); } catch (e) { }
+    }
 }
 
 async function createNewProject() {
@@ -1073,6 +1376,8 @@ async function createProjectFromCommands(text, name) {
 }
 
 async function openProject(id) {
+    // 若直接从项目内跳转：先记住旧项目的常显泡泡
+    try { if (typeof saveMolangBubblesToProject === 'function') saveMolangBubblesToProject(); } catch (e) { }
     const project = await loadProjectFromDB(id);
     if (!project) { showToast('项目加载失败'); return; }
     currentProjectId = id;
@@ -1085,6 +1390,11 @@ async function openProject(id) {
         loadProjectIntoSimulator(project);
         await autoImportHashProject();
     }, { blockCount });
+    /* ★【2026-11-08 修复】打开项目必须把撤销栈基线重置为「刚载入的这份状态」。
+       旧实现只清场景、不动 history ⇒ 上一个项目（或本窗口此前编辑的项目）的快照仍留在栈里，
+       打开 B 后按 Ctrl+Z 会直接回退成 A 的模型（用户报告的「撤回跨项目」）。
+       与 createNewProject / 外部导入 / 覆盖导入 / 清空项目 的基线重置保持一致。 */
+    try { if (typeof history !== 'undefined' && history.reset) history.reset(getState()); } catch (e) { }
 }
 
 // 同步「项目」设置分组里的当前项目名与保存状态显示
@@ -1111,6 +1421,8 @@ function enterProject() {
 
 async function backToProjectList() {
     console.log('[backToProjectList] called, currentProjectId:', currentProjectId);
+    // 关闭项目前把 📌 常显泡泡（含描点历史）落到当前项目的 localStorage，重开时恢复
+    try { if (typeof saveMolangBubblesToProject === 'function') saveMolangBubblesToProject(); } catch (e) { }
     if (currentProjectId) {
         if (currentProjectIsTemp) {
             // 临时项目默认不保存：直接丢弃，返回列表不落库

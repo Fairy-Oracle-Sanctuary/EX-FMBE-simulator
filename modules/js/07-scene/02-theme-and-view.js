@@ -193,6 +193,50 @@ function createOriginAxes(step, actualMax, axisTickStep) {
     originAxesGroup.visible = showAxes;
     scene.add(originAxesGroup);
 }
+// ---------- 刻度数字遮挡 ----------
+// CSS2DObject 是 DOM 叠加层，永远画在 3D 画面之上，会「透过」方块显示刻度数字。
+// 这里从相机往每个刻度标签发射射线，若中途先命中可见方块，就把该标签的 opacity 置 0。
+// 节流执行（大场景更稀疏），避免每帧对全部标签 × 全部方块做相交测试。
+let _tickOccluTs = 0;
+const _tickOccluVec = new THREE.Vector3();
+const _tickOccluDir = new THREE.Vector3();
+function updateOriginTickOcclusion(now) {
+    if (typeof originAxesGroup === 'undefined' || !originAxesGroup) return;
+    if (!originAxesGroup.visible || !showTicks) return;
+    const bigScene = (typeof blocks !== 'undefined' && blocks.length > 800);
+    if (now - _tickOccluTs < (bigScene ? 500 : 150)) return;
+    _tickOccluTs = now;
+    const labels = [];
+    originAxesGroup.traverse(o => { if (o.isCSS2DObject && o.element) labels.push(o); });
+    if (!labels.length) return;
+    const meshes = [];
+    if (typeof blocks !== 'undefined') {
+        for (let i = 0; i < blocks.length; i++) {
+            const b = blocks[i];
+            if (!b || !b.mesh || !b.mesh.visible) continue;
+            if (typeof isBlockInHiddenGroup === 'function' && isBlockInHiddenGroup(b)) continue;
+            const ms = (typeof b.getMeshes === 'function') ? b.getMeshes() : [b.mesh];
+            for (let j = 0; j < ms.length; j++) { const m = ms[j]; if (m && m.visible) meshes.push(m); }
+        }
+    }
+    const oldNear = raycaster.near, oldFar = raycaster.far;
+    camera.updateMatrixWorld();
+    labels.forEach(o => {
+        o.getWorldPosition(_tickOccluVec);
+        const dist = camera.position.distanceTo(_tickOccluVec);
+        let occluded = false;
+        if (meshes.length && dist > 0.05) {
+            _tickOccluDir.subVectors(_tickOccluVec, camera.position).normalize();
+            raycaster.set(camera.position, _tickOccluDir);
+            raycaster.near = 0;
+            raycaster.far = dist - 0.05;
+            occluded = raycaster.intersectObjects(meshes, false).length > 0;
+        }
+        o.element.style.opacity = occluded ? '0' : '1';
+    });
+    raycaster.near = oldNear;
+    raycaster.far = oldFar;
+}
 // 动态网格：始终位于 Y=0 平面（与原点 X、Z 轴保持一致），水平中心跟随视点(controls.target)，
 // 因此无论在世界哪个象限、缩放到多近，都能获得精细网格与真实世界坐标刻度（如 5020），
 // 而原点 XYZ 参考轴保持钉在世界原点不动。
@@ -367,6 +411,11 @@ document.getElementById('showTicksCheckbox').addEventListener('change', (e) => {
 
 // ---- 屏幕边框 XZ 标尺：原点坐标轴滚出屏幕、看不见数值时，在网格接触屏幕边框处显示 XZ 坐标刻度 ----
 let rulerEl = null, rulerW = 0, rulerH = 0, lastRulerKey = '';
+/* ★【2026-10-31 移动端手感】边框标尺是「整段 DOM 重建」（innerHTML='' + 逐个 createElement），
+   旧实现只要相机位姿有一丝变化就重建 —— 双指捏合/拖拽时每帧一次，手机上是明确的一次大卡顿。
+   这里限速到 ~150ms 一次；停手后再补一次，保证最终状态与相机严格对齐。 */
+let _rulerLastBuild = 0, _rulerPendingTimer = null;
+const RULER_REBUILD_INTERVAL = 150;
 let rulerLastTick = { left: null, right: null, top: null, bottom: null };
 function ensureRulerEl() {
     if (rulerEl) return;
@@ -429,8 +478,11 @@ function addRulerTick(edge, x, y, text, col) {
 function updateScreenRuler() {
     if (!showTicks) { if (rulerEl) rulerEl.style.display = 'none'; return; }
     ensureRulerEl();
-    rulerW = renderer.domElement.clientWidth;
-    rulerH = renderer.domElement.clientHeight;
+    /* ★【2026-10-31 移动端性能】这里原本每帧读 renderer.domElement.clientWidth/Height：
+       而上一段刚写完几百个标签的样式，读取尺寸会强制同步布局（layout thrash），手机上每帧都吃一次。
+       画布容器是 position:fixed inset:0 的全屏层，用 window.innerWidth/Height 完全等价且零布局开销。 */
+    rulerW = window.innerWidth;
+    rulerH = window.innerHeight;
     // 仅在原点坐标轴完全不可见时才显示边框标尺：坐标读数由原点轴上的数字刻度承担；
     // 原点一旦回到屏幕内（坐标轴可见），边框标尺自动隐藏，避免重复。
     const o = new THREE.Vector3(0, 0, 0).project(camera);
@@ -441,6 +493,19 @@ function updateScreenRuler() {
     // 节流：相机位置/朝向、视口尺寸、主题未变则不重建
     const key = camera.position.toArray().join(',') + '|' + controls.target.toArray().join(',') + '|' + camera.quaternion.toArray().join(',') + '|' + rulerW + 'x' + rulerH + '|' + (document.body.classList.contains('light-mode') ? 'L' : 'D');
     if (key === lastRulerKey) return;
+    /* ★【2026-10-31】相机连续移动时（捏合/拖拽/阻尼余动）限速重建：150ms 内最多一次，
+       期间挂一个尾随定时器，停手后补建，最终画面不会停在旧刻度上。 */
+    const _nowRuler = performance.now();
+    if (_nowRuler - _rulerLastBuild < RULER_REBUILD_INTERVAL) {
+        if (!_rulerPendingTimer) {
+            _rulerPendingTimer = setTimeout(() => {
+                _rulerPendingTimer = null;
+                try { updateScreenRuler(); } catch (e) { /* 相机已换场景时忽略 */ }
+            }, RULER_REBUILD_INTERVAL);
+        }
+        return;
+    }
+    _rulerLastBuild = _nowRuler;
     lastRulerKey = key;
     rulerEl.innerHTML = '';
     rulerLastTick = { left: null, right: null, top: null, bottom: null };

@@ -231,7 +231,12 @@ function setupMolangNumberBubble(block) {
         if (ta.selectionStart !== ta.selectionEnd) return; // 有选区（拖动高亮）时不弹
         const tok = findNumberAt(ta.value, ta.selectionStart);
         if (tok) mnbShow(block, tok, e.clientX, e.clientY);
-        else mnbHide();
+        else {
+            // 点变量名（v.xxx）→ 描点泡泡；否则关闭两种瞬时泡泡
+            const vn = (typeof findVarAt === 'function') ? findVarAt(ta.value, ta.selectionStart) : null;
+            if (vn && block.scope.vars.has(vn) && typeof probeShow === 'function') probeShow(block, vn, e.clientX, e.clientY);
+            else { mnbHide(); if (typeof probeHideTransient === 'function') probeHideTransient(); }
+        }
     });
     // 泡泡开启时，方向键微调（已被全局守卫拦截、不会误移摄像机）
     ta.addEventListener('keydown', (e) => {
@@ -241,7 +246,7 @@ function setupMolangNumberBubble(block) {
         else if (e.key === 'ArrowDown') { e.preventDefault(); mnbKeyStep(block, t, -1); }
         else if (e.key === 'Escape') { mnbHide(); }
     });
-    ta.addEventListener('scroll', mnbHide);
+    ta.addEventListener('scroll', () => { mnbHide(); if (typeof probeHideTransient === 'function') probeHideTransient(); });
     // 全局：点击泡泡外部（且不是文本框）时关闭瞬时泡泡（常显泡泡不受影响）
     if (!mnbDocBound) {
         mnbDocBound = true;
@@ -254,9 +259,19 @@ function setupMolangNumberBubble(block) {
 
 function renderVariablesForBlock(block) {
     mnbHide();   // 重建/切换/关闭变量面板时关闭瞬时泡泡（修复"失焦后仍残留"）
+    if (typeof probeHideTransient === 'function') probeHideTransient(); // 描点瞬时空泡泡同步关闭（常显泡泡保留）
     hideBatchBubble();   // 取消多选 / 切换选中 / 面板重建 → 增量泡泡必须一起消失（它对锚定行强依赖）
     const cont = document.getElementById('varsContainer'), newC = document.getElementById('newVarContainer');
-    if (selectedBlocksSet.size > 1) { cont.innerHTML = `<div class="variables-left" style="width:100%;">${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`; newC.innerHTML = ''; attachBatchEvents(); return; }
+    if (selectedBlocksSet.size > 1) {
+        // 多选批量面板也要有动画控制器入口：＋动画 会把动画应用到所有选中方块
+        const _mb = (typeof selectedBlock !== 'undefined' && selectedBlock) ? selectedBlock : Array.from(selectedBlocksSet)[0];
+        const _layerBar = (_mb && typeof renderAnimationLayerBar === 'function') ? renderAnimationLayerBar(_mb, 'batch-') : '';
+        cont.innerHTML = `<div class="variables-left" style="width:100%;">${_layerBar}${renderBatchPanel()}</div><div class="variables-right" style="display:none;"></div>`;
+        newC.innerHTML = '';
+        attachBatchEvents();
+        if (_mb && typeof bindAnimationLayerBar === 'function') bindAnimationLayerBar(_mb, { prefix: 'batch-', rerender: () => renderVariablesForBlock(_mb) });
+        return;
+    }
     // 离开批量修改面板时清理临时的 batchDeltas，已应用的变更保持不变
     if (batchDeltas && batchDeltas.size > 0) batchDeltas.clear();
     if (!block) { 
@@ -286,8 +301,19 @@ function renderVariablesForBlock(block) {
         return; 
     }
 
+    // 【2026-11-07】旧操作模式「恒用 molang 编辑面板」：选中即自动转入 molang 接管，不再渲染折叠变量卡片。
+    // 只在旧布局生效；_molangPanelOptOut 是「⇦ 转普通方块」留下的单项退出标记，防止刚转回又被立刻接管。
+    if (!document.body.classList.contains('new-layout-active') && oldModeMolangPanelAlways
+        && !block._molangPanelOptOut && !block.scope.molangMode
+        && typeof ensureOldModeMolangPanelBlock === 'function') {
+        ensureOldModeMolangPanelBlock(block);
+    }
+
     // molang 接管模式：变量区改为只读数值显示 + 高亮 molang 编辑器（不影响多选/未接管方块）
-    const takeover = block.scope.molangMode || (block.scope.program && block.scope.program.trim());
+    // ★2026-11-07 动画层：接管判定按「当前活动层」——活动层是附加通道时强制走 molang 编辑器；
+    //   活动层是基础层时沿用旧判定（变量卡片 / molang 接管），因此纯变量方块仍可正常编辑核心变量。
+    const _actKey = (typeof block.scope.activeLayerKey === 'function') ? block.scope.activeLayerKey() : '__base__';
+    const takeover = (_actKey !== '__base__') ? true : !!(block.scope.molangMode || (block.scope.program && block.scope.program.trim()));
     if (takeover) {
         cont.innerHTML = renderMolangEditor(block);
         newC.innerHTML = '';
@@ -300,6 +326,19 @@ function renderVariablesForBlock(block) {
     const core = {位移:['v.xpos','v.ypos','v.zpos','v.xbasepos','v.ybasepos','v.zbasepos'],缩放:['v.scale','v.extend_scale','v.extend_xrot','v.extend_yrot'],旋转:['v.xrot','v.yrot','v.zrot','v.rotatex','v.rotatey','v.rotatez']};
     vars.forEach(v => { let placed=false; for(let g in core) if(core[g].includes(v.name)) { localGrouped[g].push(v); placed=true; break; } if(!placed) localGrouped.自定义.push(v); });
 
+    // ★★★2026-11-11 用户：「为啥不把那些可以调的变量写在上面？」
+    //   IK 的**可调旋钮**从 `v.ik_*` 那一堆内部几何量里抽出来，固定排在「自定义变量」最前面：
+    //     · 末端块：v.ik_tx / v.ik_ty / v.ik_tz（目标位置）、v.ikShape（造型 −1~1）
+    //     · 各关节块：v.ikW（该关节活动权重 0~1）
+    //   内部量（v.ik_g*/rx0/wz/arc/w*/haspar/par*/shape/p*/db*/…) 仍留在折叠的 v.ik_ 组里。
+    const IK_KNOB_VARS = ['v.ik_tx', 'v.ik_ty', 'v.ik_tz', 'v.ikShape', 'v.ikW'];
+    const ikKnobItems = [];
+    {
+        const rest = [];
+        localGrouped.自定义.forEach(v => { (IK_KNOB_VARS.indexOf(v.name) >= 0 ? ikKnobItems : rest).push(v); });
+        ikKnobItems.sort((a, b) => IK_KNOB_VARS.indexOf(a.name) - IK_KNOB_VARS.indexOf(b.name));
+        localGrouped.自定义 = rest;
+    }
     const customItems = localGrouped.自定义.map(v => ({name: v.name, def: v}));
     const customGroups = groupByPrefix(customItems, 'v.');
 
@@ -330,9 +369,10 @@ function renderVariablesForBlock(block) {
     });
 
     let customHtml = '';
-    if (customGroups.standalone.length || customGroups.groups.length) {
+    if (ikKnobItems.length || customGroups.standalone.length || customGroups.groups.length) {
         // 左列「自定义变量」用独立状态，避免被右列（位移/缩放/旋转）的展开态覆盖
-        const customOpen = currentLeftGroup === '自定义';
+        // IK 块：可调旋钮必须一眼能看到 ⇒ 默认展开（其余块维持原折叠行为）
+        const customOpen = (currentLeftGroup === '自定义') || ikKnobItems.length > 0;
         customHtml += `<div class="var-group" data-group="自定义"><div class="group-header" data-group-toggle="自定义"><span class="group-title">📁 自定义变量</span><span class="group-toggle">${customOpen?'▼':'▶'}</span></div><div class="group-content" data-group-content="自定义" style="${customOpen?'display:block':'display:none'}">`;
         customGroups.standalone.forEach(({name, def}) => { customHtml += renderVarCard(def, block.id); });
         customGroups.groups.forEach(g => {
@@ -343,17 +383,28 @@ function renderVariablesForBlock(block) {
         });
         customHtml += `</div></div>`;
     }
-    let leftHtml = globalHtml + customHtml;
+    // ★2026-11-11「可调的写在最上面」：IK 旋钮单独成组，排在【全局变量之前】
+    let knobHtml = '';
+    if (ikKnobItems.length) {
+        const kOpen = expandedVars.has('ik_knobs') || !expandedVars.has('ik_knobs_closed');
+        knobHtml = `<div class="var-group" data-group="ik_knobs"><div class="group-header" data-group-toggle="ik_knobs"><span class="group-title">🎛 IK 参数</span><span class="group-toggle">${kOpen ? '▼' : '▶'}</span></div><div class="group-content" data-group-content="ik_knobs" style="${kOpen ? 'display:block' : 'display:none'}">`;
+        ikKnobItems.forEach(v => { knobHtml += renderVarCard(v, block.id); });
+        knobHtml += `</div></div>`;
+    }
+    let leftHtml = knobHtml + globalHtml + customHtml;
     if (!leftHtml) leftHtml = '<div class="empty-state">暂无全局/自定义变量</div>';
 
     // 旧版操作模式 + 面板横向宽度不足时：直接合并为单列（手机端样式），不使用两列布局
     const isOldModeNarrow = !document.body.classList.contains('new-layout-active') &&
         document.querySelector('.data-panel.side-panel')?.dataset.narrow === 'true';
+    // 🎬 动画层条：纯变量方块也要有「＋ 附加」入口（附加层不会把基础层从变量卡片模式踢出去）
+    const layerBarHtml = (typeof renderAnimationLayerBar === 'function') ? renderAnimationLayerBar(block) : '';
     if (isOldModeNarrow) {
-        cont.innerHTML = `<div class="variables-left" style="border-right:none !important;padding-right:0 !important;width:100% !important;">${leftHtml}${rightHtml}</div>`;
+        cont.innerHTML = `<div class="variables-left" style="border-right:none !important;padding-right:0 !important;width:100% !important;">${layerBarHtml}${leftHtml}${rightHtml}</div>`;
     } else {
-        cont.innerHTML = `<div class="variables-left">${leftHtml}</div><div class="variables-right">${rightHtml}</div>`;
+        cont.innerHTML = `<div class="variables-left">${layerBarHtml}${leftHtml}</div><div class="variables-right">${rightHtml}</div>`;
     }
+    if (typeof bindAnimationLayerBar === 'function') bindAnimationLayerBar(block);
     newC.innerHTML = `<div class="new-var-row"><input type="text" class="new-var-input" id="newVarInput" placeholder="v.变量 = 值 / t.变量 = 值 (回车)"></div>`;
     attachVariableEvents(block);
     document.querySelectorAll('.group-header').forEach(h => {
@@ -602,6 +653,88 @@ function toggleAutoInc(btn, isGlobal, tb, varName, delta) {
     startAutoInc(bid, isGlobal, varName, delta, btn);
 }
 let _inGlobalUpdate = false;
+let _inProgramCascade = false;
+// ★2026-11-07：molang 程序里 `t.<name>=...` 写出的全局值，只有本块执行完才变成新值。
+//   如果依赖这些全局的块排在前面（关节读末端发布的 t.<tip>_ik_be），它们读到的还是上一帧的值
+//   ⇒ 表现为「慢半拍 / 跳变后其它骨骼不跟」。这里在写完以后，把真正变化过的全局的依赖块再刷一遍。
+// ★2026-11-07 二次（用户实测：删一块/手动刷一次子骨骼才对）：补刷必须**沿骨骼链逐跳传播**，
+//   只刷一跳只会修好直接引用末端全局的那几块；它们的子块读的是「父块发布的 t.<父>_xrot」，
+//   父块刷完值变了、子块却没被再刷 ⇒ 子骨骼仍旧是上一帧的数值。
+//   现在按「一轮 = 本批新出现的全局名」递推，直到没有新的依赖块（上限 8 轮，防环）。
+function refreshBlocksUsingGlobals(origin, names) {
+    if (!origin || !names || !names.size || _inProgramCascade) return;
+    _inProgramCascade = true;
+    try {
+        const done = new Set([origin.id]);
+        let keys = Array.from(names);
+        for (let round = 0; round < 8 && keys.length; round++) {
+            const targets = [];
+            for (const b of blocks) {
+                if (done.has(b.id)) continue;
+                let hit = false;
+                for (const k of keys) {
+                    const needle = 't.' + k;
+                    if (b.scope.program && String(b.scope.program).includes(needle)) { hit = true; break; }
+                    for (const [, d] of b.scope.vars) if (d && d.expr && String(d.expr).includes(needle)) { hit = true; break; }
+                    if (hit) break;
+                }
+                if (hit) targets.push(b);
+            }
+            if (!targets.length) break;
+            const next = [];
+            for (const b of targets) {
+                done.add(b.id);
+                if (_blockShouldRefresh(b)) b.refresh(b._sigNow, b._sigNowValid);
+                // 骨骼发布是「表达式实时求值」（t.<id>_xrot = v.rotatex，sourceBlockId=本块）
+                // ⇒ 本块刷完，所有读它的子块也必须再刷一遍（下一轮）。
+                for (const [k, g] of globalVars) {
+                    if (g && g.sourceBlockId === b.id && next.indexOf(k) < 0) next.push(k);
+                }
+            }
+            keys = next;
+        }
+    }
+    finally { _inProgramCascade = false; }
+}
+// ★2026-11-07（用户实测：父骨骼对、子骨骼仍是上一帧的值，删掉一块强制刷新才回到正确位置）：
+//   全量刷新必须分三相 —— ①普通变量块 → ②molang 程序块 → ③普通变量块。
+//   骨骼链里末端块是程序块（发布 t.<tip>_ik_be / _ik_jr*），关节块是普通块（读这些全局）。
+//   按 blocks 数组顺序刷时关节排在末端块前面 ⇒ 关节拿到上一帧的值；只靠「写全局后补刷依赖块」
+//   也修不干净（父块刷完发布的 t.<父>_xrot 变了，子块对应的是上一轮的值）。
+//   三相顺序保证：程序块读到的输入是本帧最新的；程序块产出再在第三相传播给整条链（含多级子骨骼）。
+/* ★【2026-11-08 续】依赖签名判据：输入与上次重算时一致 ⇒ 结果必然相同 ⇒ 可跳过 refresh。
+   全量刷新（拖拽/改值每次都会触发）里用它做「脏块筛选」，避免 37 块 × 4 相重复求解。
+   签名不可用（含 q. 其它查询）时保守返回 true。 */
+function _blockShouldRefresh(b) {
+    if (typeof _blockDepSig !== 'function') { b._sigNow = null; b._sigNowValid = false; return true; }
+    const sig = _blockDepSig(b);
+    // 把刚算出的签名暂存给紧随其后的 b.refresh(...)，避免同一次刷新里重复计算
+    b._sigNow = sig; b._sigNowValid = true;
+    if (sig == null) return true;
+    return !(b._depSigSet && sig === b._depSig);
+}
+function refreshAllBlocksOrdered() {
+    const progs = [], others = [];
+    for (const b of blocks) {
+        if (!b || !b.scope) continue;
+        // IK 末端块虽然不再是 molangMode，但求解层同样产出 t.<末端>_ik_* ⇒ 与程序块同相
+        (b.scope.molangMode || (typeof ikHasSolveLayer === 'function' && ikHasSolveLayer(b)) ? progs : others).push(b);
+    }
+    for (const b of others) if (_blockShouldRefresh(b)) b.refresh(b._sigNow, b._sigNowValid);
+    let wrote = false;
+    for (const b of progs) { if (_blockShouldRefresh(b) && b.refresh(b._sigNow, b._sigNowValid) === true) wrote = true; }
+    if (wrote) {
+        for (const b of others) if (_blockShouldRefresh(b)) b.refresh(b._sigNow, b._sigNowValid);
+        // ★第四相（2026-11-08 修「末端滞后」）：关节块读 t.<末端>_ik_* 后位置/旋转才变，
+        //   末端块自己的枢轴/朝向是由父关节 globals 决定的，第三相里没有人再回头刷它
+        //   ⇒ 每次拖动目标点，末端姿态永远慢一帧（用户实测现象）。
+        //   这里对 solve 末端块完整再刷一次。不能“跳过求解层”：base 会把 v.ik_b* 等
+        //   占位量重置成 0，跳过后 b 全丢 ⇒ 姿态错乱（实测）。
+        for (const b of progs) {
+            if (typeof ikHasSolveLayer === 'function' && ikHasSolveLayer(b) && _blockShouldRefresh(b)) b.refresh(b._sigNow, b._sigNowValid);
+        }
+    }
+}
 function updateGlobalVarsDependingOn(block, localVarName) {
     let changed = false;
     for (let [n, g] of globalVars) if (g.sourceBlockId === block.id) {
@@ -611,9 +744,12 @@ function updateGlobalVarsDependingOn(block, localVarName) {
     }
     // 防止全局变量刷新引发的无界级联：本次调用内只允许触发一次全量 refresh 传播，
     // 避免“父变→刷新所有→子再触发父变→再刷新所有”的死循环（多骨骼时曾卡死）。
-    if (changed && !_inGlobalUpdate) {
+    if (changed && !_inGlobalUpdate && !window._inAnimLoop) {
         _inGlobalUpdate = true;
-        try { blocks.forEach(b=>b.refresh()); } finally { _inGlobalUpdate = false; }
+        // ★【2026-11-08】拖拽/改值时全局 t.* 会变化：解除动画循环对 IK 求解块的暂停跳过，
+        //   让求解在随后的几帧里继续重算直到收敛（见 07-scene/04-marker-light-and-loop.js）
+        try { window._ikPauseDirtyAt = performance.now(); } catch (e) {}
+        try { refreshAllBlocksOrdered(); } finally { _inGlobalUpdate = false; }
     }
 }
 

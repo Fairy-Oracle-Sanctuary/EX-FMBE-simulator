@@ -147,6 +147,20 @@ function applyNewLayoutMode() {
     if (typeof syncVirtModKeybarVisibility === 'function') syncVirtModKeybarVisibility();
     // 同步数据视图头部细条显隐
     syncDataViewHeader();
+    // ★【2026-11-10】切换操作模式后必须重建右侧变量面板。
+    //   旧实现切换布局时完全不重绘面板：在新操作模式里选中一个「没有接管 molang」的方块
+    //   （面板画出来的是普通变量卡片），随后切回旧操作模式时没有任何代码重新渲染
+    //   ⇒ 即使勾了「旧操作模式恒启用 molang 编辑面板」，看到的仍是新模式遗留的普通变量列表
+    //   （用户报；探针实测切换前后 #varsContainer.innerHTML 长度逐字节不变）。
+    //   必须在 body 移除 new-layout-active 之后再渲染：renderVariablesForBlock 里的自动接管分支
+    //   要按「当前是否旧操作模式」判定，先移除类名才会命中。
+    try {
+        const _selNow = (typeof selectedBlock !== 'undefined') ? selectedBlock : null;
+        const _multiNow = (typeof selectedBlocksSet !== 'undefined' && selectedBlocksSet) ? selectedBlocksSet.size : 0;
+        if (!isNewLayoutMode && (_selNow || _multiNow) && typeof renderVariablesForBlock === 'function') {
+            renderVariablesForBlock(_selNow || null);
+        }
+    } catch (err) {}
 }
 
 // 拖拽进行中：renderSideBlockList 会被推迟而非立即重建，避免移除正在被拖拽的源节点
@@ -320,6 +334,11 @@ function renderSideBlockList() {
     for (const [n, g] of globalVars) {
         if (g && g.sourceBlockId && /_(px|py|pz|xrot|yrot|zrot)$/.test(n)) molangSourceIds.add(g.sourceBlockId);
     }
+    // ★IK/FK 角标用：拥有 molang 骨骼子块的父块集合（用于把「骨源父块」也标成 FK）。
+    //   只按 _boneParent 反推，不用 molangSourceIds —— 后者会把 IK 目标方块 point
+    //   （它发布 t.point_px/py/pz 供腿读取）误标成 FK。
+    const boneParentIds = new Set();
+    for (const b of blocks) { if (b && b._boneParent) boneParentIds.add(b._boneParent); }
     
     let html = '';
 
@@ -338,8 +357,7 @@ function renderSideBlockList() {
                 eye:    `<svg ${a}><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
                 rotate: `<svg ${a}><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/><path d="M21 4v5h-5"/></svg>`,
                 pivot:  `<svg ${a}><circle cx="12" cy="12" r="8.5"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>`,
-                hash:   `<svg ${a}><path d="M5 9h14M4 15h14M10 4l-2 16M16 4l-2 16"/></svg>`,
-                mirror: `<svg ${a}><path d="M12 3v18" stroke-dasharray="3 2.5"/><path d="M9.5 6.5L4 12l5.5 5.5"/><path d="M14.5 6.5L20 12l-5.5 5.5"/></svg>`
+                hash:   `<svg ${a}><path d="M5 9h14M4 15h14M10 4l-2 16M16 4l-2 16"/></svg>`
             };
         })();
         // 视图切换按钮（图形）：内联在三个图标左侧，用斜杠分隔；仅「新布局 + 非侧边（手机底部）」显示。
@@ -369,19 +387,7 @@ function renderSideBlockList() {
                     <div class="outliner-tools-menu-item" id="sideBlockAlignPivot" title="方式2（当前方式）：把当前选中方块的枢轴归到骨骼原点/骨骼枢轴，模型位置不变（pos→basepos）"><span class="tm-ico">${tmIco.pivot}</span><span class="tm-label">归位枢轴到骨骼（方式2：方块枢轴→骨骼原点）</span></div>
                     <div class="outliner-tools-menu-item" id="sideBlockAlignBonePivot" title="方式1：以本层级方块（不含子文件夹）出现频率最高的枢轴，直接作为整个骨骼的枢轴"><span class="tm-ico">${tmIco.pivot}</span><span class="tm-label">归位枢轴到骨骼（方式1：最频繁枢轴→骨骼枢轴）</span></div>
                     <div class="outliner-tools-menu-item" id="sideBlockConstantize" title="删除选中方块的全部中间变量/表达式，仅保留变换核心变量并取其当前值（常量化），便于 Gizmo 直接操控"><span class="tm-ico">${tmIco.hash}</span><span class="tm-label">表达式常量化</span></div>
-                    <!-- ★【2026-10-24 用户要求】镜像属于「工具」而非 Gizmo 控件，故收进扳手工具菜单：
-                         ①自由对称面：进入后自己摆一张可旋转的对称面；
-                         ②选取面作为对称面：点方块上的面，对称面与该面完全重合；
-                         ③三点确定对称面：依次点三个方块顶点，三点定一张任意朝向的对称面（可跨方块取点）。 -->
-                    <div class="outliner-tools-menu-divider"></div>
-                    <div class="outliner-tools-menu-subtitle">镜像：把选中方块按对称面反射（进入后可在气泡里切换「镜像模型生成 / 自身对称」）</div>
-                    <div class="outliner-tools-menu-item" id="sideBlockMirrorFree" title="进入镜像：自由摆放并旋转对称面（拖箭头平移、拖圆环倾斜）"><span class="tm-ico">${tmIco.mirror}</span><span class="tm-label">自由对称面</span></div>
-                    <div class="outliner-tools-menu-item" id="sideBlockMirrorFace" title="进入镜像：点选方块上的一个面，对称面与该面完全重合"><span class="tm-ico">${tmIco.mirror}</span><span class="tm-label">选取面作为对称面</span></div>
-                    <div class="outliner-tools-menu-item" id="sideBlockMirrorVtx" title="进入镜像：依次点击三个方块顶点确定对称面（三个点可来自不同方块）"><span class="tm-ico">${tmIco.mirror}</span><span class="tm-label">三点确定对称面</span></div>
-                    <!-- ★【2026-10-31 用户要求】「自身对称」不做成第四个入口，而是气泡里的结果方式切换按钮：
-                         三种定面方式（自由 / 选面 / 选点）都能切到「自身对称」，此时方块本身反射过去、不新建方块；
-                         有关键帧动画时，镜像姿态写成当前时刻的关键帧。 -->
-                    <div class="outliner-tools-menu-subtitle">自身对称：方块本身反射过去，不新建方块（有关键帧时写入当前时刻的帧）</div>
+                    <!-- 镜像已迁到顶栏快捷操作栏的「丰」字形按钮（#mirrorMenuBtn，快捷键 M），不再放在本菜单 -->
                 </div>
             </div>
         </div>`;
@@ -474,6 +480,34 @@ function renderSideBlockList() {
             : '选择父级方块进行 molang 骨骼绑定';
         return `<button class="side-block-bind" data-bind-id="${b.id}" title="${_title}">✛</button>`;
     };
+    // ★IK / FK 角标（仅新操作模式）：方块名左上角的小字，区分该块属于哪种骨骼体系。
+    //   IK：IK 逆骨骼链成员（_ikRole 是新建时的元数据，导入命令后不恢复 ⇒ 同时按表达式反推
+    //       t.<tip>_ik_jrx/jry/jrz/be 或 v.ik_tx/dx 等）；FK：常规 molang 骨骼绑定
+    //       （自身有父骨骼跟随，或作为骨源发布 t.<id>_px/py/pz 等全局）。
+    //   普通无骨骼关系的方块不标注（避免把「没有骨骼」误标成 FK）。
+    const ikfkTagOf = (b) => {
+        if (!isNewLayoutMode || !b) return '';
+        let kind = '';
+        if (b._ikRole || (Array.isArray(b._ikChain) && b._ikChain.length)) kind = 'IK';
+        if (!kind) {
+            try {
+                if (b.scope && b.scope.vars) {
+                    for (const [, d] of b.scope.vars) {
+                        const e = (d && d.expr) ? String(d.expr) : '';
+                        if (/t(?:\[['"]?|\.)[A-Za-z0-9_]+_ik_(?:jrx|jry|jrz|be)\b/.test(e) || /\bv\.ik_(?:tx|ty|tz|dx|be)\b/.test(e)) {
+                            kind = 'IK'; break;
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+        if (!kind) {
+            const bp = b._boneParent || (typeof inferMolangBoneParent === 'function' ? inferMolangBoneParent(b) : null);
+            if ((bp && typeof isBoneMolangDriven === 'function' && isBoneMolangDriven(b)) || boneParentIds.has(b.id)) kind = 'FK';
+        }
+        if (!kind) return '';
+        return `<i class="side-block-ikfk side-block-ikfk-${kind.toLowerCase()}" title="${kind === 'IK' ? 'IK 逆骨骼链成员' : 'FK 正向骨骼绑定'}">${kind}</i>`;
+    };
     // 生成单个方块条目 HTML（供文件夹内与未分组共用）
     // depth: 在骨骼树中的层级缩进（0 = 根，子骨骼逐层右移）
     // inFolder: 是否位于文件夹内（决定要不要 side-block-group-item 的蓝色竖线）
@@ -485,10 +519,6 @@ function renderSideBlockList() {
         const disabledClass = (isKfMode && !isKfBlock) || (!isKfMode && isKfBlock) ? 'side-block-disabled' : '';
         // 只要是动画方块就显示紫色小三角形（含骨骼文件夹：其关键帧在 boneKeyframes，不落 keyframeData）
         const kfBadge = isKfBlock ? '<span class="side-block-kf-badge"></span>' : '';
-        // molang 驱动高亮：方块变换由 molang 表达式驱动（或完全接管 / 骨源发布）时，自动加样式类 + 角标，
-        // 让导入/编辑后“哪些方块被 molang 控制”一目了然，无需手动开关。
-        const molangInfo = blockMolangInfo(b, molangSourceIds);
-        const molangClass = molangInfo ? ` side-block-molang side-block-molang-${molangInfo.kind}` : '';
         // 骨骼标记：骨干方块 = 方块名斜体（不再显示橙色条纹和 ★ 星标，用户认为太土）；
         // 判定条件：① 文件夹的 _backbone 指向该块（显式骨干）；② 该块是骨骼根（有 _rotatex 全局变量）。
         // 条件② 覆盖单方块文件夹（enterKeyframeMode 不自动设 _backbone），确保跨文件夹/单方块骨骼的根也标斜体。
@@ -502,9 +532,10 @@ function renderSideBlockList() {
         // ★2026-10-04 方块锁定：只禁止选中、仍显示。名字前挂一把小锁（svg 不是 span，不会被隐藏划线规则命中）。
         const lockedClass = b.locked ? ' side-block-locked' : '';
         const lockMark = b.locked ? getBlockLockIcon(true, 'side-block-lock-mark') : '';
-        return `<div class="side-block-item${folderClass} ${isSel ? _SIDE_SEL_TOKEN : ''} ${disabledClass}${molangClass}${hiddenClass}${lockedClass}" data-block-id="${b.id}"${indentStyle}>
+        const ikfkMark = ikfkTagOf(b);
+        return `<div class="side-block-item${folderClass} ${isSel ? _SIDE_SEL_TOKEN : ''} ${disabledClass}${hiddenClass}${lockedClass}" data-block-id="${b.id}"${indentStyle}>
             <div class="side-block-box">
-                <span class="side-block-name-wrap">${kfBadge}${lockMark}<span${nameStyle}>❒ ${b.id}</span></span>
+                <span class="side-block-name-wrap">${ikfkMark}${kfBadge}${lockMark}<span${nameStyle}>❒ ${b.id}</span></span>
                 <div class="side-block-actions">
                     <button class="side-block-eye" data-eye-id="${b.id}" title="${b.hidden ? '显示该方块（当前隐藏：不显示且无法选中）' : '隐藏该方块（不显示且无法选中）'}">${getGroupEyeIcon(!!b.hidden)}</button>
                     <button class="side-block-lock" data-lock-id="${b.id}" title="${b.locked ? '解锁该方块（当前锁定：禁止选中，仍显示）' : '锁定该方块（禁止选中，仍保持显示）'}">${getBlockLockIcon(!!b.locked)}</button>
@@ -896,14 +927,6 @@ function renderSideBlockList() {
             if (unlockAllBtn) unlockAllBtn.addEventListener('click', () => unlockAllBlocks());
             const unhideAllBtn = document.getElementById('sideBlockUnhideAll');
             if (unhideAllBtn) unhideAllBtn.addEventListener('click', () => unhideAllBlocks());
-            // 镜像（工具菜单内）：自由对称面 / 选取面作为对称面 / 三点确定对称面
-            const mirrorFreeBtn = document.getElementById('sideBlockMirrorFree');
-            if (mirrorFreeBtn) mirrorFreeBtn.addEventListener('click', (e) => { e.stopPropagation(); mirrorBegin('free'); });
-            const mirrorFaceBtn = document.getElementById('sideBlockMirrorFace');
-            if (mirrorFaceBtn) mirrorFaceBtn.addEventListener('click', (e) => { e.stopPropagation(); mirrorBegin('face'); });
-            const mirrorVtxBtn = document.getElementById('sideBlockMirrorVtx');
-            if (mirrorVtxBtn) mirrorVtxBtn.addEventListener('click', (e) => { e.stopPropagation(); mirrorBegin('vtx'); });
-            // 「自身对称」不是单独入口：三种定面方式进入后，在气泡的「结果方式」里切换即可
         }
     }
 
@@ -1273,21 +1296,31 @@ function renderSideBlockList() {
             e.stopPropagation();
             const targets = selectedBlocksSet.size ? [...selectedBlocksSet] : (selectedBlock ? [selectedBlock] : []);
             if (!targets.length) { showToast('请先选中至少一个方块'); return; }
-            let done = 0, skipped = 0;
+            // ★★ 两阶段：先【全部快照】再【全部提交】（2026-11-13）。
+            //   逐块「快照+改写」一气呵成时，父块改写会让后处理子块的 recompute 读到空父级 ⇒ 常量烘成 0（模型跑位）。
+            let done = 0, skipped = 0, failed = 0, layerN = 0;
+            const plans = [];
             for (const b of targets) {
                 // 带关键帧的 molang 接管方块：改写程序会破坏动画脚本，跳过并提示
                 if (b.scope.molangMode && typeof _kfSystemReady !== 'undefined' && _kfSystemReady
                     && typeof keyframeData !== 'undefined' && keyframeData.has(b.id) && keyframeData.get(b.id).frames.size > 0) {
                     skipped++; continue;
                 }
-                constantizeBlock(b);
-                done++;
+                try { plans.push(constantizeBlockPlan(b)); } catch (err) { failed++; }
+            }
+            for (const pl of plans) {
+                try { const r = constantizeBlockCommit(pl); layerN += (r.layers || []).length; done++; }
+                catch (err) { failed++; }
             }
             if (done > 0) recordAction();
             blocks.forEach(bl => bl.updateSelectionHighlight(selectedBlocksSet.has(bl)));
             renderSideBlockList();
             if (selectedBlock) renderVariablesForBlock(selectedBlock);
-            showToast(skipped ? `已常量化 ${done} 个，跳过 ${skipped} 个带关键帧的动画方块` : `已对 ${done} 个方块执行表达式常量化`);
+            const notes = [];
+            if (skipped) notes.push(`跳过 ${skipped} 个带关键帧的动画方块`);
+            if (failed) notes.push(`${failed} 个失败`);
+            if (layerN) notes.push(`解除 ${layerN} 个动画层`);
+            showToast(done ? `已对 ${done} 个方块执行表达式常量化${notes.length ? '（' + notes.join('，') + '）' : ''}` : `未能常量化方块${notes.length ? '（' + notes.join('，') + '）' : ''}`);
         });
     });
     // 文件夹拖拽嵌套 + 方块拖入文件夹（【两种操作模式都绑定】：

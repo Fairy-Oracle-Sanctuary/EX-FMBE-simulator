@@ -16,7 +16,7 @@ const TUT_DISARM = {
         // 必须保留一个「非 origin」模式：selectBlock 触发的 updateToolbar() 在「无 origin/base/rotate」时
         // 会兜底补回 origin，使本步门控误判为「已完成」。保留 rotate 即可让 updateToolbar 不再补 origin。
         if (!herModes.has('base') && !herModes.has('rotate') && !herModes.has('centerRotate') && !herModes.has('globalRotate') && !herModes.has('globalCenterRotate') && !herModes.has('scale')) herModes.add('rotate');
-        document.querySelectorAll('.her-mode-btn').forEach(b => b.classList.toggle('active', herModes.has(b.dataset.mode)));
+        document.querySelectorAll('.her-mode-btn').forEach(b => { if (b.dataset.mode) b.classList.toggle('active', herModes.has(b.dataset.mode)); });
         try { rebuildGizmo(); } catch (e) {}
     },
     exitBrush() { try { if (typeof isBrushMode !== 'undefined' && isBrushMode) exitBrushMode(); } catch (e) {} },

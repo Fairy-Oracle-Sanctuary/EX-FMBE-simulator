@@ -1,25 +1,127 @@
 /* 08-changelog-and-new-layout.css · 源 测试版v.6b79.html 第 3072-3483 行（原样搬运，仅 url 路径退两级） */
-/* ========== 更新日志弹窗 ========== */
+/* ========== 更新日志弹窗 ==========
+   层级：标题 20 / 月日 16 / 分类 13 / 正文 12.5 / 状态 10.5 / 年份 9.5 / 版本号 10（紫色无底） */
 .changelog-modal .modal-content {
-    max-width: 640px;
-    max-height: 75vh;
-    padding: 20px 24px 24px;
+    position: relative;
+    max-width: 660px;
+    max-height: 78vh;
+    padding: 14px;
+    /* 卡片=「框」而不是「描边」：外框压深一档，内页只比它浅一点；三角形只从内页透出 */
+    border: none;
+    background: linear-gradient(160deg, rgba(56,189,248,0.10), rgba(56,189,248,0.02)), #0b1424;
+    box-shadow: 0 24px 60px rgba(8,32,64,0.5), 0 12px 30px rgba(56,189,248,0.10);
 }
+body.light-mode .changelog-modal .modal-content {
+    /* 浅色：外框只做一点点冷灰蓝，和更浅的内页拉开一档而不是硬撞 */
+    background: linear-gradient(160deg, rgba(37,99,235,0.10), rgba(37,99,235,0.03)), #e3ebf7;
+    box-shadow: 0 18px 46px rgba(16,40,80,0.14), 0 10px 24px rgba(37,99,235,0.07);
+}
+/* 背景装饰层：漂浮三角形画布（见 startChangelogTriangleBg）。
+   ★JS 会把它对齐到 .changelog-list 的矩形上 —— 外框是实心的，三角形只从内页透出来 */
+.changelog-triangle-bg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 12px;
+}
+.changelog-modal .modal-title,
+.changelog-modal .changelog-list,
+.changelog-modal .modal-footer {
+    position: relative;
+    z-index: 1;
+}
+/* 「更新日志」标题：不加胶囊/描边，只留文字；下面用装饰线分隔 */
 .changelog-modal .modal-title {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--color-primary);
+    margin-bottom: 0;
+    padding: 2px 6px;
+    border: none;
+    background: none;
     color: var(--color-title-text);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
+}
+/* 分隔线：左右渐隐细线 + 中间小正方形，两侧各一个很细的三角形 */
+.changelog-divider {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 6px 10px;
+    height: 8px;
+}
+.changelog-divider::before,
+.changelog-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+}
+.changelog-divider::before {
+    background: linear-gradient(90deg, rgba(125,211,252,0), rgba(125,211,252,0.55));
+}
+.changelog-divider::after {
+    background: linear-gradient(90deg, rgba(125,211,252,0.55), rgba(125,211,252,0));
+}
+.changelog-divider-square {
+    width: 5px;
+    height: 5px;
+    background: rgba(125,211,252,0.9);
+    flex-shrink: 0;
+}
+.changelog-divider-tri {
+    width: 0;
+    height: 0;
+    border-top: 2px solid transparent;
+    border-bottom: 2px solid transparent;
+    flex-shrink: 0;
+}
+.changelog-divider-tri.left {
+    border-right: 9px solid rgba(125,211,252,0.65);
+}
+.changelog-divider-tri.right {
+    border-left: 9px solid rgba(125,211,252,0.65);
+}
+body.light-mode .changelog-divider::before {
+    background: linear-gradient(90deg, rgba(37,99,235,0), rgba(37,99,235,0.35));
+}
+body.light-mode .changelog-divider::after {
+    background: linear-gradient(90deg, rgba(37,99,235,0.35), rgba(37,99,235,0));
+}
+body.light-mode .changelog-divider-square {
+    background: rgba(37,99,235,0.65);
+}
+body.light-mode .changelog-divider-tri.left {
+    border-right-color: rgba(37,99,235,0.4);
+}
+body.light-mode .changelog-divider-tri.right {
+    border-left-color: rgba(37,99,235,0.4);
+}
+.changelog-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.changelog-title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+/* 副标题：与主标题拉开字号差，只做说明 */
+.changelog-subtitle {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--color-text-soft);
 }
 .changelog-modal .modal-close-btn {
     background: none;
     border: none;
-    font-size: 22px;
+    font-size: 20px;
+    line-height: 1;
     cursor: pointer;
     color: var(--color-changelog-close);
     transition: color 0.2s;
@@ -28,13 +130,38 @@
 .changelog-modal .modal-close-btn:hover {
     color: var(--color-changelog-close-hover);
 }
+/* 列表区域：内页比外框浅一档，且保持半透明 —— 背景三角形只从这里透出来 */
 .changelog-list {
-    max-height: 55vh;
+    max-height: 54vh;
     overflow-y: auto;
-    padding-right: 4px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(26,42,68,0.72);
+    box-shadow: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(125,211,252,0.26) transparent;
+}
+body.light-mode .changelog-list {
+    background: rgba(255,255,255,0.74);
+    scrollbar-color: rgba(37,99,235,0.22) transparent;
+}
+/* 半透明底会让浏览器把滚动条判成浅色，这里显式接管，避免深色模式下出现白条 */
+.changelog-list::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.changelog-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.changelog-list::-webkit-scrollbar-thumb {
+    background: rgba(37,99,235,0.20);
+    border-radius: 4px;
+}
+.changelog-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(37,99,235,0.34);
 }
 .changelog-item {
-    border-bottom: var(--bg-changelog-item-border);
+    border-bottom: none;
     border-radius: 0;
 }
 .changelog-item:last-child {
@@ -42,106 +169,136 @@
 }
 .changelog-date-header {
     cursor: pointer;
-    padding: 10px 8px;
+    padding: 12px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     border-radius: 8px;
     transition: background 0.15s;
     user-select: none;
 }
 .changelog-date-header:hover {
-    background: var(--bg-changelog-date-hover);
+    background: rgba(37,99,235,0.07);
 }
 .changelog-date-left {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 10px;
+    min-width: 0;
 }
-/* 日期：灰字弱化，不抢版本号 */
-.changelog-date-text {
-    font-weight: 500;
-    font-size: 14px;
-    color: #94a3b8;
-    letter-spacing: 0.01em;
+/* 日期：年份小灰字紧贴月日大字（零间距），斜切线落在两者相接的角上 */
+.changelog-date {
+    position: relative;
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    grid-template-rows: auto auto;
+    column-gap: 0;
+    align-items: end;
+    line-height: 1;
 }
-body.light-mode .changelog-date-text {
+.changelog-date-year {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+    align-self: end;
+    position: relative;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     color: #64748b;
+    font-variant-numeric: tabular-nums;
 }
-/* 版本号：左侧色条 + 等宽字，数字加粗、颜色放淡，无底色、无胶囊 */
-.changelog-version-tag {
-    font-size: 12px;
-    color: #9cc7f5;
-    background: none;
-    border-left: 2px solid rgba(147,197,253,0.5);
-    border-radius: 0;
-    padding: 1px 0 1px 7px;
-    line-height: 1.2;
+/* 斜切线：压在「年」右下角与「月日」左上角相接的位置 */
+.changelog-date-year::after {
+    content: '';
+    position: absolute;
+    right: -7.5px;
+    bottom: -1px;
+    width: 15px;
+    height: 2px;
+    background: rgba(37,99,235,0.6);
+    clip-path: polygon(0 50%, 45% 0, 100% 50%, 45% 100%);
+    transform: rotate(-45deg);
+}
+.changelog-date-slash {
+    display: none;
+}
+.changelog-date-main {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    justify-self: start;
+    font-size: 16px;
     font-weight: 700;
-    letter-spacing: 0.03em;
+    color: #0f172a;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+/* 版本号：无底色无边框、紫色等宽小字 */
+.changelog-version-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: #7c3aed;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    line-height: 1.4;
+    letter-spacing: 0.05em;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     white-space: nowrap;
 }
-body.light-mode .changelog-version-tag {
-    color: #6b9fe0;
-    border-left-color: rgba(107,159,224,0.45);
-}
-/* 版本号之外的说明文字（内测版 / 正式版 / 主题名）：灰色小字，不占胶囊 */
+/* 三级：状态说明最小、最弱（测试版 / 正式版 / 快捷更新） */
 .changelog-entry-label {
-    font-size: 12px;
-    color: var(--color-text-soft);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: #64748b;
 }
 .changelog-header-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-shrink: 0;
 }
 .changelog-detail-btn {
-    font-size: 12px;
-    color: #60a5fa;
+    font-size: 11px;
+    color: #2563eb;
     cursor: pointer;
-    padding: 3px 8px;
-    border-radius: 6px;
+    padding: 2px 7px;
+    border-radius: 5px;
     transition: background 0.15s;
 }
 .changelog-detail-btn:hover {
-    background: rgba(96,165,250,0.15);
-}
-body.light-mode .changelog-detail-btn {
-    color: #2563eb;
-}
-body.light-mode .changelog-detail-btn:hover {
-    background: rgba(37,99,235,0.1);
-}
-.changelog-details {
-    margin-top: 12px;
-    padding: 12px;
-    background: rgba(59,130,246,0.05);
-    border-radius: 10px;
-    border-left: 3px solid #3b82f6;
-    font-size: 13px;
-    line-height: 1.7;
-    color: #cbd5e1;
-}
-body.light-mode .changelog-details {
-    background: rgba(37,99,235,0.06);
-    color: #334155;
+    background: rgba(37,99,235,0.10);
 }
 .changelog-toggle-icon {
-    font-size: 14px;
-    color: #94a3b8;
+    font-size: 12px;
+    color: #64748b;
     transition: transform 0.25s ease;
     flex-shrink: 0;
 }
 .changelog-toggle-icon.open {
     transform: rotate(180deg);
 }
+/* 正文：靠一条竖向时间线挂在日期下面，避免整块和日期同宽 */
 .changelog-body {
-    padding: 0 8px 12px 8px;
+    position: relative;
+    padding: 0 10px 14px 24px;
     display: none;
     animation: fadeSlide 0.2s ease;
+}
+.changelog-body::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 2px;
+    bottom: 14px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, rgba(37,99,235,0.38), rgba(37,99,235,0.05));
 }
 .changelog-body.open {
     display: block;
@@ -151,38 +308,131 @@ body.light-mode .changelog-details {
     to { opacity: 1; transform: translateY(0); }
 }
 .changelog-body ul {
-    margin: 4px 0 0 0;
-    padding-left: 22px;
-    list-style-type: disc;
+    margin: 2px 0 0 0;
+    padding: 0;
+    list-style: none;
 }
 .changelog-body li {
-    font-size: 13px;
-    line-height: 1.6;
-    padding: 2px 0;
-    color: #cbd5e6;
+    position: relative;
+    padding: 4px 0 4px 12px;
+    font-size: 12.5px;
+    line-height: 1.72;
+    color: #334155;
 }
-body.light-mode .changelog-body li {
-    color: #1e293b;
+.changelog-body li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 13px;
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+    background: rgba(100,116,139,0.45);
+}
+/* 分类：字号调大到 13px，仍靠蓝色和字重与正文区分 */
+.changelog-item-cat {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #1d4ed8;
+    margin-right: 8px;
+}
+.changelog-item-text {
+    font-size: 12.5px;
+}
+.changelog-details {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: rgba(37,99,235,0.06);
+    border-radius: 8px;
+    border-left: 2px solid rgba(37,99,235,0.45);
+    font-size: 12px;
+    line-height: 1.7;
+    color: #334155;
 }
 .changelog-empty {
     text-align: center;
     padding: 30px 0;
     color: #94a3b8;
-    font-size: 14px;
+    font-size: 13px;
 }
 .changelog-modal .modal-footer {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(100,116,139,0.2);
+    margin-top: 8px;
+    padding: 2px 4px 0;
+    border-top: none;
     display: flex;
     justify-content: flex-end;
 }
-body.light-mode .changelog-modal .modal-footer {
-    border-top-color: rgba(0,0,0,0.08);
-}
 .changelog-modal .modal-footer .modal-btn {
-    padding: 6px 24px;
-    font-size: 13px;
+    padding: 7px 22px;
+    font-size: 12.5px;
+    color: #9ec5ea;
+}
+.changelog-modal .modal-footer .modal-btn:hover {
+    color: #e6f3ff;
+}
+body.light-mode .changelog-modal .modal-footer .modal-btn {
+    color: #5b6b80;
+}
+body.light-mode .changelog-modal .modal-footer .modal-btn:hover {
+    color: #1e293b;
+}
+/* 深色模式：内页是深色半透明面，文字/线条全部回到浅色系 */
+body:not(.light-mode) .changelog-item {
+    border-bottom-color: rgba(100,116,139,0.2);
+}
+body:not(.light-mode) .changelog-date-header:hover {
+    background: rgba(59,130,246,0.08);
+}
+body:not(.light-mode) .changelog-date-year {
+    color: #94a3b8;
+}
+body:not(.light-mode) .changelog-date-slash {
+    background: rgba(147,197,253,0.75);
+}
+body:not(.light-mode) .changelog-date-year::after {
+    background: rgba(147,197,253,0.8);
+}
+body:not(.light-mode) .changelog-date-main {
+    color: #e2e8f0;
+}
+body:not(.light-mode) .changelog-version-tag {
+    color: #c4b5fd;
+}
+body:not(.light-mode) .changelog-entry-label {
+    color: #94a3b8;
+}
+body:not(.light-mode) .changelog-detail-btn {
+    color: #60a5fa;
+}
+body:not(.light-mode) .changelog-detail-btn:hover {
+    background: rgba(96,165,250,0.15);
+}
+body:not(.light-mode) .changelog-toggle-icon {
+    color: #94a3b8;
+}
+body:not(.light-mode) .changelog-body::before {
+    background: linear-gradient(180deg, rgba(96,165,250,0.5), rgba(96,165,250,0.05));
+}
+body:not(.light-mode) .changelog-body li {
+    color: #c2cfe0;
+}
+body:not(.light-mode) .changelog-body li::before {
+    background: rgba(148,163,184,0.55);
+}
+body:not(.light-mode) .changelog-item-cat {
+    color: #8ec5ff;
+}
+body:not(.light-mode) .changelog-details {
+    background: rgba(59,130,246,0.06);
+    border-left-color: rgba(59,130,246,0.5);
+    color: #a9b8cc;
+}
+body:not(.light-mode) .changelog-list::-webkit-scrollbar-thumb {
+    background: rgba(125,211,252,0.22);
+}
+body:not(.light-mode) .changelog-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(125,211,252,0.38);
 }
 /* ========== 新布局样式 ========== */
 .new-top-bar {
@@ -309,6 +559,10 @@ body.light-mode .her-mode-btn.active {
 .hmb-icon[data-icon="snap-len"] { -webkit-mask-image: url('../../Icons/snap-len.svg'); mask-image: url('../../Icons/snap-len.svg'); }
 .hmb-icon[data-icon="snap-ang"] { -webkit-mask-image: url('../../Icons/snap-ang.svg'); mask-image: url('../../Icons/snap-ang.svg'); }
 .hmb-icon[data-icon="mirror"] { -webkit-mask-image: url('../../Icons/mirror.svg'); mask-image: url('../../Icons/mirror.svg'); }
+/* 镜像下拉三项各自的示意图：自由对称面 / 选面 / 三点定面 */
+.hmb-icon[data-icon="mirror-free"] { -webkit-mask-image: url('../../Icons/mirror-free.svg'); mask-image: url('../../Icons/mirror-free.svg'); }
+.hmb-icon[data-icon="mirror-face"] { -webkit-mask-image: url('../../Icons/mirror-face.svg'); mask-image: url('../../Icons/mirror-face.svg'); }
+.hmb-icon[data-icon="mirror-vtx"] { -webkit-mask-image: url('../../Icons/mirror-vtx.svg'); mask-image: url('../../Icons/mirror-vtx.svg'); }
 /* 旋转图标是「双色」的（颜色取自各模式 Gizmo 圆环的 x 环 / z 环配色），
    因此不走遮罩上色，而是直接以彩色 SVG 作背景图呈现，每个模式一种配色。
    注意：旋转循环箭头的朝向（含所需的 90° 转角）已烘焙在各自 SVG 内部
@@ -361,6 +615,15 @@ body.light-mode .her-mode-btn.active {
 .hmb-icon[data-icon="rotate-global-center"]::after { display: block; }
 body.light-mode .hmb-icon::after { background-color: #0f172a; }
 .her-mode-btn .hmb-caret { font-size: 9px; line-height: 1; opacity: 0.6; margin-left: -1px; }
+/* 镜像按钮的「丰」字形图标：纯文字字形（竖轴 + 三道横线），颜色随按钮 currentColor 走 */
+.hmb-glyph {
+    display: inline-block;
+    font-size: 15px;
+    line-height: 1;
+    font-weight: 500;
+    font-family: inherit;
+    color: currentColor;
+}
 /* 顶点捕捉按钮右侧的「对齐方式」功能图标（替代原来的文字）：
    紫色遮罩图标；左上角用 clip-path 切掉一块三角，一条短白色斜线压在这道裁口上。
    白线带投影、图标本体也带轻投影 → 读作「白线压在图标上、截断了它的左上角」，

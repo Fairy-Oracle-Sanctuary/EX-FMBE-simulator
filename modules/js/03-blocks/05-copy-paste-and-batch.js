@@ -34,7 +34,10 @@ function serializeSelectedBlocks() {
             vars: Array.from(original.scope.vars.entries()).map(([n, d]) => ({ n, expr: d.expr, value: d.value, rangeMin: d.rangeMin, rangeMax: d.rangeMax, step: d.step })),
             molangMode: original.scope.molangMode,
             molangEditedByUser: original.scope.molangEditedByUser,
-            program: original.scope.program || ''
+            program: original.scope.program || '',
+            // 多动画：复制时带上「本块启用了哪些动画 + 本块顺序」，正文仍由全局动画表提供
+            channels: original.scope.channels ? Array.from(original.scope.channels.entries()).map(([id, ch]) => ({ id, enabled: ch && ch.enabled !== false })) : null,
+            stack: Array.isArray(original.scope.stack) ? original.scope.stack.slice() : null
         };
     });
 }
@@ -80,6 +83,11 @@ function pasteFromClipboard() {
             }
             nb.scope.program = prog;
         }
+        // 多动画：粘贴块沿用同一批全局动画控制器（正文共享），顺序按复制时保存的 stack
+        nb.scope.channels = Array.isArray(snap.channels)
+            ? new Map(snap.channels.map(c => [c.id, { enabled: c.enabled !== false }]))
+            : null;
+        nb.scope.stack = Array.isArray(snap.stack) ? snap.stack.slice() : ['__base__'];
         nb.refresh();
         addBlock(nb, true, false);  // autoSelect=false：保留当前选区，不抢走选中
         if (snap.group) autoBoneBindOnFolderAdd(nb, snap.group);

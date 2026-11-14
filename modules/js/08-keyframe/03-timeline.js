@@ -2,6 +2,8 @@
 'use strict';
 // ==================== 多轨道时间轴渲染 ====================
 function renderKeyframeTimeline() {
+    /* 🎬 浮动窗内的动画层条（与时间轴同刷，保证动画层胶囊/＋附加始终可见） */
+    try { if (typeof refreshFloatAnimLayerBar === 'function') refreshFloatAnimLayerBar(); } catch (e) {}
     /* 本次同步重绘已覆盖选区状态 ⇒ 取消 scheduleKfTrackTimelineSync 排队的那次重绘 */
     _kfTrackSyncPending = false;
     const container = document.getElementById('kfTimelineContainer');
@@ -48,7 +50,10 @@ function renderKeyframeTimeline() {
     const viewStart = keyframeScrollOffset;
     const viewEnd = viewStart + viewDur;
 
-    const targetTicks = 12;
+    /* ★【2026-10-31 用户要求】最小化态刻度只保留少量粗刻度（约 4 个），
+       不再把 0.1s/0.2s 这类细刻度全铺出来；完整态仍按 12 个刻度渲染，布局不变。 */
+    const _isCompactWin = !!container.closest('.keyframe-window.kf-compact');
+    const targetTicks = _isCompactWin ? 4 : 12;
     const rawStep = viewDur / targetTicks;
     const niceSteps = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 60, 120];
     let tickStep = niceSteps[0];
@@ -281,6 +286,34 @@ function renderKeyframeTimeline() {
                 e.stopPropagation();
                 showKeyframeFolderDeleteMenu(unit, time, e.clientX, e.clientY);
             });
+
+            /* ★【2026-10-31 用户要求】手机/触屏没有右键 ⇒ 长按关键帧 = 右键菜单。
+               计时器按下开始，移动超过 10px 视为拖动而取消；抬起时若已长按，
+               用 preventDefault 抑制随后的 click（否则菜单刚弹出就被 document click 关闭）。 */
+            let _lpTimer = 0, _lpFired = false, _lpX = 0, _lpY = 0;
+            group.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                const t = e.touches[0];
+                _lpX = t.clientX; _lpY = t.clientY; _lpFired = false;
+                clearTimeout(_lpTimer);
+                _lpTimer = setTimeout(() => { _lpFired = true; }, 500);
+            }, { passive: true });
+            group.addEventListener('touchmove', (e) => {
+                const t = e.touches[0];
+                if (!t) return;
+                if (Math.abs(t.clientX - _lpX) > 10 || Math.abs(t.clientY - _lpY) > 10) {
+                    clearTimeout(_lpTimer); _lpTimer = 0;
+                }
+            }, { passive: true });
+            const _lpCancel = () => { clearTimeout(_lpTimer); _lpTimer = 0; _lpFired = false; };
+            group.addEventListener('touchcancel', _lpCancel, { passive: true });
+            group.addEventListener('touchend', (e) => {
+                clearTimeout(_lpTimer); _lpTimer = 0;
+                if (!_lpFired) return;
+                _lpFired = false;
+                e.preventDefault();
+                showKeyframeFolderDeleteMenu(unit, time, _lpX, _lpY);
+            }, { passive: false });
 
             let dragData = null;
             group.addEventListener('pointerdown', (e) => {

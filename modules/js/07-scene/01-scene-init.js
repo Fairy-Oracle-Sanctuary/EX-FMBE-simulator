@@ -29,8 +29,12 @@ const BASE_CAM_DIST = camera.position.length(); // 默认视角相机到目标(�
 const LARGE_SCENE_BLOCKS = 1000;
 let _largeSceneLowRes = false;
 let _qualityBlockCount = -1;
+/* ★【2026-10-31 移动端手感】触屏设备（pointer: coarse）把设备像素比上限从 2 降到 1.5：
+   手机上 3× DPR 的屏幕按 2× 渲染本来就有 4 倍填充量，再叠加对数深度/抗锯齿，
+   双指捏合时是明确的 GPU 瓶颈；1.5× 视觉上几乎看不出差别，像素量少 44%。 */
+const DPR_CAP = (() => { try { return (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ? 1.5 : 2; } catch (e) { return 2; } })();
 function applyBasePixelRatio() {
-    const base = Math.min(window.devicePixelRatio || 1, 2);
+    const base = Math.min(window.devicePixelRatio || 1, DPR_CAP);
     renderer.setPixelRatio(_largeSceneLowRes ? Math.min(1, base) : base);
     bumpDrawRev('ui');   // 改像素比会重建绘制缓冲（画面被清空），必须补一帧
 }
@@ -50,9 +54,12 @@ function updateSceneQuality() {
     bumpDrawRev('ui');   // 阴影开关变了：立即重画一帧
     try { if (!isDraggingPanel) applyBasePixelRatio(); } catch (e) {}
 }
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true, preserveDrawingBuffer: true });
+/* ★【2026-10-31 移动端性能】preserveDrawingBuffer 关掉：它要求 GPU 每帧额外保留/拷贝后备缓冲，
+   手机上（尤其 Android 的 tiled GPU）是稳定的帧率杀手。缩略图走离屏 RenderTarget 读像素，
+   不依赖后备缓冲；唯一用到 canvas 直读的降级路径已改为「先同步重绘、再取图」。 */
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
 renderer.setClearColor(0x000000, 1); // 不透明背景，避免透明穿透导致空白
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // 高 DPI/视网膜屏按设备像素比渲染，避免画面发糊（拖拽面板时会临时降到 0.5 保流畅，松手即恢复）
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DPR_CAP)); // 高 DPI/视网膜屏按设备像素比渲染（触屏设备封顶 1.5，见 DPR_CAP）
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true; // 如需关闭阴影可改为 false
 renderer.toneMapping = THREE.NoToneMapping; // 保持纹理原色，不用色调映射（避免灰化去饱和）
@@ -280,6 +287,9 @@ syncOrthoViewUI();
 
 // ---------- 挂载 Gizmo 拖拽事件 ----------
 renderer.domElement.addEventListener('pointerdown', (e) => {
+    /* ★【2026-10-31】触摸指针只认主指针：第二根手指落下时不可再触发 Gizmo 拖拽，
+       否则 controls 被禁用 → 双指捏合看起来「完全没反应」。 */
+    if (e.pointerType === 'touch' && e.isPrimary === false) return;
     if (e.target.closest('.data-panel') || e.target.closest('.top-bar') || e.target.closest('.new-top-bar') || e.target.closest('.side-block-list')) return;
     if (!gizmoRoot?.visible) return;
     const handled = beginGizmoDrag(e.clientX, e.clientY, e);
@@ -294,7 +304,10 @@ renderer.domElement.addEventListener('pointermove', (e) => {
         }
         return;
     }
-    if (!draggingGizmo && !pendingInputPick) return;
+    if (!draggingGizmo && !pendingInputPick) {
+        updatePlaneHover(e.clientX, e.clientY);   // 平面手柄悬停提亮 + 抓取光标
+        return;
+    }
     moveGizmoDrag(e.clientX, e.clientY);
 });
 renderer.domElement.addEventListener('pointerup', (e) => {
@@ -302,6 +315,8 @@ renderer.domElement.addEventListener('pointerup', (e) => {
     endGizmoDrag(e);
 });
 renderer.domElement.addEventListener('pointerleave', (e) => {
+    clearPlaneHandleVisuals();
+    if (renderer.domElement.style.cursor === 'grab') renderer.domElement.style.cursor = '';
     // 仅在未成功抢占指针（极少数浏览器不支持）时才允许“离开画布即结束”，
     // 正常抢占了指针时浏览器不会派发 pointerleave，避免拖拽中途被误终止。
     if ((draggingGizmo || pendingInputPick) && !(renderer.domElement.hasPointerCapture && renderer.domElement.hasPointerCapture(e.pointerId))) endGizmoDrag(e);
@@ -309,7 +324,12 @@ renderer.domElement.addEventListener('pointerleave', (e) => {
 renderer.domElement.addEventListener('pointercancel', (e) => {
     if (draggingGizmo || pendingInputPick) endGizmoDrag(e);
 });
+/* ★【2026-10-31 移动端手感】双指手势（捏合缩放 / 双指平移）绝不能触发 Gizmo 拖拽：
+   触屏第二根手指落下时 touchstart 会再派发一次，旧实现拿 touches[0] 去开拖，
+   若第一根手指正好压在手柄上就会 controls.enabled=false ⇒ 整个捏合被吞掉（表现为「卡住/不响应」）。
+   规则：只有单指时才允许开拖/继续拖；已在拖拽中则忽略后续手指。 */
 renderer.domElement.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) return;                  // 双指及以上：交给 OrbitControls
     if (e.target.closest('.data-panel') || e.target.closest('.top-bar') || e.target.closest('.new-top-bar') || e.target.closest('.side-block-list')) return;
     if (!gizmoRoot?.visible) return;
     const touch = e.touches[0];
@@ -318,6 +338,7 @@ renderer.domElement.addEventListener('touchstart', (e) => {
 }, { passive: false });
 renderer.domElement.addEventListener('touchmove', (e) => {
     if (!draggingGizmo && !pendingInputPick) return;
+    if (e.touches.length > 1) return;                  // 拖拽中途多指：不再抢镜
     const touch = e.touches[0];
     moveGizmoDrag(touch.clientX, touch.clientY);
     e.preventDefault();

@@ -97,6 +97,33 @@ const queryNamespace = {
         _queryCache[mode] = val; // 始终记录最近一次真实值，关闭更新时即为冻结的“当前值”
         return val;
     },
+    // 摄像机【自身朝向】的角度（与 rotation_to_camera 同一套角度约定：mode=0 俯仰、mode=1 偏航，单位度）。
+    // 与 rotation_to_camera 的区别：那边给的是「原点 → 摄像机」的方向，这边给的是「摄像机正在看的方向」，
+    // 因此摄像机向下看时俯仰为正 —— 便于把 camera_offset_up / camera_offset_forward 正确映射到世界空间。
+    camera_rotation: function (mode) {
+        if (!_queryUpdateEnabled && _queryCache['cam' + mode] !== undefined) return _queryCache['cam' + mode];
+        const dir = camera.getWorldDirection(new THREE.Vector3());
+        const horiz = Math.sqrt(dir.x * dir.x + dir.z * dir.z);
+        const val = Number(mode) === 1
+            ? Math.atan2(dir.z, dir.x) * 180 / Math.PI - 90
+            : -Math.atan2(dir.y, horiz) * 180 / Math.PI;
+        _queryCache['cam' + mode] = val;
+        return val;
+    },
+    // 摄像机到世界原点 (0,0,0) 的距离。模拟器没有实体，命令里的「实体位置」统一以原点为锚点，
+    // 故 q.position(i) 恒返回 0、本函数返回摄像机到原点的距离，与 q.rotation_to_camera 的基准完全一致。
+    distance_from_camera: function () {
+        if (!_queryUpdateEnabled && _queryCache.dist !== undefined) return _queryCache.dist;
+        const val = camera.position.length();
+        _queryCache.dist = val;
+        return val;
+    },
+    // 命令里的「跟随实体」锚点：模拟器无实体，统一取世界原点，三个轴都返回 0。
+    // 这样命令中的逐帧位移补偿项（position_change_*）恒为 0，方块稳定停在相机空间的固定偏移处。
+    position: function (axis) { return 0; },
+    // 逐帧插值系数（Minecraft 的 q.frame_alpha）。模拟器按整帧刷新、没有帧间插值，恒为 1，
+    // 使命令里的 (1 - frame_alpha) 补偿项为 0，不引入抖动。
+    frame_alpha: function () { return 1; },
     // 返回【该方块自身】自创建 / 复制 / 加载以来经历的时间（秒）。
     // 每个方块在 addBlock 时记录自己的出生时刻 _lifeBorn（= 当时全局时钟 _lifeTime 的值），
     // 因此不同方块各自独立计时；复制 / 新建的方块是「新生的」，life_time 从接近 0 开始，与原件不同。

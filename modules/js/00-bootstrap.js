@@ -70,18 +70,48 @@ const EX_PARTS = [
     "09-tutorial/06-chapter-toc.js",
     "09-tutorial/07-welcome-card-and-intro.js",
     "10-project/01-dev-mode-and-project-manager.js",
-    "10-project/03-points-and-shapes.js"
+    "10-project/03-points-and-shapes.js",
+    "10-project/04-image-trace.js"
 ];
 window.__exParts = EX_PARTS;
 window.__exFailedParts = [];
 
+// 首次访问：等 Service Worker 激活并接管本页（约几十毫秒），
+// 这样下面 53 个脚本段下载时就能直接写入本地缓存，第二次打开全部读本地、零下载。
+// 不支持 SW / file:// / 超时（500ms）时直接继续，不阻塞启动。
+function __exWaitForSW(ms) {
+    return new Promise((resolve) => {
+        try {
+            if (!('serviceWorker' in navigator) || location.protocol === 'file:') return resolve();
+            if (navigator.serviceWorker.controller) return resolve();   // 已被接管（老用户）
+            let done = false;
+            const finish = () => { if (!done) { done = true; resolve(); } };
+            navigator.serviceWorker.addEventListener('controllerchange', finish, { once: true });
+            navigator.serviceWorker.ready.then(finish, finish);
+            setTimeout(finish, ms);
+        } catch (_) { resolve(); }
+    });
+}
+
 window.__exReady = (async () => {
+    await __exWaitForSW(500);
     const base = import.meta.url;
-    const texts = [];
-    for (const rel of EX_PARTS) {
-        const res = await fetch(new URL(rel, base).href, { cache: 'no-store' });
-        if (!res.ok) { window.__exFailedParts.push(rel + ' (HTTP ' + res.status + ')'); return false; }
-        texts.push(await res.text());
+    // 并行取回全部脚本段（原来逐段 await 串行，53 次网络往返的延迟会叠加）；
+    // 不用 cache:'no-store'：交给 Service Worker / 浏览器 HTTP 缓存，避免每次重下 3.4MB。
+    const urls = EX_PARTS.map(rel => new URL(rel, base).href);
+    const texts = await Promise.all(urls.map(async (url, i) => {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) { window.__exFailedParts.push(EX_PARTS[i] + ' (HTTP ' + res.status + ')'); return null; }
+            return await res.text();
+        } catch (e) {
+            window.__exFailedParts.push(EX_PARTS[i] + ' (' + ((e && e.message) || e) + ')');
+            return null;
+        }
+    }));
+    if (window.__exFailedParts.length) {
+        console.error('[EX] 脚本加载失败:', window.__exFailedParts);
+        return false;
     }
     // 各段在虚拟文件中的起始行（报错行号反查用）
     const starts = {};
@@ -97,6 +127,22 @@ window.__exReady = (async () => {
     const s = document.createElement('script');
     s.textContent = chunks.join('\n') + '\n//# sourceURL=ex-split-bundle.js';
     document.body.appendChild(s);          // 同步执行，不排队
-    if (window.__exFailedParts.length) console.error('[EX] 脚本加载失败:', window.__exFailedParts);
+
+    // 首次访问若 SW 还没接管，上面的下载只落在 HTTP 缓存里；把地址交给 SW 补进本地缓存，
+    // 保证第二次打开就能全部读本地（不会重复下载）。
+    try {
+        const cssUrls = Array.prototype.map.call(document.querySelectorAll('link[rel="stylesheet"]'), l => l.href);
+        const warmUrls = urls.concat(cssUrls, [
+            new URL('../../vendor/three.module.js', base).href,
+            new URL('../../vendor/addons/controls/OrbitControls.js', base).href,
+            new URL('../../vendor/addons/renderers/CSS2DRenderer.js', base).href,
+        ]);
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+                const sw = navigator.serviceWorker.controller || (reg && reg.active);
+                if (sw) sw.postMessage({ type: 'ex-warm', urls: warmUrls });
+            }).catch(() => {});
+        }
+    } catch (_) {}
     return true;
 })();

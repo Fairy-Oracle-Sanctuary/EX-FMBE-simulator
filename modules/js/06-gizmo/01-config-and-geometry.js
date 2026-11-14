@@ -121,6 +121,20 @@ function mat(color, opacity = 0.98) {
     });
 }
 
+// 三渲二描边：用同几何体放大一圈的背面壳形成淡淡的灰色外轮廓，内部仍是纯色填充。
+// 只做「边缘灰一点」的卡通描边，不要深色描边（会显得箭头黑乎乎）。
+// 圆柱/圆锥的本地轴是 Y，只放大截面(x/z)，避免把长度也拉长。
+function addToonOutline(mesh, color = 0x9aa3ae, radiusScale = 1.22) {
+    const outline = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({
+        color, side: THREE.BackSide, depthTest: false, depthWrite: false,
+        transparent: true, opacity: 1
+    }));
+    outline.scale.set(radiusScale, 1.0, radiusScale);
+    outline.renderOrder = (mesh.renderOrder || 0) - 1;
+    mesh.add(outline);
+    return outline;
+}
+
 function hitMat() {
     return new THREE.MeshBasicMaterial({
         color: 0xffffff, depthTest: false, depthWrite: false,
@@ -359,6 +373,7 @@ function makeArrow(dir, planeNormal, color, varName, scale, offset = 0, opts = {
             const pos = start + (i * 2 + 0.5) * segLen;
             seg.position.copy(d.clone().multiplyScalar(pos));
             seg.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+            addToonOutline(seg);
             group.add(seg);
         }
         // 圆锥头
@@ -368,6 +383,7 @@ function makeArrow(dir, planeNormal, color, varName, scale, offset = 0, opts = {
         );
         cone.position.copy(d.clone().multiplyScalar(start + shaftLen));
         cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        addToonOutline(cone);
         group.add(cone);
     } else {
         // 枢轴：细圆柱杆 + 圆锥头
@@ -377,6 +393,7 @@ function makeArrow(dir, planeNormal, color, varName, scale, offset = 0, opts = {
         );
         shaft.position.copy(d.clone().multiplyScalar(start + shaftLen * 0.5));
         shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        addToonOutline(shaft);
         group.add(shaft);
         const cone = new THREE.Mesh(
             new THREE.ConeGeometry(shaftR * 3.5, headLen, 8),
@@ -384,11 +401,15 @@ function makeArrow(dir, planeNormal, color, varName, scale, offset = 0, opts = {
         );
         cone.position.copy(d.clone().multiplyScalar(start + shaftLen + headLen * 0.5));
         cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d);
+        addToonOutline(cone);
         group.add(cone);
     }
     // 命中体
-    const hitLen = 3.0 * vl;
-    const hitRadius = Math.max(0.45 * vl, 0.40);
+    // ★2026-11-11 用户：「必须是显示色彩控件的那些被拖拽才算，而不是超出他们的一个范围」
+    //   可视杆半宽只有 0.09*vl，旧命中半径却是 0.45*vl（5 倍肥），且长度还比可视杆长 40%。
+    //   现在命中体基本贴合可视杆（略放大一点点，方便点中）。
+    const hitLen = 2.25 * vl;
+    const hitRadius = Math.max(0.11 * vl, 0.085);
     const hit = new THREE.Mesh(
         new THREE.CylinderGeometry(hitRadius, hitRadius, hitLen, 24, 1, true), hitMat()
     );
@@ -407,6 +428,102 @@ function makeArrow(dir, planeNormal, color, varName, scale, offset = 0, opts = {
     group.userData.herMoveKind = opts.moveKind || 'origin';
     group.userData.herMoveAxis = opts.axisName || (varName.includes('x') ? 'x' : (varName.includes('y') ? 'y' : 'z'));
     return group;
+}
+
+// ---------- 平面手柄（两轴自由移动） ----------
+// 主流建模软件惯例：在两轴夹角处放一块小方形「平面片」，拖动即在该平面内自由移动。
+// axes: [{ name:'x', dir:Vector3, varName:'v.xpos' }, ...]（恰好两条）；normal 用于配色/拾取参考。
+function makePlaneHandle(axes, normal, color, opts = {}) {
+    const group = new THREE.Group();
+    const vl = opts.visualScale || 1;
+    const off = (opts.offset || 0.72) * vl;
+    const half = (opts.size || 0.42) * vl * 0.5;
+    const a = axes[0].dir.clone().normalize();
+    const b = axes[1].dir.clone().normalize();
+    const center = a.clone().add(b).multiplyScalar(off);
+    const pts = [
+        center.clone().addScaledVector(a, -half).addScaledVector(b, -half),
+        center.clone().addScaledVector(a,  half).addScaledVector(b, -half),
+        center.clone().addScaledVector(a,  half).addScaledVector(b,  half),
+        center.clone().addScaledVector(a, -half).addScaledVector(b,  half)
+    ];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flatMap(p => [p.x, p.y, p.z]), 3));
+    geo.setIndex([0, 1, 2, 0, 2, 3]);
+    // 可视化：零厚度纯平面片（双面可见），实色完全不透明 —— 不要任何体积感，也不要透出后面的场景
+    const n = new THREE.Vector3().crossVectors(a, b).normalize();
+    const fillMat = new THREE.MeshBasicMaterial({
+        color, transparent: false, opacity: 1,
+        depthTest: false, depthWrite: false, side: THREE.DoubleSide
+    });
+    const fill = new THREE.Mesh(geo, fillMat);
+    fill.renderOrder = 902;
+    group.add(fill);
+    // 描边：灰色实色线框（三渲二外观），和面片共面（只沿法线抬 0.004 避免与面片共面闪烁）
+    const edgePts = [...pts, pts[0]].map(p => p.clone().addScaledVector(n, 0.004));
+    const edge = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(edgePts),
+        new THREE.LineBasicMaterial({ color: 0x9aa3ae, transparent: false, opacity: 1, depthTest: false, depthWrite: false })
+    );
+    edge.renderOrder = 903;
+    group.add(edge);
+    // 拖拽指示：以 Gizmo 原点为中心的更大一圈灰色边框，只在拖拽该平面手柄期间显示。
+    // ★ 不要半透明填充（用户要求平面手柄完全不透明），只保留轮廓线来标示「当前在哪个平面内移动」。
+    const indHalf = (opts.indicatorSize || 1.6) * vl;
+    const indPts = [
+        a.clone().multiplyScalar(-indHalf).addScaledVector(b, -indHalf),
+        a.clone().multiplyScalar( indHalf).addScaledVector(b, -indHalf),
+        a.clone().multiplyScalar( indHalf).addScaledVector(b,  indHalf),
+        a.clone().multiplyScalar(-indHalf).addScaledVector(b,  indHalf)
+    ];
+    const indEdge = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([...indPts, indPts[0]].map(p => p.clone().addScaledVector(n, 0.006))),
+        new THREE.LineBasicMaterial({ color: 0x9aa3ae, transparent: false, opacity: 1, depthTest: false, depthWrite: false })
+    );
+    indEdge.renderOrder = 901;
+    indEdge.visible = false;
+    group.add(indEdge);
+    const hit = new THREE.Mesh(geo, hitMat());
+    group.add(hit);
+    const meta = {
+        type: 'move', plane: true,
+        planeAxes: axes.map(p => ({ name: p.name, dir: p.dir.clone().normalize(), varName: p.varName })),
+        varName: axes[0].varName, scale: opts.scale || 0.012,
+        axis: normal.clone().normalize(), axisName: axes[0].name,
+        priority: opts.priority ?? 95
+    };
+    if (opts.mode) meta.mode = opts.mode;
+    if (opts.folder) {
+        meta.folder = true; meta.folderName = opts.folderName; meta.folderIdx = opts.folderIdx;
+        if (opts.folderPivot) meta.folderPivot = true;
+        if (opts.folderDisplace) meta.folderDisplace = true;
+    }
+    addPick(hit, meta);
+    group.userData.herMoveKind = opts.moveKind || 'origin';
+    group.userData.herMoveAxis = axes[0].name;
+    // 悬停 / 拖拽高亮用：保留平面片材质与描边的引用和原始颜色
+    group.userData.planeFill = fill;
+    group.userData.planeMats = [fillMat];
+    group.userData.planeEdge = edge;
+    group.userData.planeIndicatorEdge = indEdge;
+    group.userData.planeBaseColor = color;
+    group.userData.planeVisualState = 'idle';
+    return group;
+}
+// 平面手柄的二维精度取整：两轴各自独立累计（quantizeDragDelta 只有一个标量累加器，
+// 一帧内调两次会把两轴分量并入同一个格子 → 分量互相串味、松手后总量偏移）。
+function quantizePlaneAxisDelta(pick, key, delta) {
+    if (!pick || !Number.isFinite(delta)) return 0;
+    if (!pick._planeRaw) pick._planeRaw = {};
+    if (!pick._planeFed) pick._planeFed = {};
+    delta *= dragSensScale();
+    pick._planeRaw[key] = (pick._planeRaw[key] || 0) + delta;
+    const step = gizmoPrecisionStep();
+    if (!step) { pick._planeFed[key] = pick._planeRaw[key]; return delta; }
+    const target = gizmoPrecSnap(pick._planeRaw[key], step);
+    const feed = target - (pick._planeFed[key] || 0);
+    pick._planeFed[key] = target;
+    return feed;
 }
 
 // ---------- 统一Gizmo圆环工厂 ----------
@@ -434,13 +551,13 @@ function createGizmoRing(color, axis, radius, varName, axisNormal, xBasis, yBasi
     // 射线拾取球：旋转弧用球体命中，拉伸环不用(addHitSpheres:false，改用屏幕距离判定)
     if (opts.addHitSpheres !== false) {
         const rm = { type:'rot', varName, scale:1, axis, rotMode, priority: opts.priority ?? 35, axisNormal:d0.z.clone(), xBasis:d0.x.clone(), yBasis:d0.y.clone(), radius, end };
-        const hg = new THREE.SphereGeometry(0.34, 14, 10);
+        const hg = new THREE.SphereGeometry(0.08, 12, 8);
         for (let i = 0; i <= 22; i++) {
             const a = end * i / 22, p = new THREE.Mesh(hg, hitMat());
             p.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
             addPick(p, Object.assign({}, rm)); pickMeshes.push(p); plane.add(p);
         }
-        const ph = new THREE.Mesh(new THREE.SphereGeometry(0.48, 14, 10), hitMat());
+        const ph = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 8), hitMat());
         ph.position.copy(pgram.position); addPick(ph, Object.assign({}, rm)); pickMeshes.push(ph); plane.add(ph);
     }
     group.add(plane);
@@ -675,7 +792,7 @@ function makeScaleDots(b) {
         dot.position.copy(c);
         dot.lookAt(camera.position);
         dotsGroup.add(dot);
-        const hit = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), hitMat());
+        const hit = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), hitMat());
         hit.position.copy(c);
         addPick(hit, { type: 'scale', varName: 'v.scale', scale: 0.012, priority: 85, axis: c.clone().normalize() });
         dotsGroup.add(hit);
@@ -720,7 +837,7 @@ function makeScaleDots(b) {
     head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1));
     head.renderOrder = 998; rodGroup.add(head);
     // 命中体（沿轴，半透明，不与圆环抢判定）
-    const rodHit = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 12), hitMat());
+    const rodHit = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1, 12), hitMat());
     rodHit.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1));
     addPick(rodHit, { type: 'stretch', varName: 'v.extend_scale', scale: 0.012, priority: 12 });
     rodGroup.add(rodHit);

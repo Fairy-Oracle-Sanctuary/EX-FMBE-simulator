@@ -286,8 +286,20 @@
     color: #fff;
 }
 @media (max-width: 600px) {
-    .pm-grid { grid-template-columns: 1fr; }
+    /* 手机端改两列：缩略图只有半屏宽，单屏能看到更多项目 */
+    .pm-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .pm-body { padding: 20px 16px 40px; }
+    .pm-card-thumb,
+    .pm-card-thumb-empty { padding-bottom: 62%; }
+    .pm-card-title-overlay { padding: 14px 8px 5px; font-size: 11px; }
+    .pm-card-meta { padding: 6px 8px; }
+    .pm-card-update-label { display: none; }
+    .pm-card-update-time { font-size: 10px; }
+    .pm-card-actions { gap: 3px; }
+    .pm-card-action { width: 19px; height: 19px; font-size: 11px; border-radius: 4px; }
+    .pm-new-card { min-height: 120px; gap: 6px; }
+    .pm-new-icon { font-size: 24px; }
+    .pm-new-label { font-size: 12px; }
 }
 
 /* 暗色模式：跟随 body.light-mode 开关 */

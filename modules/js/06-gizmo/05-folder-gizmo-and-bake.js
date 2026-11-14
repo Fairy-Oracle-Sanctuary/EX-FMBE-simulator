@@ -548,8 +548,21 @@ function rebuildFolderGizmo(name) {
             gizmoArrowGroups.push(arrow);
             gizmoRoot.add(arrow);
         });
+        // 枢轴移动：三块平面手柄（XY / YZ / XZ），拖动即在对应平面内自由移动枢轴
+        [
+            { pair: ['x', 'y'], normal: new THREE.Vector3(0, 0, 1), color: 0x2078ff },
+            { pair: ['y', 'z'], normal: new THREE.Vector3(1, 0, 0), color: 0xff3030 },
+            { pair: ['x', 'z'], normal: new THREE.Vector3(0, 1, 0), color: 0x25d94f }
+        ].forEach(cfg => {
+            const g = makePlaneHandle(
+                cfg.pair.map(n => ({ name: n, dir: moveDirs[n], varName: 'folderPivot' + n.toUpperCase() })),
+                cfg.normal, cfg.color,
+                { offset: 0.68, scale: 0.012, priority: 96, moveKind: 'origin', folder: true, folderName: name, folderIdx: axisToIdx[cfg.pair[0]], folderPivot: true }
+            );
+            gizmoArrowGroups.push(g);
+            gizmoRoot.add(g);
+        });
     }
-    // 位移箭头（folderDisplace）：沿世界轴，拖动即把平移烘焙进所有子级（模型移动、枢轴不变）
     if (herModes.has('base')) {
         const moveColors = { x: 0xffb347, y: 0xc6ff5c, z: 0x49e6ff };
         const moveDirs = { x: new THREE.Vector3(1,0,0), y: new THREE.Vector3(0,1,0), z: new THREE.Vector3(0,0,1) };
@@ -571,6 +584,20 @@ function rebuildFolderGizmo(name) {
             });
             gizmoArrowGroups.push(arrow);
             gizmoRoot.add(arrow);
+        });
+        // 基准位移：三块平面手柄（XY / YZ / XZ），拖动即在对应平面内自由位移
+        [
+            { pair: ['x', 'y'], normal: new THREE.Vector3(0, 0, 1), color: 0x49e6ff },
+            { pair: ['y', 'z'], normal: new THREE.Vector3(1, 0, 0), color: 0xffb347 },
+            { pair: ['x', 'z'], normal: new THREE.Vector3(0, 1, 0), color: 0xc6ff5c }
+        ].forEach(cfg => {
+            const g = makePlaneHandle(
+                cfg.pair.map(n => ({ name: n, dir: moveDirs[n], varName: 'folderDisp' + n.toUpperCase() })),
+                cfg.normal, cfg.color,
+                { offset: 0.95, scale: 0.012, priority: 96, moveKind: 'base', mode: 'base', folder: true, folderName: name, folderIdx: axisToIdx[cfg.pair[0]], folderDisplace: true }
+            );
+            gizmoArrowGroups.push(g);
+            gizmoRoot.add(g);
         });
     }
 }
@@ -841,6 +868,12 @@ function updateToolbar(force) {
         const wrap = vtxBtnEl.parentElement;
         if (wrap) wrap.style.display = (selectedFolder || !selected()) ? 'none' : '';
     }
+    // 镜像按钮（快捷操作栏「丰」）：文件夹 / 未选方块时不可用
+    const mirrorBtnEl = document.getElementById('mirrorMenuBtn');
+    if (mirrorBtnEl) {
+        const wrap = mirrorBtnEl.parentElement;
+        if (wrap) wrap.style.display = (selectedFolder || !selected()) ? 'none' : '';
+    }
     // 文件夹（骨骼）支持「枢轴 / 位移 / 旋转」三种功能（与正常模型一致）：隐藏缩放、局部旋转、全局旋转，
     // 并显示统一的「旋转」按钮（世界轴旋转，无需区分局部/全局）。
     const baseBtnEl = document.querySelector('.her-mode-btn[data-mode="base"]');
@@ -1006,7 +1039,7 @@ function pickRotByScreenDistance(cx, cy) {
         const offset = (g.userData.herFaceAngle || 0) - Math.PI * 0.5;
         let prev = null, md = Infinity;
         for (let i=0;i<=64;i++) { const a=S+(E-S)*i/64+sp+offset, wp=c.clone().addScaledVector(d.x,Math.cos(a)*radius).addScaledVector(d.y,Math.sin(a)*radius), sp2=wp.project(camera), p={x:(sp2.x*0.5+0.5)*rect.width+rect.left,y:(-sp2.y*0.5+0.5)*rect.height+rect.top}; if(prev) md=Math.min(md,dS(cx,cy,prev.x,prev.y,p.x,p.y)); prev=p; }
-        if (md<14 && (!best || md<best.distance)) best = {distance:md, object:{userData:{her:{type:'rot',varName:vn,scale:1,axis,rotMode:rm,priority:80,axisNormal:d.z.clone(),xBasis:d.x.clone(),yBasis:d.y.clone(),radius,end:Math.PI, folder: !!g.userData.herFolder, folderName: fld||null, folderIdx: g.userData.herFolderIdx||0},herPriority:80}}};
+        if (md<4 && (!best || md<best.distance)) best = {distance:md, object:{userData:{her:{type:'rot',varName:vn,scale:1,axis,rotMode:rm,priority:80,axisNormal:d.z.clone(),xBasis:d.x.clone(),yBasis:d.y.clone(),radius,end:Math.PI, folder: !!g.userData.herFolder, folderName: fld||null, folderIdx: g.userData.herFolderIdx||0},herPriority:80}}};
     }
     return best;
 }
@@ -1027,7 +1060,7 @@ function pickStretchByScreenDistance(cx, cy) {
     const tip = origin.clone().add(wd.clone().multiplyScalar(len));
     const tipS = toScreen(tip);
     const dRod = dS(cx, cy, oS.x, oS.y, tipS.x, tipS.y);
-    if (dRod < 24 && (!best || dRod < best.distance)) best = { distance: dRod, type:'stretch', varName:'v.extend_scale', axis: wd.clone(), priority: 70 };
+    if (dRod < 4 && (!best || dRod < best.distance)) best = { distance: dRod, type:'stretch', varName:'v.extend_scale', axis: wd.clone(), priority: 70 };
     // ex / ey 圆环：采样半圆弧，取弧上离光标最近的距离
     const ringDist = (ring, varName, axis, priority) => {
         const gp = new THREE.Vector3(); ring.group.getWorldPosition(gp);
@@ -1047,7 +1080,7 @@ function pickStretchByScreenDistance(cx, cy) {
             if (prev) md = Math.min(md, dS(cx, cy, prev.x, prev.y, p.x, p.y));
             prev = p;
         }
-        if (md < 14 && (!best || md < best.distance)) best = { distance: md, type:'rot', varName, axis, priority, axisNormal: wz.clone(), xBasis: wx.clone(), yBasis: wy.clone() };
+        if (md < 4 && (!best || md < best.distance)) best = { distance: md, type:'rot', varName, axis, priority, axisNormal: wz.clone(), xBasis: wx.clone(), yBasis: wy.clone() };
     };
     ringDist(stretchGizmoRefs.eyRing, 'v.extend_yrot', 'y', 60);
     ringDist(stretchGizmoRefs.exRing, 'v.extend_xrot', 'x', 55);
@@ -1075,6 +1108,17 @@ function beginGizmoDrag(cx, cy, ev) {
     if (ev?.target?.closest && ev.target.closest('#her-transform-toolbar')) return false;
     const obj = pickGizmo({clientX:cx, clientY:cy});
     if (!obj) return false; const meta = obj.userData.her; if (!meta) return false;
+    // ★★★2026-11-11【用户：「Gizmo 判定区太宽，我想选方块老是变成改方块」】
+    //   `pickRotByScreenDistance` / `pickStretchByScreenDistance` 是**屏幕距离合成**的手柄
+    //   （不是真网格 ⇒ `isObject3D` 为假），判定带原来是 ±14px（拉伸杆 ±24px，共 48px 宽），
+    //   而它们的 priority 又比真手柄高 ⇒ 手指/鼠标稍微靠近就被抢走。
+    //   现在：合成手柄遇到「光标下压着另一个未选中的方块」时直接让位，交给点击选择逻辑。
+    if (obj.isObject3D === false) {
+        let under = null;
+        try { under = (typeof bbPickBlockAtEvent === 'function') ? bbPickBlockAtEvent({ clientX: cx, clientY: cy }) : null; } catch (_) { under = null; }
+        const sel = (typeof selected === 'function') ? selected() : null;
+        if (under && under !== sel && !(selectedBlocksSet && selectedBlocksSet.has(under))) return false;
+    }
     // 立即禁用 OrbitControls，防止其响应此次点击导致摄像机漂移
     controls.enabled = false; if(ev) ev.preventDefault();
     // 镜像：对称面实体的手柄 —— 不走方块变量通道，直接改 mirrorPlanePos / mirrorPlaneQuat
@@ -1147,6 +1191,12 @@ function beginGizmoDrag(cx, cy, ev) {
         }
     }
     if (meta.folder) clearActiveHighlight(); else makeActiveHighlight(activePick);
+    if (meta.plane) {
+        // 平面手柄：抓取瞬间熄灭悬停态、切成亮黄拖拽态，并给出抓取光标
+        setPlaneHover(null);
+        setPlaneActive(planeGroupOfObject(obj));
+        if (renderer && renderer.domElement) renderer.domElement.style.cursor = 'grabbing';
+    }
     if (activePick.type === 'rot') activePick.lastAngle = screenAngleFor(activePick, cx, cy);
     return true;
 }
@@ -1256,6 +1306,11 @@ function moveGizmoDrag(cx, cy, ev) {
     const dx = cx-lastPX, dy = cy-lastPY; lastPX=cx; lastPY=cy;
     // 镜像：对称面手柄（位移箭头平移面锚点 / 旋转圆环绕世界轴转面）
     if (activePick.mirrorPlane) {
+        // 拖拽开始先记一个「改之前」的面姿态，供 Ctrl+Z 回退对对称面的调整
+        if (!activePick.mirrorPlaneUndoPushed) {
+            activePick.mirrorPlaneUndoPushed = true;
+            if (typeof mirrorPushPlaneUndo === 'function') mirrorPushPlaneUndo();
+        }
         if (activePick.mirrorPlane === 'move') {
             const a = screenAxis(activePick);
             const d = quantizeDragDelta((dx * a.x + dy * a.y) * activePick.scale);
@@ -1302,10 +1357,21 @@ function moveGizmoDrag(cx, cy, ev) {
             syncFolderBoneHierarchy(null, { force: true });
         }
         const a = screenAxis(activePick);
-        const deltaS = quantizeDragDelta((dx * a.x + dy * a.y) * activePick.scale);   // 精度取整
-        const worldDelta = (activePick.axis && activePick.axis.clone)
-            ? activePick.axis.clone().multiplyScalar(deltaS)
-            : new THREE.Vector3(0, 0, 0);
+        let worldDelta;
+        if (activePick.plane) {
+            // 平面手柄：沿两条轴的屏幕投影分别取增量，合成世界位移（两轴独立取整，互不串味）
+            worldDelta = new THREE.Vector3();
+            activePick.planeAxes.forEach(p => {
+                const pa = screenAxis({ axis: p.dir });
+                const d = quantizePlaneAxisDelta(activePick, p.name, (dx * pa.x + dy * pa.y) * activePick.scale);
+                worldDelta.addScaledVector(p.dir, d);
+            });
+        } else {
+            const deltaS = quantizeDragDelta((dx * a.x + dy * a.y) * activePick.scale);   // 精度取整
+            worldDelta = (activePick.axis && activePick.axis.clone)
+                ? activePick.axis.clone().multiplyScalar(deltaS)
+                : new THREE.Vector3(0, 0, 0);
+        }
         // 骨骼文件夹：枢轴=骨干方块实时位置，不存 f.pivot 数据。
         // 分两种语义（与单方块「枢轴联动模型」开关一致）：
         //   - 枢轴手柄（folderPivot）：moveBoneFolderPivot 改骨干 v.xpos（枢轴锚点）。
@@ -1419,9 +1485,26 @@ function moveGizmoDrag(cx, cy, ev) {
                 if (axes[axName]) activePick.axis = axes[axName].clone();
             }
         }
-        const a = screenAxis(activePick);
-        const deltaS = quantizeDragDelta((dx * a.x + dy * a.y) * activePick.scale);   // 精度取整
-        changeVar(activePick.varName, deltaS, false);
+        if (activePick.plane) {
+            // 世界轴 basepos 平面手柄：两轴各自的「世界增量 → 局部 basepos」换算分别落库
+            const _saved = { axis: activePick.axis, axisName: activePick.axisName, varName: activePick.varName };
+            activePick.planeAxes.forEach(p => {
+                const pa = screenAxis({ axis: p.dir });
+                const d = quantizePlaneAxisDelta(activePick, p.name, (dx * pa.x + dy * pa.y) * activePick.scale);
+                if (Math.abs(d) <= 1e-9) return;
+                activePick.axis = p.dir.clone();
+                activePick.axisName = p.name;
+                activePick.varName = p.varName;
+                changeVar(p.varName, d, false);
+            });
+            activePick.axis = _saved.axis;
+            activePick.axisName = _saved.axisName;
+            activePick.varName = _saved.varName;
+        } else {
+            const a = screenAxis(activePick);
+            const deltaS = quantizeDragDelta((dx * a.x + dy * a.y) * activePick.scale);   // 精度取整
+            changeVar(activePick.varName, deltaS, false);
+        }
         updateActiveHighlightPose();
     } else if (activePick.type === 'scale') {
         // 方块自身缩放：沿角点相对中心的「世界径向」投影鼠标位移，拖拽向外即放大、向中心即缩小（任意角点方向均一致）
@@ -1441,6 +1524,23 @@ function moveGizmoDrag(cx, cy, ev) {
         changeVar(activePick.varName, deltaS, false);
         updateStretchGizmoLive(selected());
     }
+    else if (activePick.type === 'move' && activePick.plane) {
+        // 枢轴平面手柄：两轴枢轴分量分别写入（「枢轴不联动」的 basepos 补偿在第二次写入后即为最终值）
+        const _saved = { axis: activePick.axis, axisName: activePick.axisName, varName: activePick.varName };
+        activePick.planeAxes.forEach(p => {
+            const pa = screenAxis({ axis: p.dir });
+            const d = quantizePlaneAxisDelta(activePick, p.name, (dx * pa.x + dy * pa.y) * activePick.scale);
+            if (Math.abs(d) <= 1e-9) return;
+            activePick.axis = p.dir.clone();
+            activePick.axisName = p.name;
+            activePick.varName = p.varName;
+            changeVar(p.varName, d, false);
+        });
+        activePick.axis = _saved.axis;
+        activePick.axisName = _saved.axisName;
+        activePick.varName = _saved.varName;
+        updateActiveHighlightPose();
+    }
     else { const a = screenAxis(activePick); changeVar(activePick.varName, quantizeDragDelta((dx*a.x+dy*a.y)*activePick.scale), false); updateActiveHighlightPose(); }
     // 拖拽过程中实时刷新数据面板数值（不整面板重渲染）
     updateInspectorValues();
@@ -1450,6 +1550,8 @@ function moveGizmoDrag(cx, cy, ev) {
 function endGizmoDrag(ev) {
     hideGizmoDeltaHud(); gizmoDeltaBaseline = null;   // 拖拽结束，收起增量 HUD
     resetGizmoPrecAccum();                            // 精度取整：清零累计，避免泄漏到下一次拖拽
+    clearPlaneHandleVisuals();
+    if (renderer && renderer.domElement && renderer.domElement.style.cursor === 'grabbing') renderer.domElement.style.cursor = '';
     const _pid = (ev && ev.pointerId != null) ? ev.pointerId : null;
     const _rel = () => { if (_pid != null) { try { renderer.domElement.releasePointerCapture(_pid); } catch (_) {} } };
     if (pendingInputPick) { const p=pendingInputPick; pendingInputPick=null; _rel(); controls.enabled=true; const dt=performance.now()-p.t, md=Math.hypot((p.lastX??p.x)-p.x,(p.lastY??p.y)-p.y); if(!p.moved&&md<=10&&dt<=650) promptVarInput(p.varName,ev); if(ev) ev.preventDefault(); gizmoDragJustEnded = true; setTimeout(() => { gizmoDragJustEnded = false; }, 300); return true; }

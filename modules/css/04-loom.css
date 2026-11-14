@@ -274,7 +274,7 @@ body.light-mode .bnr-sub { color:#8b939e; }
 body.light-mode .mm-cat, body.light-mode .mm-btn { background: rgba(100,116,139,0.13); }
 
 /* 命令预览 */
-body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-preview); padding: 12px; border-radius: 16px; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border: var(--bg-cmd-preview-border); }
+body .cmd-preview { background: var(--bg-cmd-preview); color: var(--color-cmd-preview); padding: 12px; border-radius: 0; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border: var(--bg-cmd-preview-border); }
 
 
 #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }

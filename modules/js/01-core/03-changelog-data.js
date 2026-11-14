@@ -300,34 +300,80 @@ function _getExprFn(expr) {
     _exprFnCache.set(expr, fn);
     return fn;
 }
+/* ★★【2026-11-08 通用性能 · evaluateExpression 代理缓存】
+   实测（蜘蛛腿预设 / 9800X3D）：拖拽一帧 evaluateExpression 被调用 5444 次、独占 35.5ms。
+   旧实现每次调用都要：
+     ① 对表达式跑一遍 `/\\b[tv]\\.\\d/` 正则；
+     ② 遍历全部局部变量（IK 求解块 179 个）新建一个 vProxy 快照对象（179 次 slice + 写属性）；
+     ③ 新建一个 t 惰性 Proxy。
+   ⇒ 5444 × 179 ≈ 97 万次属性写入/帧，与程序求解本身毫无关系，纯属重复劳动。
+   现在改为：
+     · 数字成员改写按表达式文本缓存；
+     · v 改为「从 Map 实时读取」的 Proxy（每个变量 Map 只建一次，用 WeakMap 缓存）——
+       不动点迭代期间值一直在变，所以必须实时读，但不再每次重建快照；
+     · t Proxy 同理按 globalVarsMap 缓存（仅 _depth=0 的常规路径；递归求值仍走临时 Proxy）。 */
+const _exprNormCache = new Map();
+const _EXPR_NORM_CACHE_MAX = 8000;
+function _exprNorm(expr) {
+    const hit = _exprNormCache.get(expr);
+    if (hit !== undefined) return hit;
+    let out = expr;
+    if (/\b[tv]\.\d/.test(expr)) out = expr.replace(/\b([tv])\.([0-9][A-Za-z0-9_]*)/g, '$1["$2"]');
+    if (_exprNormCache.size >= _EXPR_NORM_CACHE_MAX) _exprNormCache.clear();
+    _exprNormCache.set(expr, out);
+    return out;
+}
+const _exprVProxyCache = new WeakMap();
+function _exprVProxy(localVarsMap) {
+    let p = _exprVProxyCache.get(localVarsMap);
+    if (!p) {
+        p = new Proxy({}, {
+            get(_t, n) {
+                if (typeof n !== 'string') return undefined;
+                const d = localVarsMap.get('v.' + n);
+                return d ? d.value : undefined;
+            }
+        });
+        _exprVProxyCache.set(localVarsMap, p);
+    }
+    return p;
+}
+const _exprTProxyCache = new WeakMap();
+function _exprTProxy(globalVarsMap) {
+    let p = _exprTProxyCache.get(globalVarsMap);
+    if (!p) {
+        p = new Proxy({}, {
+            get(_t, n) {
+                if (typeof n !== 'string') return 0;
+                const g = globalVarsMap.get(n);
+                return g ? resolveGlobalValue(n, g, 0) : 0;
+            }
+        });
+        _exprTProxyCache.set(globalVarsMap, p);
+    }
+    return p;
+}
 function evaluateExpression(expr, localVarsMap, globalVarsMap, blockId = null, _depth = 0) {
     // ★ 数字开头的 molang 访问（t.1_px / v.1_time，骨骼 id 为数字时导出/关键帧驱动会产生）：
     //   JS 的 new Function 不允许 `t.1_px` 这类属性名以数字开头，直接 SyntaxError 被 catch 吞成 0，
     //   导致数字 id 的骨骼 molang 全部失效（用户报告「骨骼动画导出再导入变成一坨」的更深层根因）。
     //   预处理成方括号下标 t["1_px"] / v["1_time"]，保持 FMBE 语义（键为字符串）且 JS 语法合法。
-    if (/\b[tv]\.\d/.test(expr)) {
-        expr = expr.replace(/\b([tv])\.([0-9][A-Za-z0-9_]*)/g, '$1["$2"]');
-    }
-    const scope = { math: angleMath, q: queryNamespace };
-    const vProxy = {};
-    for (let [k, obj] of localVarsMap) if (k.startsWith('v.')) vProxy[k.slice(2)] = obj.value;
-    scope.v = vProxy;
-    // 惰性 t 代理：仅在表达式真正访问 t.X 时才实时解析该全局变量，
-    // 不再预先遍历全部全局做 G^6 级递归求值（多骨骼时会导致卡死/无限递归）。
-    // 未定义的 t.X 一律返回 0（与原“未命中全局→NaN→catch 返回 0”行为一致）。
-    const tProxy = new Proxy({}, {
+    const normExpr = _exprNorm(expr);
+    const math = angleMath, q = queryNamespace;
+    const v = _exprVProxy(localVarsMap);
+    // 惰性 t 代理：仅在表达式真正访问 t.X 时才实时解析该全局变量。
+    const t = _depth === 0 ? _exprTProxy(globalVarsMap) : new Proxy({}, {
         get(_t, n) {
             if (typeof n !== 'string') return 0;
             const g = globalVarsMap.get(n);
             return g ? resolveGlobalValue(n, g, _depth) : 0;
         }
     });
-    scope.t = tProxy;
     const prev = _currentEvalBlockId;
     _currentEvalBlockId = blockId;
-    const _fn = _getExprFn(expr);
+    const _fn = _getExprFn(normExpr);
     // 用 try/finally 统一收口，保证「编译失败提前返回」也一定还原 _currentEvalBlockId（此前会泄漏）
-    try { return _fn ? _fn(scope.math, scope.v, scope.t, scope.q) : 0; } catch(e) { return 0; }
+    try { return _fn ? _fn(math, v, t, q) : 0; } catch(e) { return 0; }
     finally { _currentEvalBlockId = prev; }
 }
 

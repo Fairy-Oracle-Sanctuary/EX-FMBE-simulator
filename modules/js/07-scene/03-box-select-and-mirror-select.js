@@ -25,6 +25,13 @@ function boxSelectUpdateOverlay(x1, y1, x2, y2) {
 function boxSelectRemoveOverlay() {
     if (boxSelectOverlay) { boxSelectOverlay.remove(); boxSelectOverlay = null; }
 }
+// 中止当前框选（指针被系统取消 / 第二根手指落下）：不改选区，只清理临时状态。
+function boxSelectAbort() {
+    boxSelectRemoveOverlay();
+    controls.enabled = boxSelectPrevControlsEnabled;
+    boxSelectStart = null;
+    boxSelectActive = false;
+}
 
 // 计算屏幕矩形内的所有方块。
 // ★★ 判定口径：**纯屏幕空间的视觉轮廓**（与摄像机角度无关）——
@@ -178,7 +185,19 @@ function boxSelectIntercept(e) {
        用户需要一边开着捕捉一边把方块框进来；第二步（已在等目标点）才禁掉，避免框选打断流程。 */
     if (vtxSnapPhase >= 2) return;
     if (e.button !== 0) return;
-    if (!(e.ctrlKey || e.metaKey)) return;                 // 仅 Ctrl/Cmd+左键走框选；Shift+左键留给摄像机平移
+    /* ★【2026-11-08 手机端虚拟 Ctrl 框选】虚拟 Ctrl（#virtModCtrl）是常亮锁存开关，语义与键盘 Ctrl 完全一致：
+       点亮后触屏单指拖拽 = 框选（不再旋转视角），与电脑端 Ctrl+左键拖拽一一对应。
+       多选锁定开关（kfMselLock）仍刻意不接入框选 —— 它只表示「点选加选」。
+       （旧注释「刻意只认 e.ctrlKey||e.metaKey」即指此处的冲突顾虑，现已用虚拟 Ctrl 显式开关解决。） */
+    let virtCtrl = false;
+    try { virtCtrl = !!(gizmoPrecMods && gizmoPrecMods.ctrl); } catch (err) { }
+    if (!(e.ctrlKey || e.metaKey || virtCtrl)) return;    // 仅 Ctrl/Cmd+左键（含虚拟 Ctrl）走框选；Shift+左键留给摄像机平移
+    if (e.pointerType === 'touch' && e.isPrimary === false) {
+        // 触屏第二根手指：取消本次框选，交回双指手势（不能让第一根手指的框选一直霸占 controls）
+        if (boxSelectStart) boxSelectAbort();
+        return;
+    }
+    if (boxSelectStart) return;                           // 已在框选：忽略重复按下
     if (!renderer.domElement.contains(e.target)) return;  // 事件必须在主画布范围内
     if (e.target.closest && (e.target.closest('.data-panel') || e.target.closest('.top-bar') || e.target.closest('.new-top-bar') || e.target.closest('.side-block-list'))) return;
     if (gizmoRoot && gizmoRoot.visible) return;
@@ -211,6 +230,8 @@ window.addEventListener('pointermove', (e) => {
 
 function endBoxSelect(e) {
     if (!boxSelectStart) return;
+    // 指针被系统取消（来电 / 手势打断 / 多指切换）：clientX 可能是 0，绝不能落选出一整屏
+    if (e && e.type === 'pointercancel') { boxSelectAbort(); return; }
     if (boxSelectActive) {
         // 关键帧动画模式下的「只收已加入动画列表的方块」门禁已在 getBlocksInScreenRect 内统一处理
         // （见上方 r33 注释），此处无需再过滤，保持单一真相源。
@@ -290,6 +311,8 @@ renderer.domElement.addEventListener('touchstart', e => {
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
         if (gizmoDragJustEnded) return;
+        // 刚完成框选拖拽：抑制本次 touch 轻触选块（阈值 4px 框选 / 5px 手势之间的窄区间会同时触发）
+        if (justBoxSelected) return;
         if (!moved && !ee.target.closest('.data-panel') && !ee.target.closest('.top-bar') && !ee.target.closest('.new-top-bar') && !ee.target.closest('.side-block-list')) {
             // 测量（测长 / 测角）：触摸点删除 ×
             if (typeof measureDeleteClick === 'function' && measureDeleteClick(ee.changedTouches[0].clientX, ee.changedTouches[0].clientY)) return;

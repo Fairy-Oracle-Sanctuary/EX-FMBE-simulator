@@ -173,20 +173,42 @@ function _snapBlockOf(b, old) {
     const boneParent = b._boneParent || null;
     const boneExplicit = !!b._boneExplicit;
     const boneMode = b._boneMode || null;
+    const ikGoalMarker = !!b._ikGoalMarker;
+    // 多动画（2026-11-07）：追加动画只记启用状态（正文全局共享），加上本块局部执行顺序
+    const channels = b.scope.channels ? Array.from(b.scope.channels.entries()).map(([id, ch]) => ({ id, enabled: ch && ch.enabled !== false })) : null;
+    const stack = Array.isArray(b.scope.stack) ? b.scope.stack.slice() : null;
     if (old && old.id === b.id && old.type === b.type && old.program === program
         && old.molangMode === molangMode && old.molangEditedByUser === molangEditedByUser
         && old.textureUrl === textureUrl && old.materialColor === b.materialColor && old.materialType === materialType
         && old.facePresetKey === facePresetKey && old.materialPresetName === materialPresetName
         && old.loomCode === loomCode && old.group === group && old.hidden === hidden && old.locked === locked
         && old.boneParent === boneParent && old.boneExplicit === boneExplicit && old.boneMode === boneMode
+        && old.ikGoalMarker === ikGoalMarker
+        && _snapSameChannels(old.channels, channels) && _snapSameArr(old.stack, stack)
         && vars === old.vars && _snapSameArr(old.faceTextures, faceTextures)) {
         return old;
     }
     return {
         id: b.id, type: b.type, vars, program, molangMode, molangEditedByUser, textureUrl,
         materialColor: b.materialColor, materialType, faceTextures, facePresetKey, materialPresetName,
-        loomCode, group, hidden, locked, boneParent, boneExplicit, boneMode
+        loomCode, group, hidden, locked, boneParent, boneExplicit, boneMode, ikGoalMarker, channels, stack
     };
+}
+function _snapSameChannels(a, b) {
+    if (!a && !b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i].id !== b[i].id || a[i].enabled !== b[i].enabled) return false;
+    }
+    return true;
+}
+function _snapSameAnims(a, b) {
+    if (!a && !b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i].id !== b[i].id || a[i].name !== b[i].name || a[i].program !== b[i].program || a[i].enabled !== b[i].enabled) return false;
+    }
+    return true;
 }
 function _snapGlobalOf(name, g, old) {
     const e = { name, expr: g.def.expr, value: g.def.value, rangeMin: g.def.rangeMin, rangeMax: g.def.rangeMax, step: g.def.step, sourceBlockId: g.sourceBlockId };
@@ -266,6 +288,8 @@ function getState() {
     /* 测量（测长 / 测角）也在项目状态里：内容不变时 measureStateSnapshot 返回同一数组引用，
        所以下面的整份状态比较天然覆盖它（撤销 / 存档 / 重做都能带着测量一起走）。 */
     const measuresSnap = (typeof measureStateSnapshot === 'function') ? measureStateSnapshot() : null;
+    // 全局动画控制器（程序正文共享）也属于项目状态：撤销 / 存档必须一起带回
+    const animsSnap = projectAnimations.map(a => ({ id: a.id, name: a.name, program: String(a.program || ''), enabled: a.enabled !== false }));
 
     // 整份状态完全一致 ⇒ 直接返回上一份快照（引用相同，history.record 会因此跳过重复落账）
     if (prev
@@ -273,10 +297,11 @@ function getState() {
         && _snapSameRefArr(prevGlobals, globalsSnap)
         && _snapSameRefArr(prev.keyframes, kfsSnap)
         && _snapSameRefArr(prevFolders, foldersSnap)
-        && _snapSameRefArr(prev.measures, measuresSnap)) {
+        && _snapSameRefArr(prev.measures, measuresSnap)
+        && _snapSameAnims(prev.animations, animsSnap)) {
         return prev;
     }
-    const state = { blocks: blocksSnap, globalVars: globalsSnap, keyframes: kfsSnap, folders: foldersSnap, measures: measuresSnap };
+    const state = { blocks: blocksSnap, globalVars: globalsSnap, keyframes: kfsSnap, folders: foldersSnap, measures: measuresSnap, animations: animsSnap };
     _lastStateSnapshot = state;
     return state;
 }
@@ -284,6 +309,11 @@ function getState() {
 function restoreState(state) {
     for (let [k,i] of activeAutoIncMap) clearInterval(i);
     activeAutoIncMap.clear();
+    // 全局动画控制器随撤销 / 存档一起恢复（老快照没有该字段 ⇒ 该项目本来就没有动画，必须清空，
+    // 否则上一个项目的动画会泄漏到新打开的项目里）
+    projectAnimations = Array.isArray(state.animations)
+        ? state.animations.map(a => ({ id: a.id, name: a.name, program: String(a.program || ''), enabled: a.enabled !== false }))
+        : [];
     // 保存当前选中方块的ID，用于恢复后重建选中状态
     const prevSelectedIds = Array.from(selectedBlocksSet).map(b => b.id);
     const prevSelectedBlockId = selectedBlock ? selectedBlock.id : null;
@@ -311,6 +341,12 @@ function restoreState(state) {
         blk.scope.program = s.program || '';
         blk.scope.molangMode = !!s.molangMode;
         blk.scope.molangEditedByUser = !!s.molangEditedByUser;
+        // 多动画：只恢复「本块启用了哪些动画 + 本块顺序」，正文在 projectAnimations 里
+        blk.scope.channels = Array.isArray(s.channels)
+            ? new Map(s.channels.map(c => [c.id, { enabled: c.enabled !== false }]))
+            : null;
+        blk.scope.stack = Array.isArray(s.stack) ? s.stack.slice() : ['__base__'];
+        blk.scope.activeLayer = '__base__';
         blk.hidden = !!s.hidden;   // 单项隐藏随撤销 / 项目存档一起持久化
         blk.locked = !!s.locked;   // 单项锁定（禁止选中、仍显示）随撤销 / 项目存档一起持久化
         blk.scope.vars.clear();
@@ -339,6 +375,8 @@ function restoreState(state) {
             // 旧存档没有该字段 → 留空，由 getBoneMode 按 molang 表达式是否引用 t.<父>_bx 推断。
             if (s.boneMode === 'basepos' || s.boneMode === 'pivot') blk._boneMode = s.boneMode;
         }
+        // IK 目标点标记（预设 point）：必须持久化，否则重载/撤销后拖拽又只写 basepos、IK 不再跟随。
+        if (s.ikGoalMarker) blk._ikGoalMarker = true;
     });
     } finally { _bulkAddDepth--; }
     // 恢复组信息：文件夹仅作分组，但保留可选「骨骼枢轴」参考点 pivot（旧版无此字段时回退为 null）
@@ -368,6 +406,12 @@ function restoreState(state) {
     //   先恢复 globalVars（blocks 已在上方重建、父块 v.xpos 等已是正确常量）再统一 refresh 即可正确解析。
     globalVars.clear();
     state.globalVars.forEach(g => globalVars.set(g.name, { def: new VarDef(g.expr, g.value, g.rangeMin, g.rangeMax, g.step), sourceBlockId: g.sourceBlockId }));
+    // ★【通用 · 2026-11-08】存量工程自愈：早期程序基线里只有 v.*，没把本块发布的 t.* 写进去 ⇒
+    //   编辑器看不到、像隐藏连线（point 的 t.point_px 就是这种情况）。这里按 globalVars 的 sourceBlockId
+    //   把缺失的 `t.<名>=<表达式>;` 补回发布块自己的 program（幂等，已有声明不重复）。
+    try {
+        if (typeof appendOwnedGlobalsToProgram === 'function') blocks.forEach(b => { try { appendOwnedGlobalsToProgram(b); } catch (_) { } });
+    } catch (_) { }
     // 文件夹变换变化后，刷新所有方块（其有效矩阵依赖文件夹链）并重建 Gizmo / 数值面板
     blocks.forEach(b => { try { b.refresh(); } catch (e) {} });
     requestGizmoRefresh();
@@ -407,6 +451,13 @@ function restoreState(state) {
             try { refreshMolangProgramForBlock(b.id); } catch (e) { }
         }
     });
+    // ★★2026-11-10 旧格式自愈：把「整段 IK 求解正文写在末端块 base 里」的老工程，
+    //   迁到共用动画 ik_solve_<N>（base 只剩赋值输入 + 发布）。用户要求：
+    //   「FMBE variables 里只想看见赋值的语句，其它当成函数放到其他动画中」。
+    //   幂等：已有求解层的块直接跳过（正常工程 0 开销，只是每个块查一次变量）。
+    blocks.forEach(b => {
+        try { if (typeof ikExtractInlineSolve === 'function') ikExtractInlineSolve(b); } catch (_) { }
+    });
     // 标记关键帧数据变更，使骨骼播放缓存（_kfPlayPre）失效并重算，
     // 避免撤回后播放仍沿用旧的骨骼快照。
     keyframeEpoch++;
@@ -444,7 +495,12 @@ function restoreState(state) {
 // 撤销/重做后需落盘：否则像「清空项目」这类操作撤销后若不继续编辑就刷新，会回到撤销前的结果
 // ★【2026-10-24 性能优化】恢复后把快照缓存指向该状态：下一次 getState() 能直接命中缓存复用，
 //   且可避免把等价状态重复压栈（history.record 的引用相同判断）。
-function undo() { flushPendingRecords(); const cur = getState(); const prev = history.undo(cur); if (prev) { restoreState(prev); _lastStateSnapshot = prev; bumpDrawRev('ui'); if (typeof scheduleAutoSave === 'function') scheduleAutoSave(); } }
+function undo() {
+    // 镜像工具激活时：Ctrl+Z 先回退「对称面自身」的位移/旋转调整（工具态不在项目快照里），
+    // 面上的调整退完后，再继续走正常场景撤销。
+    if (typeof mirrorUndoPlane === 'function' && mirrorUndoPlane()) { bumpDrawRev('ui'); return; }
+    flushPendingRecords(); const cur = getState(); const prev = history.undo(cur); if (prev) { restoreState(prev); _lastStateSnapshot = prev; bumpDrawRev('ui'); if (typeof scheduleAutoSave === 'function') scheduleAutoSave(); }
+}
 function redo() { flushPendingRecords(); const cur = getState(); const nxt = history.redo(cur); if (nxt) { restoreState(nxt); _lastStateSnapshot = nxt; bumpDrawRev('ui'); if (typeof scheduleAutoSave === 'function') scheduleAutoSave(); } }
 // 暴露到 window 供 Android 原生接口调用
 window.undo = undo;
@@ -806,6 +862,7 @@ function duplicateBlock(original) {
         nb._boneExplicit = original._boneExplicit;
         nb._boneMode = original._boneMode;
     }
+    if (original._ikGoalMarker) nb._ikGoalMarker = true;
     // 复制 molang 方块：保留 molang 接管状态与程序本体，避免表达式丢失
     if (original.scope.molangMode) {
         nb.scope.molangMode = true;

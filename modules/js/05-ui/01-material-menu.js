@@ -191,6 +191,110 @@ function mmOption(text, sub, onClick) {
     return d;
 }
 
+// ---------- 物品贴图选择面板（掉落物专用；材质菜单与「新建掉落物」共用） ----------
+// 掉落物的形状/贴图都来自「物品图标」：一个不透明像素 = 一根体素柱。
+// 所以它的材质面板不给贴图库，只给「物品库」（Textures/items，基岩版原版图标）+ 本地上传。
+let _itemLibPromise = null;
+function getItemLib() {
+    if (!_itemLibPromise) {
+        _itemLibPromise = fetch(texUrl('items/_manifest.json'))
+            .then(r => (r.ok ? r.json() : []))
+            .catch(() => []);
+    }
+    return _itemLibPromise;
+}
+
+// 通用「本地上传图片」：选完图后回调 data URL
+function pickCustomImage(onDone) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = ev => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        fileToDataURL(file).then(url => { if (typeof onDone === 'function') onDone(url); });
+    };
+    fileInput.click();
+}
+
+// opts: { title, currentNames(Set), onPick(file, displayName), onBack }
+function showItemPickerPanel(opts) {
+    opts = opts || {};
+    const onPick = opts.onPick || function () {};
+    materialMenuDiv.innerHTML = '';
+    materialMenuDiv.classList.add('wide');
+    materialMenuDiv.appendChild(mmHead(opts.title || '物品贴图', opts.onBack));
+
+    const search = document.createElement('input');
+    search.className = 'mm-search';
+    search.placeholder = '搜索物品（中文名 / 英文文件名）';
+    search.addEventListener('click', e => e.stopPropagation());
+    const grid = document.createElement('div');
+    grid.className = 'mm-grid mm-items';
+    const tip = document.createElement('div');
+    tip.className = 'mm-hint';
+    tip.style.cssText = 'grid-column:1/-1;padding:10px 12px;';
+    tip.textContent = '加载物品库…';
+    materialMenuDiv.appendChild(search);
+    materialMenuDiv.appendChild(tip);
+    materialMenuDiv.appendChild(grid);
+
+    const curNames = opts.currentNames || new Set();
+    let lib = [], kw = '';
+
+    const render = () => {
+        grid.innerHTML = '';
+        const k = kw.trim().toLowerCase();
+        const list = lib.filter(it => !k
+            || (it.n && it.n.toLowerCase().includes(k))
+            || (it.e && it.e.toLowerCase().includes(k))
+            || it.f.toLowerCase().includes(k));
+        const cnt = materialMenuDiv.querySelector('.mm-count');
+        if (cnt) cnt.textContent = `${list.length}`;
+        if (!list.length) {
+            grid.innerHTML = '<div class="mm-hint" style="grid-column:1/-1">没有匹配的物品<br>试试搜索"染料""apple"等关键词</div>';
+            return;
+        }
+        list.forEach(it => {
+            const cell = document.createElement('div');
+            const file = 'items/' + it.f;
+            cell.className = 'mm-cell' + (curNames.has(file) ? ' sel' : '');
+            cell.title = `${it.n || it.e}\n${it.f}`;
+            cell.appendChild(mmThumb(file, false));   // 物品图标只有几 KB，直接加载，别让懒加载拖成空白格子
+            const lb = document.createElement('span');
+            lb.textContent = it.n || it.e || it.f.replace(/\.png$/i, '');
+            cell.appendChild(lb);
+            cell.addEventListener('click', e => {
+                e.stopPropagation();
+                const disp = it.n || it.e || it.f.replace(/\.png$/i, '');
+                onPick(file, disp);
+            });
+            grid.appendChild(cell);
+        });
+    };
+
+    search.addEventListener('input', () => { kw = search.value; render(); });
+
+    const row = document.createElement('div');
+    row.className = 'mm-row';
+    const up = document.createElement('div');
+    up.className = 'mm-btn';
+    up.textContent = '本地上传图片';
+    up.addEventListener('click', e => {
+        e.stopPropagation();
+        pickCustomImage(url => onPick(url, '自定义'));
+    });
+    row.appendChild(up);
+    materialMenuDiv.appendChild(row);
+
+    getItemLib().then(items => {
+        lib = Array.isArray(items) ? items : [];
+        tip.textContent = `物品库共 ${lib.length} 件（图标即模型，16×16 或 32×32 效果最好）`;
+        render();
+    });
+    setTimeout(() => search.focus(), 0);
+}
+
 function buildMaterialMenu() {
     materialMenuDiv.innerHTML = '';
     materialMenuDiv.classList.remove('wide');
@@ -592,91 +696,18 @@ function buildMaterialMenu() {
     }
 
     // ---------- 物品贴图（掉落物专用） ----------
-    // 掉落物的形状/贴图都来自「物品图标」：一个不透明像素 = 一根体素柱。
-    // 所以它的材质面板不给贴图库，只给「物品库」（Textures/items，基岩版原版图标）+ 本地上传。
-    let _itemLibPromise = null;
-    function getItemLib() {
-        if (!_itemLibPromise) {
-            _itemLibPromise = fetch(texUrl('items/_manifest.json'))
-                .then(r => (r.ok ? r.json() : []))
-                .catch(() => []);
-        }
-        return _itemLibPromise;
-    }
-
+    // 掉落物只用物品材质：返回 = 关闭菜单，不再绕回只有单项的主菜单。
     function showItemPicker() {
-        materialMenuDiv.innerHTML = '';
-        materialMenuDiv.classList.add('wide');
-        materialMenuDiv.appendChild(mmHead('物品贴图', showMain));
-
-        const search = document.createElement('input');
-        search.className = 'mm-search';
-        search.placeholder = '搜索物品（中文名 / 英文文件名）';
-        search.addEventListener('click', e => e.stopPropagation());
-        const grid = document.createElement('div');
-        grid.className = 'mm-grid mm-items';
-        const tip = document.createElement('div');
-        tip.className = 'mm-hint';
-        tip.style.cssText = 'grid-column:1/-1;padding:10px 12px;';
-        tip.textContent = '加载物品库…';
-        materialMenuDiv.appendChild(search);
-        materialMenuDiv.appendChild(tip);
-        materialMenuDiv.appendChild(grid);
-
         const curNames = new Set(currentTexTargets().filter(b => b.type === 'dropitem').map(b => texName(b.textureUrl)));
-        let lib = [], kw = '';
-
-        const render = () => {
-            grid.innerHTML = '';
-            const k = kw.trim().toLowerCase();
-            const list = lib.filter(it => !k
-                || (it.n && it.n.toLowerCase().includes(k))
-                || (it.e && it.e.toLowerCase().includes(k))
-                || it.f.toLowerCase().includes(k));
-            const cnt = materialMenuDiv.querySelector('.mm-count');
-            if (cnt) cnt.textContent = `${list.length}`;
-            if (!list.length) {
-                grid.innerHTML = '<div class="mm-hint" style="grid-column:1/-1">没有匹配的物品<br>试试搜索"染料""apple"等关键词</div>';
-                return;
+        showItemPickerPanel({
+            title: '物品贴图',
+            currentNames: curNames,
+            onBack: onlyItems ? closeMaterialMenu : showMain,
+            onPick: (file, disp) => {
+                applyTex(b => b.loadTexture(file, disp), 'custom');
+                if (onlyItems) showItemPicker(); else showMain();
             }
-            list.forEach(it => {
-                const cell = document.createElement('div');
-                cell.className = 'mm-cell' + (curNames.has('items/' + it.f) ? ' sel' : '');
-                cell.title = `${it.n || it.e}\n${it.f}`;
-                cell.appendChild(mmThumb('items/' + it.f, false));   // 物品图标只有几 KB，直接加载，别让懒加载拖成空白格子
-                const lb = document.createElement('span');
-                lb.textContent = it.n || it.e || it.f.replace(/\.png$/i, '');
-                cell.appendChild(lb);
-                cell.addEventListener('click', e => {
-                    e.stopPropagation();
-                    const disp = it.n || it.e || it.f.replace(/\.png$/i, '');
-                    applyTex(b => b.loadTexture('items/' + it.f, disp), 'custom');
-                    showMain();
-                });
-                grid.appendChild(cell);
-            });
-        };
-
-        search.addEventListener('input', () => { kw = search.value; render(); });
-
-        const row = document.createElement('div');
-        row.className = 'mm-row';
-        const up = document.createElement('div');
-        up.className = 'mm-btn';
-        up.textContent = '本地上传图片';
-        up.addEventListener('click', e => {
-            e.stopPropagation();
-            pickCustomFile(url => { applyTex(b => b.loadTexture(url, '自定义'), 'custom'); showMain(); });
         });
-        row.appendChild(up);
-        materialMenuDiv.appendChild(row);
-
-        getItemLib().then(items => {
-            lib = Array.isArray(items) ? items : [];
-            tip.textContent = `物品库共 ${lib.length} 件（图标即模型，16×16 或 32×32 效果最好）`;
-            render();
-        });
-        setTimeout(() => search.focus(), 0);
     }
 
     // ---------- 六面独立贴图面板 ----------
@@ -828,7 +859,8 @@ function buildMaterialMenu() {
         materialMenuDiv.appendChild(row2);
     }
 
-    showMain();
+    // 掉落物只有「物品贴图」一条路：点材质按钮直接展开材质列表，不再多一层主菜单。
+    if (onlyItems) showItemPicker(); else showMain();
 }
 // <<<NEWMENU_INJECT_END>>>
 
@@ -902,6 +934,41 @@ function positionMaterialMenu() {
     materialMenuDiv.style.right = 'auto';
     materialMenuDiv.style.left = left + 'px';
     materialMenuDiv.style.top = top + 'px';
+}
+
+// 关闭材质菜单（含拆卸外部点击监听）；掉落物的「返回」直接关闭而不是回主菜单
+function closeMaterialMenu() {
+    materialMenuDiv.style.display = 'none';
+    mmUnarmClose();
+}
+
+// 新建掉落物：先选材质，选中后再生成方块；取消（返回 / 点外部）则不生成。
+// 复用物品贴图面板，因此物品库/搜索/本地上传与新建设置完全一致。
+function showDropItemCreatePicker(onPick) {
+    materialMenuBtn = null;
+    showItemPickerPanel({
+        title: '选择掉落物材质',
+        currentNames: new Set(),
+        onBack: closeMaterialMenu,
+        onPick: (file, disp) => {
+            closeMaterialMenu();
+            if (typeof onPick === 'function') onPick(file, disp);
+        }
+    });
+    materialMenuDiv.style.display = 'block';
+    if (window.innerWidth <= 768) {
+        materialMenuDiv.style.left = '';
+        materialMenuDiv.style.top = '';
+        materialMenuDiv.style.right = '';
+    } else {
+        // 无触发按钮定位：居中显示
+        const w = materialMenuDiv.offsetWidth;
+        const h = materialMenuDiv.offsetHeight;
+        materialMenuDiv.style.right = 'auto';
+        materialMenuDiv.style.left = Math.max(8, (window.innerWidth - w) / 2) + 'px';
+        materialMenuDiv.style.top = Math.max(8, (window.innerHeight - h) / 2) + 'px';
+    }
+    mmArmClose();
 }
 
 // 绑定材质按钮事件
