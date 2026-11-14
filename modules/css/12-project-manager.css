@@ -54,9 +54,9 @@
 .pm-theme-btn {
     width: 32px;
     height: 32px;
-    border-radius: 50%;
-    border: 1px solid #e2e8f0;
-    background: #fff;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -65,7 +65,7 @@
     color: #f59e0b;
     transition: background 0.15s;
 }
-.pm-theme-btn:hover { background: #f8fafc; }
+.pm-theme-btn:hover { background: rgba(148, 163, 184, 0.16); }
 .pm-version {
     padding: 5px 10px;
     border-radius: 6px;
@@ -313,13 +313,17 @@ body:not(.light-mode) .pm-header {
 }
 body:not(.light-mode) .pm-title { color: #e2e8f0; }
 body:not(.light-mode) .pm-subtitle { color: #94a3b8; }
-body:not(.light-mode) .pm-theme-btn,
 body:not(.light-mode) .pm-version {
     background: #162136;
     border-color: #2a3a5a;
     color: #cbd5e6;
 }
-body:not(.light-mode) .pm-theme-btn:hover { background: #1e293b; }
+body:not(.light-mode) .pm-theme-btn {
+    background: transparent;
+    border: none;
+    color: #cbd5e6;
+}
+body:not(.light-mode) .pm-theme-btn:hover { background: rgba(148, 163, 184, 0.18); }
 body:not(.light-mode) .pm-section-title { color: #e2e8f0; }
 body:not(.light-mode) .pm-project-count { color: #94a3b8; }
 body:not(.light-mode) .pm-card {
