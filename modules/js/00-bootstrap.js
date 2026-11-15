@@ -100,7 +100,9 @@ const __exBoot = (() => {
             ov.classList.remove('boot-hidden');
             ov.classList.add('boot-error');
             if (title) title.textContent = '无法启动：缺少 ' + list.length + ' 个程序文件';
-            if (sub) sub.textContent = '这些文件不在本机缓存里（当前离线）。请联网后刷新，或点右上角 ⚙ →「重新下载程序」。';
+            if (sub) sub.textContent = (navigator.onLine === false)
+                ? '这些文件不在本机缓存里（当前处于离线状态）。请联网后刷新，或点右上角 ⚙ →「重新下载程序」。'
+                : '这些文件未能加载（网络异常或服务器不可达）。请检查网络后刷新，或点右上角 ⚙ →「重新下载程序」。';
             if (files) files.textContent = list.join('\n');
             if (count) count.textContent = '无法启动';
             if (cur) cur.textContent = '';
@@ -133,9 +135,11 @@ window.__exReady = (async () => {
     // 并行取回全部脚本段（原来逐段 await 串行，53 次网络往返的延迟会叠加）；
     // 不用 cache:'no-store'：交给 Service Worker / 浏览器 HTTP 缓存，避免每次重下 3.4MB。
     const urls = EX_PARTS.map(rel => new URL(rel, base).href);
-    __exBoot.show();
-    __exBoot.stage('正在下载程序文件…');
+    const offlineNow = navigator.onLine === false;
+    __exBoot.stage(offlineNow ? '正在从本地缓存加载…' : '正在加载程序文件…');
     __exBoot.progress(0, urls.length, '准备中…');
+    // 缓存命中时通常 300ms 内就绪，遮罩延后出现，避免每次打开都闪一遍「下载」页
+    const __bootShowTimer = setTimeout(() => __exBoot.show(), 320);
     let done = 0;
     const texts = await Promise.all(urls.map(async (url, i) => {
         __exBoot.progress(done, urls.length, EX_PARTS[i]);
@@ -152,10 +156,12 @@ window.__exReady = (async () => {
         }
     }));
     if (window.__exFailedParts.length) {
+        clearTimeout(__bootShowTimer);
         console.error('[EX] 脚本加载失败:', window.__exFailedParts);
         __exBoot.fail(window.__exFailedParts);
         return false;
     }
+    clearTimeout(__bootShowTimer);
     __exBoot.stage('正在启动…');
     __exBoot.progress(urls.length, urls.length, '');
     // 各段在虚拟文件中的起始行（报错行号反查用）
