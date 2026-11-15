@@ -163,6 +163,7 @@ body.light-mode .sys-action.danger{color:#b91c1c;border-color:#fecaca}
             <div class="pm-section-title">项目</div>
             <span class="pm-project-count" id="pmProjectCount">0</span>
         </div>
+        <div class="pm-offline-hint" id="pmOfflineHint">正在使用离线缓存代码以运行本工具</div>
         <div class="pm-grid" id="pmProjectGrid">
             <!-- project cards injected here -->
         </div>
@@ -794,6 +795,19 @@ v.head_rotation_z=v.F.e6?math.atan2(-v.F.e2,-v.F.e1):0;" wiki:fmbe.3d_blocks.ani
       console.warn('[EX] 本地缓存服务注册失败（不影响使用）:', e && e.message);
     });
   } catch (e) {}
+})();
+
+// 离线提示：项目页「项目」标题下的小灰字，仅在断网时出现
+(function () {
+  var el = document.getElementById('pmOfflineHint');
+  if (!el) return;
+  function update() {
+    if (navigator.onLine === false) el.classList.add('is-on');
+    else el.classList.remove('is-on');
+  }
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+  update();
 })();
 </script>
 
